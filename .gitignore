@@ -1,32 +1,16 @@
 # Python
 __pycache__/
-*.py[cod]
+*.pyc
 *.pyo
-*.pyd
-*.egg-info/
-env/
+
+# Virtual environment
 .venv/
 venv/
-db.sqlite3
 
 # Django
-*.log
-local_settings.py
-media/
-staticfiles/
-
-# Node
-node_modules/
-dist/
-build/
-package-lock.json
-yarn.lock
-
-# Environment
+db.sqlite3
 .env
 
-# Editor / OS
-.vscode/
-.idea/
+# OS
 .DS_Store
 Thumbs.db
