@@ -1,0 +1,724 @@
+{% extends 'admin/base_admin.html' %}
+
+{% block title %}System Administration • IntelliHRTrack{% endblock %}
+
+{% block extra_head %}
+<style>
+		html, body { height: 100%; }
+		html[data-accent="teal"] { --accent:#14b8a6; --accent-to:#0ea5a0; }
+		html[data-accent="purple"] { --accent:#8b5cf6; --accent-to:#7c3aed; }
+		html[data-accent="rose"] { --accent:#f43f5e; --accent-to:#e11d48; }
+		html[data-accent="amber"] { --accent:#f59e0b; --accent-to:#d97706; }
+		.glass { background: linear-gradient(180deg, rgba(255,255,255,0.80), rgba(255,255,255,0.72)); backdrop-filter: blur(10px); }
+		.dark .glass { background: linear-gradient(180deg, rgba(31,41,55,0.72), rgba(31,41,55,0.64)); }
+		.neon-divider { height:1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity:.6; }
+		.topbar-progress { position:fixed; left:0; top:0; height:3px; width:0; z-index:100; background:linear-gradient(90deg, var(--accent), var(--accent-to), var(--accent)); box-shadow:0 0 12px rgba(0,0,0,.2); transition: width .45s ease; }
+		.fancy-scroll::-webkit-scrollbar { height:10px; width:10px; }
+		.fancy-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), var(--accent-to)); border-radius:9999px; }
+		.fancy-scroll::-webkit-scrollbar-track { background: transparent; }
+		.shadow-glow { box-shadow: 0 10px 30px -5px rgba(245,158,11,0.35), 0 8px 16px -8px rgba(59,130,246,0.25); }
+		.big-scroll { scrollbar-width:auto; scrollbar-color: var(--accent) transparent; }
+		.big-scroll::-webkit-scrollbar { width:16px; height:16px; }
+		.big-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), var(--accent-to)); border-radius:12px; border:3px solid transparent; background-clip: content-box; }
+
+		:root { --accent:#14b8a6; --accent-to:#0ea5a0; }
+		.gradient-accent { background-image: linear-gradient(135deg, var(--accent), var(--accent-to)); }
+		.text-accent { color: var(--accent); }
+		.bg-accent { background-color: var(--accent); }
+
+		body { background-color:#ffffff; background-image: radial-gradient(1200px 600px at -10% -20%, rgba(20,184,166,0.18), transparent), radial-gradient(900px 500px at 110% 10%, rgba(16,185,129,0.14), transparent); }
+		.dark body { background-color:#0f172a; background-image: radial-gradient(1200px 600px at -10% -20%, rgba(20,184,166,0.12), transparent), radial-gradient(900px 500px at 110% 10%, rgba(16,185,129,0.10), transparent); }
+	</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<!-- Security Status Banner (preserved meaning) -->
+				<div class="rounded-2xl p-6 md:p-7 shadow-2xl mb-8 text-white gradient-accent">
+					<div class="flex items-start justify-between">
+						<div class="flex-1">
+							<div class="flex items-center mb-3"><i class="fas fa-shield-check text-2xl mr-3"></i><h2 class="text-xl font-bold">System Security Status: All Systems Secure</h2></div>
+							<p class="text-amber-50/90 text-base leading-relaxed">"All security protocols active. AI Sentinel monitoring 247 endpoints. Last security audit passed with 98.7% compliance. Encryption keys rotated 2 hours ago."</p>
+						</div>
+						<div class="ml-6 p-3 bg-white/20 rounded-xl"><i class="fas fa-check-circle text-2xl text-white"></i></div>
+					</div>
+				</div>
+
+				<!-- Top Stats Cards (preserved data) -->
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
+						<div class="flex justify-between items-start">
+							<div>
+								<p class="text-sm text-gray-500 dark:text-gray-400">Active Users</p>
+								<h3 class="text-2xl font-extrabold mt-1">247</h3>
+								<p class="text-xs text-green-600 mt-2 flex items-center"><i class="fas fa-user-check mr-1"></i>12 currently online</p>
+							</div>
+							<div class="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg text-white"><i class="fas fa-users text-xl"></i></div>
+						</div>
+					</div>
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
+						<div class="flex justify-between items-start">
+							<div>
+								<p class="text-sm text-gray-500 dark:text-gray-400">Security Alerts</p>
+								<h3 class="text-2xl font-extrabold mt-1">3</h3>
+								<p class="text-xs text-yellow-500 mt-2 flex items-center"><i class="fas fa-exclamation-triangle mr-1"></i>Requires attention</p>
+							</div>
+							<div class="p-3 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl shadow-lg text-white"><i class="fas fa-shield-alt text-xl"></i></div>
+						</div>
+					</div>
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
+						<div class="flex justify-between items-start">
+							<div>
+								<p class="text-sm text-gray-500 dark:text-gray-400">System Uptime</p>
+								<h3 class="text-2xl font-extrabold mt-1">99.98%</h3>
+								<p class="text-xs text-green-600 mt-2 flex items-center"><i class="fas fa-server mr-1"></i>45 days running</p>
+							</div>
+							<div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg text-white"><i class="fas fa-chart-line text-xl"></i></div>
+						</div>
+					</div>
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
+						<div class="flex justify-between items-start">
+							<div>
+								<p class="text-sm text-gray-500 dark:text-gray-400">AI Confidence</p>
+								<h3 class="text-2xl font-extrabold mt-1">96.4%</h3>
+								<p class="text-xs text-purple-500 mt-2 flex items-center"><i class="fas fa-brain mr-1"></i>High accuracy</p>
+							</div>
+							<div class="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl shadow-lg text-white"><i class="fas fa-robot text-xl"></i></div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Tabs Wrapper -->
+				<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl border border-white/30 dark:border-gray-700/60 overflow-hidden mb-8">
+					<div class="border-b border-white/30 dark:border-gray-700/60 overflow-x-auto">
+						<nav class="flex -mb-px">
+							<button id="user-management-tab" class="admin-tab py-4 px-6 text-center border-b-2 border-amber-500 text-amber-500 dark:text-amber-400 font-medium flex items-center whitespace-nowrap"><i class="fas fa-users-cog mr-2"></i>User Management</button>
+							<button id="access-control-tab" class="admin-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap"><i class="fas fa-user-lock mr-2"></i>Access Control</button>
+							<button id="security-tab" class="admin-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap"><i class="fas fa-shield-alt mr-2"></i>Security</button>
+							<button id="monitoring-tab" class="admin-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap"><i class="fas fa-desktop mr-2"></i>Monitoring</button>
+							<button id="system-tab" class="admin-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap"><i class="fas fa-cogs mr-2"></i>System</button>
+						</nav>
+					</div>
+
+					<div class="p-6">
+						<!-- User Management Content (Default) -->
+						<div id="user-management-content" class="admin-content">
+							<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+								<div>
+									<h3 class="text-xl font-bold">User Account Management</h3>
+									<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Create, edit, activate, or deactivate user accounts with role assignments</p>
+								</div>
+								<div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+									<div class="relative group">
+										<div class="absolute -inset-1 gradient-accent rounded-lg blur opacity-25 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+										<button id="add-user-btn" class="relative px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg flex items-center shadow-lg transition-all duration-300 transform hover:scale-105"><i class="fas fa-user-plus mr-2"></i>Add User</button>
+									</div>
+									<button id="export-users-btn" class="px-4 py-2 glass border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:shadow-glow rounded-lg flex items-center transition-all duration-300 hover:scale-105"><i class="fas fa-download mr-2"></i>Export Users</button>
+									<button class="px-4 py-2 glass border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:shadow-glow rounded-lg flex items-center transition-all duration-300 hover:scale-105"><i class="fas fa-filter mr-2"></i>Filter</button>
+								</div>
+							</div>
+
+							<!-- User Accounts Table -->
+							<div class="glass rounded-xl shadow overflow-hidden border border-white/30 dark:border-gray-700/60 mb-6">
+								<div class="px-6 py-4 border-b border-white/30 dark:border-gray-700/60 flex justify-between items-center">
+									<h3 class="text-lg font-semibold">User Accounts</h3>
+									<div class="flex space-x-2">
+										<div class="relative">
+											<input type="text" placeholder="Search users..." class="pl-10 pr-4 py-2 rounded-lg glass border border-white/30 dark:border-gray-700/60 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 w-64">
+											<i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+										</div>
+									</div>
+								</div>
+								<div class="overflow-x-auto">
+									<table class="min-w-full divide-y divide-white/30 dark:divide-gray-700/60">
+										<thead class="glass">
+											<tr>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">User</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Role</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Department</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Last Login</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
+											</tr>
+										</thead>
+										<tbody class="divide-y divide-white/30 dark:divide-gray-700/60">
+											<tr class="hover:bg-white/60 dark:hover:bg-gray-700/60 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap">
+													<div class="flex items-center"><img class="h-10 w-10 rounded-full object-cover border-2 border-blue-500" src="https://randomuser.me/api/portraits/men/32.jpg" alt="User"><div class="ml-4"><div class="text-sm font-medium">Michael Chen</div><div class="text-sm text-gray-500 dark:text-gray-400">michael.chen@company.com</div></div></div>
+												</td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">HR Admin</span></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">Human Resources</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">Today, 09:24 AM</td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</span></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium"><div class="flex space-x-2"><button class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><i class="fas fa-edit mr-1"></i> Edit</button><button class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><i class="fas fa-ban mr-1"></i> Disable</button></div></td>
+											</tr>
+											<tr class="hover:bg-white/60 dark:hover:bg-gray-700/60 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><img class="h-10 w-10 rounded-full object-cover border-2 border-purple-500" src="https://randomuser.me/api/portraits/women/44.jpg" alt="User"><div class="ml-4"><div class="text-sm font-medium">Sarah Johnson</div><div class="text-sm text-gray-500 dark:text-gray-400">sarah.johnson@company.com</div></div></div></td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Finance Officer</span></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">Finance</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">Yesterday, 03:45 PM</td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</span></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium"><div class="flex space-x-2"><button class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><i class="fas fa-edit mr-1"></i> Edit</button><button class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><i class="fas fa-ban mr-1"></i> Disable</button></div></td>
+											</tr>
+											<tr class="hover:bg-white/60 dark:hover:bg-gray-700/60 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><img class="h-10 w-10 rounded-full object-cover border-2 border-yellow-500" src="https://randomuser.me/api/portraits/men/75.jpg" alt="User"><div class="ml-4"><div class="text-sm font-medium">David Wilson</div><div class="text-sm text-gray-500 dark:text-gray-400">david.wilson@company.com</div></div></div></td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Department Manager</span></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">Sales</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">2 days ago</td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Suspended</span></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium"><div class="flex space-x-2"><button class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><i class="fas fa-edit mr-1"></i> Edit</button><button class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 bg-green-50 dark:bg-green-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><i class="fas fa-check mr-1"></i> Activate</button></div></td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</div>
+
+							<!-- User Status Overview -->
+							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<div class="flex items-center"><div class="p-3 bg-green-100 dark:bg-green-900 rounded-lg mr-4"><i class="fas fa-user-check text-green-500"></i></div><div><p class="text-sm text-gray-500 dark:text-gray-400">Active Users</p><h3 class="text-2xl font-bold">234</h3></div></div>
+								</div>
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<div class="flex items-center"><div class="p-3 bg-red-100 dark:bg-red-900 rounded-lg mr-4"><i class="fas fa-user-times text-red-500"></i></div><div><p class="text-sm text-gray-500 dark:text-gray-400">Suspended Users</p><h3 class="text-2xl font-bold">13</h3></div></div>
+								</div>
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<div class="flex items-center"><div class="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg mr-4"><i class="fas fa-user-clock text-yellow-500"></i></div><div><p class="text-sm text-gray-500 dark:text-gray-400">Pending Activation</p><h3 class="text-2xl font-bold">7</h3></div></div>
+								</div>
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<div class="flex items-center"><div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg mr-4"><i class="fas fa-user-shield text-blue-500"></i></div><div><p class="text-sm text-gray-500 dark:text-gray-400">Admin Users</p><h3 class="text-2xl font-bold">8</h3></div></div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Access Control Content -->
+						<div id="access-control-content" class="admin-content hidden">
+							<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+								<div>
+									<h3 class="text-xl font-bold">Role-Based Access Control (RBAC)</h3>
+									<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage system roles and define granular permissions for modules and data actions</p>
+								</div>
+								<div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+									<button id="new-role-btn" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg flex items-center shadow-lg transition-all duration-300 transform hover:scale-105"><i class="fas fa-plus mr-2"></i>New Role</button>
+									<button class="px-4 py-2 glass border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:shadow-glow rounded-lg flex items-center transition-all duration-300 hover:scale-105"><i class="fas fa-copy mr-2"></i>Duplicate Role</button>
+								</div>
+							</div>
+
+							<!-- Permission Matrix -->
+							<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60 mb-6">
+								<h3 class="text-lg font-semibold mb-4">Permission Matrix Viewer</h3>
+								<div class="overflow-x-auto">
+									<table class="min-w-full divide-y divide-white/30 dark:divide-gray-700/60">
+										<thead class="glass">
+											<tr>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Module / Action</th>
+												<th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">HR Admin</th>
+												<th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">Finance Officer</th>
+												<th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">Department Manager</th>
+												<th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">System Admin</th>
+											</tr>
+										</thead>
+										<tbody class="divide-y divide-white/30 dark:divide-gray-700/60">
+											<tr class="hover:bg-white/60 dark:hover:bg-gray-700/60 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Employee Management</td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-check text-green-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-times text-red-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-check text-green-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-check text-green-500"></i></td>
+											</tr>
+											<tr class="hover:bg-white/60 dark:hover:bg-gray-700/60 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Payroll Processing</td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-check text-green-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-check text-green-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-times text-red-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-check text-green-500"></i></td>
+											</tr>
+											<tr class="hover:bg-white/60 dark:hover:bg-gray-700/60 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">System Administration</td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-times text-red-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-times text-red-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-times text-red-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-check text-green-500"></i></td>
+											</tr>
+											<tr class="hover:bg-white/60 dark:hover:bg-gray-700/60 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Analytics &amp; Reports</td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-check text-green-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-check text-green-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-check text-green-500"></i></td>
+												<td class="px-6 py-4 whitespace-nowrap text-center"><i class="fas fa-check text-green-500"></i></td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</div>
+
+							<!-- Role Management -->
+							<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">System Roles</h3>
+									<div class="space-y-4">
+										<div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">System Administrator</h4><span class="px-2 py-1 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-xs rounded-full">Full Access</span></div>
+											<p class="text-sm text-gray-600 dark:text-gray-400">Complete system access with all permissions enabled</p>
+											<div class="flex justify-between mt-3"><span class="text-xs text-gray-500">8 users</span><button class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Edit Permissions</button></div>
+										</div>
+										<div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">HR Administrator</h4><span class="px-2 py-1 bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200 text-xs rounded-full">HR Modules</span></div>
+											<p class="text-sm text-gray-600 dark:text-gray-400">Access to employee management, attendance, and leave modules</p>
+											<div class="flex justify-between mt-3"><span class="text-xs text-gray-500">12 users</span><button class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Edit Permissions</button></div>
+										</div>
+										<div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">Finance Officer</h4><span class="px-2 py-1 bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 text-xs rounded-full">Finance Modules</span></div>
+											<p class="text-sm text-gray-600 dark:text-gray-400">Access to payroll, expenses, and financial reporting</p>
+											<div class="flex justify-between mt-3"><span class="text-xs text-gray-500">6 users</span><button class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Edit Permissions</button></div>
+										</div>
+									</div>
+								</div>
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Role Permissions</h3>
+									<div class="space-y-4">
+										<div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">HR Administrator Permissions</h4><button class="text-xs px-3 py-1 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded">Customize</button></div>
+											<div class="grid grid-cols-2 gap-2 text-sm mt-3">
+												<div class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i><span>View Employees</span></div>
+												<div class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i><span>Edit Employees</span></div>
+												<div class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i><span>Manage Attendance</span></div>
+												<div class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i><span>Approve Leave</span></div>
+												<div class="flex items-center"><i class="fas fa-times text-red-500 mr-2"></i><span>Process Payroll</span></div>
+												<div class="flex items-center"><i class="fas fa-times text-red-500 mr-2"></i><span>System Settings</span></div>
+											</div>
+										</div>
+										<div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+											<div class="flex items-center justify-between mb-2"><h4 class="font-medium">Permission Inheritance</h4><div class="flex items-center text-sm text-gray-500 dark:text-gray-400"><i class="fas fa-info-circle mr-1"></i><span>Role Hierarchy</span></div></div>
+											<div class="flex items-center justify-center py-4">
+												<div class="text-center">
+													<div class="flex items-center justify-center space-x-8">
+														<div class="text-center"><div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-full mx-auto mb-2"><i class="fas fa-user-shield text-blue-500"></i></div><p class="text-xs font-medium">System Admin</p></div>
+														<i class="fas fa-arrow-right text-gray-400"></i>
+														<div class="text-center"><div class="p-3 bg-purple-100 dark:bg-purple-900 rounded-full mx-auto mb-2"><i class="fas fa-user-tie text-purple-500"></i></div><p class="text-xs font-medium">HR Admin</p></div>
+														<i class="fas fa-arrow-right text-gray-400"></i>
+														<div class="text-center"><div class="p-3 bg-green-100 dark:bg-green-900 rounded-full mx-auto mb-2"><i class="fas fa-user text-green-500"></i></div><p class="text-xs font-medium">Manager</p></div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Security Content -->
+						<div id="security-content" class="admin-content hidden">
+							<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+								<div>
+									<h3 class="text-xl font-bold">Security &amp; Authentication</h3>
+									<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage MFA, password policies, encryption, and data protection settings</p>
+								</div>
+								<div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+									<button class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg flex items-center shadow-lg transition-all duration-300 transform hover:scale-105"><i class="fas fa-sync-alt mr-2"></i>Rotate Keys</button>
+									<button id="security-audit-btn" class="px-4 py-2 glass border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:shadow-glow rounded-lg flex items-center transition-all duration-300 hover:scale-105"><i class="fas fa-shield-alt mr-2"></i>Security Audit</button>
+								</div>
+							</div>
+
+							<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Multi-Factor Authentication (MFA)</h3>
+									<div class="space-y-4">
+										<div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">MFA Status</h4><div class="relative inline-block w-12 h-6"><input type="checkbox" class="sr-only" id="mfa-toggle" checked><div class="block bg-gray-300 dark:bg-gray-600 w-12 h-6 rounded-full transition-colors duration-300"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 transform translate-x-6"></div></div></div>
+											<p class="text-sm text-gray-600 dark:text-gray-400">MFA is currently enforced for all admin roles</p>
+										</div>
+										<div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">Authentication Methods</h4><i class="fas fa-mobile-alt text-purple-500"></i></div>
+											<div class="space-y-2 mt-3">
+												<label class="flex items-center"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3" checked><span class="text-sm">TOTP Mobile Apps (Google Authenticator)</span></label>
+												<label class="flex items-center"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><span class="text-sm">SMS OTP</span></label>
+												<label class="flex items-center"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3" checked><span class="text-sm">Security Tokens (FIDO2)</span></label>
+											</div>
+										</div>
+										<div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">MFA Enrollment</h4><i class="fas fa-user-check text-green-500"></i></div>
+											<div class="flex justify-between text-sm mt-3"><div><p class="text-gray-600 dark:text-gray-400">Users with MFA</p><p class="text-lg font-bold">89%</p></div><div><p class="text-gray-600 dark:text-gray-400">Pending Enrollment</p><p class="text-lg font-bold">28 users</p></div></div>
+										</div>
+									</div>
+								</div>
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Password &amp; Account Policies</h3>
+									<div class="space-y-4">
+										<div class="p-4 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">Password Strength</h4><i class="fas fa-lock text-red-500"></i></div>
+											<div class="space-y-3 mt-3">
+												<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Minimum Length</span><span class="font-medium">12 characters</span></div></div>
+												<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Complexity Requirements</span><span class="font-medium">High</span></div></div>
+												<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Password History</span><span class="font-medium">24 previous</span></div></div>
+											</div>
+										</div>
+										<div class="p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border border-yellow-200 dark:border-yellow-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">Account Lockout Policy</h4><i class="fas fa-user-lock text-yellow-500"></i></div>
+											<div class="space-y-3 mt-3">
+												<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Failed Attempts</span><span class="font-medium">5 attempts</span></div></div>
+												<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Lockout Duration</span><span class="font-medium">30 minutes</span></div></div>
+												<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Password Expiry</span><span class="font-medium">90 days</span></div></div>
+											</div>
+										</div>
+										<div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">Encryption Settings</h4><i class="fas fa-key text-blue-500"></i></div>
+											<div class="space-y-3 mt-3">
+												<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Data Encryption</span><span class="font-medium">AES-256</span></div></div>
+												<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Key Rotation</span><span class="font-medium">Every 90 days</span></div></div>
+												<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Last Rotation</span><span class="font-medium">2 hours ago</span></div></div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- AI Sentinel Alerts -->
+							<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+								<h3 class="text-lg font-semibold mb-4">AI Sentinel - Anomaly Detection Engine</h3>
+								<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+									<div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Threat Level</p><i class="fas fa-shield-alt text-green-500"></i></div><p class="text-2xl font-bold">Low</p><p class="text-xs text-gray-500 mt-1">No critical threats detected</p></div>
+									<div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Anomalies Today</p><i class="fas fa-exclamation-triangle text-blue-500"></i></div><p class="text-2xl font-bold">3</p><p class="text-xs text-gray-500 mt-1">All medium priority</p></div>
+									<div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">AI Confidence</p><i class="fas fa-brain text-purple-500"></i></div><p class="text-2xl font-bold">96.4%</p><p class="text-xs text-gray-500 mt-1">High accuracy</p></div>
+									<div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Response Time</p><i class="fas fa-bolt text-amber-500"></i></div><p class="text-2xl font-bold">2.3s</p><p class="text-xs text-gray-500 mt-1">Average detection</p></div>
+								</div>
+								<div class="space-y-3">
+									<div class="flex items-start p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border border-yellow-200 dark:border-yellow-700">
+										<div class="p-2 bg-yellow-100 dark:bg-yellow-800 rounded-lg mr-3"><i class="fas fa-exclamation-triangle text-yellow-600 dark:text-yellow-400"></i></div>
+										<div class="flex-1"><p class="text-sm font-medium">Multiple Failed Login Attempts</p><p class="text-xs text-gray-600 dark:text-gray-400">User 'david.wilson' attempted login 7 times from unknown IP (182.164.29.47)</p><div class="flex items-center mt-2 text-xs text-gray-500"><i class="fas fa-clock mr-1"></i><span>Detected: Today, 11:23 AM</span><span class="mx-2">•</span><i class="fas fa-map-marker-alt mr-1"></i><span>Location: Unknown</span></div></div>
+										<button class="text-xs px-3 py-1 bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded-lg">Investigate</button>
+									</div>
+									<div class="flex items-start p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
+										<div class="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg mr-3"><i class="fas fa-user-clock text-blue-600 dark:text-blue-400"></i></div>
+										<div class="flex-1"><p class="text-sm font-medium">Unusual Access Pattern</p><p class="text-xs text-gray-600 dark:text-gray-400">User 'sarah.johnson' accessed payroll data outside normal working hours</p><div class="flex items-center mt-2 text-xs text-gray-500"><i class="fas fa-clock mr-1"></i><span>Detected: Yesterday, 11:45 PM</span><span class="mx-2">•</span><i class="fas fa-user mr-1"></i><span>User: Sarah Johnson</span></div></div>
+										<button class="text-xs px-3 py-1 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-lg">Review</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Monitoring Content -->
+						<div id="monitoring-content" class="admin-content hidden">
+							<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+								<div>
+									<h3 class="text-xl font-bold">System Monitoring &amp; Activity</h3>
+									<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Monitor user sessions, system events, and device health in real-time</p>
+								</div>
+								<div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+									<button id="refresh-data-btn" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg flex items-center shadow-lg transition-all duration-300 transform hover:scale-105"><i class="fas fa-sync-alt mr-2"></i>Refresh Data</button>
+									<button id="export-logs-btn" class="px-4 py-2 glass border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:shadow-glow rounded-lg flex items-center transition-all duration-300 hover:scale-105"><i class="fas fa-download mr-2"></i>Export Logs</button>
+								</div>
+							</div>
+
+							<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60 mb-6">
+								<h3 class="text-lg font-semibold mb-4">User Session &amp; Device Activity Tracker</h3>
+								<div class="overflow-x-auto">
+									<table class="min-w-full divide-y divide-white/30 dark:divide-gray-700/60">
+										<thead class="glass">
+											<tr>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">User</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Device</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">IP Address</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Location</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Login Time</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Last Activity</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
+											</tr>
+										</thead>
+										<tbody class="divide-y divide-white/30 dark:divide-gray-700/60">
+											<tr class="hover:bg-white/60 dark:hover:bg-gray-700/60 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><img class="h-8 w-8 rounded-full object-cover border-2 border-blue-500" src="https://randomuser.me/api/portraits/men/32.jpg" alt="User"><div class="ml-3"><div class="text-sm font-medium">Michael Chen</div></div></div></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm"><div class="flex items-center"><i class="fas fa-desktop mr-2 text-blue-500"></i><span>Windows Desktop</span></div></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">192.168.1.45</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">New York, US</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Today, 09:24 AM</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2 minutes ago</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium"><button class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><i class="fas fa-sign-out-alt mr-1"></i> Logout</button></td>
+											</tr>
+											<tr class="hover:bg-white/60 dark:hover:bg-gray-700/60 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><img class="h-8 w-8 rounded-full object-cover border-2 border-purple-500" src="https://randomuser.me/api/portraits/women/44.jpg" alt="User"><div class="ml-3"><div class="text-sm font-medium">Sarah Johnson</div></div></div></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm"><div class="flex items-center"><i class="fas fa-mobile-alt mr-2 text-purple-500"></i><span>iPhone 13</span></div></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">182.164.29.47</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Chicago, US</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Today, 10:15 AM</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">15 minutes ago</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium"><button class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><i class="fas fa-sign-out-alt mr-1"></i> Logout</button></td>
+											</tr>
+											<tr class="hover:bg-white/60 dark:hover:bg-gray-700/60 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><img class="h-8 w-8 rounded-full object-cover border-2 border-green-500" src="https://randomuser.me/api/portraits/men/75.jpg" alt="User"><div class="ml-3"><div class="text-sm font-medium">David Wilson</div></div></div></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm"><div class="flex items-center"><i class="fas fa-laptop mr-2 text-green-500"></i><span>MacBook Pro</span></div></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">192.168.1.102</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Boston, US</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Today, 08:45 AM</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">5 minutes ago</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium"><button class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><i class="fas fa-sign-out-alt mr-1"></i> Logout</button></td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</div>
+
+							<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Server &amp; Device Health Monitor</h3>
+									<div class="space-y-4">
+										<div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-700"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Main Application Server</p><i class="fas fa-server text-green-500"></i></div><div class="flex justify-between text-sm mt-3"><div><p class="text-gray-600 dark:text-gray-400">Uptime</p><p class="text-lg font-bold">45 days</p></div><div><p class="text-gray-600 dark:text-gray-400">CPU Load</p><p class="text-lg font-bold">24%</p></div><div><p class="text-gray-600 dark:text-gray-400">Memory</p><p class="text-lg font-bold">62%</p></div></div></div>
+										<div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Database Server</p><i class="fas fa-database text-blue-500"></i></div><div class="flex justify-between text-sm mt-3"><div><p class="text-gray-600 dark:text-gray-400">Response Time</p><p class="text-lg font-bold">12ms</p></div><div><p class="text-gray-600 dark:text-gray-400">Active Connections</p><p class="text-lg font-bold">47</p></div><div><p class="text-gray-600 dark:text-gray-400">Storage</p><p class="text-lg font-bold">78%</p></div></div></div>
+										<div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-700"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Biometric Devices</p><i class="fas fa-fingerprint text-amber-500"></i></div><div class="flex justify-between text-sm mt-3"><div><p class="text-gray-600 dark:text-gray-400">Online</p><p class="text-lg font-bold">23/25</p></div><div><p class="text-gray-600 dark:text-gray-400">Last Sync</p><p class="text-lg font-bold">5 min ago</p></div><div><p class="text-gray-600 dark:text-gray-400">Issues</p><p class="text-lg font-bold">2</p></div></div></div>
+									</div>
+								</div>
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">System Event Viewer</h3>
+									<div class="space-y-3 max-h-96 overflow-y-auto fancy-scroll">
+										<div class="flex items-start p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="p-2 bg-green-100 dark:bg-green-800 rounded-lg mr-3"><i class="fas fa-info-circle text-green-500 text-sm"></i></div><div class="flex-1"><p class="text-sm font-medium">Backup completed successfully</p><p class="text-xs text-gray-500 dark:text-gray-400">Full system backup to secure cloud storage</p><p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Today, 02:00 AM</p></div></div>
+										<div class="flex items-start p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg mr-3"><i class="fas fa-sync-alt text-blue-500 text-sm"></i></div><div class="flex-1"><p class="text-sm font-medium">Encryption keys rotated</p><p class="text-xs text-gray-500 dark:text-gray-400">AES-256 encryption keys successfully rotated</p><p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Today, 01:30 AM</p></div></div>
+										<div class="flex items-start p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="p-2 bg-yellow-100 dark:bg-yellow-800 rounded-lg mr-3"><i class="fas fa-exclamation-triangle text-yellow-500 text-sm"></i></div><div class="flex-1"><p class="text-sm font-medium">Biometric device disconnected</p><p class="text-xs text-gray-500 dark:text-gray-400">Device ID: BIO-047 (Reception Area)</p><p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Yesterday, 10:23 PM</p></div></div>
+										<div class="flex items-start p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="p-2 bg-red-100 dark:bg-red-800 rounded-lg mr-3"><i class="fas fa-times-circle text-red-500 text-sm"></i></div><div class="flex-1"><p class="text-sm font-medium">Failed login attempt blocked</p><p class="text-xs text-gray-500 dark:text-gray-400">IP: 182.164.29.47 - Account locked after 5 attempts</p><p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Yesterday, 09:15 PM</p></div></div>
+										<div class="flex items-start p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg mr-3"><i class="fas fa-user-plus text-purple-500 text-sm"></i></div><div class="flex-1"><p class="text-sm font-medium">New user account created</p><p class="text-xs text-gray-500 dark:text-gray-400">User: emma.roberts - Role: Department Manager</p><p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Yesterday, 04:30 PM</p></div></div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- System Content -->
+						<div id="system-content" class="admin-content hidden">
+							<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+								<div>
+									<h3 class="text-xl font-bold">System Configuration &amp; Administration</h3>
+									<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Global settings, backup management, compliance, and system-wide configurations</p>
+								</div>
+								<div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+									<button id="save-changes-btn" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg flex items-center shadow-lg transition-all duration-300 transform hover:scale-105"><i class="fas fa-save mr-2"></i>Save Changes</button>
+									<button class="px-4 py-2 glass border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:shadow-glow rounded-lg flex items-center transition-all duration-300 hover:scale-105"><i class="fas fa-undo mr-2"></i>Reset to Defaults</button>
+								</div>
+							</div>
+
+							<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Global System Settings</h3>
+									<div class="space-y-4">
+										<div><label class="block text-sm font-medium mb-2">Time Zone</label><select class="block w-full rounded-lg glass border border-white/30 dark:border-gray-700/60 shadow-sm focus:border-amber-500 focus:ring-amber-500"><option>Eastern Time (US & Canada)</option><option>Central Time (US & Canada)</option><option>Pacific Time (US & Canada)</option><option>GMT (Greenwich Mean Time)</option></select></div>
+										<div><label class="block text-sm font-medium mb-2">Payroll Cut-off Date</label><select class="block w-full rounded-lg glass border border-white/30 dark:border-gray-700/60 shadow-sm focus:border-amber-500 focus:ring-amber-500"><option>15th of each month</option><option>Last day of each month</option><option>Every other Friday</option></select></div>
+										<div><label class="block text-sm font-medium mb-2">Auto-sync Frequency</label><select class="block w-full rounded-lg glass border border-white/30 dark:border-gray-700/60 shadow-sm focus:border-amber-500 focus:ring-amber-500"><option>Every 15 minutes</option><option>Every 30 minutes</option><option>Every hour</option><option>Every 4 hours</option></select></div>
+										<div>
+											<label class="block text-sm font-medium mb-2">Email Notifications</label>
+											<div class="space-y-2">
+												<label class="flex items-center"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3" checked><span class="text-sm">Security Alerts</span></label>
+												<label class="flex items-center"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3" checked><span class="text-sm">System Updates</span></label>
+												<label class="flex items-center"><input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><span class="text-sm">Backup Reports</span></label>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Backup &amp; Restore Center</h3>
+									<div class="space-y-4">
+										<div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Last Backup</p><i class="fas fa-database text-blue-500"></i></div><p class="text-lg font-bold">Today, 02:00 AM</p><p class="text-xs text-gray-500 mt-1">Full system backup - 2.4 GB</p><div class="flex justify-between mt-3"><span class="text-xs text-gray-500">Checksum: Verified</span><button class="text-xs text-blue-600 dark:text-blue-400 hover:underline">View Details</button></div></div>
+										<div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-700"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Backup Schedule</p><i class="fas fa-calendar-alt text-green-500"></i></div><div class="space-y-2 mt-3"><div class="flex justify-between text-sm"><span>Full Backup</span><span class="font-medium">Weekly (Sunday)</span></div><div class="flex justify-between text-sm"><span>Incremental Backup</span><span class="font-medium">Daily (2:00 AM)</span></div><div class="flex justify-between text-sm"><span>Retention Period</span><span class="font-medium">90 days</span></div></div></div>
+										<div class="pt-4"><button id="run-backup-btn" class="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg flex items-center justify-center shadow-lg transition-all duration-300 transform hover:scale-105"><i class="fas fa-play-circle mr-2"></i>Run Backup Now</button></div>
+									</div>
+								</div>
+							</div>
+
+							<div class="glass rounded-xl shadow p-6 border border-white/30 dark:border-gray-700/60">
+								<h3 class="text-lg font-semibold mb-4">Compliance &amp; Legal Data Center</h3>
+								<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+									<div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">GDPR Compliance</p><i class="fas fa-check-circle text-blue-500"></i></div><p class="text-2xl font-bold">98%</p><p class="text-xs text-gray-500 mt-1">Fully compliant</p></div>
+									<div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Data Privacy Act</p><i class="fas fa-check-circle text-green-500"></i></div><p class="text-2xl font-bold">100%</p><p class="text-xs text-gray-500 mt-1">Compliant</p></div>
+									<div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Employee Consent</p><i class="fas fa-user-check text-amber-500"></i></div><p class="text-2xl font-bold">94%</p><p class="text-xs text-gray-500 mt-1">15 pending</p></div>
+									<div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Data Retention</p><i class="fas fa-archive text-purple-500"></i></div><p class="text-2xl font-bold">7 years</p><p class="text-xs text-gray-500 mt-1">Policy active</p></div>
+								</div>
+								<div class="space-y-3">
+									<div class="flex items-start p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg mr-3"><i class="fas fa-file-contract text-blue-500 text-sm"></i></div><div class="flex-1"><p class="text-sm font-medium">Data Processing Agreement</p><p class="text-xs text-gray-500">Last updated: January 15, 2023 | Next review: January 15, 2024</p></div><button class="text-xs px-3 py-1 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-lg">Review</button></div>
+									<div class="flex items-start p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="p-2 bg-green-100 dark:bg-green-800 rounded-lg mr-3"><i class="fas fa-user-shield text-green-500 text-sm"></i></div><div class="flex-1"><p class="text-sm font-medium">Privacy Policy Compliance</p><p class="text-xs text-gray-500">All policies up to date with current regulations</p></div><button class="text-xs px-3 py-1 bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 rounded-lg">View Report</button></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Bottom Stats -->
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60">
+						<div class="flex items-center justify-between mb-4"><h3 class="font-semibold">System Health</h3><i class="fas fa-heartbeat text-green-500"></i></div>
+						<div class="space-y-4">
+							<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Application Server</span><span class="font-medium">Healthy</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-green-500 h-2 rounded-full" style="width:95%"></div></div></div>
+							<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Database</span><span class="font-medium">Optimal</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-green-500 h-2 rounded-full" style="width:88%"></div></div></div>
+							<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Network</span><span class="font-medium">Stable</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-green-500 h-2 rounded-full" style="width:92%"></div></div></div>
+						</div>
+					</div>
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60">
+						<div class="flex items-center justify-between mb-4"><h3 class="font-semibold">Recent Admin Actions</h3><i class="fas fa-history text-blue-500"></i></div>
+						<div class="space-y-3">
+							<div class="flex items-start"><div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg mr-3"><i class="fas fa-user-plus text-green-500 text-sm"></i></div><div><p class="text-sm font-medium">User account created</p><p class="text-xs text-gray-500 dark:text-gray-400">Emma Roberts - Department Manager</p></div></div>
+							<div class="flex items-start"><div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-3"><i class="fas fa-shield-alt text-blue-500 text-sm"></i></div><div><p class="text-sm font-medium">Security policy updated</p><p class="text-xs text-gray-500 dark:text-gray-400">Password complexity requirements increased</p></div></div>
+							<div class="flex items-start"><div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg mr-3"><i class="fas fa-cogs text-purple-500 text-sm"></i></div><div><p class="text-sm font-medium">System configuration changed</p><p class="text-xs text-gray-500 dark:text-gray-400">Auto-backup schedule modified</p></div></div>
+						</div>
+					</div>
+				</div>
+
+				<footer class="pb-8 pt-2 text-xs text-gray-500 dark:text-gray-400 text-center">© IntelliHRTrack • System Administration — demonstration build.</footer>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+		// Toast helper
+		function showToast(message, type = 'info') {
+			const wrap = document.getElementById('toastContainer');
+			const el = document.createElement('div');
+			const colors = { info: 'bg-white dark:bg-gray-800 border-white/40 dark:border-gray-700/60', success: 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700', warning: 'bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700', danger: 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700' };
+			el.className = `px-4 py-3 rounded-lg shadow-lg border ${colors[type] || colors.info}`;
+			el.textContent = message;
+			wrap.appendChild(el);
+			setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(4px)'; }, 2600);
+			setTimeout(() => wrap.removeChild(el), 3000);
+		}
+		function startProgress(){ const bar = document.getElementById('topProgress'); bar.style.width='0%'; setTimeout(()=>{ bar.style.width='65%'; }, 20); }
+		function finishProgress(){ const bar = document.getElementById('topProgress'); bar.style.width='100%'; setTimeout(()=>{ bar.style.width='0%'; }, 400); }
+
+		document.addEventListener('DOMContentLoaded', () => {
+            // Sidebar active (filename-based)
+            (function(){ try{ const current = location.pathname.split('/').pop(); document.querySelectorAll('aside nav a[href]').forEach(a=>{ const name=(a.getAttribute('href')||'').split('/').pop(); if(name===current){ a.classList.add('ring','ring-white/30','bg-accent/10'); a.setAttribute('aria-current','page'); } }); }catch(e){} })();
+			// Theme handling
+			const themeToggle = document.getElementById('sidebarThemeToggle');
+			function applyTheme(mode){ if (mode==='dark') document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); localStorage.setItem('ih_theme', mode); localStorage.setItem('theme', mode); }
+			function currentPreferredTheme(){ return localStorage.getItem('ih_theme') || localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light'); }
+			applyTheme(currentPreferredTheme());
+			themeToggle && themeToggle.addEventListener('click', ()=> applyTheme(document.documentElement.classList.contains('dark') ? 'light':'dark'));
+
+			// Accent apply/persist
+			const ACCENTS = { amber:['#f59e0b','#d97706'], teal:['#14b8a6','#0d9488'], purple:['#8b5cf6','#7c3aed'], rose:['#f43f5e','#e11d48'] };
+			function applyAccent(name){ const pair = ACCENTS[name] || ACCENTS.teal; document.documentElement.style.setProperty('--accent', pair[0]); document.documentElement.style.setProperty('--accent-to', pair[1]); document.documentElement.setAttribute('data-accent', name || 'teal'); localStorage.setItem('ih_accent', name || 'teal'); }
+			const savedAccent = localStorage.getItem('ih_accent'); if (savedAccent) applyAccent(savedAccent); else applyAccent('teal');
+
+			// Drawer open/close
+			const mobileDrawer = document.getElementById('mobileDrawer');
+			const mobileBackdrop = document.getElementById('mobileBackdrop');
+			const mobileClose = document.getElementById('mobileClose');
+			const mobileMenu = document.getElementById('mobileMenu');
+			const openDrawer = ()=> mobileDrawer.classList.remove('hidden');
+			const closeDrawer = ()=> mobileDrawer.classList.add('hidden');
+			mobileMenu && mobileMenu.addEventListener('click', openDrawer);
+			mobileBackdrop && mobileBackdrop.addEventListener('click', closeDrawer);
+			mobileClose && mobileClose.addEventListener('click', closeDrawer);
+
+			// Clone desktop nav into mobile for parity
+			const sideNavList = document.getElementById('sideNavList');
+			const mobileNav = document.getElementById('mobileNav');
+			if (sideNavList && mobileNav) { mobileNav.innerHTML = sideNavList.innerHTML; }
+
+			// Header clock + network
+			const headerClock = document.getElementById('headerClock');
+			const netDot = document.getElementById('netDot');
+			function updateClock(){ if(headerClock) headerClock.textContent = new Date().toLocaleTimeString(); }
+			setInterval(updateClock, 1000); updateClock();
+			function updateNet(){ const on = navigator.onLine; if(netDot){ netDot.classList.toggle('bg-green-500', on); netDot.classList.toggle('bg-red-500', !on); netDot.title = on ? 'Online' : 'Offline'; } }
+			window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); updateNet();
+
+			// Resizable sidebar
+			const aside = document.querySelector('aside[data-resizable]');
+			const shiftEl = document.querySelector('[data-shift]');
+			const savedW = parseInt(localStorage.getItem('ih_sidebar_w') || '0', 10);
+			function applySidebarWidth(px){ if(!aside) return; const c = Math.min(380, Math.max(240, px)); aside.style.width = c+'px'; if (window.innerWidth >= 1024 && shiftEl) shiftEl.style.marginLeft = c+'px'; }
+			if (savedW) applySidebarWidth(savedW);
+			window.addEventListener('resize', ()=>{ if (savedW && shiftEl && window.innerWidth >= 1024) shiftEl.style.marginLeft = aside.offsetWidth + 'px'; else if (shiftEl && window.innerWidth < 1024) shiftEl.style.marginLeft = ''; });
+			let resizing = false; function onMove(e){ if(!resizing) return; applySidebarWidth(e.clientX); }
+			function onUp(){ if(!resizing) return; resizing=false; localStorage.setItem('ih_sidebar_w', String(aside.offsetWidth)); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+			aside && aside.addEventListener('mousedown', (e)=>{ const rect = aside.getBoundingClientRect(); if (e.clientX > rect.right - 10 && e.clientX < rect.right + 4) { resizing=true; document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); } });
+
+			// Settings Modal wiring
+			const customizeBtn = document.getElementById('customizeLayout');
+			const settingsPanel = document.getElementById('settingsPanel');
+			const settingsBackdrop = document.getElementById('settingsBackdrop');
+			const closeSettings = document.getElementById('closeSettings');
+			const saveSettings = document.getElementById('saveSettings');
+			const resetSettings = document.getElementById('resetSettings');
+			const exportPrefs = document.getElementById('exportPrefs');
+			const importPrefsBtn = document.getElementById('importPrefsBtn');
+			const prefsFile = document.getElementById('prefsFile');
+			const motionToggle = document.getElementById('motionToggle');
+			const contrastToggle = document.getElementById('contrastToggle');
+			const glassIntensity = document.getElementById('glassIntensity');
+			function openSettings(){ settingsPanel.classList.remove('hidden'); settingsPanel.classList.add('flex'); }
+			function closeSettingsFn(){ settingsPanel.classList.add('hidden'); settingsPanel.classList.remove('flex'); }
+			;[customizeBtn, closeSettings, settingsBackdrop, saveSettings].forEach(el => { if(!el) return; el.addEventListener('click', (ev)=>{ if (el===customizeBtn) openSettings(); else closeSettingsFn(); }); });
+			document.querySelectorAll('#settingsPanel [data-accent]').forEach(btn => btn.addEventListener('click', ()=> applyAccent(btn.getAttribute('data-accent'))));
+			document.querySelectorAll('#settingsPanel [data-sidebar]').forEach(btn => btn.addEventListener('click', ()=> { const map = { narrow:260, default:288, wide:320 }; const w = map[btn.getAttribute('data-sidebar')] || 288; applySidebarWidth(w); localStorage.setItem('ih_sidebar_w', String(w)); }));
+			document.querySelectorAll('#settingsPanel [data-bg]').forEach(btn => btn.addEventListener('click', ()=> { const bg = btn.getAttribute('data-bg'); localStorage.setItem('ih_bg', bg); applyBackground(bg); }));
+			document.querySelectorAll('#settingsPanel [data-density]').forEach(btn => btn.addEventListener('click', ()=> { const d = btn.getAttribute('data-density'); document.documentElement.dataset.density = d; localStorage.setItem('ih_density', d); }));
+			document.querySelectorAll('#settingsPanel [data-font]').forEach(btn => btn.addEventListener('click', ()=> { const sz = btn.getAttribute('data-font'); applyFontSize(sz); }));
+			motionToggle && motionToggle.addEventListener('change', ()=> { document.documentElement.classList.toggle('reduce-motion', motionToggle.checked); localStorage.setItem('ih_motion', motionToggle.checked ? '1':'0'); });
+			contrastToggle && contrastToggle.addEventListener('change', ()=> { document.documentElement.classList.toggle('contrast', contrastToggle.checked); localStorage.setItem('ih_contrast', contrastToggle.checked ? '1':'0'); });
+			glassIntensity && glassIntensity.addEventListener('input', ()=> { applyGlassAlpha(parseFloat(glassIntensity.value)); });
+
+			(function applySaved(){ const bg = localStorage.getItem('ih_bg'); if (bg) applyBackground(bg); const density = localStorage.getItem('ih_density'); if (density) document.documentElement.dataset.density = density; const motion = localStorage.getItem('ih_motion')==='1'; if (motionToggle) motionToggle.checked = motion; document.documentElement.classList.toggle('reduce-motion', motion); const contrast = localStorage.getItem('ih_contrast')==='1'; if (contrastToggle) contrastToggle.checked = contrast; document.documentElement.classList.toggle('contrast', contrast); const f = localStorage.getItem('ih_font'); if (f) applyFontSize(f); const a = parseFloat(localStorage.getItem('ih_glassA')||'0'); if (a) { if (glassIntensity) glassIntensity.value = String(a); applyGlassAlpha(a); } })();
+			function applyBackground(bg){ const body = document.body; if (bg==='image') { body.style.backgroundImage = 'linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.25)), radial-gradient(1200px 600px at -10% -20%, rgba(20,184,166,0.18), transparent), radial-gradient(900px 500px at 110% 10%, rgba(16,185,129,0.14), transparent)'; } else { body.style.backgroundImage = 'radial-gradient(1200px 600px at -10% -20%, rgba(20,184,166,0.18), transparent), radial-gradient(900px 500px at 110% 10%, rgba(16,185,129,0.14), transparent)'; } }
+			function applyFontSize(size){ const map = { small:'14px', base:'16px', large:'18px' }; document.documentElement.style.fontSize = map[size] || '16px'; localStorage.setItem('ih_font', size); }
+			function applyGlassAlpha(alpha){ const a = Math.min(0.9, Math.max(0.3, alpha || 0.6)); let style = document.getElementById('glassStyleOverride'); if (!style) { style = document.createElement('style'); style.id = 'glassStyleOverride'; document.head.appendChild(style); } style.textContent = `.glass{background:linear-gradient(180deg, rgba(255,255,255,${a}), rgba(255,255,255,${Math.max(0,a-0.06)}));backdrop-filter:blur(10px)} .dark .glass{background:linear-gradient(180deg, rgba(31,41,55,${Math.min(0.9,a+0.06)}), rgba(31,41,55,${a}))}`; localStorage.setItem('ih_glassA', String(a)); }
+
+			// Keyboard shortcuts
+			const shortcutsBtn = document.getElementById('shortcutsBtn');
+			shortcutsBtn && shortcutsBtn.addEventListener('click', ()=>{ showToast('Shortcuts: [G] Home • [/] Search • [S] Settings • [?] Help'); });
+			document.addEventListener('keydown', (ev)=>{ const tag=(ev.target&&ev.target.tagName||'').toLowerCase(); if (tag==='input'||tag==='textarea'||ev.metaKey||ev.ctrlKey||ev.altKey) return; if (ev.key==='?'){ ev.preventDefault(); showToast('Shortcuts: [G] Home • [/] Search • [S] Settings • [?] Help'); return; } if (ev.key.toLowerCase()==='s'){ ev.preventDefault(); openSettings(); return; } if (ev.key.toLowerCase()==='g'){ ev.preventDefault(); window.location.href='{% url 'admin_dashboard' %}'; return; } if (ev.key==='/'){ ev.preventDefault(); showToast('Search not available on this page'); return; } if (ev.key==='Escape'){ const md=document.getElementById('mobileDrawer'); if(md && !md.classList.contains('hidden')) md.classList.add('hidden'); closeSettingsFn(); } });
+
+			// Tabs switching
+			const tabButtons = document.querySelectorAll('.admin-tab');
+			const contentSections = document.querySelectorAll('.admin-content');
+			function switchTab(tabId){ startProgress(); contentSections.forEach(s=>s.classList.add('hidden')); tabButtons.forEach(b=>{ b.classList.remove('border-amber-500','text-amber-500','dark:text-amber-400'); b.classList.add('border-transparent','text-gray-500','dark:text-gray-400'); }); document.getElementById(tabId+'-content').classList.remove('hidden'); const tbtn=document.getElementById(tabId+'-tab'); if(tbtn){ tbtn.classList.add('border-amber-500','text-amber-500','dark:text-amber-400'); tbtn.classList.remove('border-transparent','text-gray-500','dark:text-gray-400'); } finishProgress(); }
+			tabButtons.forEach(btn=> btn.addEventListener('click', function(){ const id=this.id.replace('-tab',''); switchTab(id); }));
+			switchTab('user-management');
+
+			// Interactive effects for all visible buttons (subtle)
+			document.querySelectorAll('button').forEach(button => {
+				button.addEventListener('mouseenter', function(){ this.style.transform = 'scale(1.03)'; });
+				button.addEventListener('mouseleave', function(){ this.style.transform = ''; });
+			});
+
+			// Modals wiring
+			const aiAssistantBtn = document.createElement('button');
+			aiAssistantBtn.id = 'ai-assistant-btn';
+			// Provide quick access via shortcut toast instead of header button
+			document.body.appendChild(aiAssistantBtn);
+			const aiAssistantModal = document.getElementById('ai-assistant-modal');
+			const closeAiModal = document.getElementById('close-ai-modal');
+			aiAssistantBtn.addEventListener('click', () => { aiAssistantModal.classList.remove('hidden'); setTimeout(() => { aiAssistantModal.querySelector('.scale-95').classList.remove('scale-95'); }, 10); });
+			closeAiModal && closeAiModal.addEventListener('click', () => { aiAssistantModal.querySelector('.scale-95').classList.add('scale-95'); setTimeout(() => { aiAssistantModal.classList.add('hidden'); }, 300); });
+
+			const addUserBtn = document.getElementById('add-user-btn');
+			const addUserModal = document.getElementById('add-user-modal');
+			const closeAddUserModal = document.getElementById('close-add-user-modal');
+			const cancelAddUser = document.getElementById('cancel-add-user');
+			addUserBtn && addUserBtn.addEventListener('click', () => { addUserModal.classList.remove('hidden'); setTimeout(() => { addUserModal.querySelector('.scale-95').classList.remove('scale-95'); }, 10); });
+			closeAddUserModal && closeAddUserModal.addEventListener('click', () => { addUserModal.querySelector('.scale-95').classList.add('scale-95'); setTimeout(() => { addUserModal.classList.add('hidden'); }, 300); });
+			cancelAddUser && cancelAddUser.addEventListener('click', () => { addUserModal.querySelector('.scale-95').classList.add('scale-95'); setTimeout(() => { addUserModal.classList.add('hidden'); }, 300); });
+
+			// Backup Progress Modal simulation
+			const runBackupBtn = document.getElementById('run-backup-btn');
+			const backupProgressModal = document.getElementById('backup-progress-modal');
+			const backupProgressBar = document.getElementById('backup-progress-bar');
+			const backupProgressText = document.getElementById('backup-progress-text');
+			runBackupBtn && runBackupBtn.addEventListener('click', () => {
+				backupProgressModal.classList.remove('hidden');
+				setTimeout(() => { backupProgressModal.querySelector('.scale-95').classList.remove('scale-95'); }, 10);
+				let progress = 0; const interval = setInterval(() => { progress += Math.random() * 10; if (progress >= 100) { progress = 100; clearInterval(interval); backupProgressText.textContent = 'Backup completed successfully!'; setTimeout(() => { backupProgressModal.querySelector('.scale-95').classList.add('scale-95'); setTimeout(() => { backupProgressModal.classList.add('hidden'); backupProgressBar.style.width = '0%'; backupProgressText.textContent = 'Initializing backup process...'; }, 300); }, 1500); } else { backupProgressBar.style.width = progress + '%'; backupProgressText.textContent = 'Backup in progress... ' + Math.round(progress) + '%'; } }, 300);
+			});
+
+			// Simple actions (alerts → toasts)
+			const exportUsersBtn = document.getElementById('export-users-btn');
+			const exportLogsBtn = document.getElementById('export-logs-btn');
+			exportUsersBtn && exportUsersBtn.addEventListener('click', () => { showToast('User data exported successfully!', 'success'); });
+			exportLogsBtn && exportLogsBtn.addEventListener('click', () => { showToast('System logs exported successfully!', 'success'); });
+			const securityAuditBtn = document.getElementById('security-audit-btn');
+			securityAuditBtn && securityAuditBtn.addEventListener('click', () => { showToast('Security audit initiated. Results will be available in the Security tab.', 'info'); });
+			const refreshDataBtn = document.getElementById('refresh-data-btn');
+			refreshDataBtn && refreshDataBtn.addEventListener('click', () => { showToast('Data refreshed successfully!', 'success'); });
+			const saveChangesBtn = document.getElementById('save-changes-btn');
+			saveChangesBtn && saveChangesBtn.addEventListener('click', () => { showToast('System settings saved successfully!', 'success'); });
+
+			// MFA toggle styling
+			const mfaToggle = document.getElementById('mfa-toggle');
+			if (mfaToggle) {
+				mfaToggle.addEventListener('change', function() { const toggleDiv = this.nextElementSibling; const dot = toggleDiv.nextElementSibling; if (this.checked) { toggleDiv.classList.remove('bg-gray-300','dark:bg-gray-600'); toggleDiv.classList.add('bg-green-500'); dot.style.transform = 'translateX(6px)'; } else { toggleDiv.classList.remove('bg-green-500'); toggleDiv.classList.add('bg-gray-300','dark:bg-gray-600'); dot.style.transform = 'translateX(0)'; } });
+			}
+		});
+	</script>
+{% endblock %}

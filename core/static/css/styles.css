@@ -1,0 +1,13 @@
+/*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+.static {
+  position: static;
+}
+.mx-auto {
+  margin-inline: auto;
+}
+.block {
+  display: block;
+}
+.min-h-screen {
+  min-height: 100vh;
+}

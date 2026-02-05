@@ -1,0 +1,28 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Attendance Detail | IntelliHRTrack{% endblock %}
+{% block content %}
+<div class="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
+  <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-6">
+    <h1 class="text-xl font-semibold text-gray-900 mb-4">Record Detail</h1>
+
+    <div class="space-y-2 text-sm">
+      <p><b>Employee ID:</b> {{ obj.employee_id }}</p>
+      <p><b>Name:</b> {{ obj.full_name }}</p>
+      <p><b>Timestamp:</b> {{ obj.timestamp }}</p>
+      <p><b>Event Type:</b> {{ obj.event_type }}</p>
+      <p><b>Device:</b> {{ obj.device_name }}</p>
+      <p><b>Verification:</b> {{ obj.verification_mode }}</p>
+      <p><b>Event Code:</b> {{ obj.event_code }}</p>
+    </div>
+
+    <div class="mt-6 flex gap-3">
+      <a class="rounded-lg bg-amber-600 px-4 py-2 text-white hover:bg-amber-700" href="{% url 'admin_attendance_update' obj.id %}">
+        Edit
+      </a>
+      <a class="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50" href="{% url 'admin_biometrics' %}">
+        Back
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

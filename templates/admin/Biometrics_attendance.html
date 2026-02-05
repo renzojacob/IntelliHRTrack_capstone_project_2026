@@ -1,0 +1,454 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Biometrics & Attendance | IntelliHRTrack{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
+
+  <!-- Header -->
+  <div class="mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Biometrics & Attendance</h1>
+        <p class="mt-2 text-gray-600">Import, validate, review, and manage attendance logs from Hikvision terminals.</p>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <a href="{% url 'admin_attendance_create' %}"
+           class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+          <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          Add Record
+        </a>
+
+        <button type="button"
+                class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Download CSV Template
+        </button>
+
+        <a href="{% url 'admin_biometrics_template' %}"
+           class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Download Template
+        </a>
+
+        <a href="{% url 'admin_biometrics_export' %}"
+           class="inline-flex items-center rounded-lg border border-transparent bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+          <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+          </svg>
+          Export Filtered Records
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="overflow-hidden rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+      <div class="flex items-center">
+        <div class="flex-1">
+          <p class="text-sm font-medium text-gray-600">Today Present</p>
+          <p class="mt-1 text-3xl font-semibold text-gray-900">{{ kpi.present|default:"—" }}</p>
+          <p class="mt-1 text-xs text-gray-500">Based on IN events</p>
+        </div>
+        <div class="ml-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-50">
+          <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="overflow-hidden rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+      <div class="flex items-center">
+        <div class="flex-1">
+          <p class="text-sm font-medium text-gray-600">Late</p>
+          <p class="mt-1 text-3xl font-semibold text-gray-900">{{ kpi.late|default:"—" }}</p>
+          <p class="mt-1 text-xs text-gray-500">Configure rules later</p>
+        </div>
+        <div class="ml-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50">
+          <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="overflow-hidden rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+      <div class="flex items-center">
+        <div class="flex-1">
+          <p class="text-sm font-medium text-gray-600">Absent</p>
+          <p class="mt-1 text-3xl font-semibold text-gray-900">{{ kpi.absent|default:"—" }}</p>
+          <p class="mt-1 text-xs text-gray-500">Derived from scheduling</p>
+        </div>
+        <div class="ml-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+          <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="overflow-hidden rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+      <div class="flex items-center">
+        <div class="flex-1">
+          <p class="text-sm font-medium text-gray-600">Last Import / Sync</p>
+          <p class="mt-1 text-lg font-semibold text-gray-900">
+            {{ kpi.last_sync|default:"—" }}
+          </p>
+          <p class="mt-1 text-xs text-gray-500">Most recent record creation time</p>
+        </div>
+        <div class="ml-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
+          <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lg:grid lg:grid-cols-3 lg:gap-8">
+    <!-- Main Content -->
+    <div class="lg:col-span-2">
+
+      <!-- CSV Import Panel -->
+      <div class="mb-8 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+        <div class="border-b border-gray-200 px-6 py-5">
+          <h2 class="text-lg font-semibold text-gray-900">CSV Import</h2>
+          <p class="mt-1 text-sm text-gray-600">Upload attendance data exported from iVMS-4200V3</p>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" action="{% url 'admin_biometrics_import' %}" class="px-6 py-5">
+          {% csrf_token %}
+
+          <!-- Drag & Drop -->
+          <div class="mb-6">
+            <div id="dropZone" class="relative rounded-lg border-2 border-dashed border-gray-300 p-8 transition hover:border-blue-400 hover:bg-blue-50">
+              <div class="text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                </svg>
+
+                <div class="mt-4">
+                  <label for="csv_file" class="cursor-pointer font-medium text-blue-600 hover:text-blue-500">
+                    <span>Upload a file</span>
+                    <input id="csv_file" name="csv_file" type="file" accept=".csv" class="sr-only" />
+                  </label>
+                  <p class="mt-1 text-sm text-gray-600">or drag and drop</p>
+                </div>
+
+                <p class="mt-2 text-xs text-gray-500">CSV up to 10MB</p>
+                <p class="mt-1 text-xs text-gray-500" id="fileName">No file selected</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Options -->
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div>
+              <label class="flex items-center">
+                <input type="checkbox" name="skip_duplicates" checked class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span class="ml-2 text-sm text-gray-700">Skip duplicates (employee_id + timestamp)</span>
+              </label>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Device Source</label>
+              <select name="device_source"
+                      class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="DS-K1T343MFWX">DS-K1T343MFWX</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="mt-8 flex gap-3">
+            <button type="submit" name="action" value="validate"
+                    class="flex-1 rounded-lg border border-transparent bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+              Validate & Preview
+            </button>
+
+            <button id="importBtn" type="submit" name="action" value="import" disabled
+                    class="flex-1 cursor-not-allowed rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-sm font-medium text-gray-400">
+              Import to Database
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Messages -->
+      {% if import_errors %}
+      <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+        <div class="flex">
+          <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Validation / Import Error</h3>
+            <pre class="mt-2 whitespace-pre-wrap text-sm text-red-700">{{ import_errors }}</pre>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if import_summary %}
+      <div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
+        <div class="flex">
+          <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-green-800">Import Summary</h3>
+            <div class="mt-2 text-sm text-green-700">{{ import_summary }}</div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Preview -->
+      <div class="mb-8 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+        <div class="border-b border-gray-200 px-6 py-5">
+          <h2 class="text-lg font-semibold text-gray-900">Preview (First 20 Rows)</h2>
+        </div>
+
+        <div class="overflow-x-auto">
+          {% if preview_rows %}
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Employee ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Full Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Timestamp</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Event Type</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Device</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
+              </tr>
+            </thead>
+
+            <tbody class="divide-y divide-gray-200 bg-white">
+              {% for row in preview_rows %}
+              <tr class="hover:bg-gray-50">
+                <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">{{ row.employee_id }}</td>
+                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ row.full_name }}</td>
+                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ row.timestamp }}</td>
+                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ row.event_type }}</td>
+                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ row.device_name }}</td>
+                <td class="whitespace-nowrap px-6 py-4 text-sm">
+                  <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold
+                    {% if row.status == 'valid' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                    {{ row.status }}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div class="px-6 py-12 text-center">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No preview data</h3>
+            <p class="mt-1 text-sm text-gray-500">Upload a CSV then click “Validate & Preview”.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Records -->
+      <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+        <div class="border-b border-gray-200 px-6 py-5">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h2 class="text-lg font-semibold text-gray-900">Attendance Records</h2>
+
+            <div class="relative w-full sm:w-72">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+              </div>
+              <input type="search" placeholder="Search (UI only)"
+                     class="block w-full rounded-lg border border-gray-300 pl-10 pr-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          {% if records %}
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Timestamp</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Employee ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Event</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Device</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Verification</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody class="divide-y divide-gray-200 bg-white">
+              {% for row in records %}
+              <tr class="hover:bg-gray-50">
+                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{{ row.timestamp }}</td>
+                <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">{{ row.employee_id }}</td>
+                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ row.full_name }}</td>
+                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ row.event_type }}</td>
+                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ row.device_name }}</td>
+                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ row.verification_mode }}</td>
+
+                <td class="whitespace-nowrap px-6 py-4 text-sm">
+                  <div class="flex gap-3">
+                    <a href="{% url 'admin_attendance_detail' row.id %}" class="text-blue-600 hover:text-blue-900">View</a>
+                    <a href="{% url 'admin_attendance_update' row.id %}" class="text-amber-600 hover:text-amber-900">Edit</a>
+                    <a href="{% url 'admin_attendance_delete' row.id %}" class="text-red-600 hover:text-red-900">Delete</a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div class="px-6 py-12 text-center">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No records found</h3>
+            <p class="mt-1 text-sm text-gray-500">Import some attendance data to get started.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="mt-8 lg:mt-0">
+      <div class="space-y-6">
+
+        <div class="overflow-hidden rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Sync Checklist</h3>
+          <ul class="mt-4 space-y-4">
+            <li class="flex items-start gap-3">
+              <div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">1</div>
+              <span class="text-sm text-gray-600">Export “Event Data” from iVMS-4200V3</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">2</div>
+              <span class="text-sm text-gray-600">Select correct date range</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">3</div>
+              <span class="text-sm text-gray-600">Check device time is correct</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">4</div>
+              <span class="text-sm text-gray-600">Upload CSV & Preview</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">5</div>
+              <span class="text-sm text-gray-600">Import & manage records</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="overflow-hidden rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Recommended CSV Columns</h3>
+          <div class="mt-4 space-y-2">
+            <div class="rounded-md bg-gray-50 p-3">
+              <code class="text-sm text-gray-700">
+                employee_id, full_name, timestamp, event_type, device_name, verification_mode, event_code
+              </code>
+            </div>
+            <p class="text-sm text-gray-600">
+              Your exporter headers can differ. Backend mapper supports common variants.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('csv_file');
+  const fileName = document.getElementById('fileName');
+  const importBtn = document.getElementById('importBtn');
+
+  function enableImportIfPreviewExists() {
+    // If preview table exists
+    const hasPreview = document.querySelector('table tbody tr');
+    if (hasPreview) {
+      importBtn.disabled = false;
+      importBtn.classList.remove('cursor-not-allowed', 'bg-gray-100', 'text-gray-400');
+      importBtn.classList.add('cursor-pointer', 'bg-blue-600', 'text-white', 'hover:bg-blue-700', 'border-transparent');
+    }
+  }
+
+  function updateFileLabel() {
+    if (fileInput && fileInput.files && fileInput.files.length) {
+      fileName.textContent = fileInput.files[0].name;
+      fileName.classList.remove('text-gray-500');
+      fileName.classList.add('text-green-600', 'font-medium');
+    } else {
+      fileName.textContent = 'No file selected';
+      fileName.classList.remove('text-green-600', 'font-medium');
+      fileName.classList.add('text-gray-500');
+    }
+  }
+
+  if (dropZone && fileInput) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-blue-500', 'bg-blue-50');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+      });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const files = e.dataTransfer.files;
+      if (files.length) {
+        fileInput.files = files;
+        updateFileLabel();
+      }
+    });
+
+    fileInput.addEventListener('change', updateFileLabel);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateFileLabel();
+    enableImportIfPreviewExists();
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,779 @@
+{% extends 'admin/base_admin.html' %}
+
+{% block title %}IntelliHRTrack — Module 4: Scheduling & Shifts{% endblock %}
+
+{% block extra_head %}
+<style>
+    :root { --accent:#14b8a6; --accent-to:#0ea5a0; --card-bg:rgba(255,255,255,0.6); --card-border:rgba(255,255,255,0.35);
+      --noise:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.035"/></svg>'); }
+    html[data-accent="teal"] { --accent:#14b8a6; --accent-to:#0ea5a0; }
+    html[data-accent="purple"] { --accent:#8b5cf6; --accent-to:#7c3aed; }
+    html[data-accent="rose"] { --accent:#f43f5e; --accent-to:#e11d48; }
+    html[data-accent="amber"] { --accent:#f59e0b; --accent-to:#d97706; }
+    html[data-bg="gradient"] body::before { content:""; position:fixed; inset:0; z-index:-2; background:
+      radial-gradient(800px 400px at 10% -10%, rgba(59,130,246,0.15), transparent 60%),
+      radial-gradient(600px 300px at 120% 0%, rgba(20,184,166,0.18), transparent 60%),
+      linear-gradient(120deg, rgba(2,6,23,0.03), rgba(2,6,23,0.06)); }
+    html[data-bg="image"] body::before { content:""; position:fixed; inset:0; z-index:-2; background:url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=2100&q=60') center/cover no-repeat fixed; filter:saturate(1.05) brightness(0.95); }
+    body::after { content:""; position:fixed; inset:0; pointer-events:none; z-index:-1; background-image:var(--noise); }
+
+    .glass { background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--card-border); }
+    .dark .glass { background: rgba(15,23,42,0.60); border-color: rgba(255,255,255,0.08); }
+    .gradient-accent { background-image: linear-gradient(135deg, var(--accent), var(--accent-to)); }
+    .text-accent { color: var(--accent); }
+    .neon-divider { height:1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity:.6; }
+    .fancy-scroll::-webkit-scrollbar { height:10px; width:10px; }
+    .fancy-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), var(--accent-to)); border-radius:9999px; }
+    .fancy-scroll::-webkit-scrollbar-track { background: transparent; }
+    .big-scroll { scrollbar-width:auto; scrollbar-color: var(--accent) transparent; }
+    .big-scroll::-webkit-scrollbar { width:16px; height:16px; }
+    .big-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), var(--accent-to)); border-radius:12px; border:3px solid transparent; background-clip: content-box; }
+    .ripple { position: relative; overflow: hidden; }
+    .ripple::after { content:''; position:absolute; inset:0; background: radial-gradient(circle, rgba(255,255,255,0.3) 1%, transparent 1%) center/15000%; opacity:0; transition: opacity .5s; }
+    .ripple:active::after { opacity:1; background-size:100%; transition:0s; }
+    /* Sidebar resize via CSS var */
+    :root { --sidebar: 18rem; }
+    @media (min-width: 1024px){ aside[data-resizable]{ width: var(--sidebar) !important; } main[data-shift]{ margin-left: var(--sidebar) !important; } }
+    /* Toasts + progress */
+    #toastHost { position: fixed; top: 16px; right: 16px; display: grid; gap: 10px; z-index: 80; pointer-events: none; }
+    .toast { pointer-events: auto; min-width: 220px; max-width: 360px; padding: 10px 12px; border-radius: 12px; box-shadow: 0 10px 20px rgba(2,6,23,.2); border: 1px solid rgba(255,255,255,.35); }
+    .toast.info { background: var(--card-bg); }
+    .toast.success { background: linear-gradient(135deg, rgba(16,185,129,.15), rgba(20,184,166,.25)); }
+    .toast.warn { background: linear-gradient(135deg, rgba(245,158,11,.15), rgba(245,158,11,.28)); }
+    .toast.error { background: linear-gradient(135deg, rgba(244,63,94,.15), rgba(244,63,94,.28)); }
+    #topProgress { background-image: linear-gradient(90deg, var(--accent), var(--accent-to)); }
+    /* Dark-mode form controls readability */
+    select, input, textarea { color: #111827; }
+    .dark select, .dark input, .dark textarea { background-color: rgba(255,255,255,0.08); color: #e5e7eb; border-color: rgba(255,255,255,0.15); }
+    .dark select option { background-color: #0f172a; color: #e5e7eb; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+      <header id="section-top" class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow">
+        <div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
+        <div class="relative z-10 flex items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight">Scheduling & Shifts — Manager Console</h2>
+            <p class="mt-1 text-sm md:text-base text-gray-600 dark:text-gray-300">Plan, optimize, and publish rosters. Drag-and-drop ready design.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="btnAiAssistant" class="px-4 py-2 rounded-xl text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-glow transition flex items-center justify-center gap-2 ripple"><iconify-icon icon="ph:robot-duotone"></iconify-icon> AI Assistant</button>
+            <button id="btnNotify" class="px-3 py-2 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center justify-center gap-2 ripple"><iconify-icon icon="ph:bell-duotone" class="text-accent"></iconify-icon> Alerts</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Stats Cards -->
+      <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="glass rounded-2xl p-5 shadow hover:shadow-glow transition">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="text-xs text-slate-500">Shifts This Week</div>
+              <div class="text-2xl font-extrabold mt-1">342</div>
+              <div class="text-xs text-emerald-600 mt-2 flex items-center gap-1">⬆ 8% increase</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-blue-600/90 text-white flex items-center justify-center">📅</div>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-5 shadow hover:shadow-glow transition">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="text-xs text-slate-500">Shift Conflicts</div>
+              <div class="text-2xl font-extrabold mt-1">3</div>
+              <div class="text-xs text-rose-600 mt-2 flex items-center gap-1">⚠ Needs attention</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-rose-600/90 text-white flex items-center justify-center">❗</div>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-5 shadow hover:shadow-glow transition">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="text-xs text-slate-500">Swap Requests</div>
+              <div class="text-2xl font-extrabold mt-1">12</div>
+              <div class="text-xs text-amber-600 mt-2 flex items-center gap-1">⏳ Pending review</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-amber-500/90 text-white flex items-center justify-center">⇄</div>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-5 shadow hover:shadow-glow transition">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="text-xs text-slate-500">AI Suggestions</div>
+              <div class="text-2xl font-extrabold mt-1">7</div>
+              <div class="text-xs text-purple-600 mt-2 flex items-center gap-1">💡 Optimizations ready</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-purple-600/90 text-white flex items-center justify-center">🤖</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tabs + Action Bar -->
+      <section class="glass rounded-2xl shadow overflow-hidden">
+        <div class="border-b border-white/40 dark:border-white/10">
+          <nav class="flex overflow-x-auto -mb-px">
+            <button data-tab="calendar" class="tab-btn py-4 px-6 border-b-2 border-accent text-accent font-medium flex items-center whitespace-nowrap"> <iconify-icon icon="ph:calendar-duotone" class="mr-2"></iconify-icon> Calendar View </button>
+            <button data-tab="templates" class="tab-btn py-4 px-6 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap"> <iconify-icon icon="ph:stack-duotone" class="mr-2"></iconify-icon> Shift Templates </button>
+            <button data-tab="rotations" class="tab-btn py-4 px-6 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap"> <iconify-icon icon="ph:arrows-clockwise-duotone" class="mr-2"></iconify-icon> Rotational Schedules </button>
+            <button data-tab="analytics" class="tab-btn py-4 px-6 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap"> <iconify-icon icon="ph:chart-pie-duotone" class="mr-2"></iconify-icon> Shift Analytics </button>
+            <button data-tab="settings" class="tab-btn py-4 px-6 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap"> <iconify-icon icon="ph:gear-six-duotone" class="mr-2"></iconify-icon> Settings </button>
+          </nav>
+        </div>
+
+        <div class="p-6">
+          <!-- CALENDAR TAB -->
+          <div id="tab-calendar" class="tab-pane block">
+            <!-- Action Bar -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+              <div>
+                <h3 class="text-xl font-bold">Weekly Schedule: Nov 27 - Dec 3</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Drag and drop to assign shifts, click to edit details</p>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button id="btnCreateShift" class="px-4 py-2 rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-glow transition flex items-center gap-2 ripple"><iconify-icon icon="ph:plus-duotone"></iconify-icon> Create Shift</button>
+                <button id="btnExport" class="px-4 py-2 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center gap-2 ripple"><iconify-icon icon="ph:arrow-square-out-duotone"></iconify-icon> Export</button>
+                <button id="btnBulkImport" class="px-4 py-2 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center gap-2 ripple"><iconify-icon icon="ph:upload-duotone"></iconify-icon> Bulk Import</button>
+                <button id="btnAiOptimize" class="px-4 py-2 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center gap-2 ripple"><iconify-icon icon="ph:robot-duotone"></iconify-icon> AI Optimize</button>
+              </div>
+            </div>
+
+            <!-- Calendar View -->
+            <div class="glass rounded-xl border border-white/40 dark:border-white/10 overflow-hidden">
+            <div class="grid grid-cols-8 gap-0 border-b border-white/40 dark:border-white/10">
+              <div class="p-4 bg-white/50 dark:bg-slate-800/50 font-medium text-center"> <span class="inline-flex items-center gap-2"><iconify-icon icon="ph:users-three-duotone"></iconify-icon> Employees</span> </div>
+              <div class="p-4 bg-white/50 dark:bg-slate-800/50 font-medium text-center">Mon<br><span class="text-xs font-normal">27</span></div>
+              <div class="p-4 bg-white/50 dark:bg-slate-800/50 font-medium text-center">Tue<br><span class="text-xs font-normal">28</span></div>
+              <div class="p-4 bg-white/50 dark:bg-slate-800/50 font-medium text-center">Wed<br><span class="text-xs font-normal">29</span></div>
+              <div class="p-4 bg-white/50 dark:bg-slate-800/50 font-medium text-center">Thu<br><span class="text-xs font-normal">30</span></div>
+              <div class="p-4 bg-white/50 dark:bg-slate-800/50 font-medium text-center">Fri<br><span class="text-xs font-normal">1</span></div>
+              <div class="p-4 bg-white/50 dark:bg-slate-800/50 font-medium text-center">Sat<br><span class="text-xs font-normal">2</span></div>
+              <div class="p-4 bg-white/50 dark:bg-slate-800/50 font-medium text-center">Sun<br><span class="text-xs font-normal">3</span></div>
+            </div>
+
+            <div class="divide-y divide-white/40 dark:divide-white/10">
+              <!-- Employee 1 -->
+              <div class="grid grid-cols-8 gap-0 hover:bg-white/40 dark:hover:bg-white/5 transition-colors duration-200">
+                <div class="p-4 flex items-center">
+                  <img class="h-10 w-10 rounded-full object-cover border-2 border-blue-500" src="https://randomuser.me/api/portraits/men/32.jpg" alt="Employee" />
+                  <div class="ml-4">
+                    <div class="text-sm font-medium">Michael Chen</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">Engineering</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 border border-blue-300 dark:border-blue-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-blue-800 dark:text-blue-200">Morning</div>
+                    <div class="text-xs text-blue-600 dark:text-blue-300">8:00-17:00</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 border border-blue-300 dark:border-blue-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-blue-800 dark:text-blue-200">Morning</div>
+                    <div class="text-xs text-blue-600 dark:text-blue-300">8:00-17:00</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900 dark:to-green-800 border border-green-300 dark:border-green-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-green-800 dark:text-green-200">Day Off</div>
+                    <div class="text-xs text-green-600 dark:text-green-300">Requested</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 border border-blue-300 dark:border-blue-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-blue-800 dark:text-blue-200">Morning</div>
+                    <div class="text-xs text-blue-600 dark:text-blue-300">8:00-17:00</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 border border-blue-300 dark:border-blue-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-blue-800 dark:text-blue-200">Morning</div>
+                    <div class="text-xs text-blue-600 dark:text-blue-300">8:00-17:00</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 border border-purple-300 dark:border-purple-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-purple-800 dark:text-purple-200">Evening</div>
+                    <div class="text-xs text-purple-600 dark:text-purple-300">14:00-22:00</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 border border-purple-300 dark:border-purple-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-purple-800 dark:text-purple-200">Evening</div>
+                    <div class="text-xs text-purple-600 dark:text-purple-300">14:00-22:00</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Employee 2 -->
+              <div class="grid grid-cols-8 gap-0 hover:bg-white/40 dark:hover:bg-white/5 transition-colors duration-200">
+                <div class="p-4 flex items-center">
+                  <img class="h-10 w-10 rounded-full object-cover border-2 border-green-500" src="https://randomuser.me/api/portraits/women/44.jpg" alt="Employee" />
+                  <div class="ml-4">
+                    <div class="text-sm font-medium">Sarah Johnson</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">HR</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 border border-blue-300 dark:border-blue-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-blue-800 dark:text-blue-200">Morning</div>
+                    <div class="text-xs text-blue-600 dark:text-blue-300">8:00-17:00</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 border border-blue-300 dark:border-blue-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-blue-800 dark:text-blue-200">Morning</div>
+                    <div class="text-xs text-blue-600 dark:text-blue-300">8:00-17:00</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 border border-blue-300 dark:border-blue-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-blue-800 dark:text-blue-200">Morning</div>
+                    <div class="text-xs text-blue-600 dark:text-blue-300">8:00-17:00</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-yellow-100 to-yellow-200 dark:from-yellow-900 dark:to-yellow-800 border border-yellow-300 dark:border-yellow-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-yellow-800 dark:text-yellow-200">Training</div>
+                    <div class="text-xs text-yellow-600 dark:text-yellow-300">9:00-12:00</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 border border-blue-300 dark:border-blue-700 rounded-lg p-3 w-full text-center cursor-pointer transition-all duration-300">
+                    <div class="text-xs font-medium text-blue-800 dark:text-blue-200">Morning</div>
+                    <div class="text-xs text-blue-600 dark:text-blue-300">8:00-17:00</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-3 w-full text-center">
+                    <div class="text-xs font-medium text-gray-600 dark:text-gray-300">Off</div>
+                  </div>
+                </div>
+                <div class="p-2 flex items-center justify-center">
+                  <div class="sched-cell bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-3 w-full text-center">
+                    <div class="text-xs font-medium text-gray-600 dark:text-gray-300">Off</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="flex flex-wrap gap-4 mt-6">
+              <div class="flex items-center"><div class="w-4 h-4 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 border border-blue-300 dark:border-blue-700 rounded mr-2"></div><span class="text-sm text-gray-600 dark:text-gray-400">Morning Shift</span></div>
+              <div class="flex items-center"><div class="w-4 h-4 bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 border border-purple-300 dark:border-purple-700 rounded mr-2"></div><span class="text-sm text-gray-600 dark:text-gray-400">Evening Shift</span></div>
+              <div class="flex items-center"><div class="w-4 h-4 bg-gradient-to-r from-red-100 to-red-200 dark:from-red-900 dark:to-red-800 border border-red-300 dark:border-red-700 rounded mr-2"></div><span class="text-sm text-gray-600 dark:text-gray-400">Night Shift</span></div>
+              <div class="flex items-center"><div class="w-4 h-4 bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900 dark:to-green-800 border border-green-300 dark:border-green-700 rounded mr-2"></div><span class="text-sm text-gray-600 dark:text-gray-400">Day Off</span></div>
+              <div class="flex items-center"><div class="w-4 h-4 bg-gradient-to-r from-yellow-100 to-yellow-200 dark:from-yellow-900 dark:to-yellow-800 border border-yellow-300 dark:border-yellow-700 rounded mr-2"></div><span class="text-sm text-gray-600 dark:text-gray-400">Training</span></div>
+            </div>
+          </div>
+
+          <!-- TEMPLATES TAB -->
+          <div id="tab-templates" class="tab-pane hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <!-- Create / Edit Form -->
+              <div class="lg:col-span-1 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+                <h3 class="font-semibold mb-3 flex items-center gap-2"><iconify-icon icon="ph:stack-duotone" class="text-accent"></iconify-icon> Shift Template Designer</h3>
+                <form id="templateForm" class="space-y-3">
+                  <div>
+                    <label class="text-xs text-gray-500">Name</label>
+                    <input id="tplName" type="text" required class="mt-1 w-full px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" placeholder="e.g., Morning" />
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="text-xs text-gray-500">Start</label>
+                      <input id="tplStart" type="time" required class="mt-1 w-full px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" value="08:00" />
+                    </div>
+                    <div>
+                      <label class="text-xs text-gray-500">End</label>
+                      <input id="tplEnd" type="time" required class="mt-1 w-full px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" value="17:00" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500">Break (mins)</label>
+                    <input id="tplBreak" type="number" min="0" step="5" class="mt-1 w-full px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" value="60" />
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500">Tag color</label>
+                    <input id="tplColor" type="color" class="mt-1 w-16 h-10 p-1 rounded-lg border border-white/40 dark:border-white/10" value="#3b82f6" />
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500">Departments (comma separated)</label>
+                    <input id="tplDepts" type="text" class="mt-1 w-full px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" placeholder="Engineering, HR" />
+                  </div>
+                  <div class="flex gap-2 justify-end">
+                    <button type="reset" class="px-3 py-2 rounded-lg glass">Clear</button>
+                    <button type="submit" class="px-3 py-2 rounded-lg text-white gradient-accent">Save Template</button>
+                  </div>
+                </form>
+                <div class="neon-divider my-4"></div>
+                <div class="flex gap-2 flex-wrap">
+                  <button id="exportTemplates" class="px-3 py-2 rounded-lg glass flex items-center gap-2"><iconify-icon icon="ph:arrow-square-out-duotone"></iconify-icon> Export JSON</button>
+                  <button id="importTemplatesBtn" class="px-3 py-2 rounded-lg glass flex items-center gap-2"><iconify-icon icon="ph:arrow-square-in-duotone"></iconify-icon> Import JSON</button>
+                  <input id="templatesFile" type="file" accept="application/json" class="hidden" />
+                </div>
+              </div>
+
+              <!-- List -->
+              <div class="lg:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="font-semibold">Saved Templates</h3>
+                  <button id="clearTemplates" class="px-3 py-2 rounded-lg glass text-sm">Clear All</button>
+                </div>
+                <div id="templatesList" class="grid gap-3"></div>
+                <div id="templatesEmpty" class="text-sm text-gray-500 dark:text-gray-400">No templates yet. Create one on the left.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ROTATIONS TAB -->
+          <div id="tab-rotations" class="tab-pane hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+                <h3 class="font-semibold mb-3 flex items-center gap-2"><iconify-icon icon="ph:arrows-clockwise-duotone" class="text-accent"></iconify-icon> Rotational Builder</h3>
+                <div class="space-y-3">
+                  <div>
+                    <label class="text-xs text-gray-500">Department</label>
+                    <select id="rotDept" class="mt-1 w-full px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass">
+                      <option>Engineering</option>
+                      <option>HR</option>
+                      <option>Sales</option>
+                      <option>Operations</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500">Start date</label>
+                    <input id="rotStart" type="date" class="mt-1 w-full px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" />
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500">Add template to pattern</label>
+                    <div class="flex gap-2">
+                      <select id="rotTplSelect" class="flex-1 px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass"></select>
+                      <button id="rotAddTpl" class="px-3 py-2 rounded-lg glass">Add</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500">Pattern</label>
+                    <div id="rotPattern" class="flex flex-wrap gap-2"></div>
+                  </div>
+                  <div class="flex gap-2 justify-end">
+                    <button id="rotClear" class="px-3 py-2 rounded-lg glass">Clear</button>
+                    <button id="rotPreviewBtn" class="px-3 py-2 rounded-lg text-white gradient-accent">Preview 14 days</button>
+                  </div>
+                </div>
+              </div>
+              <div class="lg:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="font-semibold">Rotation Preview</h3>
+                  <button id="rotExportCsv" class="px-3 py-2 rounded-lg glass text-sm">Export CSV</button>
+                </div>
+                <div id="rotPreview" class="grid md:grid-cols-2 gap-3"></div>
+                <div id="rotEmpty" class="text-sm text-gray-500 dark:text-gray-400">Build a pattern and click Preview.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ANALYTICS TAB -->
+          <div id="tab-analytics" class="tab-pane hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="font-semibold">Shift Distribution</h3>
+                  <button id="anaRecompute" class="px-3 py-2 rounded-lg glass text-sm">Recompute from Preview</button>
+                </div>
+                <canvas id="chartDistribution" height="180"></canvas>
+              </div>
+              <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+                <h3 class="font-semibold mb-2">Coverage by Department</h3>
+                <canvas id="chartCoverage" height="180"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- SETTINGS TAB (module-specific) -->
+          <div id="tab-settings" class="tab-pane hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+                <h3 class="font-semibold mb-3 flex items-center gap-2"><iconify-icon icon="ph:calendar-duotone" class="text-accent"></iconify-icon> Holidays</h3>
+                <div class="flex gap-2 mb-3">
+                  <input id="holiName" type="text" placeholder="Holiday name" class="flex-1 px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" />
+                  <input id="holiDate" type="date" class="px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" />
+                  <button id="holiAdd" class="px-3 py-2 rounded-lg glass">Add</button>
+                </div>
+                <div id="holiList" class="grid gap-2"></div>
+              </div>
+              <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+                <h3 class="font-semibold mb-3 flex items-center gap-2"><iconify-icon icon="ph:bell-duotone" class="text-accent"></iconify-icon> Notifications</h3>
+                <label class="flex items-center gap-2 text-sm mb-2"><input id="notifSwaps" type="checkbox" class="w-4 h-4" /> Swap requests</label>
+                <label class="flex items-center gap-2 text-sm mb-2"><input id="notifPublish" type="checkbox" class="w-4 h-4" /> Publish reminders</label>
+                <label class="flex items-center gap-2 text-sm"><input id="notifConflicts" type="checkbox" class="w-4 h-4" /> Conflict alerts</label>
+              </div>
+              <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+                <h3 class="font-semibold mb-3 flex items-center gap-2"><iconify-icon icon="ph:printer-duotone" class="text-accent"></iconify-icon> Utilities</h3>
+                <div class="flex flex-wrap gap-2">
+                  <button id="utilPrint" class="px-3 py-2 rounded-lg glass">Print Planner</button>
+                  <button id="utilExportJson" class="px-3 py-2 rounded-lg glass">Export Preview (JSON)</button>
+                  <button id="utilImportJsonBtn" class="px-3 py-2 rounded-lg glass">Import Preview (JSON)</button>
+                  <input id="utilImportJsonFile" type="file" accept="application/json" class="hidden" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Feature Highlights -->
+      <section id="section-analytics" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="rounded-2xl shadow-xl p-6 text-white gradient-accent hover:shadow-glow transition">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold">AI Shift Forecast</h3>
+            <iconify-icon icon="ph:robot-duotone" class="text-2xl"></iconify-icon>
+          </div>
+          <p class="text-white/90 mb-4">Predictive analytics suggest optimal shift arrangements based on historical data and performance patterns.</p>
+          <button class="text-sm bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg font-medium flex items-center gap-2 ripple"><iconify-icon icon="ph:trend-up-duotone"></iconify-icon> View Forecast</button>
+        </div>
+        <div class="rounded-2xl shadow-xl p-6 text-white" style="background-image: linear-gradient(135deg,#8b5cf6,#7c3aed)">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold">Shift Swaps</h3>
+            <iconify-icon icon="ph:arrows-left-right-duotone" class="text-2xl"></iconify-icon>
+          </div>
+          <p class="text-white/90 mb-4">Manage employee shift swap requests with an intuitive approval system that updates schedules automatically.</p>
+          <button class="text-sm bg-white text-purple-600 hover:bg-purple-50 px-3 py-2 rounded-lg font-medium flex items-center gap-2 ripple"><iconify-icon icon="ph:checks-duotone"></iconify-icon> Review Requests</button>
+        </div>
+        <div class="rounded-2xl shadow-xl p-6 text-white" style="background-image: linear-gradient(135deg,#22c55e,#16a34a)">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold">Conflict Detection</h3>
+            <iconify-icon icon="ph:warning-duotone" class="text-2xl"></iconify-icon>
+          </div>
+          <p class="text-white/90 mb-4">Automatically detect scheduling conflicts and receive alerts before they impact your workforce.</p>
+          <button class="text-sm bg-white text-green-600 hover:bg-green-50 px-3 py-2 rounded-lg font-medium flex items-center gap-2 ripple"><iconify-icon icon="ph:magnifying-glass-duotone"></iconify-icon> Check Conflicts</button>
+        </div>
+      </section>
+
+      <!-- Bottom Stats -->
+      <section id="section-bottom" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass rounded-2xl p-6 border border-white/40 dark:border-white/10">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold">Shift Distribution</h3>
+            <iconify-icon icon="ph:chart-pie-duotone" class="text-accent"></iconify-icon>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Morning Shift</span><span class="font-medium">42%</span></div>
+              <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-blue-500 h-2 rounded-full" style="width: 42%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Evening Shift</span><span class="font-medium">35%</span></div>
+              <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-purple-500 h-2 rounded-full" style="width: 35%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Night Shift</span><span class="font-medium">23%</span></div>
+              <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-rose-500 h-2 rounded-full" style="width: 23%"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-6 border border-white/40 dark:border-white/10">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold">Upcoming Holidays</h3>
+            <iconify-icon icon="ph:calendar-duotone" class="text-emerald-500"></iconify-icon>
+          </div>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
+              <div>
+                <p class="font-medium">Thanksgiving Day</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">November 24</p>
+              </div>
+              <span class="px-2 py-1 bg-emerald-100 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs rounded-full">Public Holiday</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+              <div>
+                <p class="font-medium">Christmas Day</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">December 25</p>
+              </div>
+              <span class="px-2 py-1 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-xs rounded-full">Public Holiday</span>
+            </div>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-6 border border-white/40 dark:border-white/10">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold">Recent Activities</h3>
+            <iconify-icon icon="ph:clock-counter-clockwise-duotone" class="text-purple-500"></iconify-icon>
+          </div>
+          <div class="space-y-3">
+            <div class="flex items-start"><div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-3">➕</div><div><p class="text-sm font-medium">Shift assigned to Michael Chen</p><p class="text-xs text-gray-500 dark:text-gray-400">Today, 10:24 AM</p></div></div>
+            <div class="flex items-start"><div class="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg mr-3">⇄</div><div><p class="text-sm font-medium">Shift swap request from Sarah Johnson</p><p class="text-xs text-gray-500 dark:text-gray-400">Today, 9:15 AM</p></div></div>
+            <div class="flex items-start"><div class="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg mr-3">✔</div><div><p class="text-sm font-medium">Schedule published for next week</p><p class="text-xs text-gray-500 dark:text-gray-400">Yesterday, 4:30 PM</p></div></div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="pb-8 pt-2 text-xs text-gray-500 dark:text-gray-400 text-center">© IntelliHRTrack • Module 4 — Demonstration build. Scheduling interactions are simulated.</footer>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ---------- THEME ----------
+    const themeToggle = document.getElementById('themeToggle');
+    function setThemeMode(mode){
+      if(mode==='dark') document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark');
+      localStorage.setItem('ih_theme', mode);
+      localStorage.setItem('iht_theme_v1', mode);
+    }
+    const savedTheme = localStorage.getItem('ih_theme') || localStorage.getItem('iht_theme_v1') || 'light';
+    setThemeMode(savedTheme);
+    themeToggle?.addEventListener('click', ()=> setThemeMode(document.documentElement.classList.contains('dark') ? 'light' : 'dark'));
+
+    // ---------- TOASTS ----------
+    const toastHost = document.getElementById('toastHost');
+    function showToast(msg, type='info', duration=2200){
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.innerHTML = `<div class="text-sm">${msg}</div>`;
+      toastHost.appendChild(t);
+      setTimeout(()=>{ t.style.opacity = '0'; t.style.transform = 'translateY(-6px)'; setTimeout(()=> t.remove(), 300); }, duration);
+    }
+
+    // ---------- TOP PROGRESS ----------
+    const topProgress = document.getElementById('topProgress');
+    function progressStart(){ topProgress.style.transition='none'; topProgress.style.width='0'; topProgress.style.opacity='1'; requestAnimationFrame(()=>{ topProgress.style.transition='width .8s ease'; topProgress.style.width='75%'; }); }
+    function progressDone(){ topProgress.style.width='100%'; setTimeout(()=>{ topProgress.style.opacity='0'; topProgress.style.width='0'; }, 350); }
+
+    // Hook buttons for feedback
+    const hooks = [
+      ['btnCreateShift','Creating draft shift…','success',900],
+      ['btnExport','Exporting schedule…','info',800],
+      ['btnBulkImport','Opening importer…','info',800],
+      ['btnAiOptimize','Running AI optimizer…','success',1200],
+      ['btnAiAssistant','Launching assistant…','info',700],
+      ['btnNotify','Checking notifications…','info',600]
+    ];
+    hooks.forEach(([id,msg,type,dur])=>{ const el=document.getElementById(id); if(!el) return; el.addEventListener('click', ()=>{ progressStart(); showToast(msg,type); setTimeout(progressDone, dur); }); });
+
+    // ---------- BACK TO TOP ----------
+    const backToTop = document.getElementById('backToTop');
+    window.addEventListener('scroll', ()=>{ if(window.scrollY > 400) backToTop.classList.remove('hidden'); else backToTop.classList.add('hidden'); });
+    backToTop.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+
+    // ---------- SIDEBAR ACTIVE (filename-based) ----------
+    (function(){
+      try{
+        const current = location.pathname.split('/').pop();
+        const links = document.querySelectorAll('aside nav a[href]');
+        links.forEach(a=>{
+          const name = (a.getAttribute('href')||'').split('/').pop();
+          if(name === current){ a.classList.add('ring','ring-white/30','bg-accent/10'); a.setAttribute('aria-current','page'); }
+        });
+      }catch(e){}
+    })();
+
+    // ---------- MOBILE SIDEBAR ----------
+    const mobileSidebar = document.getElementById('mobileSidebar');
+    const mobilePanel = document.getElementById('mobilePanel');
+    const mobileBackdrop = document.getElementById('mobileBackdrop');
+    const closeMobileBtn = document.getElementById('closeMobile');
+    const mobileFab = document.getElementById('mobileMenuFab');
+    function openMobile(){
+      const desk = document.querySelector('aside nav ul');
+      const mobileNavContent = document.getElementById('mobileNavContent');
+      if(desk && mobileNavContent){ mobileNavContent.innerHTML=''; mobileNavContent.appendChild(desk.cloneNode(true));
+        mobileNavContent.querySelectorAll('a').forEach(a=>{
+          a.addEventListener('click', (ev)=>{
+            const tgt = a.getAttribute('data-target');
+            if(tgt){ ev.preventDefault(); const el = document.querySelector(tgt); if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); } mobileNavContent.querySelectorAll('a').forEach(n=> n.classList.remove('ring','ring-white/30')); a.classList.add('ring','ring-white/30'); }
+            closeMobile();
+          });
+        });
+      }
+      mobileSidebar.classList.remove('hidden');
+      setTimeout(()=> mobilePanel.classList.remove('-translate-x-full'), 10);
+    }
+    function closeMobile(){ mobilePanel.classList.add('-translate-x-full'); setTimeout(()=> mobileSidebar.classList.add('hidden'), 250); }
+    mobileFab?.addEventListener('click', openMobile);
+    mobileBackdrop?.addEventListener('click', closeMobile);
+    closeMobileBtn?.addEventListener('click', closeMobile);
+
+    // ---------- SETTINGS & SHORTCUTS ----------
+    const settingsPanel = document.getElementById('settingsPanel');
+    const closeSettings = document.getElementById('closeSettings');
+    function openSettings(){ settingsPanel.classList.remove('hidden'); settingsPanel.classList.add('flex'); }
+    function closeSettingsFn(){ settingsPanel.classList.add('hidden'); settingsPanel.classList.remove('flex'); }
+    document.getElementById('customizeLayout')?.addEventListener('click', openSettings);
+    closeSettings?.addEventListener('click', closeSettingsFn);
+    settingsPanel?.addEventListener('click', (e)=>{ if(e.target===settingsPanel) closeSettingsFn(); });
+
+    const shortcutsModal = document.getElementById('shortcutsModal');
+    const closeShortcuts = document.getElementById('closeShortcuts');
+    function openShortcuts(){ shortcutsModal.classList.remove('hidden'); shortcutsModal.classList.add('flex'); }
+    function closeShortcutsFn(){ shortcutsModal.classList.add('hidden'); shortcutsModal.classList.remove('flex'); }
+    document.getElementById('shortcutsBtn')?.addEventListener('click', openShortcuts);
+    closeShortcuts?.addEventListener('click', closeShortcutsFn);
+    shortcutsModal?.addEventListener('click', (e)=>{ if(e.target===shortcutsModal) closeShortcutsFn(); });
+
+    const accentBtns = Array.from(document.querySelectorAll('#settingsPanel [data-accent]'));
+    const bgBtns = Array.from(document.querySelectorAll('#settingsPanel [data-bg]'));
+    const densityBtns = Array.from(document.querySelectorAll('#settingsPanel [data-density]'));
+    const glassIntensity = document.getElementById('glassIntensity');
+    const motionToggle = document.getElementById('motionToggle');
+    const contrastToggle = document.getElementById('contrastToggle');
+    const sidebarBtns = Array.from(document.querySelectorAll('#settingsPanel [data-sidebar]'));
+    const fontBtns = Array.from(document.querySelectorAll('#settingsPanel [data-font]'));
+    const saveSettings = document.getElementById('saveSettings');
+    const resetSettings = document.getElementById('resetSettings');
+    const exportPrefs = document.getElementById('exportPrefs');
+    const importPrefsBtn = document.getElementById('importPrefsBtn');
+    const prefsFile = document.getElementById('prefsFile');
+
+    function getPrefs(){ try{ return JSON.parse(localStorage.getItem('ih_prefs')) || {}; }catch{ return {}; } }
+    function setPrefs(p){ localStorage.setItem('ih_prefs', JSON.stringify(p)); }
+    function applyPrefs(p){ if(p.accent) document.documentElement.setAttribute('data-accent', p.accent); if(p.bg) document.documentElement.setAttribute('data-bg', p.bg); document.documentElement.setAttribute('data-density', p.density||'comfortable'); document.documentElement.classList.toggle('reduce-motion', !!p.reduceMotion); if(motionToggle) motionToggle.checked = !!p.reduceMotion; }
+    function applyGlass(val){ const alpha = parseFloat(val||'0.6'); document.documentElement.style.setProperty('--card-bg', `rgba(255,255,255,${alpha})`); document.documentElement.style.setProperty('--card-border', `rgba(255,255,255,${Math.max(0, Math.min(1, alpha*0.6))})`); }
+    function applySidebar(size){ const map = { narrow:'14rem', default:'18rem', wide:'22rem' }; const px = map[size] || map.default; document.documentElement.style.setProperty('--sidebar', px); }
+    function applyFont(f){ const size = f==='small'? '0.95rem' : f==='large'? '1.05rem' : '1rem'; document.documentElement.setAttribute('data-font', f||'base'); document.body.style.fontSize = size; }
+    function applyPrefsExtended(p){ if(p.glass) applyGlass(p.glass); if(p.sidebar) applySidebar(p.sidebar); if(p.contrast!==undefined) document.documentElement.classList.toggle('high-contrast', !!p.contrast); if(p.font) applyFont(p.font); if(glassIntensity) glassIntensity.value = p.glass || '0.6'; if(contrastToggle) contrastToggle.checked = !!p.contrast; }
+    const initPrefs = getPrefs(); applyPrefs(initPrefs); applyPrefsExtended(initPrefs);
+    accentBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-accent', b.dataset.accent)));
+    bgBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-bg', b.dataset.bg)));
+    densityBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-density', b.dataset.density)));
+    sidebarBtns.forEach(b=> b.addEventListener('click', ()=> applySidebar(b.dataset.sidebar)));
+    fontBtns.forEach(b=> b.addEventListener('click', ()=> applyFont(b.dataset.font)));
+    glassIntensity?.addEventListener('input', ()=> applyGlass(glassIntensity.value));
+    contrastToggle?.addEventListener('change', ()=> document.documentElement.classList.toggle('high-contrast', contrastToggle.checked));
+    saveSettings?.addEventListener('click', ()=>{ const prev = getPrefs(); const p = { accent: document.documentElement.getAttribute('data-accent'), bg: document.documentElement.getAttribute('data-bg'), density: document.documentElement.getAttribute('data-density'), reduceMotion: motionToggle?.checked, glass: glassIntensity ? glassIntensity.value : (prev.glass||'0.6'), sidebar: prev.sidebar || 'default', contrast: contrastToggle ? contrastToggle.checked : !!prev.contrast, font: document.documentElement.getAttribute('data-font') || prev.font || 'base' }; setPrefs(p); applyPrefs(p); applyPrefsExtended(p); closeSettingsFn(); showToast('Preferences saved','success'); });
+    resetSettings?.addEventListener('click', ()=>{ const p = {accent:'teal', bg:'gradient', density:'comfortable', reduceMotion:false, glass:'0.6', sidebar:'default', contrast:false, font:'base'}; setPrefs(p); applyPrefs(p); applyPrefsExtended(p); showToast('Preferences reset','info'); });
+    exportPrefs?.addEventListener('click', ()=>{ const blob=new Blob([JSON.stringify(getPrefs(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='ih_prefs.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
+    importPrefsBtn?.addEventListener('click', ()=> prefsFile && prefsFile.click());
+    prefsFile?.addEventListener('change', async ()=>{ const file=prefsFile.files&&prefsFile.files[0]; if(!file) return; try{ const txt=await file.text(); const json=JSON.parse(txt); setPrefs(json); applyPrefs(json); applyPrefsExtended(json); showToast('Preferences imported','success'); }catch{ showToast('Invalid preferences file','error'); } });
+
+    // ---------- SHORTCUTS ----------
+    document.addEventListener('keydown', (e)=>{
+      if(e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+      if(e.key.toLowerCase()==='s'){ e.preventDefault(); openSettings(); }
+      if(e.key.toLowerCase()==='t'){ e.preventDefault(); themeToggle?.click(); }
+      if(e.key==='?'){ e.preventDefault(); openShortcuts(); }
+      if(e.key.toLowerCase()==='n'){ e.preventDefault(); document.getElementById('btnCreateShift')?.click(); }
+    });
+
+    // ---------- Calendar hover polish ----------
+    document.querySelectorAll('.sched-cell').forEach(cell=>{
+      cell.addEventListener('mouseenter', ()=>{ cell.classList.add('shadow-lg','relative','z-10','scale-[1.02]'); cell.style.transition='transform .2s'; });
+      cell.addEventListener('mouseleave', ()=>{ cell.classList.remove('shadow-lg','relative','z-10','scale-[1.02]'); });
+    });
+
+    // ---------- TABS + MODULE LOGIC ----------
+    // Tab switching
+    const tabBtns = Array.from(document.querySelectorAll('.tab-btn'));
+    const panes = {
+      calendar: document.getElementById('tab-calendar'),
+      templates: document.getElementById('tab-templates'),
+      rotations: document.getElementById('tab-rotations'),
+      analytics: document.getElementById('tab-analytics'),
+      settings: document.getElementById('tab-settings')
+    };
+    function activateTab(name){
+      Object.entries(panes).forEach(([k,el])=>{ if(!el) return; if(k===name){ el.classList.remove('hidden'); el.classList.add('block'); } else { el.classList.add('hidden'); el.classList.remove('block'); } });
+      tabBtns.forEach(b=>{
+        if(b.dataset.tab===name){ b.classList.add('text-accent'); b.classList.add('border-accent'); b.classList.remove('border-transparent'); b.classList.remove('text-gray-500','dark:text-gray-400'); }
+        else { b.classList.remove('text-accent','border-accent'); b.classList.add('border-transparent'); b.classList.add('text-gray-500'); }
+      });
+    }
+    tabBtns.forEach(b=> b.addEventListener('click', ()=> activateTab(b.dataset.tab)));
+
+    // ---------- Templates Designer ----------
+    const TPL_KEY = 'iht_shift_templates_v1';
+    function loadTemplates(){ try{ return JSON.parse(localStorage.getItem(TPL_KEY)) || []; }catch{ return []; } }
+    function saveTemplates(arr){ localStorage.setItem(TPL_KEY, JSON.stringify(arr)); }
+    function renderTemplatesList(){
+      const list = document.getElementById('templatesList'); const empty = document.getElementById('templatesEmpty');
+      if(!list) return; list.innerHTML = '';
+      const tpls = loadTemplates();
+      if(!tpls.length){ empty && (empty.style.display='block'); return; } else { empty && (empty.style.display='none'); }
+      tpls.forEach((t,i)=>{
+        const item = document.createElement('div');
+        item.className = 'glass rounded-lg p-3 flex items-center justify-between gap-3 border border-white/40 dark:border-white/10';
+        item.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-4 h-4 rounded-full" style="background:${t.color||'#3b82f6'}"></div>
+            <div>
+              <div class="font-medium text-sm">${t.name}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">${t.start} - ${t.end} • break ${t.break||0}m</div>
+              <div class="text-[11px] text-gray-500">Depts: ${(t.departments||[]).join(', ')||'—'}</div>
+            </div>
+          </div>
+          <button data-del="${i}" class="px-2 py-1 rounded-lg glass text-xs">Delete</button>
+        `;
+        list.appendChild(item);
+      });
+      list.querySelectorAll('[data-del]').forEach(btn=> btn.addEventListener('click', ()=>{
+        const idx = parseInt(btn.getAttribute('data-del'));
+        const arr = loadTemplates(); arr.splice(idx,1); saveTemplates(arr); renderTemplatesList(); showToast('Template deleted','info');
+        populateRotTplSelect();
+      }));
+    }
+    function populateRotTplSelect(){ const sel = document.getElementById('rotTplSelect'); if(!sel) return; sel.innerHTML=''; loadTemplates().forEach((t,idx)=>{ const o=document.createElement('option'); o.value=String(idx); o.textContent=`${t.name} (${t.start}-${t.end})`; sel.appendChild(o); }); }
+    // Form
+    const templateForm = document.getElementById('templateForm');
+    templateForm?.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const name = document.getElementById('tplName').value.trim();
+      const start = document.getElementById('tplStart').value;
+      const end = document.getElementById('tplEnd').value;
+      const brk = parseInt(document.getElementById('tplBreak').value||'0');
+      const color = document.getElementById('tplColor').value;
+      const depts = document.getElementById('tplDepts').value.split(',').map(s=>s.trim()).filter(Boolean);
+      if(!name){ showToast('Name required','warn'); return; }
+      const arr = loadTemplates(); arr.push({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), name, start, end, break: brk, color, departments: depts });
+      saveTemplates(arr); renderTemplatesList(); populateRotTplSelect();
+      templateForm.reset();
+      showToast('Template saved','success');
+    });
+    document.getElementById('exportTemplates')?.addEventListener('click', ()=>{ const blob=new Blob([JSON.stringify(loadTemplates(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='shift_templates.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
+    const importTemplatesBtn = document.getElementById('importTemplatesBtn'); const templatesFile = document.getElementById('templatesFile');
+    importTemplatesBtn?.addEventListener('click', ()=> templatesFile && templatesFile.click());
+    templatesFile?.addEventListener('change', async ()=>{ const f=templatesFile.files&&templatesFile.files[0]; if(!f) return; try{ const txt=await f.text(); const json=JSON.parse(txt); if(Array.isArray(json)){ saveTemplates(json); renderTemplatesList(); populateRotTplSelect(); showToast('Templates imported','success'); } else { showToast('Invalid templates file','error'); } }catch{ showToast('Import failed','error'); }});
+    document.getElementById('clearTemplates')?.addEventListener('click', ()=>{ saveTemplates([]); renderTemplatesList(); populateRotTplSelect(); showToast('Templates cleared','info'); });
+
+    // ---------- Rotations ----------
+    const rotPattern = [];
+    const rotPatternHost = document.getElementById('rotPattern');
+    function renderPattern(){ if(!rotPatternHost) return; rotPatternHost.innerHTML=''; rotPattern.forEach((idx,pos)=>{ const t=loadTemplates()[idx]; if(!t) return; const pill=document.createElement('div'); pill.className='px-2 py-1 rounded-full text-xs flex items-center gap-2 border border-white/40 dark:border-white/10'; pill.style.background=t.color+'20'; pill.innerHTML=`<span class="inline-block w-2 h-2 rounded-full" style="background:${t.color}"></span>${t.name}<button data-rm="${pos}" class="ml-1 px-1 rounded glass">×</button>`; rotPatternHost.appendChild(pill); });
+      rotPatternHost.querySelectorAll('[data-rm]').forEach(b=> b.addEventListener('click', ()=>{ const i=parseInt(b.getAttribute('data-rm')); rotPattern.splice(i,1); renderPattern(); }));
+    }
+    document.getElementById('rotAddTpl')?.addEventListener('click', ()=>{ const sel=document.getElementById('rotTplSelect'); const idx=parseInt(sel.value||'-1'); if(isNaN(idx) || idx<0){ showToast('No template to add','warn'); return; } rotPattern.push(idx); renderPattern(); });
+    document.getElementById('rotClear')?.addEventListener('click', ()=>{ rotPattern.length=0; renderPattern(); document.getElementById('rotPreview').innerHTML=''; document.getElementById('rotEmpty').style.display='block'; });
+    let rotationPreview = [];
+    function renderRotationPreview(){ const host=document.getElementById('rotPreview'); const empty=document.getElementById('rotEmpty'); if(!host) return; host.innerHTML=''; if(!rotationPreview.length){ empty && (empty.style.display='block'); return; } else { empty && (empty.style.display='none'); }
+      rotationPreview.forEach(item=>{ const card=document.createElement('div'); card.className='glass rounded-lg p-3 border border-white/40 dark:border-white/10 flex items-center justify-between'; card.innerHTML=`<div><div class="text-sm font-medium">${item.dateStr}</div><div class="text-xs text-gray-500">${item.dept}</div></div><div class="flex items-center gap-2"><span class="px-2 py-1 rounded-full text-xs" style="background:${item.color}20; color:${item.color}">${item.template}</span><span class="text-xs text-gray-500">${item.start} - ${item.end}</span></div>`; host.appendChild(card); });
+    }
+    function computePreview(){ const startStr=document.getElementById('rotStart').value; const dept=document.getElementById('rotDept').value||'General'; const start = startStr ? new Date(startStr+'T00:00:00') : new Date(); const tpls=loadTemplates(); if(!rotPattern.length || !tpls.length){ showToast('Add templates to pattern','warn'); return; } rotationPreview=[]; for(let i=0;i<14;i++){ const d=new Date(start); d.setDate(d.getDate()+i); const t = tpls[ rotPattern[i % rotPattern.length] ]; rotationPreview.push({ date: d, dateStr: d.toDateString(), dept, template: t.name, start: t.start, end: t.end, color: t.color }); } renderRotationPreview(); showToast('Preview generated','success'); }
+    document.getElementById('rotPreviewBtn')?.addEventListener('click', computePreview);
+    document.getElementById('rotExportCsv')?.addEventListener('click', ()=>{ if(!rotationPreview.length){ showToast('No preview to export','warn'); return; } const header='date,department,template,start,end\n'; const rows=rotationPreview.map(r=>`${r.date.toISOString().slice(0,10)},${r.dept},${r.template},${r.start},${r.end}`).join('\n'); const blob=new Blob([header+rows],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='rotation_preview.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showToast('CSV exported','success'); });
+
+    // ---------- Analytics ----------
+    let chartDistribution, chartCoverage;
+    function initCharts(){ const ctx1=document.getElementById('chartDistribution'); const ctx2=document.getElementById('chartCoverage'); if(!ctx1||!ctx2||!window.Chart) return; chartDistribution = new Chart(ctx1, { type:'doughnut', data:{ labels:['Morning','Evening','Night'], datasets:[{ data:[12,9,5], backgroundColor:['#3b82f6','#a855f7','#f43f5e'] }] }, options:{ plugins:{ legend:{ position:'bottom' } } } }); chartCoverage = new Chart(ctx2, { type:'bar', data:{ labels:['Engineering','HR','Sales','Operations'], datasets:[{ label:'Shifts', data:[14,8,6,10], backgroundColor:'rgba(20, 184, 166, .6)' }] }, options:{ scales:{ y:{ beginAtZero:true } } } }); }
+    function recomputeFromPreview(){ if(!rotationPreview.length){ showToast('No preview yet; using sample data','info'); return; } const byTemplate = {}; const byDept = {}; rotationPreview.forEach(r=>{ byTemplate[r.template]=(byTemplate[r.template]||0)+1; byDept[r.dept]=(byDept[r.dept]||0)+1; }); if(chartDistribution){ chartDistribution.data.labels = Object.keys(byTemplate); chartDistribution.data.datasets[0].data = Object.values(byTemplate); chartDistribution.update(); } if(chartCoverage){ chartCoverage.data.labels = Object.keys(byDept); chartCoverage.data.datasets[0].data = Object.values(byDept); chartCoverage.update(); } showToast('Analytics updated','success'); }
+    document.getElementById('anaRecompute')?.addEventListener('click', recomputeFromPreview);
+
+    // ---------- Module Settings ----------
+    const HOLI_KEY = 'iht_holidays_v1'; const MODSET_KEY='iht_sched_settings_v1';
+    function loadHolidays(){ try{ return JSON.parse(localStorage.getItem(HOLI_KEY))||[]; }catch{ return []; } }
+    function saveHolidays(h){ localStorage.setItem(HOLI_KEY, JSON.stringify(h)); }
+    function renderHolidays(){ const list=document.getElementById('holiList'); if(!list) return; list.innerHTML=''; const arr=loadHolidays(); arr.forEach((h,i)=>{ const row=document.createElement('div'); row.className='glass rounded-lg p-3 flex items-center justify-between border border-white/40 dark:border-white/10'; row.innerHTML=`<div><div class="font-medium text-sm">${h.name}</div><div class="text-xs text-gray-500">${h.date}</div></div><button data-hdel="${i}" class="px-2 py-1 rounded-lg glass text-xs">Delete</button>`; list.appendChild(row); }); list.querySelectorAll('[data-hdel]').forEach(b=> b.addEventListener('click', ()=>{ const i=parseInt(b.getAttribute('data-hdel')); const arr=loadHolidays(); arr.splice(i,1); saveHolidays(arr); renderHolidays(); })); }
+    document.getElementById('holiAdd')?.addEventListener('click', ()=>{ const name=document.getElementById('holiName').value.trim(); const date=document.getElementById('holiDate').value; if(!name||!date){ showToast('Name and date required','warn'); return; } const arr=loadHolidays(); arr.push({name,date}); saveHolidays(arr); renderHolidays(); document.getElementById('holiName').value=''; document.getElementById('holiDate').value=''; showToast('Holiday added','success'); });
+    function loadModSettings(){ try{ return JSON.parse(localStorage.getItem(MODSET_KEY))||{}; }catch{ return {}; } }
+    function saveModSettings(s){ localStorage.setItem(MODSET_KEY, JSON.stringify(s)); }
+    function applyModSettings(){ const s=loadModSettings(); const swaps=document.getElementById('notifSwaps'); const pub=document.getElementById('notifPublish'); const conf=document.getElementById('notifConflicts'); if(swaps) swaps.checked=!!s.swaps; if(pub) pub.checked=!!s.publish; if(conf) conf.checked=!!s.conflicts; }
+    ['notifSwaps','notifPublish','notifConflicts'].forEach(id=>{ const el=document.getElementById(id); el?.addEventListener('change', ()=>{ const s=loadModSettings(); if(id==='notifSwaps') s.swaps=el.checked; if(id==='notifPublish') s.publish=el.checked; if(id==='notifConflicts') s.conflicts=el.checked; saveModSettings(s); showToast('Notification preference saved','success'); }); });
+    document.getElementById('utilPrint')?.addEventListener('click', ()=> window.print());
+    document.getElementById('utilExportJson')?.addEventListener('click', ()=>{ if(!rotationPreview.length){ showToast('No preview to export','warn'); return; } const blob=new Blob([JSON.stringify(rotationPreview,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='rotation_preview.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
+    const utilImportJsonBtn=document.getElementById('utilImportJsonBtn'); const utilImportJsonFile=document.getElementById('utilImportJsonFile');
+    utilImportJsonBtn?.addEventListener('click', ()=> utilImportJsonFile && utilImportJsonFile.click());
+    utilImportJsonFile?.addEventListener('change', async ()=>{ const f=utilImportJsonFile.files&&utilImportJsonFile.files[0]; if(!f) return; try{ const txt=await f.text(); const json=JSON.parse(txt); if(Array.isArray(json)){ rotationPreview = json.map(r=>({ ...r, date: new Date(r.date) })); renderRotationPreview(); recomputeFromPreview(); showToast('Preview imported','success'); } else { showToast('Invalid preview JSON','error'); } }catch{ showToast('Import failed','error'); }});
+
+    // Initialize dynamic sections
+    renderTemplatesList(); populateRotTplSelect(); renderHolidays(); applyModSettings(); initCharts();
+
+    // Initial load toast
+    setTimeout(()=>{ try{ showToast('Scheduling & Shifts ready','success'); }catch(_){} }, 700);
+  </script>
+{% endblock %}
