@@ -1,0 +1,923 @@
+{% extends 'admin/base_admin.html' %}
+
+{% block title %}IntelliHRTrack — Admin Dashboard (Tailwind){% endblock %}
+
+{% block extra_head %}
+
+{% endblock %}
+
+{% block content %}
+{% load static %}
+
+
+<!-- Hero -->
+  <header id="section-top" class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow">
+        <div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
+        <div class="relative z-10 flex items-center justify-between gap-4">
+          <div>
+            <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight">Dashboard — Real-Time Workforce Overview</h2>
+            <p class="mt-1 text-sm md:text-base text-gray-600 dark:text-gray-300">Intelligent visualization, predictive analytics, and operational control.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="mobileMenu" class="lg:hidden p-2 rounded-xl glass" aria-label="Open Menu"><iconify-icon icon="ph:list-duotone"></iconify-icon></button>
+            <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-xl glass text-xs">
+              <span id="netDot" class="inline-block w-2.5 h-2.5 rounded-full bg-green-500" title="Online"></span>
+              <span id="headerClock">--:--:--</span>
+            </div>
+            <div class="text-sm text-gray-600 dark:text-gray-300">Welcome, Admin</div>
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center font-semibold">A</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Grid -->
+      <section class="grid grid-cols-12 gap-6">
+        <!-- Left column -->
+        <div class="col-span-12 xl:col-span-8 space-y-6">
+          <!-- Counters -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="glass rounded-2xl p-4 shadow transition hover:shadow-glow">
+              <div class="text-xs text-gray-500 dark:text-gray-400">Present</div>
+              <div id="presentNum" class="mt-1 text-3xl font-extrabold">126</div>
+              <div class="text-sm text-green-500">+3 since last hour</div>
+            </div>
+            <div class="glass rounded-2xl p-4 shadow transition hover:shadow-glow">
+              <div class="text-xs text-gray-500 dark:text-gray-400">Late</div>
+              <div id="lateNum" class="mt-1 text-3xl font-extrabold text-amber-600">8</div>
+              <div class="text-sm text-amber-500">Highest: Sales</div>
+            </div>
+            <div class="glass rounded-2xl p-4 shadow transition hover:shadow-glow">
+              <div class="text-xs text-gray-500 dark:text-gray-400">On Leave</div>
+              <div id="leaveNum" class="mt-1 text-3xl font-extrabold text-blue-600">12</div>
+              <div class="text-sm text-gray-500">Planned / Unplanned: 9/3</div>
+            </div>
+            <div class="glass rounded-2xl p-4 shadow transition hover:shadow-glow">
+              <div class="text-xs text-gray-500 dark:text-gray-400">Absent</div>
+              <div id="absentNum" class="mt-1 text-3xl font-extrabold text-rose-600">4</div>
+              <div class="text-sm text-rose-500">Auto-alert sent</div>
+            </div>
+          </div>
+
+          <!-- Live + Actions -->
+          <div id="section-live" class="glass rounded-3xl p-4 md:p-6 shadow grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2">
+              <h3 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:radio-duotone" class="text-accent"></iconify-icon> Live Attendance Feed</h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Streaming last 12 events (face, fingerprint, manual) • Updated: <span id="liveUpdated">now</span></p>
+              <ul id="liveFeed" class="mt-3 space-y-2 max-h-56 overflow-auto fancy-scroll" role="log" aria-live="polite" aria-relevant="additions text"></ul>
+            </div>
+            <div class="lg:border-l lg:pl-6">
+              <h3 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:bolt-duotone" class="text-accent"></iconify-icon> Quick Actions</h3>
+              <div class="mt-3 grid gap-2">
+                <button id="generatePayroll" class="w-full py-2 rounded-xl text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:shadow-glow transition flex items-center justify-center gap-2"><iconify-icon icon="ph:currency-circle-dollar-duotone"></iconify-icon> Generate Payroll</button>
+                <button id="approveLeaves" class="w-full py-2 rounded-xl glass hover:shadow-glow transition flex items-center justify-center gap-2"><iconify-icon icon="ph:check-circle-duotone"></iconify-icon> Approve Leaves</button>
+                <button id="registerEmployee" class="w-full py-2 rounded-xl glass hover:shadow-glow transition flex items-center justify-center gap-2"><iconify-icon icon="ph:user-plus-duotone"></iconify-icon> Register Employee</button>
+                <button id="exportAuditBtn" class="w-full py-2 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center justify-center gap-2"><iconify-icon icon="ph:export-duotone" class="text-accent"></iconify-icon> Export Audit Snapshot</button>
+                <button id="runAnomaly" class="w-full py-2 rounded-xl bg-rose-500 text-white hover:shadow-glow transition flex items-center justify-center gap-2"><iconify-icon icon="ph:warning-octagon-duotone"></iconify-icon> Run Anomaly Scan</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div id="section-charts" class="glass rounded-3xl p-4 md:p-6 shadow" data-focusable>
+              <div class="flex items-center justify-between">
+                <h4 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:chart-bar-duotone" class="text-accent"></iconify-icon> Department Activity Summary</h4>
+                <button class="focusBtn text-xs px-2 py-1 rounded-lg glass">Focus</button>
+              </div>
+              <canvas id="deptChart" class="mt-4"></canvas>
+            </div>
+            <div class="glass rounded-3xl p-4 md:p-6 shadow" data-focusable>
+              <div class="flex items-center justify-between">
+                <h4 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:chart-line-duotone" class="text-accent"></iconify-icon> Predictive Workforce Availability</h4>
+                <button class="focusBtn text-xs px-2 py-1 rounded-lg glass">Focus</button>
+              </div>
+              <canvas id="predictChart" class="mt-4"></canvas>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Forecast uses historical patterns &amp; schedule data.</p>
+            </div>
+          </div>
+
+          <!-- Insights + KPI -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="glass rounded-3xl p-4 md:p-6 shadow lg:col-span-2">
+              <div class="flex items-start justify-between">
+                <div>
+                  <h4 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:sparkle-duotone" class="text-accent"></iconify-icon> Smart Attendance Insights</h4>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">AI-generated summary of notable trends</p>
+                </div>
+                <div class="text-xs text-gray-400">Updated: <span id="insightTime">now</span></div>
+              </div>
+              <div id="aiInsightText" class="mt-4 text-sm text-gray-700 dark:text-gray-200">Loading insight...</div>
+            </div>
+            <div class="glass rounded-3xl p-4 md:p-6 shadow">
+              <h4 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:gauge-duotone" class="text-accent"></iconify-icon> KPI Snapshot</h4>
+              <div class="mt-3 space-y-2 text-sm">
+                <div class="flex items-center justify-between">Attendance Reliability Index <span class="font-bold">92%</span></div>
+                <div class="flex items-center justify-between">Average Tardiness <span class="font-bold">7m</span></div>
+                <div class="flex items-center justify-between">Overtime Ratio <span class="font-bold">4.1%</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Heatmap -->
+          <div id="section-heatmap" class="glass rounded-3xl p-4 md:p-6 shadow relative overflow-hidden" data-focusable>
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:fire-duotone" class="text-accent"></iconify-icon> Interactive Heatmap — Office Entry Peaks</h4>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Displays density of employee entry logs by hour and weekday (interactive demo). • Last refresh: <span id="heatmapRefreshTime">now</span></p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="refreshHeatmap" class="text-xs px-3 py-1 rounded-md bg-gradient-to-r from-blue-500 to-cyan-500 text-white">Refresh</button>
+                <button id="downloadHeatmapCSV" class="text-xs px-3 py-1 rounded-md bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10">Download CSV</button>
+                <button class="focusBtn text-xs px-2 py-1 rounded-lg glass">Focus</button>
+              </div>
+            </div>
+            <div id="heatmapWrap" class="mt-4 overflow-auto fancy-scroll">
+              <div id="heatmapGrid" class="min-w-[680px] grid gap-1 text-center text-xs"></div>
+            </div>
+            <div id="heatmapTooltip" class="tooltip hidden"></div>
+            <div class="absolute bottom-2 right-3 text-[10px] text-gray-400 dark:text-gray-500">Hover to view intensity • Click cell to drill-in</div>
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div class="col-span-12 xl:col-span-4 space-y-6">
+          <div id="section-alerts" class="glass rounded-3xl p-4 md:p-6 shadow" data-focusable>
+            <h4 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:bell-ringing-duotone" class="text-accent"></iconify-icon> Notifications &amp; Alerts</h4>
+            <div class="mt-1 flex justify-end"><button class="focusBtn text-xs px-2 py-1 rounded-lg glass">Focus</button></div>
+            <ul id="alertsList" class="mt-3 space-y-2 text-sm text-gray-700 dark:text-gray-200 max-h-64 overflow-auto fancy-scroll big-scroll pr-1" role="log" aria-live="polite" aria-relevant="additions text"></ul>
+          </div>
+
+          <div id="section-health" class="glass rounded-3xl p-4 md:p-6 shadow">
+            <h4 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:heartbeat-duotone" class="text-accent"></iconify-icon> System Health &amp; Device Status</h4>
+            <div id="deviceStatus" class="mt-3 space-y-2 text-sm"></div>
+            <div class="mt-3">
+              <button id="runDiagnostics" class="w-full py-2 rounded-xl text-white bg-gradient-to-r from-pink-500 to-rose-500 hover:shadow-glow transition flex items-center justify-center gap-2"><iconify-icon icon="ph:stethoscope-duotone"></iconify-icon> Run Diagnostics</button>
+            </div>
+          </div>
+
+          <div id="section-audit" class="glass rounded-3xl p-4 md:p-6 shadow">
+            <h4 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:warning-duotone" class="text-accent"></iconify-icon> Anomaly Alerts &amp; Risk Signals</h4>
+            <ul id="anomalies" class="mt-3 space-y-2 text-sm text-gray-700 dark:text-gray-200"></ul>
+          </div>
+
+          <div id="section-ai" class="glass rounded-3xl p-4 md:p-6 shadow">
+            <h4 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:shield-check-duotone" class="text-accent"></iconify-icon> Audit Snapshot</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Quick export of current system state for audits, compliance, and incident tracking.</p>
+            <div class="mt-3 grid gap-2">
+              <button id="captureBtn" class="w-full py-2 rounded-xl bg-emerald-500 text-white">Capture Snapshot</button>
+              <button id="downloadAudit" class="w-full py-2 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10">Download JSON</button>
+            </div>
+            <div id="auditTime" class="mt-2 text-xs text-gray-400">Last captured: —</div>
+          </div>
+
+          <div class="glass rounded-3xl p-4 md:p-6 shadow">
+            <h4 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:robot-duotone" class="text-accent"></iconify-icon> AI-Generated Daily Briefing</h4>
+            <div id="dailyBrief" class="mt-2 text-sm text-gray-700 dark:text-gray-200">Preparing today's briefing...</div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="pb-8 pt-2 text-xs text-gray-500 dark:text-gray-400 text-center">© IntelliHRTrack • Demonstration build — integrate with backend for production.</footer>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ---------- THEME ----------
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('ih_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    });
+    if (localStorage.getItem('ih_theme') === 'dark') document.documentElement.classList.add('dark');
+
+    // ---------- MOCK STATE ----------
+    const state = {
+      present: 126, late: 8, leave:12, absent:4, ot:5,
+      devices: [
+        { name:'Camera Kiosk #3', status:'online', last:'2m', battery:'n/a' },
+        { name:'Fingerprint Scanner A', status:'sync_delay', last:'15m', battery:'78%' },
+        { name:'Server (Attendance DB)', status:'healthy', last:'5s', battery:'n/a' }
+      ],
+      alerts: [
+        {lvl:'High', text:'4 employees absent in Logistics — auto-escalated.'},
+        {lvl:'Medium', text:'Fingerprint scanner A showing sync delay (15m).'},
+        {lvl:'Low', text:'Leave expiration: 2 employees (Sales) today.'}
+      ],
+      anomalies: [
+        'Cross-device mismatch: ID#1292 saw two different kiosks in 5m',
+        'Repeated tardiness flagged for Employee #433',
+      ],
+      liveEvents: []
+    };
+
+    // ---------- DOM HOOKS ----------
+    const liveFeed = document.getElementById('liveFeed');
+    const alertsList = document.getElementById('alertsList');
+    const deviceStatus = document.getElementById('deviceStatus');
+    const anomaliesElm = document.getElementById('anomalies');
+    const aiInsightText = document.getElementById('aiInsightText');
+    const insightTime = document.getElementById('insightTime');
+    const dailyBrief = document.getElementById('dailyBrief');
+    const presentNum = document.getElementById('presentNum');
+    const lateNum = document.getElementById('lateNum');
+    const leaveNum = document.getElementById('leaveNum');
+    const absentNum = document.getElementById('absentNum');
+
+    // populate counters
+    function renderCounters() {
+      presentNum.textContent = state.present;
+      lateNum.textContent = state.late;
+      leaveNum.textContent = state.leave;
+      absentNum.textContent = state.absent;
+    }
+    renderCounters();
+
+    // render devices
+    function renderDevices(){
+      deviceStatus.innerHTML = '';
+      state.devices.forEach(d=>{
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between';
+        const left = document.createElement('div');
+        left.innerHTML = `<div class="font-medium">${d.name}</div><div class="text-xs text-gray-400">${d.last} • ${d.battery}</div>`;
+        const right = document.createElement('div');
+        const statusColor = d.status === 'online' || d.status==='healthy' ? 'text-green-500' : (d.status==='sync_delay' ? 'text-yellow-500' : 'text-rose-400');
+        right.innerHTML = `<div class="${statusColor}">${d.status}</div>`;
+        div.appendChild(left); div.appendChild(right);
+        deviceStatus.appendChild(div);
+      });
+    }
+    renderDevices();
+
+    // render alerts & anomalies
+    state.alerts.forEach(a=>{
+      const li = document.createElement('li');
+      li.className = 'p-2 rounded-md border glass';
+      li.innerHTML = `<div class="font-medium">${a.text}</div><div class="text-xs text-gray-400">Severity: ${a.lvl}</div>`;
+      alertsList.appendChild(li);
+    });
+    state.anomalies.forEach(a=>{
+      const li = document.createElement('li');
+      li.className = 'p-2 rounded-md text-sm';
+      li.textContent = a;
+      anomaliesElm.appendChild(li);
+    });
+
+    // ---------- LIVE FEED SIM ----------
+    const sampleEvents = [
+      {type:'Face', name:'Maria Santos', dept:'Sales', time:'09:02', kiosk:'Gate A'},
+      {type:'Fingerprint', name:'John Cruz', dept:'Ops', time:'08:58', kiosk:'Gate B'},
+      {type:'Manual', name:'Liza Gomez', dept:'HR', time:'09:10', kiosk:'Admin'},
+      {type:'Face', name:'Tom Reyes', dept:'IT', time:'09:35', kiosk:'Gate C'},
+      {type:'Face', name:'Ana Li', dept:'Sales', time:'08:45', kiosk:'Gate A'},
+    ];
+    function pushEvent(e){
+      const li = document.createElement('li');
+      li.className = 'p-2 rounded-xl hover:ring-1 hover:ring-white/40 hover:shadow-glow transition';
+      li.innerHTML = `<div class=\"flex items-center justify-between\"><div><div class=\"font-medium\">${e.name} <span class=\"text-xs text-gray-500 dark:text-gray-300\">(${e.dept})</span></div><div class=\"text-xs text-gray-600 dark:text-gray-300\">${e.type} • ${e.kiosk}</div></div><div class=\"text-xs text-gray-500 dark:text-gray-300\">${e.time}</div></div>`;
+      liveFeed.prepend(li);
+      if(liveFeed.childElementCount>12) liveFeed.removeChild(liveFeed.lastChild);
+    }
+    sampleEvents.forEach(e=>pushEvent(e));
+    // simulate random incoming events
+    const demoNames = ['Carlos','Rhea','Miguel','Noel','Aimee','Ben','Diana'];
+    setInterval(()=>{
+      const e = { type: Math.random()>0.6?'Face':'Fingerprint', name: demoNames[Math.floor(Math.random()*demoNames.length)] + ' ' + ['Lopez','Garcia','Perez'][Math.floor(Math.random()*3)], dept: ['Sales','Ops','HR','IT'][Math.floor(Math.random()*4)], time: new Date().toLocaleTimeString(), kiosk:['Gate A','Gate B','Gate C'][Math.floor(Math.random()*3)] };
+      pushEvent(e);
+    },6000);
+
+    // ---------- AI INSIGHTS (SIM) ----------
+    function refreshInsight(){
+      aiInsightText.textContent = 'Sales Dept. punctuality improved 8% this week; recommend reducing scheduled overtime by 10% next week.';
+      insightTime.textContent = new Date().toLocaleTimeString();
+      dailyBrief.textContent = `Good morning — ${state.present} present, ${state.leave} on leave, ${state.absent} absent. Automated recommendation: Check Logistics staffing at 10:00. Anomalies detected: ${state.anomalies.length}.`;
+    }
+    refreshInsight();
+    setInterval(refreshInsight, 15000);
+
+    // ---------- CHARTS ----------
+    const deptCtx = document.getElementById('deptChart');
+    const deptChart = new Chart(deptCtx, {
+      type: 'bar',
+      data: { labels: ['Sales','Ops','HR','IT','Logistics'], datasets: [ { label: 'Present', data: [40,30,20,18,18], borderRadius:6, backgroundColor: 'rgba(20,184,166,0.6)' }, { label: 'Late', data: [5,2,1,0,0], borderRadius:6, backgroundColor: 'rgba(244,63,94,0.5)' } ] },
+      options: { responsive:true, plugins:{legend:{position:'top'}}, scales:{ x:{ grid:{ display:false } }, y:{ grid:{ color:'rgba(148,163,184,0.25)' } } } }
+    });
+
+    const predictCtx = document.getElementById('predictChart');
+    const predictChart = new Chart(predictCtx, {
+      type: 'line',
+      data: { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], datasets: [{ label:'Predicted Available', data:[120,125,130,128,122,80,75], tension:0.4, borderColor:'rgba(59,130,246,0.9)', backgroundColor:'rgba(59,130,246,0.2)', fill:true }] },
+      options:{ responsive:true, plugins:{legend:{display:true}}, scales:{ x:{ grid:{ display:false } }, y:{ grid:{ color:'rgba(148,163,184,0.25)' } } } }
+    });
+
+    // ---------- INTERACTIVE HEATMAP ----------
+    const heatmapGrid = document.getElementById('heatmapGrid');
+    const heatmapTooltip = document.getElementById('heatmapTooltip');
+    const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const buckets = [ '00–02','03–05','06–08','09–11','12–14','15–17','18–20','21–23' ];
+    const colorClasses = ['bg-blue-50','bg-blue-100','bg-blue-200','bg-blue-300','bg-blue-400','bg-blue-500','bg-blue-600','bg-blue-700'];
+
+    function intensityClass(val){ const idx = Math.min(colorClasses.length - 1, Math.floor(val / (100 / colorClasses.length))); return colorClasses[idx]; }
+    function generateHeatData(){ const map = {}; days.forEach(d=>{ map[d] = []; for(let b=0;b<buckets.length;b++){ const base = ['Sat','Sun'].includes(d) ? 30 : (b===3||b===4 ? 70 : 40); const v = Math.max(0, Math.min(100, Math.round(base + (Math.random()*40 - 10)))); map[d].push(v); } }); return map; }
+    let heatData = generateHeatData();
+
+    function renderHeatmap(){
+      heatmapGrid.innerHTML = '';
+      const header = document.createElement('div');
+      header.className = 'grid grid-cols-[80px_repeat(8,1fr)] gap-1 items-center';
+      const dayHead = document.createElement('div');
+      dayHead.className = 'font-semibold text-left text-xs text-gray-600 dark:text-gray-300';
+      dayHead.textContent = 'Day';
+      header.appendChild(dayHead);
+      buckets.forEach(b=>{ const h = document.createElement('div'); h.className = 'text-xs font-medium text-gray-600 dark:text-gray-300'; h.textContent = b; header.appendChild(h); });
+      heatmapGrid.appendChild(header);
+
+      days.forEach(day=>{
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-[80px_repeat(8,1fr)] gap-1 items-center mt-1';
+        const label = document.createElement('div');
+        label.className = 'font-medium text-left text-sm text-gray-700 dark:text-gray-200';
+        label.textContent = day;
+        row.appendChild(label);
+
+        heatData[day].forEach((val, idx)=>{
+          const cell = document.createElement('div');
+          const cls = intensityClass(val);
+          cell.className = `h-8 rounded heat-cell ${cls} relative flex items-center justify-center cursor-pointer`;
+          cell.dataset.day = day; cell.dataset.bucket = buckets[idx]; cell.dataset.val = val;
+          cell.setAttribute('aria-label', `${day} ${buckets[idx]} : ${val} entries`);
+          cell.addEventListener('mouseenter', (ev)=>{
+            const rect = ev.target.getBoundingClientRect();
+            heatmapTooltip.style.left = (rect.left + rect.width/2) + 'px';
+            heatmapTooltip.style.top = (rect.top) + 'px';
+            heatmapTooltip.innerHTML = `<strong class="block">${day} ${buckets[idx]}</strong>${val} entries`;
+            heatmapTooltip.classList.remove('hidden');
+          });
+          cell.addEventListener('mouseleave', ()=> heatmapTooltip.classList.add('hidden'));
+          cell.addEventListener('click', ()=>{ alert(`${day} ${buckets[idx]} — ${val} entries (drill-in placeholder).`); });
+          row.appendChild(cell);
+        });
+        heatmapGrid.appendChild(row);
+      });
+    }
+
+    renderHeatmap();
+
+    document.getElementById('refreshHeatmap').addEventListener('click', ()=>{ heatData = generateHeatData(); renderHeatmap(); });
+    document.getElementById('downloadHeatmapCSV').addEventListener('click', ()=>{
+      let csv = 'Day,' + buckets.join(',') + '\n';
+      days.forEach(d=>{ csv += d + ',' + heatData[d].join(',') + '\n'; });
+      const blob = new Blob([csv], {type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'heatmap_entries.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // ---------- AUDIT SNAPSHOT (WORKING) ----------
+    let lastAudit = null;
+    function generateAudit(){
+      const now = new Date();
+      const audit = {
+        timestamp: now.toISOString(),
+        present: state.present,
+        late: state.late,
+        leave: state.leave,
+        absent: state.absent,
+        overtime: state.ot,
+        devices: state.devices,
+        alerts: state.alerts,
+        anomalies: state.anomalies,
+        heatmapSnapshot: (function(){ const summary = {}; for(const d of days){ summary[d] = (heatData[d] || []).slice(); } return summary; })(),
+        note: 'Auto-generated by IntelliHRTrack demo UI'
+      };
+      lastAudit = audit;
+      document.getElementById('auditTime').textContent = `Last captured: ${new Date(audit.timestamp).toLocaleString()}`;
+      return audit;
+    }
+
+    function downloadJSON(obj, filename='audit_snapshot.json'){
+      const blob = new Blob([JSON.stringify(obj,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('captureBtn').addEventListener('click', ()=>{ const audit = generateAudit(); alert('Snapshot captured: ' + new Date(audit.timestamp).toLocaleString()); });
+    document.getElementById('downloadAudit').addEventListener('click', ()=>{ if(!lastAudit) lastAudit = generateAudit(); downloadJSON(lastAudit, `intellihr_audit_${new Date(lastAudit.timestamp).toISOString()}.json`); });
+    document.getElementById('exportAuditBtn').addEventListener('click', ()=>{ const a = generateAudit(); downloadJSON(a, `intellihr_audit_${new Date(a.timestamp).toISOString()}.json`); });
+
+    // ---------- EXTRA ACTIONS ----------
+    document.getElementById('runAnomaly').addEventListener('click', ()=>{
+      alert('Anomaly scan complete: 2 minor issues found — check Anomaly Alerts.');
+      const newAnom = `Automated anomaly at ${new Date().toLocaleTimeString()}`;
+      state.anomalies.unshift(newAnom);
+      const li = document.createElement('li'); li.className='p-2 rounded-md text-sm'; li.textContent = newAnom;
+      anomaliesElm.prepend(li);
+      const newAlert = {lvl:'High', text:'Cross-device discrepancy found for employee R. Tan'};
+      state.alerts.unshift(newAlert);
+      const li2 = document.createElement('li'); li2.className='p-2 rounded-md border glass'; li2.innerHTML = `<div class="font-medium">${newAlert.text}</div><div class="text-xs text-gray-400">Severity: ${newAlert.lvl}</div>`;
+      alertsList.prepend(li2);
+    });
+
+    document.getElementById('generatePayroll').addEventListener('click', ()=>{
+      alert('Payroll generation queued — preview downloaded (demo).');
+      const payroll = { generatedAt:new Date().toISOString(), employees: state.present + state.leave + state.absent };
+      downloadJSON(payroll, 'payroll_preview.json');
+    });
+
+    document.getElementById('runDiagnostics').addEventListener('click', ()=>{
+      alert('Diagnostics started — results appended to System Health.');
+      state.devices.push({ name:'New Device', status:'online', last:'now', battery:'95%' });
+      renderDevices();
+    });
+
+    // Tooltip follow
+    document.addEventListener('mousemove', (e)=>{
+      const tt = document.getElementById('heatmapTooltip');
+      if(!tt.classList.contains('hidden')){
+        const padding = 10;
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const tw = tt.offsetWidth || 160; // fallback width
+        const th = tt.offsetHeight || 36; // fallback height
+        let x = e.clientX; let y = e.clientY - 12;
+        // clamp within viewport
+        x = Math.max(padding, Math.min(vw - tw - padding, x));
+        y = Math.max(padding, Math.min(vh - th - padding, y));
+        tt.style.left = x + 'px';
+        tt.style.top = y + 'px';
+      }
+    });
+
+  // Initial load toast will be scheduled after toast system initializes
+
+    // ---------- SETTINGS PANEL ----------
+    const customizeBtn = document.getElementById('customizeLayout');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const closeSettings = document.getElementById('closeSettings');
+    const saveSettings = document.getElementById('saveSettings');
+    const resetSettings = document.getElementById('resetSettings');
+    const motionToggle = document.getElementById('motionToggle');
+
+    function openSettings(){ settingsPanel.classList.remove('hidden'); settingsPanel.classList.add('flex'); }
+    function closeSettingsFn(){ settingsPanel.classList.add('hidden'); settingsPanel.classList.remove('flex'); }
+    customizeBtn.addEventListener('click', openSettings);
+    closeSettings.addEventListener('click', closeSettingsFn);
+    settingsPanel.addEventListener('click', (e)=>{ if(e.target === settingsPanel) closeSettingsFn(); });
+
+    const accentBtns = Array.from(document.querySelectorAll('#settingsPanel [data-accent]'));
+    const bgBtns = Array.from(document.querySelectorAll('#settingsPanel [data-bg]'));
+    const densityBtns = Array.from(document.querySelectorAll('#settingsPanel [data-density]'));
+
+    function getPrefs(){ try{ return JSON.parse(localStorage.getItem('ih_prefs')) || {}; }catch{ return {}; } }
+    function setPrefs(p){ localStorage.setItem('ih_prefs', JSON.stringify(p)); }
+    function applyPrefs(p){
+      if(p.accent) document.documentElement.setAttribute('data-accent', p.accent);
+      if(p.bg) document.documentElement.setAttribute('data-bg', p.bg);
+      document.documentElement.setAttribute('data-density', p.density||'comfortable');
+      document.documentElement.classList.toggle('reduce-motion', !!p.reduceMotion);
+      motionToggle.checked = !!p.reduceMotion;
+    }
+    const initPrefs = getPrefs(); applyPrefs(initPrefs);
+    accentBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-accent', b.dataset.accent)));
+    bgBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-bg', b.dataset.bg)));
+    densityBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-density', b.dataset.density)));
+    saveSettings.addEventListener('click', ()=>{
+      const prev = getPrefs();
+      const p = {
+        accent: document.documentElement.getAttribute('data-accent'),
+        bg: document.documentElement.getAttribute('data-bg'),
+        density: document.documentElement.getAttribute('data-density'),
+        reduceMotion: motionToggle.checked,
+        glass: glassIntensity ? glassIntensity.value : (prev.glass||'0.6'),
+        sidebar: (prev.sidebar)||'default',
+        contrast: contrastToggle ? contrastToggle.checked : !!prev.contrast,
+        font: document.documentElement.getAttribute('data-font') || prev.font || 'base'
+      };
+      const activeSidebar = document.activeElement && document.activeElement.getAttribute('data-sidebar');
+      if(activeSidebar) p.sidebar = activeSidebar;
+      setPrefs(p); applyPrefs(p); applyPrefsExtended(p); closeSettingsFn();
+    });
+    resetSettings.addEventListener('click', ()=>{ const p = {accent:'teal', bg:'gradient', density:'comfortable', reduceMotion:false}; setPrefs(p); applyPrefs(p); });
+
+    // ---------- FOCUS MODE ----------
+  const focusOverlay = document.getElementById('focusOverlay');
+  const focusContainer = document.getElementById('focusContainer');
+  let focusCharts = [];
+    function openFocus(fromBtn){
+      const card = fromBtn.closest('[data-focusable]');
+      if(!card) return;
+      focusContainer.innerHTML = '';
+      const clone = card.cloneNode(true);
+      // Remove nested focus buttons to avoid recursion
+      clone.querySelectorAll('.focusBtn').forEach(b=> b.remove());
+      focusContainer.appendChild(clone);
+      // Rehydrate dynamic widgets (charts) inside the cloned content
+      try {
+        const maybeDept = clone.querySelector('#deptChart');
+        if(maybeDept){
+          // ensure unique id to avoid collisions
+          maybeDept.id = 'focus_deptChart_' + Date.now();
+          const ctx = maybeDept.getContext('2d');
+          const ch = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: ['Sales','Ops','HR','IT','Logistics'], datasets: [ { label: 'Present', data: [40,30,20,18,18], borderRadius:6, backgroundColor: 'rgba(20,184,166,0.6)' }, { label: 'Late', data: [5,2,1,0,0], borderRadius:6, backgroundColor: 'rgba(244,63,94,0.5)' } ] },
+            options: { responsive:true, plugins:{legend:{position:'top'}}, scales:{ x:{ grid:{ display:false } }, y:{ grid:{ color:'rgba(148,163,184,0.25)' } } } }
+          });
+          focusCharts.push(ch);
+        }
+        const maybePred = clone.querySelector('#predictChart');
+        if(maybePred){
+          // ensure unique id to avoid collisions
+          maybePred.id = 'focus_predictChart_' + Date.now();
+          const ctx2 = maybePred.getContext('2d');
+          const ch2 = new Chart(ctx2, {
+            type: 'line',
+            data: { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], datasets: [{ label:'Predicted Available', data:[120,125,130,128,122,80,75], tension:0.4, borderColor:'rgba(59,130,246,0.9)', backgroundColor:'rgba(59,130,246,0.2)', fill:true }] },
+            options:{ responsive:true, plugins:{legend:{display:true}}, scales:{ x:{ grid:{ display:false } }, y:{ grid:{ color:'rgba(148,163,184,0.25)' } } } }
+          });
+          focusCharts.push(ch2);
+        }
+      } catch(e){}
+      focusOverlay.classList.remove('hidden'); focusOverlay.classList.add('flex');
+    }
+    function closeFocus(){
+      try { focusCharts.forEach(ch=> { if(ch && typeof ch.destroy==='function') ch.destroy(); }); } catch(_){}
+      focusCharts = [];
+      focusOverlay.classList.add('hidden');
+      focusOverlay.classList.remove('flex');
+      focusContainer.innerHTML='';
+    }
+    document.getElementById('closeFocus').addEventListener('click', closeFocus);
+    document.getElementById('focusBackdrop').addEventListener('click', closeFocus);
+    document.querySelectorAll('.focusBtn').forEach(btn=> btn.addEventListener('click', ()=> openFocus(btn)));
+
+    // ---------- KPI SPARKLINES ----------
+    try {
+      const kpiCards = Array.from(document.querySelectorAll('.grid.grid-cols-2.md\:grid-cols-4 > div.glass'));
+      const sparkData = () => Array.from({length: 20}, ()=> Math.floor(80 + Math.random()*40));
+      kpiCards.forEach((card)=>{
+        const c = document.createElement('canvas');
+        c.className = 'w-full h-8 mt-2';
+        card.appendChild(c);
+        const labels = Array.from({length:20}, (_,i)=> i);
+        const dataset = {
+          data: sparkData(),
+          tension: 0.4,
+          borderWidth: 1.5,
+          borderColor: '#14b8a6',
+          backgroundColor: 'rgba(20,184,166,0.15)',
+          fill: true
+        };
+        const cfg = {
+          type: 'line',
+          data: { labels, datasets: [dataset] },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            elements: { point: { radius: 0 } },
+            scales: { x: { display: false }, y: { display: false } }
+          }
+        };
+        new Chart(c, cfg);
+      });
+    } catch(e){}
+
+    // ---------- CONFETTI (lightweight) ----------
+    const confettiCanvas = document.createElement('canvas'); confettiCanvas.className='fixed inset-0 pointer-events-none'; confettiCanvas.style.zIndex=60; document.body.appendChild(confettiCanvas);
+    const ctx = confettiCanvas.getContext('2d');
+    function resizeConfetti(){ confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeConfetti); resizeConfetti();
+    function confettiBurst(){
+      const pieces = Array.from({length: 120}, ()=> ({ x: Math.random()*confettiCanvas.width, y: -10, r: Math.random()*6+3, c: `hsl(${Math.random()*360},90%,60%)`, vy: Math.random()*2+2, vx: (Math.random()-0.5)*2, a: Math.random()*Math.PI }))
+      let ticks = 0;
+      function step(){
+        ctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+        pieces.forEach(p=>{ p.y += p.vy; p.x += p.vx; p.a += 0.1; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.fillStyle = p.c; ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r*1.6); ctx.restore(); });
+        ticks++; if(ticks<150) requestAnimationFrame(step); else ctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+      }
+      step();
+    }
+    document.getElementById('captureBtn').addEventListener('click', ()=> setTimeout(confettiBurst, 300));
+    document.getElementById('generatePayroll').addEventListener('click', ()=> setTimeout(confettiBurst, 500));
+
+    // ---------- SHORTCUTS ----------
+    document.addEventListener('keydown', (e)=>{
+      if(e.target && ['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+      if(e.key.toLowerCase()==='s'){ e.preventDefault(); openSettings(); }
+      if(e.key.toLowerCase()==='t'){ e.preventDefault(); themeToggle.click(); }
+      if(e.key === '?'){ e.preventDefault(); openShortcuts(); }
+      if(e.key.toLowerCase()==='g'){ e.preventDefault(); document.querySelector('#section-live')?.scrollIntoView({behavior:'smooth'}); }
+      if(e.key.toLowerCase()==='h'){ e.preventDefault(); document.querySelector('#section-heatmap .focusBtn')?.click(); }
+    });
+
+    // ---------- TOASTS ----------
+    const toastHost = document.getElementById('toastHost');
+    function showToast(msg, type='info'){
+      const item = document.createElement('div');
+      item.className = `toast ${type==='success'?'success':type==='warning'?'warn':type==='error'?'error':'info'} glass`;
+      item.innerHTML = `<div class="flex items-start gap-2">
+        <iconify-icon icon="${type==='success'?'ph:check-circle-duotone':type==='warning'?'ph:warning-duotone':type==='error'?'ph:x-circle-duotone':'ph:info-duotone'}" class="mt-0.5 text-accent"></iconify-icon>
+        <div class="text-sm">${msg}</div>
+      </div>`;
+      toastHost.appendChild(item);
+      setTimeout(()=>{ item.style.transition='opacity .4s ease, transform .4s ease'; item.style.opacity='0'; item.style.transform='translateY(-6px)'; }, 2600);
+      setTimeout(()=> item.remove(), 3100);
+    }
+    // Show initial load message shortly after initialization
+    setTimeout(()=>{ try{ showToast('IntelliHRTrack demo loaded — dashboard ready.','success'); }catch(_){} }, 700);
+
+    // ---------- TOP PROGRESS ----------
+    const topProgress = document.getElementById('topProgress');
+    function progressStart(){
+      topProgress.style.opacity = '1'; topProgress.style.width='15%';
+      setTimeout(()=>{ topProgress.style.width='80%'; }, 200);
+    }
+    function progressDone(){
+      topProgress.style.width='100%';
+      setTimeout(()=>{ topProgress.style.opacity='0'; topProgress.style.width='0%'; }, 450);
+    }
+
+    // Hook to key actions without altering existing behavior
+    const btnIds = [
+      ['captureBtn','Snapshot captured','success',900],
+      ['downloadAudit','Audit JSON downloaded','info',700],
+      ['exportAuditBtn','Audit snapshot exported','success',900],
+      ['runAnomaly','Anomaly scan running…','warning',1200],
+      ['generatePayroll','Payroll job queued','success',1100],
+      ['runDiagnostics','Diagnostics in progress…','info',1400],
+      ['refreshHeatmap','Heatmap refreshed','success',600],
+      ['saveSettings','Preferences saved','success',500],
+      ['resetSettings','Preferences reset','info',500],
+      ['approveLeaves','Leaves approved (demo)','success',700],
+      ['registerEmployee','Employee registration (demo)','info',700]
+    ];
+    btnIds.forEach(([id,msg,type,dur])=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.addEventListener('click', ()=>{ progressStart(); showToast(msg, type); setTimeout(progressDone, dur); });
+    });
+
+    // ---------- COMMAND PALETTE ----------
+    const cmdPalette = document.getElementById('cmdPalette');
+    const cmdInput = document.getElementById('cmdInput');
+    const cmdList = document.getElementById('cmdList');
+    const closeCmd = document.getElementById('closeCmd');
+    function openCmd(){ cmdPalette.classList.remove('hidden'); cmdPalette.classList.add('flex'); cmdInput.value=''; renderCmd(''); setTimeout(()=> cmdInput.focus(), 50); }
+    function closeCmdFn(){ cmdPalette.classList.add('hidden'); cmdPalette.classList.remove('flex'); }
+    closeCmd.addEventListener('click', closeCmdFn);
+    cmdPalette.addEventListener('click', (e)=>{ if(e.target===cmdPalette) closeCmdFn(); });
+
+    const section = (id)=> document.querySelector(id);
+    const click = (sel)=>{ const el=document.querySelector(sel); if(el) el.click(); };
+    const commands = [
+      { name:'Open Settings', action: ()=> openSettings() },
+      { name:'Toggle Theme (Light/Dark)', action: ()=> themeToggle.click() },
+      { name:'Scroll to Live Feed', action: ()=> section('#section-live').scrollIntoView({behavior:'smooth'}) },
+      { name:'Scroll to Charts', action: ()=> section('#section-charts').scrollIntoView({behavior:'smooth'}) },
+      { name:'Focus Heatmap', action: ()=> click('#section-heatmap .focusBtn') },
+      { name:'Focus Alerts', action: ()=> click('#section-alerts .focusBtn') },
+      { name:'Refresh Heatmap', action: ()=> click('#refreshHeatmap') },
+      { name:'Capture Audit Snapshot', action: ()=> click('#captureBtn') },
+      { name:'Download Audit JSON', action: ()=> click('#downloadAudit') },
+      { name:'Run Diagnostics', action: ()=> click('#runDiagnostics') },
+    ];
+    function renderCmd(q){
+      const ql = q.trim().toLowerCase();
+      cmdList.innerHTML='';
+      commands.filter(c=> c.name.toLowerCase().includes(ql)).forEach(c=>{
+        const li = document.createElement('li');
+        li.className = 'px-3 py-2 rounded-lg hover:shadow-glow hover:ring-1 hover:ring-white/30 cursor-pointer glass mb-2';
+        li.textContent = c.name; li.addEventListener('click', ()=>{ c.action(); closeCmdFn(); });
+        cmdList.appendChild(li);
+      });
+    }
+    cmdInput.addEventListener('input', ()=> renderCmd(cmdInput.value));
+    document.addEventListener('keydown', (e)=>{
+      if(e.ctrlKey && e.key.toLowerCase()==='k'){ e.preventDefault(); openCmd(); }
+      if(e.key==='Escape'){ closeCmdFn(); }
+    });
+
+    // ---------- SIDEBAR ACTIVE (filename-based) ----------
+    (function(){
+      try {
+        const current = location.pathname.split('/').pop();
+        const links = Array.from(document.querySelectorAll('aside nav a[href]'));
+        links.forEach(a=>{
+          const name = (a.getAttribute('href')||'').split('/').pop();
+          if(name === current){
+            a.classList.add('ring','ring-white/30','bg-accent/10');
+            a.setAttribute('aria-current','page');
+          }
+        });
+      } catch(e) {}
+    })();
+
+    // ---------- REVEAL ON SCROLL ----------
+    const revealables = Array.from(document.querySelectorAll('.glass'));
+    revealables.forEach(el=> el.classList.add('reveal'));
+    const io = new IntersectionObserver(entries=>{
+      entries.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('in-view'); io.unobserve(en.target); } });
+    }, { threshold: 0.12 });
+    revealables.forEach(el=> io.observe(el));
+
+    // ---------- BACK TO TOP ----------
+    const backToTop = document.getElementById('backToTop');
+    window.addEventListener('scroll', ()=>{
+      if(window.scrollY > 400) backToTop.classList.remove('hidden'); else backToTop.classList.add('hidden');
+    });
+    backToTop.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+
+    // ---------- CLOCK + NETWORK STATUS ----------
+    const headerClock = document.getElementById('headerClock');
+    const netDot = document.getElementById('netDot');
+    function updateClock(){ if(headerClock) headerClock.textContent = new Date().toLocaleTimeString(); }
+    setInterval(updateClock, 1000); updateClock();
+    function updateNet(){ const on = navigator.onLine; if(netDot){ netDot.classList.toggle('bg-green-500', on); netDot.classList.toggle('bg-rose-500', !on); netDot.title = on ? 'Online' : 'Offline'; } }
+    window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); updateNet();
+
+    // ---------- PRINT VIEW ----------
+    const printBtn = document.getElementById('printView');
+    if(printBtn){ printBtn.addEventListener('click', ()=> window.print()); }
+
+    // ---------- PREFS EXPORT / IMPORT ----------
+    const exportPrefs = document.getElementById('exportPrefs');
+    const importPrefsBtn = document.getElementById('importPrefsBtn');
+    const prefsFile = document.getElementById('prefsFile');
+    if(exportPrefs){ exportPrefs.addEventListener('click', ()=> downloadJSON(getPrefs(), 'ih_prefs.json')); }
+    if(importPrefsBtn){ importPrefsBtn.addEventListener('click', ()=> prefsFile && prefsFile.click()); }
+    if(prefsFile){ prefsFile.addEventListener('change', async ()=>{
+      const file = prefsFile.files && prefsFile.files[0]; if(!file) return; try{
+        const txt = await file.text(); const json = JSON.parse(txt); setPrefs(json); applyPrefs(json); showToast('Preferences imported', 'success');
+      }catch{ showToast('Invalid preferences file', 'error'); }
+    }); }
+
+    // ---------- SHORTCUTS MODAL ----------
+    const shortcutsModal = document.getElementById('shortcutsModal');
+    const shortcutsBtn = document.getElementById('shortcutsBtn');
+    const closeShortcuts = document.getElementById('closeShortcuts');
+    function openShortcuts(){ shortcutsModal.classList.remove('hidden'); shortcutsModal.classList.add('flex'); }
+    function closeShortcutsFn(){ shortcutsModal.classList.add('hidden'); shortcutsModal.classList.remove('flex'); }
+    shortcutsBtn?.addEventListener('click', openShortcuts);
+    closeShortcuts?.addEventListener('click', closeShortcutsFn);
+    shortcutsModal.addEventListener('click', (e)=>{ if(e.target===shortcutsModal) closeShortcutsFn(); });
+
+    // ---------- MOBILE SIDEBAR ----------
+    const mobileMenuBtn = document.getElementById('mobileMenu');
+    const mobileSidebar = document.getElementById('mobileSidebar');
+    const mobilePanel = document.getElementById('mobilePanel');
+    const mobileBackdrop = document.getElementById('mobileBackdrop');
+    const mobileClose = document.getElementById('closeMobile');
+  const mobileNavContent = document.getElementById('mobileNavContent');
+  const mobileMenuFab = document.getElementById('mobileMenuFab');
+    function openMobile(){
+      // Clone desktop nav for consistency
+      const desk = document.querySelector('aside nav ul');
+      if(desk && mobileNavContent){ mobileNavContent.innerHTML=''; mobileNavContent.appendChild(desk.cloneNode(true));
+        // Close drawer when clicking a nav link + smooth scroll to target
+        mobileNavContent.querySelectorAll('a').forEach(a=>{
+          a.addEventListener('click', (ev)=>{
+            const tgt = a.getAttribute('data-target');
+            if(tgt){ ev.preventDefault(); const el = document.querySelector(tgt); if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+              // mimic active ring state
+              mobileNavContent.querySelectorAll('a').forEach(n=> n.classList.remove('ring','ring-white/30'));
+              a.classList.add('ring','ring-white/30');
+            }
+            closeMobile();
+          });
+        });
+      }
+      mobileSidebar.classList.remove('hidden');
+      requestAnimationFrame(()=> mobilePanel.classList.remove('-translate-x-full'));
+    }
+    function closeMobile(){ mobilePanel.classList.add('-translate-x-full'); setTimeout(()=> mobileSidebar.classList.add('hidden'), 250); }
+  mobileMenuBtn?.addEventListener('click', openMobile);
+  mobileMenuFab?.addEventListener('click', openMobile);
+    mobileBackdrop?.addEventListener('click', closeMobile);
+    mobileClose?.addEventListener('click', closeMobile);
+
+    // ---------- MICRO-INTERACTIONS WIRING ----------
+    // Add hover-lift to cards and ripple to buttons
+    Array.from(document.querySelectorAll('.glass')).forEach(el=> el.classList.add('hover-lift'));
+    Array.from(document.querySelectorAll('button')).forEach(el=> el.classList.add('ripple'));
+    // Subtle pulse on network dot
+    document.getElementById('netDot')?.classList.add('pulse-subtle');
+
+    // Make live/alerts lists stagger in
+    document.getElementById('liveFeed')?.classList.add('stagger-children');
+    document.getElementById('alertsList')?.classList.add('stagger-children');
+
+    // ---------- SKELETONS + REFRESH INDICATORS ----------
+    function addSkeletonAfter(el, height=120){ const s = document.createElement('div'); s.className='skeleton mt-3'; s.style.height=height+'px'; el.parentNode.insertBefore(s, el.nextSibling); return s; }
+    const deptCanvas = document.getElementById('deptChart');
+    const predictCanvas = document.getElementById('predictChart');
+    let deptSk = addSkeletonAfter(deptCanvas, 160);
+    let predSk = addSkeletonAfter(predictCanvas, 160);
+    // Remove skeletons after initial render
+    setTimeout(()=>{ deptSk?.remove(); predSk?.remove(); }, 900);
+    // Heatmap refresh time
+    const heatmapRefreshTime = document.getElementById('heatmapRefreshTime');
+    function setHeatmapTime(){ if(heatmapRefreshTime) heatmapRefreshTime.textContent = new Date().toLocaleTimeString(); }
+    setHeatmapTime();
+    document.getElementById('refreshHeatmap').addEventListener('click', ()=>{ setHeatmapTime(); });
+    // Live updated time
+    const liveUpdated = document.getElementById('liveUpdated');
+    function touchLive(){ if(liveUpdated) liveUpdated.textContent = new Date().toLocaleTimeString(); }
+    touchLive();
+
+    // Enhance pushEvent to animate-in newly arriving items
+    const origPushEvent = pushEvent;
+    window.pushEvent = function(e){ origPushEvent(e); const first = document.getElementById('liveFeed')?.firstElementChild; if(first){ first.classList.add('animate-in'); } touchLive(); };
+
+    // ---------- SETTINGS: GLASS + SIDEBAR + RELAXED + CONTRAST + FONT ----------
+    const glassIntensity = document.getElementById('glassIntensity');
+    const contrastToggle = document.getElementById('contrastToggle');
+    const sidebarBtns = Array.from(document.querySelectorAll('#settingsPanel [data-sidebar]'));
+    const fontBtns = Array.from(document.querySelectorAll('#settingsPanel [data-font]'));
+
+    function applyGlass(val){
+      const alpha = parseFloat(val||'0.6');
+      document.documentElement.style.setProperty('--card-bg', `rgba(255,255,255,${alpha})`);
+      document.documentElement.style.setProperty('--card-border', `rgba(255,255,255,${Math.max(0, Math.min(1, alpha*0.6))})`);
+    }
+    function applySidebar(size){
+      const map = { narrow:'14rem', default:'18rem', wide:'22rem' };
+      const px = map[size] || map.default;
+      document.documentElement.style.setProperty('--sidebar', px);
+    }
+    function applyFont(f){
+      const size = f==='small'? '0.95rem' : f==='large'? '1.05rem' : '1rem';
+      document.documentElement.setAttribute('data-font', f||'base');
+      document.body.style.fontSize = size;
+    }
+
+    function applyPrefsExtended(p){
+      if(p.glass) applyGlass(p.glass);
+      if(p.sidebar) applySidebar(p.sidebar);
+      if(p.contrast) document.documentElement.classList.toggle('high-contrast', !!p.contrast);
+      if(p.font) applyFont(p.font);
+      if(glassIntensity) glassIntensity.value = p.glass || '0.6';
+      if(contrastToggle) contrastToggle.checked = !!p.contrast;
+    }
+
+    // Extend existing applyPrefs call
+    applyPrefsExtended(getPrefs());
+
+    // Wire sidebar + font btns
+    sidebarBtns.forEach(b=> b.addEventListener('click', ()=> applySidebar(b.dataset.sidebar)));
+    fontBtns.forEach(b=> b.addEventListener('click', ()=> applyFont(b.dataset.font)));
+    glassIntensity?.addEventListener('input', ()=> applyGlass(glassIntensity.value));
+    contrastToggle?.addEventListener('change', ()=> document.documentElement.classList.toggle('high-contrast', contrastToggle.checked));
+
+    // Save handler consolidated above — no override needed here
+
+    // ---------- COLLAPSIBLE SECTIONS ----------
+    const collapsibleIds = ['section-live','section-charts','section-heatmap','section-alerts','section-health','section-audit','section-ai'];
+    function loadCollapsed(id){ return localStorage.getItem('ih_collapsed_'+id)==='1'; }
+    function saveCollapsed(id, v){ localStorage.setItem('ih_collapsed_'+id, v?'1':'0'); }
+    collapsibleIds.forEach(id=>{
+      const el = document.getElementById(id); if(!el) return; el.classList.add('collapsible');
+      // Add toggle button in header area
+      const header = el.querySelector('h3, h4');
+      if(header){
+        const btn = document.createElement('button'); btn.className='text-xs px-2 py-1 rounded-lg glass ml-2'; btn.textContent='Collapse';
+        btn.setAttribute('data-collapsible-keep','');
+        // Special "Show Notifications" button for alerts when collapsed
+        let showAlertsBtn = null;
+        if(id==='section-alerts'){
+          showAlertsBtn = document.createElement('button');
+          showAlertsBtn.id = 'alertsShowBtn';
+          showAlertsBtn.className = 'hidden mt-3 px-3 py-2 rounded-lg glass w-full';
+          showAlertsBtn.setAttribute('data-collapsible-keep','');
+          showAlertsBtn.textContent = 'Show Notifications';
+          el.appendChild(showAlertsBtn);
+          showAlertsBtn.addEventListener('click', ()=>{ el.classList.remove('collapsed'); btn.textContent='Collapse'; saveCollapsed(id,false); showAlertsBtn.classList.add('hidden'); });
+        }
+        function setCollapsed(c){
+          if(c){ btn.textContent='Expand'; if(showAlertsBtn) showAlertsBtn.classList.remove('hidden'); }
+          else { btn.textContent='Collapse'; if(showAlertsBtn) showAlertsBtn.classList.add('hidden'); }
+        }
+        btn.addEventListener('click', ()=>{ const c = el.classList.toggle('collapsed'); setCollapsed(c); saveCollapsed(id, c); });
+        header.parentNode.insertBefore(btn, header.nextSibling);
+        if(loadCollapsed(id)){ el.classList.add('collapsed'); setCollapsed(true); }
+      }
+    });
+
+    // ---------- ALERTS FILTER UI ----------
+    (function(){
+      const card = document.getElementById('section-alerts'); if(!card) return;
+      const bar = document.createElement('div'); bar.className='mt-2 flex items-center justify-end gap-2 text-xs';
+      bar.innerHTML = '<label class="text-gray-500 dark:text-gray-400">Filter:</label>';
+      const sel = document.createElement('select'); sel.className='glass rounded-md px-2 py-1';
+      ['All','High','Medium','Low'].forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
+      bar.appendChild(sel); card.insertBefore(bar, card.querySelector('#alertsList'));
+      const key='ih_alerts_filter'; sel.value = localStorage.getItem(key)||'All';
+      function render(){
+        const list = document.getElementById('alertsList'); list.innerHTML='';
+        (state.alerts||[]).filter(a=> sel.value==='All' || a.lvl===sel.value).forEach(a=>{
+          const li = document.createElement('li'); li.className='p-2 rounded-md border glass';
+          li.innerHTML = `<div class="font-medium">${a.text}</div><div class="text-xs text-gray-400">Severity: ${a.lvl}</div>`; list.appendChild(li);
+        });
+      }
+      sel.addEventListener('change', ()=>{ localStorage.setItem(key, sel.value); render(); });
+      render();
+    })();
+  </script>
+{% endblock %}

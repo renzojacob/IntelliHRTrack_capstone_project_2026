@@ -1,0 +1,1093 @@
+{% extends 'admin/base_admin.html' %}
+
+{% block title %}Payroll & Finance • IntelliHRTrack{% endblock %}
+
+{% block extra_head %}
+<style>
+		html, body { height: 100%; }
+		.glass { background: linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.76)); backdrop-filter: blur(10px); }
+		.glass-dark { background: linear-gradient(180deg, rgba(31,41,55,0.72), rgba(31,41,55,0.64)); }
+		.neon-divider { height: 1px; background: linear-gradient(90deg, rgba(245,158,11,0), rgba(245,158,11,.6), rgba(245,158,11,0)); }
+		.topbar-progress { position: fixed; left: 0; top: 0; height: 3px; width: 0; z-index: 100; background: linear-gradient(90deg, #f59e0b, #fb923c, #f59e0b); box-shadow: 0 0 12px rgba(251,146,60,.65); transition: width .45s ease; }
+		.fancy-scroll::-webkit-scrollbar { height:10px; width:10px; }
+		.fancy-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #f59e0b, #fb923c); border-radius:9999px; }
+		.fancy-scroll::-webkit-scrollbar-track { background: transparent; }
+		/* Dashboard sidebar parity */
+		:root { --accent:#14b8a6; --accent-to:#0ea5a0; --card-bg: rgba(255,255,255,0.6); --card-border: rgba(255,255,255,0.35); }
+		html[data-accent="teal"] { --accent:#14b8a6; --accent-to:#0ea5a0; }
+		html[data-accent="purple"] { --accent:#8b5cf6; --accent-to:#7c3aed; }
+		html[data-accent="rose"] { --accent:#f43f5e; --accent-to:#e11d48; }
+		html[data-accent="amber"] { --accent:#f59e0b; --accent-to:#d97706; }
+		.gradient-accent { background-image: linear-gradient(135deg, var(--accent), var(--accent-to)); }
+		.text-accent { color: var(--accent); }
+		.bg-accent { background-color: var(--accent); }
+		/* Glow shadow like dashboard */
+		.shadow-glow { box-shadow: 0 10px 30px -5px rgba(245,158,11,0.35), 0 8px 16px -8px rgba(59,130,246,0.25); }
+		/* Big scroll styling */
+		.big-scroll { scrollbar-width:auto; scrollbar-color: var(--accent) transparent; }
+		.big-scroll::-webkit-scrollbar { width:16px; height:16px; }
+		.big-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), var(--accent-to)); border-radius:12px; border:3px solid transparent; background-clip: content-box; }
+	</style>
+<style>
+		/* Sidebar readability improvements */
+		/* Use dark "glass" styling within the sidebar in dark mode for proper contrast */
+		.dark aside[data-resizable] .glass { background: linear-gradient(180deg, rgba(31,41,55,0.72), rgba(31,41,55,0.64)); }
+		/* Subtle borders to separate items from backdrop */
+		aside[data-resizable] .glass { border: 1px solid rgba(255,255,255,0.35); }
+		.dark aside[data-resizable] .glass { border-color: rgba(71,85,105,0.6); }
+		/* Larger, more legible nav links */
+		#sideNavList a { font-size: 0.95rem; line-height: 1.6; }
+		#sideNavList a iconify-icon { font-size: 1.05rem; }
+		/* Clear keyboard focus */
+		aside[data-resizable] nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 0.75rem; }
+		/* Active page state: strong contrast and clear affordance */
+		aside[data-resizable] nav a[aria-current="page"] {
+			background-image: linear-gradient(135deg, var(--accent), var(--accent-to));
+			color: #fff !important;
+			box-shadow: 0 10px 25px -8px rgba(20,184,166,.45);
+		}
+		aside[data-resizable] nav a[aria-current="page"] iconify-icon { color: #fff !important; }
+
+		/* Header readability improvements (mirrors sidebar tweaks) */
+		#section-top.glass { border: 1px solid rgba(255,255,255,0.35); }
+		.dark #section-top.glass { border-color: rgba(71,85,105,0.6); background: linear-gradient(180deg, rgba(31,41,55,0.72), rgba(31,41,55,0.64)); }
+		#section-top .text-xs.glass { font-size: 0.85rem; line-height: 1.5; }
+		#section-top button, #section-top a { font-size: 0.95rem; }
+		#section-top button:focus-visible, #section-top a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 0.75rem; }
+		.dark #section-top .rounded-xl.glass { border-color: rgba(71,85,105,0.6); }
+	</style>
+<style>
+		body {
+			background-color: #ffffff;
+			background-image:
+				radial-gradient(1200px 600px at -10% -20%, rgba(245, 158, 11, 0.18), transparent),
+				radial-gradient(900px 500px at 110% 10%, rgba(251, 146, 60, 0.14), transparent);
+		}
+		.dark body {
+			background-color: #0f172a; /* slate-900 */
+			background-image:
+				radial-gradient(1200px 600px at -10% -20%, rgba(245, 158, 11, 0.12), transparent),
+				radial-gradient(900px 500px at 110% 10%, rgba(251, 146, 60, 0.10), transparent);
+		}
+	</style>
+<style> .js-only{ display:none !important } </style>
+<style> .payroll-tab { outline: none } </style>
+{% endblock %}
+
+{% block content %}
+<!-- Top Stats Cards -->
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
+						<div class="flex justify-between items-start">
+							<div>
+								<p class="text-sm text-gray-500 dark:text-gray-400">Total Payroll This Month</p>
+								<h3 class="text-2xl font-extrabold mt-1">$284,750</h3>
+								<p class="text-xs text-green-600 mt-2 flex items-center"><iconify-icon icon="ph:arrow-up-right-duotone" class="mr-1"></iconify-icon>5.2% increase</p>
+							</div>
+							<div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:currency-dollar-duotone" class="text-xl"></iconify-icon></div>
+						</div>
+					</div>
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
+						<div class="flex justify-between items-start">
+							<div>
+								<p class="text-sm text-gray-500 dark:text-gray-400">Pending Approval</p>
+								<h3 class="text-2xl font-extrabold mt-1">$152,430</h3>
+								<p class="text-xs text-yellow-600 mt-2 flex items-center"><iconify-icon icon="ph:clock-duotone" class="mr-1"></iconify-icon>Awaiting review</p>
+							</div>
+							<div class="p-3 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:hourglass-duotone" class="text-xl"></iconify-icon></div>
+						</div>
+					</div>
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
+						<div class="flex justify-between items-start">
+							<div>
+								<p class="text-sm text-gray-500 dark:text-gray-400">Overtime Costs</p>
+								<h3 class="text-2xl font-extrabold mt-1">$12,480</h3>
+								<p class="text-xs text-red-600 mt-2 flex items-center"><iconify-icon icon="ph:warning-circle-duotone" class="mr-1"></iconify-icon>18% over budget</p>
+							</div>
+							<div class="p-3 bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:clock-afternoon-duotone" class="text-xl"></iconify-icon></div>
+						</div>
+					</div>
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
+						<div class="flex justify-between items-start">
+							<div>
+								<p class="text-sm text-gray-500 dark:text-gray-400">Tax Deductions</p>
+								<h3 class="text-2xl font-extrabold mt-1">$42,150</h3>
+								<p class="text-xs text-blue-600 mt-2 flex items-center"><iconify-icon icon="ph:percent-duotone" class="mr-1"></iconify-icon>14.8% of payroll</p>
+							</div>
+							<div class="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:receipt-duotone" class="text-xl"></iconify-icon></div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Tabs Wrapper -->
+				<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl border border-white/30 dark:border-gray-700/60 overflow-hidden">
+					<div class="border-b border-white/30 dark:border-gray-700/60 overflow-x-auto">
+						<nav class="flex -mb-px">
+							<button id="payroll-processing-tab" class="payroll-tab py-4 px-6 text-center border-b-2 border-amber-500 text-amber-500 dark:text-amber-400 font-medium flex items-center whitespace-nowrap">
+								<iconify-icon icon="ph:calculator-duotone" class="mr-2"></iconify-icon>
+								Payroll Processing
+							</button>
+							<button id="salary-structure-tab" class="payroll-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
+								<iconify-icon icon="ph:gear-duotone" class="mr-2"></iconify-icon>
+								Salary Structure
+							</button>
+							<button id="payroll-history-tab" class="payroll-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
+								<iconify-icon icon="ph:clock-counter-clockwise-duotone" class="mr-2"></iconify-icon>
+								Payroll History
+							</button>
+							<button id="financial-dashboard-tab" class="payroll-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
+								<iconify-icon icon="ph:chart-line-up-duotone" class="mr-2"></iconify-icon>
+								Financial Dashboard
+							</button>
+							<button id="payslips-tab" class="payroll-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
+								<iconify-icon icon="ph:file-text-duotone" class="mr-2"></iconify-icon>
+								Payslips
+							</button>
+						</nav>
+					</div>
+
+					<div class="p-6">
+						<!-- Payroll Processing Content (Default) -->
+						<div id="payroll-processing-content" class="payroll-content">
+							<!-- Action Bar -->
+							<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+								<div>
+									<h3 class="text-xl font-bold">Payroll Cycle: December 2023</h3>
+									<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Process payroll for 247 employees | Cycle ends: Dec 31, 2023</p>
+								</div>
+								<div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+									<div class="relative group">
+										<div class="absolute -inset-1 bg-gradient-to-r from-amber-600 to-orange-600 rounded-lg blur opacity-25 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+										<button class="relative px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg flex items-center shadow-lg transition-all duration-300 hover:scale-105">
+											<iconify-icon icon="ph:play-circle-duotone" class="mr-2"></iconify-icon>
+											Run Payroll
+										</button>
+									</div>
+									<button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md transition-all duration-300 hover:scale-105">
+										<iconify-icon icon="ph:export-duotone" class="mr-2"></iconify-icon>
+										Export
+									</button>
+									<button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md transition-all duration-300 hover:scale-105">
+										<iconify-icon icon="ph:tray-arrow-down-duotone" class="mr-2"></iconify-icon>
+										Import Data
+									</button>
+									<button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md transition-all duration-300 hover:scale-105">
+										<iconify-icon icon="ph:robot-duotone" class="mr-2"></iconify-icon>
+										AI Validate
+									</button>
+								</div>
+							</div>
+
+							<!-- Payroll Summary -->
+							<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+								<div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Payroll Summary</h3>
+									<div class="overflow-x-auto">
+										<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+											<thead class="bg-gray-50 dark:bg-gray-700/60">
+												<tr>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Department</th>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Employees</th>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Base Pay</th>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Overtime</th>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Deductions</th>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Net Pay</th>
+												</tr>
+											</thead>
+											<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+												<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-medium">Engineering</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">68</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">$142,500</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-green-500">$8,240</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-red-500">$21,375</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">$129,365</td>
+												</tr>
+												<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-medium">Sales</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">42</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">$89,750</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-green-500">$2,150</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-red-500">$13,462</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">$78,438</td>
+												</tr>
+												<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-medium">Marketing</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">28</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">$65,200</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-green-500">$1,890</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-red-500">$9,780</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">$57,310</td>
+												</tr>
+												<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-medium">HR & Admin</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">18</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">$52,300</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-green-500">$200</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-red-500">$7,845</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">$44,655</td>
+												</tr>
+											</tbody>
+											<tfoot class="bg-gray-50 dark:bg-gray-700/60">
+												<tr>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-bold">Total</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-bold">156</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-bold">$349,750</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-green-500">$12,480</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-red-500">$52,462</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-bold">$309,768</td>
+												</tr>
+											</tfoot>
+										</table>
+									</div>
+								</div>
+								<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Approval Workflow</h3>
+									<div class="space-y-4">
+										<div class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+											<div class="flex items-center">
+												<div class="p-2 bg-amber-100 dark:bg-amber-800 rounded-lg mr-3"><iconify-icon icon="ph:user-check-duotone" class="text-amber-500"></iconify-icon></div>
+												<div>
+													<p class="text-sm font-medium">Department Heads</p>
+													<p class="text-xs text-gray-500 dark:text-gray-400">Initial approval</p>
+												</div>
+											</div>
+											<span class="px-2 py-1 bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 text-xs rounded-full">Completed</span>
+										</div>
+										<div class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
+											<div class="flex items-center">
+												<div class="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg mr-3"><iconify-icon icon="ph:users-four-duotone" class="text-blue-500"></iconify-icon></div>
+												<div>
+													<p class="text-sm font-medium">HR Manager</p>
+													<p class="text-xs text-gray-500 dark:text-gray-400">Policy compliance</p>
+												</div>
+											</div>
+											<span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 text-xs rounded-full">In Progress</span>
+										</div>
+										<div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+											<div class="flex items-center">
+												<div class="p-2 bg-gray-100 dark:bg-gray-600 rounded-lg mr-3"><iconify-icon icon="ph:receipt-duotone" class="text-gray-500"></iconify-icon></div>
+												<div>
+													<p class="text-sm font-medium">Finance Director</p>
+													<p class="text-xs text-gray-500 dark:text-gray-400">Final approval</p>
+												</div>
+											</div>
+											<span class="px-2 py-1 bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-xs rounded-full">Pending</span>
+										</div>
+										<div class="pt-2">
+											<button class="w-full px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-105">
+												<iconify-icon icon="ph:check-circle-duotone" class="mr-2"></iconify-icon>
+												Approve & Proceed
+											</button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- Employee Payroll Details -->
+							<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-white/30 dark:border-gray-700/60 mb-6">
+								<div class="px-6 py-4 border-b border-white/30 dark:border-gray-700/60 flex justify-between items-center">
+									<h3 class="text-lg font-semibold">Employee Payroll Details</h3>
+									<div class="flex space-x-2">
+										<button class="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm flex items-center"><iconify-icon icon="ph:sliders-horizontal-duotone" class="mr-1"></iconify-icon> Filter</button>
+										<button class="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm flex items-center"><iconify-icon icon="ph:magnifying-glass-duotone" class="mr-1"></iconify-icon> Search</button>
+									</div>
+								</div>
+								<div class="overflow-x-auto">
+									<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+										<thead class="bg-gray-50 dark:bg-gray-700/60">
+											<tr>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Basic Salary</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Overtime</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Allowances</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Deductions</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Net Pay</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
+											</tr>
+										</thead>
+										<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+											<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap">
+													<div class="flex items-center">
+														<div class="flex-shrink-0 h-10 w-10"><img class="h-10 w-10 rounded-full object-cover border-2 border-blue-500" src="https://randomuser.me/api/portraits/men/32.jpg" alt="Employee"></div>
+														<div class="ml-4">
+															<div class="text-sm font-medium">Michael Chen</div>
+															<div class="text-sm text-gray-500 dark:text-gray-400">Senior Developer</div>
+														</div>
+													</div>
+												</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$5,800</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-green-500">$420</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-green-500">$300</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-red-500">$1,240</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold">$5,280</td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Approved</span></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+													<div class="flex space-x-2">
+														<button class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:eye-duotone" class="mr-1"></iconify-icon> View</button>
+														<button class="text-amber-600 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:pencil-simple-duotone" class="mr-1"></iconify-icon> Adjust</button>
+													</div>
+												</td>
+											</tr>
+											<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap">
+													<div class="flex items-center">
+														<div class="flex-shrink-0 h-10 w-10"><img class="h-10 w-10 rounded-full object-cover border-2 border-purple-500" src="https://randomuser.me/api/portraits/women/44.jpg" alt="Employee"></div>
+														<div class="ml-4">
+															<div class="text-sm font-medium">Sarah Johnson</div>
+															<div class="text-sm text-gray-500 dark:text-gray-400">HR Manager</div>
+														</div>
+													</div>
+												</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$6,200</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-green-500">$0</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-green-500">$400</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-red-500">$1,480</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold">$5,120</td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Pending</span></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+													<div class="flex space-x-2">
+														<button class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:eye-duotone" class="mr-1"></iconify-icon> View</button>
+														<button class="text-amber-600 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:pencil-simple-duotone" class="mr-1"></iconify-icon> Adjust</button>
+													</div>
+												</td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</div>
+						</div>
+
+						<!-- Salary Structure Content -->
+						<div id="salary-structure-content" class="payroll-content hidden">
+							<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+								<div>
+									<h3 class="text-xl font-bold">Salary Structure Configuration</h3>
+									<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Define payroll components, allowances, and deductions by department or position</p>
+								</div>
+								<div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+									<button class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg flex items-center shadow-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:plus-circle-duotone" class="mr-2"></iconify-icon>New Structure</button>
+									<button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:copy-duotone" class="mr-2"></iconify-icon>Duplicate</button>
+								</div>
+							</div>
+							<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+								<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Position-based Structures</h3>
+									<div class="space-y-4">
+										<div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
+											<div class="flex justify-between items-center mb-2">
+												<h4 class="font-medium">Senior Developer</h4>
+												<span class="px-2 py-1 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-xs rounded-full">Engineering</span>
+											</div>
+											<div class="grid grid-cols-2 gap-2 text-sm">
+												<div class="text-gray-600 dark:text-gray-400">Basic Salary:</div><div class="font-medium">$5,800</div>
+												<div class="text-gray-600 dark:text-gray-400">Housing Allowance:</div><div class="font-medium text-green-600 dark:text-green-400">$300</div>
+												<div class="text-gray-600 dark:text-gray-400">Overtime Rate:</div><div class="font-medium text-green-600 dark:text-green-400">1.5x</div>
+											</div>
+										</div>
+										<div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-700">
+											<div class="flex justify-between items-center mb-2">
+												<h4 class="font-medium">HR Manager</h4>
+												<span class="px-2 py-1 bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200 text-xs rounded-full">Human Resources</span>
+											</div>
+											<div class="grid grid-cols-2 gap-2 text-sm">
+												<div class="text-gray-600 dark:text-gray-400">Basic Salary:</div><div class="font-medium">$6,200</div>
+												<div class="text-gray-600 dark:text-gray-400">Transport Allowance:</div><div class="font-medium text-green-600 dark:text-green-400">$200</div>
+												<div class="text-gray-600 dark:text-gray-400">Overtime Rate:</div><div class="font-medium text-green-600 dark:text-green-400">1.2x</div>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Deduction Rules</h3>
+									<div class="space-y-4">
+										<div class="p-4 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">Tax Withholding</h4><span class="px-2 py-1 bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200 text-xs rounded-full">Mandatory</span></div>
+											<div class="text-sm text-gray-600 dark:text-gray-400">Progressive tax rates based on income brackets. Automatically calculated using current tax tables.</div>
+										</div>
+										<div class="p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border border-yellow-200 dark:border-yellow-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">Social Security</h4><span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 text-xs rounded-full">Mandatory</span></div>
+											<div class="text-sm text-gray-600 dark:text-gray-400">6.2% of first $147,000 of earnings. Employer matches contribution.</div>
+										</div>
+										<div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-700">
+											<div class="flex justify-between items-center mb-2"><h4 class="font-medium">Health Insurance</h4><span class="px-2 py-1 bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 text-xs rounded-full">Voluntary</span></div>
+											<div class="text-sm text-gray-600 dark:text-gray-400">$250 monthly premium. 70% employer subsidized.</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+								<h3 class="text-lg font-semibold mb-4">Salary Components</h3>
+								<div class="overflow-x-auto">
+									<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+										<thead class="bg-gray-50 dark:bg-gray-700/60">
+											<tr>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Component</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Type</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Calculation Basis</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Rate/Amount</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Applicable To</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+											</tr>
+										</thead>
+										<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+											<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Basic Salary</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Earnings</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Monthly Fixed</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Position-based</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">All Employees</td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</span></td>
+											</tr>
+											<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Housing Allowance</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Allowance</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Monthly Fixed</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$300</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Manager & Above</td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</span></td>
+											</tr>
+											<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">Overtime</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Earnings</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Hourly Rate</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1.5x Base Rate</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Non-Exempt</td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</span></td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</div>
+						</div>
+
+						<!-- Payroll History Content -->
+						<div id="payroll-history-content" class="payroll-content hidden">
+							<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+								<div>
+									<h3 class="text-xl font-bold">Payroll History & Audit Trail</h3>
+									<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Complete record of all payroll batches, adjustments, and approver actions</p>
+								</div>
+								<div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+									<button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:download-simple-duotone" class="mr-2"></iconify-icon>Export History</button>
+									<button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:sliders-duotone" class="mr-2"></iconify-icon>Filter</button>
+								</div>
+							</div>
+							<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+								<div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Recent Payroll Cycles</h3>
+									<div class="overflow-x-auto">
+										<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+											<thead class="bg-gray-50 dark:bg-gray-700/60">
+												<tr>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Payroll Period</th>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Employees</th>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Total Net Pay</th>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Processed Date</th>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+													<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
+												</tr>
+											</thead>
+											<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+												<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-medium">December 1-15, 2023</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">247</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">$284,750</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Dec 16, 2023</td>
+													<td class="px-4 py-3 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Completed</span></td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-medium"><button class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"><iconify-icon icon="ph:eye-duotone"></iconify-icon> View</button></td>
+												</tr>
+												<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-medium">November 16-30, 2023</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">245</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">$270,580</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Dec 1, 2023</td>
+													<td class="px-4 py-3 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Completed</span></td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-medium"><button class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"><iconify-icon icon="ph:eye-duotone"></iconify-icon> View</button></td>
+												</tr>
+												<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-medium">November 1-15, 2023</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">242</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">$263,450</td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Nov 16, 2023</td>
+													<td class="px-4 py-3 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Completed</span></td>
+													<td class="px-4 py-3 whitespace-nowrap text-sm font-medium"><button class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"><iconify-icon icon="ph:eye-duotone"></iconify-icon> View</button></td>
+												</tr>
+											</tbody>
+										</table>
+									</div>
+								</div>
+								<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+									<h3 class="text-lg font-semibold mb-4">Payroll Statistics</h3>
+									<div class="space-y-4">
+										<div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+											<div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Total Processed (2023)</p><iconify-icon icon="ph:currency-circle-dollar-duotone" class="text-blue-500"></iconify-icon></div>
+											<p class="text-2xl font-bold">$3.2M</p>
+											<p class="text-xs text-green-600 mt-1 flex items-center"><iconify-icon icon="ph:arrow-up-right-duotone" class="mr-1"></iconify-icon>12.5% increase from 2022</p>
+										</div>
+										<div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
+											<div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Average Processing Time</p><iconify-icon icon="ph:clock-duotone" class="text-green-500"></iconify-icon></div>
+											<p class="text-2xl font-bold">2.3 days</p>
+											<p class="text-xs text-green-600 mt-1 flex items-center"><iconify-icon icon="ph:arrow-down-left-duotone" class="mr-1"></iconify-icon>18% faster than last year</p>
+										</div>
+										<div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
+											<div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Error Rate</p><iconify-icon icon="ph:warning-octagon-duotone" class="text-purple-500"></iconify-icon></div>
+											<p class="text-2xl font-bold">0.4%</p>
+											<p class="text-xs text-green-600 mt-1 flex items-center"><iconify-icon icon="ph:arrow-down-left-duotone" class="mr-1"></iconify-icon>62% reduction from last year</p>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+								<h3 class="text-lg font-semibold mb-4">Payroll Audit Trail</h3>
+								<div class="space-y-4">
+									<div class="flex items-start border-l-4 border-blue-500 pl-4 py-2">
+										<div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-3"><iconify-icon icon="ph:user-check-duotone" class="text-blue-500 text-sm"></iconify-icon></div>
+										<div class="flex-1">
+											<p class="text-sm font-medium">Payroll approved by Finance Director</p>
+											<p class="text-xs text-gray-500 dark:text-gray-400">December payroll batch for 247 employees</p>
+											<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Dec 16, 2023 • 10:30 AM • Robert Chen</p>
+										</div>
+									</div>
+									<div class="flex items-start border-l-4 border-green-500 pl-4 py-2">
+										<div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg mr-3"><iconify-icon icon="ph:calculator-duotone" class="text-green-500 text-sm"></iconify-icon></div>
+										<div class="flex-1">
+											<p class="text-sm font-medium">Overtime calculations updated</p>
+											<p class="text-xs text-gray-500 dark:text-gray-400">Adjusted overtime for Engineering department</p>
+											<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Dec 15, 2023 • 3:45 PM • Sarah Johnson</p>
+										</div>
+									</div>
+									<div class="flex items-start border-l-4 border-amber-500 pl-4 py-2">
+										<div class="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg mr-3"><iconify-icon icon="ph:warning-duotone" class="text-amber-500 text-sm"></iconify-icon></div>
+										<div class="flex-1">
+											<p class="text-sm font-medium">Payroll discrepancies detected</p>
+											<p class="text-xs text-gray-500 dark:text-gray-400">3 employees had missing attendance records</p>
+											<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Dec 15, 2023 • 11:20 AM • System</p>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Financial Dashboard Content -->
+						<div id="financial-dashboard-content" class="payroll-content hidden">
+							<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+								<div>
+									<h3 class="text-xl font-bold">Financial Dashboard & Insights</h3>
+									<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Visual analytics of payroll costs, trends, and departmental breakdowns</p>
+								</div>
+								<div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+									<button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:download-simple-duotone" class="mr-2"></iconify-icon>Export Report</button>
+									<button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:calendar-dots-duotone" class="mr-2"></iconify-icon>Date Range</button>
+									<button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:sliders-duotone" class="mr-2"></iconify-icon>Filter</button>
+								</div>
+							</div>
+							<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+								<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60 h-80">
+									<h3 class="text-lg font-semibold mb-4">Payroll Cost Trends</h3>
+									<canvas id="payrollTrendChart"></canvas>
+								</div>
+								<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60 h-80">
+									<h3 class="text-lg font-semibold mb-4">Departmental Cost Distribution</h3>
+									<canvas id="departmentChart"></canvas>
+								</div>
+							</div>
+							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+								<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+									<div class="flex items-center"><div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg mr-4"><iconify-icon icon="ph:users-three-duotone" class="text-blue-500"></iconify-icon></div><div><p class="text-sm text-gray-500 dark:text-gray-400">Avg. Cost Per Employee</p><h3 class="text-xl font-bold">$4,850</h3></div></div>
+								</div>
+								<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+									<div class="flex items-center"><div class="p-3 bg-green-100 dark:bg-green-900 rounded-lg mr-4"><iconify-icon icon="ph:trend-up-duotone" class="text-green-500"></iconify-icon></div><div><p class="text-sm text-gray-500 dark:text-gray-400">YoY Growth</p><h3 class="text-xl font-bold">+8.7%</h3></div></div>
+								</div>
+								<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+									<div class="flex items-center"><div class="p-3 bg-amber-100 dark:bg-amber-900 rounded-lg mr-4"><iconify-icon icon="ph:clock-duotone" class="text-amber-500"></iconify-icon></div><div><p class="text-sm text-gray-500 dark:text-gray-400">Overtime % of Payroll</p><h3 class="text-xl font-bold">4.3%</h3></div></div>
+								</div>
+								<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+									<div class="flex items-center"><div class="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg mr-4"><iconify-icon icon="ph:percent-duotone" class="text-purple-500"></iconify-icon></div><div><p class="text-sm text-gray-500 dark:text-gray-400">Benefits Cost %</p><h3 class="text-xl font-bold">22.5%</h3></div></div>
+								</div>
+							</div>
+							<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+								<h3 class="text-lg font-semibold mb-4">Cost Breakdown by Category</h3>
+								<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+									<div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Basic Salary</p><iconify-icon icon="ph:money-duotone" class="text-blue-500"></iconify-icon></div><p class="text-2xl font-bold">72.4%</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-1">$2.31M of $3.2M</p></div>
+									<div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Benefits</p><iconify-icon icon="ph:heart-duotone" class="text-green-500"></iconify-icon></div><p class="text-2xl font-bold">22.5%</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-1">$720K of $3.2M</p></div>
+									<div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Overtime</p><iconify-icon icon="ph:clock-duotone" class="text-amber-500"></iconify-icon></div><p class="text-2xl font-bold">4.3%</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-1">$137.6K of $3.2M</p></div>
+									<div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg"><div class="flex justify-between items-center mb-2"><p class="text-sm font-medium">Bonuses</p><iconify-icon icon="ph:gift-duotone" class="text-purple-500"></iconify-icon></div><p class="text-2xl font-bold">0.8%</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-1">$25.6K of $3.2M</p></div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Payslips Content -->
+						<div id="payslips-content" class="payroll-content hidden">
+							<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+								<div>
+									<h3 class="text-xl font-bold">Payslip Management</h3>
+									<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Generate, distribute, and manage employee payslips</p>
+								</div>
+								<div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+									<button class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg flex items-center shadow-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:printer-duotone" class="mr-2"></iconify-icon>Bulk Print</button>
+									<button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:envelope-simple-duotone" class="mr-2"></iconify-icon>Email All</button>
+									<button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:download-simple-duotone" class="mr-2"></iconify-icon>Export PDFs</button>
+								</div>
+							</div>
+							<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-white/30 dark:border-gray-700/60 mb-6">
+								<div class="px-6 py-4 border-b border-white/30 dark:border-gray-700/60 flex justify-between items-center">
+									<h3 class="text-lg font-semibold">Recent Payslips - December 2023</h3>
+									<div class="flex space-x-2">
+										<button class="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm flex items-center"><iconify-icon icon="ph:sliders-horizontal-duotone" class="mr-1"></iconify-icon> Filter</button>
+										<button class="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm flex items-center"><iconify-icon icon="ph:magnifying-glass-duotone" class="mr-1"></iconify-icon> Search</button>
+									</div>
+								</div>
+								<div class="overflow-x-auto">
+									<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+										<thead class="bg-gray-50 dark:bg-gray-700/60">
+											<tr>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Pay Period</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Net Pay</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Generated</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+												<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
+											</tr>
+										</thead>
+										<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+											<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap">
+													<div class="flex items-center"><div class="flex-shrink-0 h-10 w-10"><img class="h-10 w-10 rounded-full object-cover border-2 border-blue-500" src="https://randomuser.me/api/portraits/men/32.jpg" alt="Employee"></div><div class="ml-4"><div class="text-sm font-medium">Michael Chen</div><div class="text-sm text-gray-500 dark:text-gray-400">Senior Developer</div></div></div>
+												</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Dec 1-15, 2023</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold">$5,280</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Dec 16, 2023</td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Sent</span></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+													<div class="flex space-x-2">
+														<button class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:eye-duotone" class="mr-1"></iconify-icon> View</button>
+														<button class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 bg-green-50 dark:bg-green-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:file-pdf-duotone" class="mr-1"></iconify-icon> PDF</button>
+														<button class="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 bg-purple-50 dark:bg-purple-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:envelope-simple-duotone" class="mr-1"></iconify-icon> Email</button>
+													</div>
+												</td>
+											</tr>
+											<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<td class="px-6 py-4 whitespace-nowrap">
+													<div class="flex items-center"><div class="flex-shrink-0 h-10 w-10"><img class="h-10 w-10 rounded-full object-cover border-2 border-purple-500" src="https://randomuser.me/api/portraits/women/44.jpg" alt="Employee"></div><div class="ml-4"><div class="text-sm font-medium">Sarah Johnson</div><div class="text-sm text-gray-500 dark:text-gray-400">HR Manager</div></div></div>
+												</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Dec 1-15, 2023</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold">$5,120</td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Dec 16, 2023</td>
+												<td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Pending</span></td>
+												<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+													<div class="flex space-x-2">
+														<button class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:eye-duotone" class="mr-1"></iconify-icon> View</button>
+														<button class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 bg-green-50 dark:bg-green-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:file-pdf-duotone" class="mr-1"></iconify-icon> PDF</button>
+														<button class="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 bg-purple-50 dark:bg-purple-900/30 px-3 py-1 rounded-lg transition-all duration-300 hover:scale-105"><iconify-icon icon="ph:envelope-simple-duotone" class="mr-1"></iconify-icon> Email</button>
+													</div>
+												</td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</div>
+							<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+								<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60">
+									<div class="flex items-center justify-between mb-4"><h3 class="font-semibold">Payslip Distribution</h3><iconify-icon icon="ph:chart-pie-slice-duotone" class="text-amber-500"></iconify-icon></div>
+									<div class="space-y-4">
+										<div class="flex items-center justify-between"><div class="flex items-center"><div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg mr-3"><iconify-icon icon="ph:check-circle-duotone" class="text-green-500"></iconify-icon></div><div><p class="text-sm font-medium">Emailed to Employees</p><p class="text-xs text-gray-500 dark:text-gray-400">234 of 247 payslips</p></div></div><span class="text-sm font-medium text-green-600 dark:text-green-400">94.7%</span></div>
+										<div class="flex items-center justify-between"><div class="flex items-center"><div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-3"><iconify-icon icon="ph:download-simple-duotone" class="text-blue-500"></iconify-icon></div><div><p class="text-sm font-medium">Downloaded by Employees</p><p class="text-xs text-gray-500 dark:text-gray-400">189 of 247 payslips</p></div></div><span class="text-sm font-medium text-blue-600 dark:text-blue-400">76.5%</span></div>
+										<div class="flex items-center justify-between"><div class="flex items-center"><div class="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg mr-3"><iconify-icon icon="ph:printer-duotone" class="text-amber-500"></iconify-icon></div><div><p class="text-sm font-medium">Printed Copies</p><p class="text-xs text-gray-500 dark:text-gray-400">43 of 247 payslips</p></div></div><span class="text-sm font-medium text-amber-600 dark:text-amber-400">17.4%</span></div>
+									</div>
+								</div>
+								<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60">
+									<div class="flex items-center justify-between mb-4"><h3 class="font-semibold">Quick Actions</h3><iconify-icon icon="ph:lightning-duotone" class="text-purple-500"></iconify-icon></div>
+									<div class="grid grid-cols-2 gap-4">
+										<button class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700 flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-md"><iconify-icon icon="ph:envelope-simple-duotone" class="text-blue-500 text-xl mb-2"></iconify-icon><span class="text-sm font-medium">Email All</span></button>
+										<button class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-700 flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-md"><iconify-icon icon="ph:printer-duotone" class="text-green-500 text-xl mb-2"></iconify-icon><span class="text-sm font-medium">Print Batch</span></button>
+										<button class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-700 flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-md"><iconify-icon icon="ph:download-simple-duotone" class="text-purple-500 text-xl mb-2"></iconify-icon><span class="text-sm font-medium">Export PDFs</span></button>
+										<button class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-700 flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-md"><iconify-icon icon="ph:qrcode-duotone" class="text-amber-500 text-xl mb-2"></iconify-icon><span class="text-sm font-medium">QR Codes</span></button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Feature Highlights -->
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+					<div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition duration-300">
+						<div class="flex items-center justify-between mb-4">
+							<h3 class="text-lg font-semibold">Automated Calculation</h3>
+							<iconify-icon icon="ph:calculator-duotone" class="text-2xl"></iconify-icon>
+						</div>
+						<p class="text-amber-100 mb-4">Automatically compute salaries from attendance, overtime, deductions, and bonuses with high accuracy.</p>
+						<button class="text-sm bg-white text-amber-600 hover:bg-amber-50 px-3 py-2 rounded-lg font-medium inline-flex items-center shadow-md">
+							<iconify-icon icon="ph:gear-duotone" class="mr-2"></iconify-icon>
+							Configure Rules
+						</button>
+					</div>
+					<div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition duration-300">
+						<div class="flex items-center justify-between mb-4">
+							<h3 class="text-lg font-semibold">Tax Integration</h3>
+							<iconify-icon icon="ph:receipt-duotone" class="text-2xl"></iconify-icon>
+						</div>
+						<p class="text-blue-100 mb-4">Calculate withholding taxes and contributions automatically using current rates and tables.</p>
+						<button class="text-sm bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg font-medium inline-flex items-center shadow-md">
+							<iconify-icon icon="ph:percent-duotone" class="mr-2"></iconify-icon>
+							Tax Settings
+						</button>
+					</div>
+					<div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition duration-300">
+						<div class="flex items-center justify-between mb-4">
+							<h3 class="text-lg font-semibold">Bank Integration</h3>
+							<iconify-icon icon="ph:bank-duotone" class="text-2xl"></iconify-icon>
+						</div>
+						<p class="text-green-100 mb-4">Generate bank-ready payroll files for direct upload and automated payments.</p>
+						<button class="text-sm bg-white text-green-700 hover:bg-green-50 px-3 py-2 rounded-lg font-medium inline-flex items-center shadow-md">
+							<iconify-icon icon="ph:download-simple-duotone" class="mr-2"></iconify-icon>
+							Export Files
+						</button>
+					</div>
+				</div>
+
+				<!-- Bottom Stats -->
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60">
+						<div class="flex items-center justify-between mb-4"><h3 class="font-semibold">Payroll Distribution</h3><iconify-icon icon="ph:chart-pie-slice-duotone" class="text-amber-500"></iconify-icon></div>
+						<div class="space-y-4">
+							<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Basic Salary</span><span class="font-medium">72%</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-amber-500 h-2 rounded-full" style="width: 72%"></div></div></div>
+							<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Overtime</span><span class="font-medium">8%</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-green-500 h-2 rounded-full" style="width: 8%"></div></div></div>
+							<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Allowances</span><span class="font-medium">12%</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-blue-500 h-2 rounded-full" style="width: 12%"></div></div></div>
+							<div><div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Bonuses</span><span class="font-medium">8%</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-purple-500 h-2 rounded-full" style="width: 8%"></div></div></div>
+						</div>
+					</div>
+					<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60">
+						<div class="flex items-center justify-between mb-4"><h3 class="font-semibold">Recent Activities</h3><iconify-icon icon="ph:clock-counter-clockwise-duotone" class="text-purple-500"></iconify-icon></div>
+						<div class="space-y-3">
+							<div class="flex items-start"><div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg mr-3"><iconify-icon icon="ph:check-circle-duotone" class="text-green-500 text-sm"></iconify-icon></div><div><p class="text-sm font-medium">Payroll batch approved by HR</p><p class="text-xs text-gray-500 dark:text-gray-400">Today, 10:30 AM</p></div></div>
+							<div class="flex items-start"><div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-3"><iconify-icon icon="ph:calculator-duotone" class="text-blue-500 text-sm"></iconify-icon></div><div><p class="text-sm font-medium">Overtime calculations updated</p><p class="text-xs text-gray-500 dark:text-gray-400">Today, 9:15 AM</p></div></div>
+							<div class="flex items-start"><div class="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg mr-3"><iconify-icon icon="ph:warning-duotone" class="text-amber-500 text-sm"></iconify-icon></div><div><p class="text-sm font-medium">3 payroll discrepancies detected</p><p class="text-xs text-gray-500 dark:text-gray-400">Yesterday, 4:45 PM</p></div></div>
+						</div>
+					</div>
+				</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+		// Utilities: Toast & Progress
+		function showToast(message, type = 'info') {
+			const wrap = document.getElementById('toastContainer');
+			const el = document.createElement('div');
+			const colors = { info: 'bg-white dark:bg-gray-800 border-white/40 dark:border-gray-700/60', success: 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700', warning: 'bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700', danger: 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700' };
+			el.className = `px-4 py-3 rounded-lg shadow-lg border ${colors[type] || colors.info}`;
+			el.textContent = message;
+			wrap.appendChild(el);
+			setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(4px)'; }, 2600);
+			setTimeout(() => wrap.removeChild(el), 3000);
+		}
+		function startProgress() { const bar = document.getElementById('topProgress'); bar.style.width = '0%'; setTimeout(() => { bar.style.width = '65%'; }, 20); }
+		function finishProgress() { const bar = document.getElementById('topProgress'); bar.style.width = '100%'; setTimeout(() => { bar.style.width = '0%'; }, 400); }
+
+		document.addEventListener('DOMContentLoaded', () => {
+			// Theme handling (unified with dashboard)
+				const themeToggle = document.getElementById('themeToggle');
+				if (localStorage.getItem('ih_theme') === 'dark') document.documentElement.classList.add('dark');
+				themeToggle?.addEventListener('click', () => {
+					document.documentElement.classList.toggle('dark');
+					localStorage.setItem('ih_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+				});
+
+			// Accent apply/persist
+			const ACCENTS = {
+				amber: ['#f59e0b', '#d97706'],
+				teal: ['#14b8a6', '#0d9488'],
+				purple: ['#8b5cf6', '#7c3aed'],
+				rose: ['#f43f5e', '#e11d48']
+			};
+			function applyAccent(name) {
+				const pair = ACCENTS[name] || ACCENTS.teal;
+				document.documentElement.style.setProperty('--accent', pair[0]);
+				document.documentElement.style.setProperty('--accent-to', pair[1]);
+				document.documentElement.setAttribute('data-accent', name || 'teal');
+				localStorage.setItem('ih_accent', name || 'teal');
+			}
+			const savedAccent = localStorage.getItem('ih_accent');
+			if (savedAccent) applyAccent(savedAccent); else applyAccent('teal');
+
+			// Drawer open/close
+			const mobileDrawer = document.getElementById('mobileDrawer');
+			const mobileBackdrop = document.getElementById('mobileBackdrop');
+			const mobileClose = document.getElementById('mobileClose');
+			const mobileMenu = document.getElementById('mobileMenu');
+			function openDrawer() { mobileDrawer.classList.remove('hidden'); }
+			function closeDrawer() { mobileDrawer.classList.add('hidden'); }
+			mobileMenu && mobileMenu.addEventListener('click', openDrawer);
+			mobileBackdrop && mobileBackdrop.addEventListener('click', closeDrawer);
+			mobileClose && mobileClose.addEventListener('click', closeDrawer);
+
+			// Clone desktop nav into mobile for parity
+			const sideNavList = document.getElementById('sideNavList');
+			const mobileNav = document.getElementById('mobileNav');
+			if (sideNavList && mobileNav) {
+				mobileNav.innerHTML = sideNavList.innerHTML;
+				// Enable smooth scroll for data-target items in mobile too
+				mobileNav.querySelectorAll('[data-target]').forEach(a => {
+					a.addEventListener('click', (e) => {
+						e.preventDefault();
+						closeDrawer();
+						const target = document.querySelector(a.getAttribute('data-target'));
+						target && target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					});
+				});
+			}
+
+			// Smooth scroll for any sidebar data-target links
+			sideNavList && sideNavList.querySelectorAll('[data-target]').forEach(a => {
+				a.addEventListener('click', (e) => {
+					e.preventDefault();
+					const target = document.querySelector(a.getAttribute('data-target'));
+					target && target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				});
+			});
+
+			// Resizable sidebar
+			const aside = document.querySelector('aside[data-resizable]');
+			const shiftEl = document.querySelector('[data-shift]');
+			const savedW = parseInt(localStorage.getItem('ih_sidebar_w') || '0', 10);
+			function applySidebarWidth(px) {
+				if (!aside) return;
+				const clamped = Math.min(380, Math.max(240, px));
+				aside.style.width = clamped + 'px';
+				if (window.innerWidth >= 1024 && shiftEl) {
+					shiftEl.style.marginLeft = clamped + 'px';
+				}
+			}
+			if (savedW) applySidebarWidth(savedW);
+			window.addEventListener('resize', () => { if (savedW && shiftEl && window.innerWidth >= 1024) shiftEl.style.marginLeft = aside.offsetWidth + 'px'; else if (shiftEl && window.innerWidth < 1024) shiftEl.style.marginLeft = ''; });
+			let resizing = false;
+			function onMouseMove(e){ if(!resizing) return; applySidebarWidth(e.clientX); }
+			function onMouseUp(){ if(!resizing) return; resizing = false; localStorage.setItem('ih_sidebar_w', String(aside.offsetWidth)); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); }
+			if (aside) {
+				aside.addEventListener('mousedown', (e) => {
+					const rect = aside.getBoundingClientRect();
+					if (e.clientX > rect.right - 10 && e.clientX < rect.right + 4) {
+						resizing = true; document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
+					}
+				});
+			}
+
+			// Settings Modal wiring (dashboard parity)
+			const customizeBtn = document.getElementById('customizeLayout');
+			const settingsPanel = document.getElementById('settingsPanel');
+			const settingsBackdrop = document.getElementById('settingsBackdrop');
+			const closeSettings = document.getElementById('closeSettings');
+			const saveSettings = document.getElementById('saveSettings');
+			const resetSettings = document.getElementById('resetSettings');
+			const exportPrefs = document.getElementById('exportPrefs');
+			const importPrefsBtn = document.getElementById('importPrefsBtn');
+			const prefsFile = document.getElementById('prefsFile');
+			const motionToggle = document.getElementById('motionToggle');
+			const contrastToggle = document.getElementById('contrastToggle');
+			const glassIntensity = document.getElementById('glassIntensity');
+			function openSettings(){ settingsPanel.classList.remove('hidden'); settingsPanel.classList.add('flex'); }
+			function closeSettingsFn(){ settingsPanel.classList.add('hidden'); settingsPanel.classList.remove('flex'); }
+			[customizeBtn, closeSettings, settingsBackdrop, saveSettings].forEach(el => { if(!el) return; el.addEventListener('click', (ev) => { if (el===customizeBtn) openSettings(); else closeSettingsFn(); }); });
+			document.querySelectorAll('#settingsPanel [data-accent]').forEach(btn => btn.addEventListener('click', () => applyAccent(btn.getAttribute('data-accent'))));
+			document.querySelectorAll('#settingsPanel [data-sidebar]').forEach(btn => btn.addEventListener('click', () => { const map = { narrow:260, default:288, wide:320 }; const w = map[btn.getAttribute('data-sidebar')] || 288; applySidebarWidth(w); localStorage.setItem('ih_sidebar_w', String(w)); }));
+			document.querySelectorAll('#settingsPanel [data-bg]').forEach(btn => btn.addEventListener('click', () => { const bg = btn.getAttribute('data-bg'); localStorage.setItem('ih_bg', bg); applyBackground(bg); }));
+			document.querySelectorAll('#settingsPanel [data-density]').forEach(btn => btn.addEventListener('click', () => { const d = btn.getAttribute('data-density'); document.documentElement.dataset.density = d; localStorage.setItem('ih_density', d); }));
+			document.querySelectorAll('#settingsPanel [data-font]').forEach(btn => btn.addEventListener('click', () => { const sz = btn.getAttribute('data-font'); applyFontSize(sz); }));
+			motionToggle && motionToggle.addEventListener('change', () => { document.documentElement.classList.toggle('reduce-motion', motionToggle.checked); localStorage.setItem('ih_motion', motionToggle.checked ? '1':'0'); });
+			contrastToggle && contrastToggle.addEventListener('change', () => { document.documentElement.classList.toggle('contrast', contrastToggle.checked); localStorage.setItem('ih_contrast', contrastToggle.checked ? '1':'0'); });
+			glassIntensity && glassIntensity.addEventListener('input', () => { applyGlassAlpha(parseFloat(glassIntensity.value)); });
+
+			// Apply saved prefs
+			(function applySaved(){
+				const bg = localStorage.getItem('ih_bg'); if (bg) applyBackground(bg);
+				const density = localStorage.getItem('ih_density'); if (density) document.documentElement.dataset.density = density;
+				const motion = localStorage.getItem('ih_motion')==='1'; if (motionToggle) motionToggle.checked = motion; document.documentElement.classList.toggle('reduce-motion', motion);
+				const contrast = localStorage.getItem('ih_contrast')==='1'; if (contrastToggle) contrastToggle.checked = contrast; document.documentElement.classList.toggle('contrast', contrast);
+				const f = localStorage.getItem('ih_font'); if (f) applyFontSize(f);
+				const a = parseFloat(localStorage.getItem('ih_glassA')||'0'); if (a) { if (glassIntensity) glassIntensity.value = String(a); applyGlassAlpha(a); }
+			})();
+
+			function applyBackground(bg){
+				const body = document.body;
+				if (bg==='image') {
+					body.style.backgroundImage = 'linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.25)), radial-gradient(1200px 600px at -10% -20%, rgba(245, 158, 11, 0.18), transparent), radial-gradient(900px 500px at 110% 10%, rgba(251, 146, 60, 0.14), transparent)';
+				} else {
+					body.style.backgroundImage = 'radial-gradient(1200px 600px at -10% -20%, rgba(245, 158, 11, 0.18), transparent), radial-gradient(900px 500px at 110% 10%, rgba(251, 146, 60, 0.14), transparent)';
+				}
+			}
+			function applyFontSize(size){
+				const map = { small:'14px', base:'16px', large:'18px' };
+				document.documentElement.style.fontSize = map[size] || '16px';
+				localStorage.setItem('ih_font', size);
+			}
+			function applyGlassAlpha(alpha){
+				const a = Math.min(0.9, Math.max(0.3, alpha || 0.6));
+				let style = document.getElementById('glassStyleOverride');
+				if (!style) { style = document.createElement('style'); style.id = 'glassStyleOverride'; document.head.appendChild(style); }
+				style.textContent = `.glass{background:linear-gradient(180deg, rgba(255,255,255,${a}), rgba(255,255,255,${Math.max(0,a-0.06)}));backdrop-filter:blur(10px)} .dark .glass{background:linear-gradient(180deg, rgba(31,41,55,${Math.min(0.9,a+0.06)}), rgba(31,41,55,${a}))}`;
+				localStorage.setItem('ih_glassA', String(a));
+			}
+
+			// Export/Import/Reset
+			exportPrefs && exportPrefs.addEventListener('click', () => {
+				const keys = ['ih_theme','theme','ih_accent','ih_sidebar_w','ih_bg','ih_density','ih_motion','ih_contrast','ih_font','ih_glassA'];
+				const data = {}; keys.forEach(k => { const v = localStorage.getItem(k); if (v!==null) data[k]=v; });
+				const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+				const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='intellihrtrack-prefs.json'; a.click(); URL.revokeObjectURL(url);
+				showToast('Preferences exported', 'success');
+			});
+			importPrefsBtn && importPrefsBtn.addEventListener('click', () => prefsFile && prefsFile.click());
+			prefsFile && prefsFile.addEventListener('change', async (e) => {
+				const file = e.target.files && e.target.files[0]; if (!file) return;
+				try { const txt = await file.text(); const obj = JSON.parse(txt); Object.entries(obj).forEach(([k,v]) => localStorage.setItem(k,String(v)));
+					applyTheme(localStorage.getItem('ih_theme')||localStorage.getItem('theme')||'light');
+					const accent = localStorage.getItem('ih_accent'); if (accent) applyAccent(accent);
+					const w = parseInt(localStorage.getItem('ih_sidebar_w')||'0',10); if (w) applySidebarWidth(w);
+					const bg = localStorage.getItem('ih_bg'); if (bg) applyBackground(bg);
+					const d = localStorage.getItem('ih_density'); if (d) document.documentElement.dataset.density = d;
+					applyFontSize(localStorage.getItem('ih_font')||'base');
+					const a = parseFloat(localStorage.getItem('ih_glassA')||'0'); if (a) applyGlassAlpha(a);
+					showToast('Preferences imported', 'success');
+				} catch { showToast('Invalid preferences file', 'danger'); }
+			});
+			resetSettings && resetSettings.addEventListener('click', () => {
+				['ih_accent','ih_sidebar_w','ih_bg','ih_density','ih_motion','ih_contrast','ih_font','ih_glassA'].forEach(k => localStorage.removeItem(k));
+				applyAccent('amber'); applyBackground('gradient'); document.documentElement.dataset.density=''; document.documentElement.classList.remove('reduce-motion','contrast'); applyFontSize('base'); applyGlassAlpha(0.6); showToast('Settings reset', 'success');
+			});
+
+			// Keyboard shortcuts
+			document.addEventListener('keydown', (ev) => {
+				const tag = (ev.target && ev.target.tagName || '').toLowerCase();
+				if (tag==='input' || tag==='textarea' || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+				if (ev.key==='?') { ev.preventDefault(); showToast('Shortcuts: G Generate • A Approve • S Settings • / Search • ? Help'); return; }
+				if (ev.key==='/' ) { ev.preventDefault(); showToast('Search not available on this page'); return; }
+				if (ev.key.toLowerCase()==='g') { ev.preventDefault(); switchTab('payroll-processing-tab'); showToast('Switched to Payroll Processing', 'info'); return; }
+				if (ev.key.toLowerCase()==='a') { ev.preventDefault(); showToast('Approve action triggered', 'success'); return; }
+				if (ev.key.toLowerCase()==='s') { ev.preventDefault(); openSettings(); return; }
+				if (ev.key==='Escape') { const md = document.getElementById('mobileDrawer'); if (md && !md.classList.contains('hidden')) { md.classList.add('hidden'); } closeSettingsFn(); }
+			});
+
+			// Keyboard Shortcuts helper
+			const shortcutsBtn = document.getElementById('shortcutsBtn');
+			shortcutsBtn && shortcutsBtn.addEventListener('click', () => {
+				showToast('Shortcuts: [G] Generate Payroll • [A] Approve • [/] Focus search • [?] Help', 'info');
+			});
+
+			// Header clock + network
+			const headerClock = document.getElementById('headerClock');
+			const netDot = document.getElementById('netDot');
+			function updateClock(){ if(headerClock) headerClock.textContent = new Date().toLocaleTimeString(); }
+			setInterval(updateClock, 1000); updateClock();
+			function updateNet(){ const on = navigator.onLine; if(netDot){ netDot.classList.toggle('bg-green-500', on); netDot.classList.toggle('bg-red-500', !on); netDot.title = on ? 'Online' : 'Offline'; } }
+			window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); updateNet();
+
+			// Tabs: switching between sections
+			const tabMap = [
+				{ tabId: 'payroll-processing-tab', contentId: 'payroll-processing-content' },
+				{ tabId: 'salary-structure-tab', contentId: 'salary-structure-content' },
+				{ tabId: 'payroll-history-tab', contentId: 'payroll-history-content' },
+				{ tabId: 'financial-dashboard-tab', contentId: 'financial-dashboard-content' },
+				{ tabId: 'payslips-tab', contentId: 'payslips-content' },
+			];
+
+			function setTabStyles(btn, active) {
+				if (!btn) return;
+				btn.classList.toggle('border-amber-500', active);
+				btn.classList.toggle('text-amber-500', active);
+				btn.classList.toggle('dark:text-amber-400', active);
+				btn.classList.toggle('border-transparent', !active);
+				btn.classList.toggle('text-gray-500', !active);
+				btn.classList.toggle('dark:text-gray-400', !active);
+			}
+
+			function switchTab(targetTabId) {
+				startProgress();
+				tabMap.forEach(({ tabId, contentId }) => {
+					const btn = document.getElementById(tabId);
+					const content = document.getElementById(contentId);
+					const isActive = tabId === targetTabId;
+					setTabStyles(btn, isActive);
+					if (content) content.classList.toggle('hidden', !isActive);
+				});
+				if (targetTabId === 'financial-dashboard-tab') initChartsOnce();
+				finishProgress();
+			}
+
+			tabMap.forEach(({ tabId }) => {
+				const btn = document.getElementById(tabId);
+				btn && btn.addEventListener('click', () => switchTab(tabId));
+			});
+
+			// Charts: lazy init on first visit to Financial Dashboard
+			let chartsInited = false;
+			function initChartsOnce() {
+				if (chartsInited) return;
+				chartsInited = true;
+				try {
+					const payrollCtx = document.getElementById('payrollTrendChart');
+					const deptCtx = document.getElementById('departmentChart');
+					if (payrollCtx) {
+						new Chart(payrollCtx, {
+							type: 'line',
+							data: {
+								labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+								datasets: [{
+									label: 'Total Payroll',
+									data: [240, 248, 252, 246, 255, 262, 268, 270, 275, 280, 285, 292],
+									borderColor: '#f59e0b',
+									backgroundColor: 'rgba(245, 158, 11, 0.15)',
+									tension: 0.35,
+									fill: true,
+									pointRadius: 2
+								}]
+							},
+							options: {
+								plugins: { legend: { display: false } },
+								scales: { y: { ticks: { callback: v => '$' + v + 'k' } } },
+								maintainAspectRatio: false
+							}
+						});
+					}
+					if (deptCtx) {
+						new Chart(deptCtx, {
+							type: 'doughnut',
+							data: {
+								labels: ['Engineering', 'Sales', 'Marketing', 'HR & Admin'],
+								datasets: [{
+									data: [46, 32, 15, 7],
+									backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'],
+									borderWidth: 0
+								}]
+							},
+							options: {
+								plugins: { legend: { position: 'bottom' } },
+								maintainAspectRatio: false,
+								cutout: '60%'
+							}
+						});
+					}
+				} catch (e) { /* no-op */ }
+			}
+
+			// Default tab is Payroll Processing
+			switchTab('payroll-processing-tab');
+		});
+	</script>
+<script>
+		// ---------- SIDEBAR ACTIVE (filename-based) ----------
+		(function(){
+			try{
+				const current = location.pathname.split('/').pop();
+				const links = document.querySelectorAll('aside nav a[href], #mobileNav a[href]');
+				links.forEach(a=>{
+					const href = a.getAttribute('href') || '';
+					const name = href.split('/').pop();
+					if(name === current){ a.classList.add('ring','ring-white/30','bg-accent/10'); a.setAttribute('aria-current','page'); }
+				});
+			}catch(e){}
+		})();
+	</script>
+{% endblock %}

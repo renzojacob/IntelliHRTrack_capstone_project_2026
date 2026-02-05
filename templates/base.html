@@ -1,0 +1,18 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Tailwind CSS -->
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+
+    <title>IntelliHRTrack</title>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <main class="max-w-5xl mx-auto p-6">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

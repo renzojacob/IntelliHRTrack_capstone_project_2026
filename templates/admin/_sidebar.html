@@ -1,0 +1,28 @@
+{% load static %}
+<aside class="site-sidebar">
+  <div class="brand">
+    <div class="logo">IH</div>
+    <div>
+      <h1 style="font-size:1rem; margin:0; font-weight:700">IntelliHRTrack</h1>
+      <p style="margin:0; font-size:.75rem; color:rgba(255,255,255,.72)">Admin Command Center</p>
+    </div>
+  </div>
+
+  <nav>
+    <div class="nav-group-title">Menu</div>
+    <ul class="nav-list">
+      <li class="nav-item"><a href="{% url 'admin_dashboard' %}" class="{% if current == 'dashboard' %}active{% endif %}"><span class="label">Dashboard</span></a></li>
+      <li class="nav-item"><a href="{% url 'admin_biometrics' %}" class="{% if current == 'biometrics' %}active{% endif %}"><span class="label">Biometrics &amp; Attendance</span></a></li>
+      <li class="nav-item"><a href="{% url 'admin_employees' %}" class="{% if current == 'employees' %}active{% endif %}"><span class="label">Employee Management</span></a></li>
+      <li class="nav-item"><a href="{% url 'admin_scheduling' %}" class="{% if current == 'scheduling' %}active{% endif %}"><span class="label">Shift Scheduling</span></a></li>
+      <li class="nav-item"><a href="{% url 'admin_leave' %}" class="{% if current == 'leave' %}active{% endif %}"><span class="label">Leave Approval</span></a></li>
+      <li class="nav-item"><a href="{% url 'admin_payroll' %}" class="{% if current == 'payroll' %}active{% endif %}"><span class="label">Payroll</span></a></li>
+      <li class="nav-item"><a href="{% url 'admin_reports' %}" class="{% if current == 'reports' %}active{% endif %}"><span class="label">Reports</span></a></li>
+      <li class="nav-item"><a href="{% url 'admin_analytics' %}" class="{% if current == 'analytics' %}active{% endif %}"><span class="label">AI Analytics</span></a></li>
+      <li class="nav-item"><a href="{% url 'admin_system' %}" class="{% if current == 'system' %}active{% endif %}"><span class="label">System Administration</span></a></li>
+    </ul>
+  </nav>
+
+  <div class="sidebar-footer">© IntelliHRTrack</div>
+</aside>
+

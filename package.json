@@ -1,0 +1,19 @@
+{
+  "name": "intellihrtrack_payroll",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "npx tailwindcss -i ./core/static/src/input.css -o ./core/static/css/output.css --minify",
+    "watch:css": "npx tailwindcss -i ./core/static/src/input.css -o ./core/static/css/output.css --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.18",
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6"
+  }
+}
