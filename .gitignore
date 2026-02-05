@@ -1,17 +1,11 @@
-# Python
 node_modules/
-
+.venv/
 __pycache__/
 *.pyc
-*.pyo
-
-# Virtual environment
-.venv/
-venv/
-
-# Django
 db.sqlite3
 .env
+.DS_Store
+
 
 # OS
 .DS_Store
