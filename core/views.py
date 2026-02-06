@@ -1,3 +1,5 @@
+# core/views.py
+
 import csv
 import io
 import re
@@ -184,13 +186,37 @@ def _read_csv(file_obj):
     return rows
 
 
+def _df_to_rows(df):
+    df = df.fillna("")
+    rows = []
+    for _, r in df.iterrows():
+        row = {}
+        for k in df.columns:
+            row[str(k).strip()] = str(r[k]).strip() if str(r[k]).strip() else ""
+        if any(str(v).strip() for v in row.values()):
+            rows.append(row)
+    return rows
+
+
+def _find_header_row_in_df(df):
+    """
+    Detail1 sometimes contains title rows above headers.
+    We search for a row containing 'Person ID' (case-insensitive).
+    """
+    for i in range(len(df.index)):
+        row_vals = [str(x).strip().lower() for x in df.iloc[i].tolist()]
+        if "person id" in row_vals:
+            return i
+    return None
+
+
 def _read_excel(file_obj, filename: str):
     """
     Handles:
     - real XLSX/XLS
     - Hikvision HTML-as-XLS:
         Detail1 = header table
-        Detail2 = data table (no headers)
+        Detail2 = data table (may be split into multiple tables/pages)
     """
     try:
         import pandas as pd
@@ -200,17 +226,6 @@ def _read_excel(file_obj, filename: str):
     file_obj.seek(0)
     raw = file_obj.read()
     head = raw[:500].lstrip().lower()
-
-    def df_to_rows(df):
-        df = df.fillna("")
-        rows = []
-        for _, r in df.iterrows():
-            row = {}
-            for k in df.columns:
-                row[str(k).strip()] = str(r[k]).strip() if str(r[k]).strip() else ""
-            if any(str(v).strip() for v in row.values()):
-                rows.append(row)
-        return rows
 
     # --- HTML-as-XLS detection ---
     if head.startswith(b"<html") or head.startswith(b"<!doctype") or head.startswith(b"<table") or b"<html" in head:
@@ -224,65 +239,57 @@ def _read_excel(file_obj, filename: str):
         if text is None:
             raise ValueError("File looks like HTML but could not decode it.")
 
-        # ✅ BEST PATH: read Hikvision sections by class
+        # ✅ Try class-based parse: Detail1 headers + ALL Detail2 tables concatenated
         try:
             header_tables = pd.read_html(io.StringIO(text), attrs={"class": "Detail1"}, header=None)
             data_tables = pd.read_html(io.StringIO(text), attrs={"class": "Detail2"}, header=None)
 
             if header_tables and data_tables:
                 df_h = header_tables[0].fillna("")
-                df_d = data_tables[0].fillna("")
-
-                # Find the header row inside Detail1 (the row containing "Person ID")
-                header_row_idx = None
-                for i in range(len(df_h.index)):
-                    row_vals = [str(x).strip().lower() for x in df_h.iloc[i].tolist()]
-                    if "person id" in row_vals:
-                        header_row_idx = i
-                        break
-
+                header_row_idx = _find_header_row_in_df(df_h)
                 if header_row_idx is None:
                     raise ValueError("Could not find header row in Detail1 table.")
 
                 headers = [str(x).strip() for x in df_h.iloc[header_row_idx].tolist()]
-                # Trim to actual columns count in data table
-                headers = headers[: len(df_d.columns)]
+                headers = [h if h else f"col_{i}" for i, h in enumerate(headers)]
 
+                # concat ALL Detail2 tables (some exports split pages)
+                df_d = pd.concat([d.fillna("") for d in data_tables], ignore_index=True)
+
+                # apply headers limited to data cols count
+                headers = headers[: len(df_d.columns)]
                 df_d.columns = headers
 
-                # Drop rows that are completely empty
-                df_d = df_d.replace("", None)
-                df_d = df_d.dropna(how="all")
-                df_d = df_d.fillna("")
+                # drop repeated header rows inside data (common on page breaks)
+                first_col = headers[0] if headers else None
+                if first_col:
+                    df_d = df_d[df_d[first_col].astype(str).str.strip().str.lower() != "person id"]
 
-                return df_to_rows(df_d)
+                # drop all-empty rows
+                df_d = df_d.replace("", None).dropna(how="all").fillna("")
 
+                return _df_to_rows(df_d)
         except Exception:
-            # If class-based parsing fails, fallback below.
             pass
 
-        # --- Fallback: pick the best table with required columns ---
+        # fallback: parse all tables and choose the largest “data-like” table
         try:
-            tables = pd.read_html(io.StringIO(text))
+            tables = pd.read_html(io.StringIO(text), header=None)
             if not tables:
                 raise ValueError("No tables found in HTML file.")
 
-            required = {"person id", "name", "department", "time", "attendance status"}
-            best_df = None
-            best_score = -1
+            # pick the table with the most rows and at least ~5 columns
+            candidates = [t for t in tables if t.shape[1] >= 5]
+            df_best = max(candidates, key=lambda d: d.shape[0]) if candidates else max(tables, key=lambda d: d.shape[0])
 
-            for df in tables:
-                cols = {_norm_key(c) for c in df.columns}
-                score = len(required.intersection(cols))
-                if score > best_score:
-                    best_score = score
-                    best_df = df
+            # if the first row looks like headers, promote it
+            row0 = [str(x).strip().lower() for x in df_best.iloc[0].tolist()]
+            if "person id" in row0 and "time" in row0:
+                df_best.columns = [str(x).strip() for x in df_best.iloc[0].tolist()]
+                df_best = df_best.iloc[1:].reset_index(drop=True)
 
-            if best_df is None:
-                best_df = max(tables, key=lambda d: len(d.index))
-
-            return df_to_rows(best_df)
-
+            df_best = df_best.fillna("")
+            return _df_to_rows(df_best)
         except Exception as e:
             raise ValueError(f"HTML-as-Excel detected but failed to parse tables: {e}")
 
@@ -291,9 +298,11 @@ def _read_excel(file_obj, filename: str):
     engine = "openpyxl" if ext == "xlsx" else "xlrd" if ext == "xls" else None
 
     try:
+        import pandas as pd
         import io as _io
+
         df = pd.read_excel(_io.BytesIO(raw), sheet_name=0, engine=engine)
-        return df_to_rows(df)
+        return _df_to_rows(df)
     except Exception as e:
         raise ValueError(f"Error reading Excel file: {e}")
 
@@ -335,24 +344,20 @@ def _map_row(row: dict, branch: str) -> dict:
 
 
 # =========================
-# Session cache helpers (so Import works after Validate)
+# Session cache helpers
 # =========================
 SESSION_KEY = "attendance_import_cache_v1"
 
 
 def _save_import_cache(request, branch: str, skip_duplicates: bool, rows: list):
-    """
-    Save parsed rows to session so user can click Import without re-uploading
-    (because browsers clear file inputs after POST).
-    """
     cached = {
         "branch": branch,
         "skip_duplicates": bool(skip_duplicates),
         "rows": [],
     }
+
     for row in rows:
         mapped = _map_row(row, branch=branch)
-        # store only serializable fields
         cached["rows"].append({
             "employee_id": mapped["employee_id"],
             "full_name": mapped["full_name"],
@@ -442,22 +447,20 @@ def admin_biometrics_import(request):
     skip_duplicates = form.cleaned_data.get("skip_duplicates", True)
     branch = (form.cleaned_data.get("branch") or "").strip()
 
-    # =========================
-    # READ rows (from upload or from session cache)
-    # =========================
+    # -------------------------
+    # READ rows
+    # -------------------------
     rows = None
 
-    # If importing and upload is missing, use session cache (THIS FIXES YOUR PROBLEM)
     if action == "import" and not upload:
         cache = _load_import_cache(request)
         if not cache or not cache.get("rows"):
             context["import_errors"] = ["No validated data found. Please upload and Validate first."]
             return render(request, "admin/Biometrics_attendance.html", context)
 
-        # restore from cache
         branch = cache.get("branch") or branch
         skip_duplicates = cache.get("skip_duplicates", skip_duplicates)
-        rows = cache["rows"]  # already mapped/serializable
+        rows = cache["rows"]  # mapped rows (serializable)
     else:
         if not upload:
             context["import_errors"] = ["No file received. Please select a file to upload."]
@@ -481,36 +484,46 @@ def admin_biometrics_import(request):
             context["import_errors"] = ["File is empty or has no data rows."]
             return render(request, "admin/Biometrics_attendance.html", context)
 
-    # =========================
-    # VALIDATE + PREVIEW
-    # =========================
+    # -------------------------
+    # PREVIEW + VALIDATION
+    # -------------------------
     preview = []
     validation_errors = []
 
-    # If rows came from session cache, they are already mapped dicts (employee_id, timestamp string, etc.)
-    if rows and isinstance(rows[0], dict) and "timestamp" in rows[0] and "employee_id" in rows[0] and "attendance_status" in rows[0] and action == "import" and not upload:
-        # build a preview from cached rows (first 20)
-        for i, r in enumerate(rows[:20], start=2):
+    # If cached mapped rows (import without re-upload)
+    is_cached_mapped = (
+        rows
+        and isinstance(rows[0], dict)
+        and "employee_id" in rows[0]
+        and "timestamp" in rows[0]
+        and "attendance_status" in rows[0]
+        and (action == "import" and not upload)
+    )
+
+    if is_cached_mapped:
+        for idx, r in enumerate(rows[:20], start=2):
+            employee_id = (r.get("employee_id") or "").strip()
             ts = _parse_timestamp(r.get("timestamp", ""))
+
             row_errors = []
-            if not (r.get("employee_id") or "").strip():
+            if not employee_id:
                 row_errors.append("Missing Person ID")
             if not ts:
                 row_errors.append("Invalid/missing Time")
 
             is_valid = len(row_errors) == 0
+
             preview.append({
-                "employee_id": r.get("employee_id") or "—",
-                "full_name": r.get("full_name") or "—",
-                "department": r.get("department") or "—",
-                "branch": r.get("branch") or branch or "—",
+                "employee_id": employee_id or "—",
+                "full_name": (r.get("full_name") or "").strip() or "—",
+                "department": (r.get("department") or "").strip() or "—",
+                "branch": (r.get("branch") or branch or "").strip() or "—",
                 "timestamp": ts or "—",
                 "attendance_status": _status_label(r.get("attendance_status")),
                 "status": "valid" if is_valid else "invalid",
                 "errors": ", ".join(row_errors) if row_errors else "",
             })
     else:
-        # normal preview from parsed file rows
         meaningful = 0
         for idx, row in enumerate(rows, start=2):
             mapped = _map_row(row, branch=branch)
@@ -553,9 +566,9 @@ def admin_biometrics_import(request):
 
     context["preview_rows"] = preview
 
-    # =========================
+    # -------------------------
     # ACTION: VALIDATE
-    # =========================
+    # -------------------------
     if action == "validate":
         if validation_errors:
             context["import_errors"] = validation_errors[:10]
@@ -564,16 +577,17 @@ def admin_biometrics_import(request):
             context["can_import"] = False
             return render(request, "admin/Biometrics_attendance.html", context)
 
-        # ✅ Save rows to session cache so Import works even without re-upload
+        # IMPORTANT: if the HTML export splits pages, _read_excel() now concatenates ALL Detail2 tables,
+        # so len(rows) should match your real number of records.
         _save_import_cache(request, branch=branch, skip_duplicates=skip_duplicates, rows=rows)
 
         context["import_summary"] = f"✓ Validation passed! {len(rows)} row(s) ready to import."
         context["can_import"] = True
         return render(request, "admin/Biometrics_attendance.html", context)
 
-    # =========================
+    # -------------------------
     # ACTION: IMPORT
-    # =========================
+    # -------------------------
     if action != "import":
         context["import_errors"] = ["Invalid action."]
         return render(request, "admin/Biometrics_attendance.html", context)
@@ -585,11 +599,12 @@ def admin_biometrics_import(request):
 
     try:
         with transaction.atomic():
-            # If rows are cached-mapped:
-            if rows and isinstance(rows[0], dict) and "timestamp" in rows[0] and "employee_id" in rows[0] and "attendance_status" in rows[0] and (not upload):
+            # cached mapped rows
+            if rows and isinstance(rows[0], dict) and "employee_id" in rows[0] and "timestamp" in rows[0] and (not upload):
                 for idx, r in enumerate(rows, start=2):
                     employee_id = (r.get("employee_id") or "").strip()
                     ts = _parse_timestamp(r.get("timestamp", ""))
+
                     if not employee_id or not ts:
                         failed += 1
                         continue
@@ -601,7 +616,7 @@ def admin_biometrics_import(request):
                         "branch": (r.get("branch") or branch or "").strip(),
                         "timestamp": ts,
                         "attendance_status": r.get("attendance_status") or AttendanceRecord.STATUS_UNKNOWN,
-                        "raw_row": r,  # keep something for debugging
+                        "raw_row": r,
                     }
 
                     try:
@@ -616,13 +631,11 @@ def admin_biometrics_import(request):
                     except Exception as e:
                         failed += 1
                         import_errors.append(f"Row {idx}: {e}")
-
             else:
-                # Import from freshly parsed file rows
+                # import from freshly parsed file rows
                 for idx, row in enumerate(rows, start=2):
                     mapped = _map_row(row, branch=branch)
 
-                    # skip junk empty rows
                     if (
                         not mapped["employee_id"]
                         and not mapped["timestamp"]
@@ -652,7 +665,6 @@ def admin_biometrics_import(request):
         context["import_errors"] = [f"Import failed: {e}"]
         return render(request, "admin/Biometrics_attendance.html", context)
 
-    # ✅ Clear cache after import so you don’t accidentally re-import old rows
     _clear_import_cache(request)
 
     context["import_summary"] = f"✓ Import complete: {created} created | {skipped} skipped | {failed} failed"
