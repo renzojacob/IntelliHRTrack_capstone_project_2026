@@ -2,6 +2,17 @@ from django.conf import settings
 from django.db import models
 
 
+class Branch(models.Model):
+    name = models.CharField(max_length=100, unique=True, db_index=True)
+
+    class Meta:
+        db_table = "core_branch"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 class AttendanceRecord(models.Model):
     STATUS_CHECKIN = "CHECK_IN"
     STATUS_CHECKOUT = "CHECK_OUT"
@@ -17,7 +28,16 @@ class AttendanceRecord(models.Model):
     employee_id = models.CharField(max_length=64, db_index=True)  # Person ID
     full_name = models.CharField(max_length=255, blank=True)
     department = models.CharField(max_length=255, blank=True)
-    branch = models.CharField(max_length=100, blank=True, db_index=True)
+
+    # ✅ FK to Branch (creates branch_id)
+    branch = models.ForeignKey(
+        Branch,
+        on_delete=models.PROTECT,
+        related_name="attendance_records",
+        null=True,
+        blank=True,
+        db_index=True,
+    )
 
     timestamp = models.DateTimeField(db_index=True)  # Time
     attendance_status = models.CharField(
@@ -47,11 +67,12 @@ class AttendanceRecord(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.employee_id} @ {self.timestamp} ({self.attendance_status}) [{self.branch}]"
+        b = self.branch.name if self.branch else "—"
+        return f"{self.employee_id} @ {self.timestamp} ({self.attendance_status}) [{b}]"
 
 
 # =========================
-# NEW: User Profile (Branch + Approval)
+# User Profile (Branch + Approval)
 # =========================
 class UserProfile(models.Model):
     user = models.OneToOneField(
@@ -59,7 +80,17 @@ class UserProfile(models.Model):
         on_delete=models.CASCADE,
         related_name="profile",
     )
-    branch = models.CharField(max_length=100, db_index=True)
+
+    # ✅ FK to Branch (creates branch_id)
+    branch = models.ForeignKey(
+        Branch,
+        on_delete=models.PROTECT,
+        related_name="profiles",
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+
     is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -71,4 +102,5 @@ class UserProfile(models.Model):
 
     def __str__(self):
         status = "APPROVED" if self.is_approved else "PENDING"
-        return f"{self.user.username} ({self.branch}) - {status}"
+        b = self.branch.name if self.branch else "—"
+        return f"{self.user.username} ({b}) - {status}"
