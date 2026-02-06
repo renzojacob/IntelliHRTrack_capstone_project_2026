@@ -1,1 +1,184 @@
-<h1>Signup page works</h1>
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Account • IntelliHRTrack</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Iconify -->
+  <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+
+  <style>
+    :root{
+      --primary:#14b8a6;
+      --primary-dark:#0d9488;
+      --bg-left:#ccfbf1;
+      --bg-right:#ecfeff;
+    }
+  </style>
+</head>
+
+<body class="h-full text-slate-700">
+
+  <div class="min-h-full flex items-center justify-center bg-gradient-to-br from-[var(--bg-left)] to-[var(--bg-right)] px-4 py-12">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
+
+      <!-- brand -->
+      <div class="flex items-center gap-4 justify-center mb-6">
+        <div class="w-12 h-12 rounded-2xl bg-[var(--primary)] text-white flex items-center justify-center font-bold text-lg">
+          ih
+        </div>
+        <div>
+          <h1 class="text-xl font-semibold text-slate-800">intellihrtrack</h1>
+          <p class="text-sm text-slate-500">employee registration</p>
+        </div>
+      </div>
+
+      <!-- title -->
+      <div class="mb-5">
+        <h2 class="text-lg font-semibold text-slate-800">create your account</h2>
+        <p class="text-sm text-slate-500">
+          your account must be approved by your branch admin before you can sign in.
+        </p>
+      </div>
+
+      <!-- info notice -->
+      <div class="mb-5 px-4 py-3 rounded-xl bg-teal-50 text-teal-700 border border-teal-200 text-sm">
+        <strong>important:</strong> choose the correct branch. only the admin of that branch can approve your account.
+      </div>
+
+      <!-- messages -->
+      {% if messages %}
+        <div class="space-y-2 mb-4">
+          {% for message in messages %}
+            <div class="px-4 py-3 rounded-xl text-sm
+              {% if message.tags == 'error' %}
+                bg-red-50 text-red-600 border border-red-200
+              {% elif message.tags == 'success' %}
+                bg-emerald-50 text-emerald-600 border border-emerald-200
+              {% else %}
+                bg-slate-50 text-slate-700 border border-slate-200
+              {% endif %}
+            ">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- form -->
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+
+        <!-- username -->
+        <div>
+          <label class="block text-sm font-medium mb-1">username</label>
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-slate-50">
+            <iconify-icon icon="ph:user-duotone" class="text-teal-600 text-lg"></iconify-icon>
+            <input
+              type="text"
+              name="username"
+              required
+              class="w-full bg-transparent outline-none"
+              placeholder="your.username"
+              autocomplete="username"
+            />
+          </div>
+        </div>
+
+        <!-- email -->
+        <div>
+          <label class="block text-sm font-medium mb-1">email (optional)</label>
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-slate-50">
+            <iconify-icon icon="ph:envelope-duotone" class="text-teal-600 text-lg"></iconify-icon>
+            <input
+              type="email"
+              name="email"
+              class="w-full bg-transparent outline-none"
+              placeholder="you@email.com"
+              autocomplete="email"
+            />
+          </div>
+        </div>
+
+        <!-- branch -->
+        <div>
+          <label class="block text-sm font-medium mb-1">branch</label>
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-slate-50">
+            <iconify-icon icon="ph:buildings-duotone" class="text-teal-600 text-lg"></iconify-icon>
+            <select
+              name="branch"
+              required
+              class="w-full bg-transparent outline-none text-slate-700"
+            >
+              <option value="" disabled selected>select your branch</option>
+              <option value="calapan">calapan</option>
+              <option value="occidental mindoro">occidental mindoro</option>
+              <option value="palawan">palawan</option>
+              <option value="marinduque">marinduque</option>
+              <option value="romblon">romblon</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- password -->
+        <div>
+          <label class="block text-sm font-medium mb-1">password</label>
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-slate-50">
+            <iconify-icon icon="ph:lock-key-duotone" class="text-teal-600 text-lg"></iconify-icon>
+            <input
+              type="password"
+              name="password"
+              required
+              class="w-full bg-transparent outline-none"
+              placeholder="••••••••"
+              autocomplete="new-password"
+            />
+          </div>
+        </div>
+
+        <!-- confirm -->
+        <div>
+          <label class="block text-sm font-medium mb-1">confirm password</label>
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-slate-50">
+            <iconify-icon icon="ph:lock-duotone" class="text-teal-600 text-lg"></iconify-icon>
+            <input
+              type="password"
+              name="password2"
+              required
+              class="w-full bg-transparent outline-none"
+              placeholder="••••••••"
+              autocomplete="new-password"
+            />
+          </div>
+        </div>
+
+        <!-- submit -->
+        <button
+          type="submit"
+          class="w-full py-3 rounded-xl bg-[var(--primary)] text-white font-semibold hover:bg-[var(--primary-dark)] transition"
+        >
+          create account
+        </button>
+      </form>
+
+      <!-- footer -->
+      <div class="mt-6 text-sm text-center text-slate-500">
+        already approved?
+        <a href="{% url 'login_ui' %}" class="text-teal-600 font-medium hover:underline">
+          sign in
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <p class="text-center text-xs text-slate-400 mt-6">
+    © intellihrtrack • secure access
+  </p>
+
+</body>
+</html>

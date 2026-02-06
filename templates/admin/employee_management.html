@@ -1,341 +1,303 @@
 {% extends 'admin/base_admin.html' %}
 
-{% block title %}IntelliHRTrack — Module 3: Employee Management{% endblock %}
+{% block title %}intellihrtrack — module 3: employee management{% endblock %}
 
 {% block extra_head %}
+<style>
+  :root { --accent: #14b8a6; --accent-to: #0ea5a0; --card-bg: rgba(255, 255, 255, 0.6); --card-border: rgba(255, 255, 255, 0.35); --sidebar: 18rem; --noise: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.035"/></svg>'); }
+  html[data-accent="teal"] { --accent: #14b8a6; --accent-to: #0ea5a0; }
+  html[data-accent="purple"] { --accent: #8b5cf6; --accent-to: #7c3aed; }
+  html[data-accent="rose"] { --accent: #f43f5e; --accent-to: #e11d48; }
+  html[data-accent="amber"] { --accent: #f59e0b; --accent-to: #d97706; }
 
-<style> :root { --accent: #14b8a6; --accent-to: #0ea5a0; --card-bg: rgba(255, 255, 255, 0.6); --card-border: rgba(255, 255, 255, 0.35); --sidebar: 18rem; --noise: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.035"/></svg>'); } html[data-accent="teal"] { --accent: #14b8a6; --accent-to: #0ea5a0; } html[data-accent="purple"] { --accent: #8b5cf6; --accent-to: #7c3aed; } html[data-accent="rose"] { --accent: #f43f5e; --accent-to: #e11d48; } html[data-accent="amber"] { --accent: #f59e0b; --accent-to: #d97706; } html[data-bg="gradient"] body::before { content: ""; position: fixed; inset: 0; z-index: -2; background: radial-gradient(800px 400px at 10% -10%, rgba(59, 130, 246, 0.15), transparent 60%), radial-gradient(600px 300px at 120% 0%, rgba(20, 184, 166, 0.18), transparent 60%), linear-gradient(120deg, rgba(2, 6, 23, 0.03), rgba(2, 6, 23, 0.06)); } html[data-bg="image"] body::before { content: ""; position: fixed; inset: 0; z-index: -2; background: url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=2100&q=60') center/cover no-repeat fixed; filter: saturate(1.05) brightness(0.95); } body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1; background-image: var(--noise); } .glass { background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--card-border); } .dark .glass { background: rgba(15, 23, 42, 0.60); border-color: rgba(255, 255, 255, 0.08); } .gradient-accent { background-image: linear-gradient(135deg, var(--accent), var(--accent-to)); } .text-accent { color: var(--accent); } .neon-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: .6; } .fancy-scroll::-webkit-scrollbar { height: 10px; width: 10px; } .fancy-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), var(--accent-to)); border-radius: 9999px; } .fancy-scroll::-webkit-scrollbar-track { background: transparent; } .big-scroll { scrollbar-width: auto; scrollbar-color: var(--accent) transparent; } .big-scroll::-webkit-scrollbar { width: 16px; height: 16px; } .big-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), var(--accent-to)); border-radius: 12px; border: 3px solid transparent; background-clip: content-box; } .ripple { position: relative; overflow: hidden; } .ripple::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 1%, transparent 1%) center/15000%; opacity: 0; transition: opacity .5s; } .ripple:active::after { opacity: 1; background-size: 100%; transition: 0s; } @media (min-width: 1024px) { aside[data-resizable] { width: var(--sidebar) !important; } main[data-shift] { margin-left: var(--sidebar) !important; } } #toastHost { position: fixed; top: 16px; right: 16px; display: grid; gap: 10px; z-index: 80; pointer-events: none; } .toast { pointer-events: auto; min-width: 220px; max-width: 360px; padding: 10px 12px; border-radius: 12px; box-shadow: 0 10px 20px rgba(2, 6, 23, .2); border: 1px solid rgba(255, 255, 255, .35); } .toast.info { background: var(--card-bg); } .toast.success { background: linear-gradient(135deg, rgba(16, 185, 129, .15), rgba(20, 184, 166, .25)); } .toast.warn { background: linear-gradient(135deg, rgba(245, 158, 11, .15), rgba(245, 158, 11, .28)); } .toast.error { background: linear-gradient(135deg, rgba(244, 63, 94, .15), rgba(244, 63, 94, .28)); } #topProgress { background-image: linear-gradient(90deg, var(--accent), var(--accent-to)); } select, input, textarea { color: #111827; } .dark select, .dark input, .dark textarea { background-color: rgba(255, 255, 255, 0.08); color: #e5e7eb; border-color: rgba(255, 255, 255, 0.15); } .dark select option { background-color: #0f172a; color: #e5e7eb; } html[data-density="compact"] .compact-spacing { padding: 0.5rem !important; margin: 0.25rem !important; } html[data-density="spacious"] .compact-spacing { padding: 1.5rem !important; margin: 1rem !important; } .reduce-motion * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } .high-contrast { --card-bg: rgba(255, 255, 255, 0.9) !important; --card-border: rgba(0, 0, 0, 0.3) !important; } .dark.high-contrast { --card-bg: rgba(0, 0, 0, 0.9) !important; --card-border: rgba(255, 255, 255, 0.3) !important; } .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; } .status-active { background-color: rgba(34, 197, 94, 0.1); color: rgb(22, 163, 74); } .status-onleave { background-color: rgba(245, 158, 11, 0.1); color: rgb(202, 138, 4); } .status-terminated { background-color: rgba(239, 68, 68, 0.1); color: rgb(220, 38, 38); } </style>
+  html[data-bg="gradient"] body::before {
+    content: ""; position: fixed; inset: 0; z-index: -2;
+    background:
+      radial-gradient(800px 400px at 10% -10%, rgba(59, 130, 246, 0.15), transparent 60%),
+      radial-gradient(600px 300px at 120% 0%, rgba(20, 184, 166, 0.18), transparent 60%),
+      linear-gradient(120deg, rgba(2, 6, 23, 0.03), rgba(2, 6, 23, 0.06));
+  }
+  html[data-bg="image"] body::before {
+    content: ""; position: fixed; inset: 0; z-index: -2;
+    background: url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=2100&q=60') center/cover no-repeat fixed;
+    filter: saturate(1.05) brightness(0.95);
+  }
+  body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1; background-image: var(--noise); }
+
+  .glass { background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--card-border); }
+  .dark .glass { background: rgba(15, 23, 42, 0.60); border-color: rgba(255, 255, 255, 0.08); }
+
+  .gradient-accent { background-image: linear-gradient(135deg, var(--accent), var(--accent-to)); }
+  .text-accent { color: var(--accent); }
+  .fancy-scroll::-webkit-scrollbar { height: 10px; width: 10px; }
+  .fancy-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), var(--accent-to)); border-radius: 9999px; }
+  .fancy-scroll::-webkit-scrollbar-track { background: transparent; }
+
+  .ripple { position: relative; overflow: hidden; }
+  .ripple::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 1%, transparent 1%) center/15000%; opacity: 0; transition: opacity .5s; }
+  .ripple:active::after { opacity: 1; background-size: 100%; transition: 0s; }
+
+  #toastHost { position: fixed; top: 16px; right: 16px; display: grid; gap: 10px; z-index: 80; pointer-events: none; }
+  .toast { pointer-events: auto; min-width: 220px; max-width: 360px; padding: 10px 12px; border-radius: 12px; box-shadow: 0 10px 20px rgba(2, 6, 23, .2); border: 1px solid rgba(255, 255, 255, .35); }
+  .toast.info { background: var(--card-bg); }
+  .toast.success { background: linear-gradient(135deg, rgba(16, 185, 129, .15), rgba(20, 184, 166, .25)); }
+  .toast.warn { background: linear-gradient(135deg, rgba(245, 158, 11, .15), rgba(245, 158, 11, .28)); }
+  .toast.error { background: linear-gradient(135deg, rgba(244, 63, 94, .15), rgba(244, 63, 94, .28)); }
+
+  #topProgress { background-image: linear-gradient(90deg, var(--accent), var(--accent-to)); }
+
+  select, input, textarea { color: #111827; }
+  .dark select, .dark input, .dark textarea { background-color: rgba(255, 255, 255, 0.08); color: #e5e7eb; border-color: rgba(255, 255, 255, 0.15); }
+  .dark select option { background-color: #0f172a; color: #e5e7eb; }
+
+  .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+  .status-active { background-color: rgba(34, 197, 94, 0.1); color: rgb(22, 163, 74); }
+  .status-onleave { background-color: rgba(245, 158, 11, 0.1); color: rgb(202, 138, 4); }
+  .status-terminated { background-color: rgba(239, 68, 68, 0.1); color: rgb(220, 38, 38); }
+
+  /* small helper for action buttons */
+  .btn { padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.4rem; }
+  .btn-approve { background: rgb(5 150 105); color: white; }
+  .btn-approve:hover { opacity: .92; }
+  .btn-reject { background: rgb(225 29 72); color: white; }
+  .btn-reject:hover { opacity: .92; }
+</style>
 {% endblock %}
 
 {% block content %}
 
-<div class="min-h-screen p-4 md:p-6 lg:p-8 space-y-6"> <!-- Hero Header --> <header class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow"> <div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div> <div class="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4"> <div> <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">Employee Management</h1> <p class="mt-1 text-sm md:text-base text-gray-600 dark:text-gray-300">Manage employee records, profiles, and audit trail</p> </div> <div class="flex items-center gap-3 mt-4 lg:mt-0"> <button id="addEmployeeBtn" class="px-4 py-2 rounded-xl text-white gradient-accent hover:shadow-glow transition flex items-center justify-center gap-2 ripple"> <iconify-icon icon="ph:user-plus-duotone"></iconify-icon> Add Employee </button> <button id="downloadTemplateBtn" class="px-3 py-2 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center justify-center gap-2 ripple"> <iconify-icon icon="ph:file-csv-duotone" class="text-accent"></iconify-icon> CSV Template </button> </div> </div> </header>
+{# django messages -> toast host #}
+<div id="toastHost" aria-live="polite"></div>
+<div id="topProgress" class="fixed top-0 left-0 h-1 w-0 z-[60] opacity-0 transition-all duration-300"></div>
 
-<!-- KPI Cards -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div class="glass rounded-2xl p-5 shadow">
-        <div class="flex justify-between items-start">
-            <div>
-                <div class="text-sm text-slate-500 dark:text-slate-400">Total Employees</div>
-                <div id="totalEmployees" class="text-2xl font-extrabold mt-1">0</div>
-            </div>
-            <iconify-icon icon="ph:users-duotone" class="text-2xl text-accent"></iconify-icon>
-        </div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3">All registered employees</div>
-    </div>
-    
-    <div class="glass rounded-2xl p-5 shadow">
-        <div class="flex justify-between items-start">
-            <div>
-                <div class="text-sm text-slate-500 dark:text-slate-400">Active</div>
-                <div id="activeEmployees" class="text-2xl font-extrabold mt-1">0</div>
-            </div>
-            <iconify-icon icon="ph:check-circle-duotone" class="text-2xl text-green-500"></iconify-icon>
-        </div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3">Currently active employees</div>
-    </div>
-    
-    <div class="glass rounded-2xl p-5 shadow">
-        <div class="flex justify-between items-start">
-            <div>
-                <div class="text-sm text-slate-500 dark:text-slate-400">Departments</div>
-                <div id="totalDepartments" class="text-2xl font-extrabold mt-1">0</div>
-            </div>
-            <iconify-icon icon="ph:building-duotone" class="text-2xl text-blue-500"></iconify-icon>
-        </div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3">Unique departments</div>
-    </div>
-    
-    <div class="glass rounded-2xl p-5 shadow">
-        <div class="flex justify-between items-start">
-            <div>
-                <div class="text-sm text-slate-500 dark:text-slate-400">New This Month</div>
-                <div id="newThisMonth" class="text-2xl font-extrabold mt-1">0</div>
-            </div>
-            <iconify-icon icon="ph:trend-up-duotone" class="text-2xl text-amber-500"></iconify-icon>
-        </div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3">Hired in current month</div>
-    </div>
-</div>
+<div class="min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
 
-<!-- Main Content Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Left Column (Table & Filters) -->
-    <div class="lg:col-span-2 space-y-6">
-        <!-- Filters -->
-        <div class="glass rounded-2xl p-5 shadow">
-            <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                <div class="flex-1 flex flex-col md:flex-row gap-3 w-full">
-                    <input id="searchInput" type="text" placeholder="Search employees..." class="flex-1 p-3 rounded-lg border bg-transparent focus:outline-none focus:ring-2 focus:ring-accent/50">
-                    
-                    <select id="departmentFilter" class="p-3 rounded-lg border bg-transparent focus:outline-none focus:ring-2 focus:ring-accent/50 min-w-[150px]">
-                        <option value="all">All Departments</option>
-                    </select>
-                    
-                    <select id="statusFilter" class="p-3 rounded-lg border bg-transparent focus:outline-none focus:ring-2 focus:ring-accent/50 min-w-[150px]">
-                        <option value="all">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="onleave">On Leave</option>
-                        <option value="terminated">Terminated</option>
-                    </select>
-                </div>
-                
-                <div class="flex gap-2 w-full md:w-auto">
-                    <button id="exportCsvBtn" class="px-4 py-2 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition ripple flex items-center gap-2">
-                        <iconify-icon icon="ph:export-duotone"></iconify-icon>
-                        Export CSV
-                    </button>
-                    <label for="importCsvFile" class="cursor-pointer px-4 py-2 rounded-xl text-white gradient-accent hover:shadow-glow transition ripple flex items-center gap-2">
-                        <iconify-icon icon="ph:import-duotone"></iconify-icon>
-                        Import CSV
-                    </label>
-                    <input id="importCsvFile" type="file" accept=".csv" class="hidden">
-                </div>
-            </div>
-        </div>
-
-        <!-- Employee Table -->
-        <div class="glass rounded-2xl p-5 shadow overflow-hidden">
-            <div class="overflow-x-auto fancy-scroll">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead>
-                        <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            <th class="px-4 py-3">Photo</th>
-                            <th class="px-4 py-3">Employee ID</th>
-                            <th class="px-4 py-3">Name</th>
-                            <th class="px-4 py-3">Department</th>
-                            <th class="px-4 py-3">Position</th>
-                            <th class="px-4 py-3">Status</th>
-                            <th class="px-4 py-3">Date Hired</th>
-                            <th class="px-4 py-3 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="employeeTableBody" class="divide-y divide-gray-200 dark:divide-gray-700">
-                        <!-- Data will be populated by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="mt-4 flex items-center justify-between">
-                <div class="text-sm text-gray-500 dark:text-gray-400" id="tableInfo">
-                    Showing 0 of 0 employees
-                </div>
-                <div class="flex gap-2">
-                    <button id="prevPageBtn" class="px-3 py-1 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition ripple">Previous</button>
-                    <button id="nextPageBtn" class="px-3 py-1 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition ripple">Next</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Column (Sidebar Cards) -->
-    <div class="space-y-6">
-        <!-- Quick Actions -->
-        <div class="glass rounded-2xl p-5 shadow">
-            <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
-                <iconify-icon icon="ph:lightning-duotone" class="text-accent"></iconify-icon>
-                Quick Actions
-            </h3>
-            <div class="space-y-3">
-                <button id="quickAddBtn" class="w-full px-4 py-3 rounded-xl text-white gradient-accent hover:shadow-glow transition ripple flex items-center justify-center gap-2">
-                    <iconify-icon icon="ph:user-plus-duotone"></iconify-icon>
-                    Add New Employee
-                </button>
-                <label for="quickImportFile" class="block w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition ripple cursor-pointer text-center flex items-center justify-center gap-2">
-                    <iconify-icon icon="ph:upload-duotone" class="text-accent"></iconify-icon>
-                    Import CSV File
-                </label>
-                <input id="quickImportFile" type="file" accept=".csv" class="hidden">
-                <button id="quickExportBtn" class="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition ripple flex items-center justify-center gap-2">
-                    <iconify-icon icon="ph:download-duotone" class="text-accent"></iconify-icon>
-                    Export All Data
-                </button>
-            </div>
-        </div>
-
-        <!-- Employee Stats -->
-        <div class="glass rounded-2xl p-5 shadow">
-            <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
-                <iconify-icon icon="ph:chart-pie-duotone" class="text-accent"></iconify-icon>
-                Employee Stats
-            </h3>
-            <div class="h-48 flex items-center justify-center">
-                <div class="text-center">
-                    <div class="text-4xl font-bold mb-2" id="statsChartPlaceholder">📊</div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Department distribution chart</p>
-                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">(Visualization placeholder)</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Activity -->
-        <div class="glass rounded-2xl p-5 shadow">
-            <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
-                <iconify-icon icon="ph:clock-counter-clockwise-duotone" class="text-accent"></iconify-icon>
-                Recent Activity
-            </h3>
-            <div class="space-y-3 max-h-64 overflow-y-auto fancy-scroll" id="auditTrailList">
-                <!-- Audit trail items will be populated by JavaScript -->
-            </div>
-        </div>
-    </div>
-</div>
-
-</div><!-- Add/Edit Employee Modal --><div id="employeeModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4"> <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div> <div class="relative z-10 w-full max-w-2xl glass rounded-2xl shadow-glow overflow-hidden"> <div class="p-6"> <div class="flex items-center justify-between mb-6"> <h3 id="modalTitle" class="text-xl font-semibold">Add Employee</h3> <button id="closeModalBtn" class="p-2 rounded-lg hover:bg-white/10 transition"> <iconify-icon icon="ph:x-duotone" class="text-xl"></iconify-icon> </button> </div>
-
-
-        <form id="employeeForm" class="space-y-4">
-            <input type="hidden" id="employeeId">
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Employee ID</label>
-                    <input type="text" id="empId" class="w-full p-3 rounded-lg border bg-transparent" required>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium mb-1">Full Name</label>
-                    <input type="text" id="fullName" class="w-full p-3 rounded-lg border bg-transparent" required>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium mb-1">Email</label>
-                    <input type="email" id="email" class="w-full p-3 rounded-lg border bg-transparent" required>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium mb-1">Contact Number</label>
-                    <input type="tel" id="contact" class="w-full p-3 rounded-lg border bg-transparent">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium mb-1">Department</label>
-                    <select id="department" class="w-full p-3 rounded-lg border bg-transparent">
-                        <option value="">Select Department</option>
-                        <option value="Engineering">Engineering</option>
-                        <option value="Marketing">Marketing</option>
-                        <option value="Sales">Sales</option>
-                        <option value="HR">HR</option>
-                        <option value="Finance">Finance</option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium mb-1">Position</label>
-                    <input type="text" id="position" class="w-full p-3 rounded-lg border bg-transparent">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium mb-1">Status</label>
-                    <select id="status" class="w-full p-3 rounded-lg border bg-transparent">
-                        <option value="active">Active</option>
-                        <option value="onleave">On Leave</option>
-                        <option value="terminated">Terminated</option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium mb-1">Date Hired</label>
-                    <input type="date" id="dateHired" class="w-full p-3 rounded-lg border bg-transparent">
-                </div>
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium mb-1">Address</label>
-                <textarea id="address" rows="3" class="w-full p-3 rounded-lg border bg-transparent"></textarea>
-            </div>
-            
-            <div class="flex justify-end gap-3 pt-4">
-                <button type="button" id="cancelModalBtn" class="px-4 py-2 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition ripple">
-                    Cancel
-                </button>
-                <button type="submit" class="px-4 py-2 rounded-xl text-white gradient-accent hover:shadow-glow transition ripple">
-                    Save Employee
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-</div><!-- View Employee Modal --><div id="viewEmployeeModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4"> <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div> <div class="relative z-10 w-full max-w-lg glass rounded-2xl shadow-glow overflow-hidden"> <div class="p-6"> <div class="flex items-center justify-between mb-6"> <h3 class="text-xl font-semibold">Employee Details</h3> <button id="closeViewModalBtn" class="p-2 rounded-lg hover:bg-white/10 transition"> <iconify-icon icon="ph:x-duotone" class="text-xl"></iconify-icon> </button> </div>
-
-        <div class="flex flex-col items-center mb-6">
-            <div class="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 mb-4 overflow-hidden">
-                <img id="viewAvatar" src="" alt="Avatar" class="w-full h-full object-cover">
-            </div>
-            <h4 id="viewName" class="text-xl font-semibold"></h4>
-            <div id="viewId" class="text-sm text-gray-500 dark:text-gray-400"></div>
-            <div id="viewStatus" class="mt-2"></div>
-        </div>
-        
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">Email</div>
-                <div id="viewEmail" class="font-medium"></div>
-            </div>
-            <div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">Contact</div>
-                <div id="viewContact" class="font-medium"></div>
-            </div>
-            <div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">Department</div>
-                <div id="viewDepartment" class="font-medium"></div>
-            </div>
-            <div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">Position</div>
-                <div id="viewPosition" class="font-medium"></div>
-            </div>
-            <div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">Date Hired</div>
-                <div id="viewDateHired" class="font-medium"></div>
-            </div>
-            <div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">Tenure</div>
-                <div id="viewTenure" class="font-medium"></div>
-            </div>
-        </div>
-        
-        <div class="mt-4">
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-1">Address</div>
-            <div id="viewAddress" class="font-medium"></div>
-        </div>
-        
-        <div class="flex justify-end gap-3 pt-6">
-            <button id="editFromViewBtn" class="px-4 py-2 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition ripple">
-                Edit
-            </button>
-            <button id="deleteFromViewBtn" class="px-4 py-2 rounded-xl bg-red-500 text-white hover:shadow-glow transition ripple">
-                Delete
-            </button>
-        </div>
-    </div>
-</div>
-
-</div><!-- Delete Confirmation Modal --><div id="deleteModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4"> <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div> <div class="relative z-10 w-full max-w-md glass rounded-2xl shadow-glow overflow-hidden"> <div class="p-6"> <div class="flex items-center justify-center mb-6"> <iconify-icon icon="ph:warning-circle-duotone" class="text-4xl text-red-500"></iconify-icon> </div>
-
-        <h3 class="text-xl font-semibold text-center mb-2">Confirm Deletion</h3>
-        <p class="text-gray-600 dark:text-gray-300 text-center mb-6">
-            Are you sure you want to delete this employee? This action cannot be undone.
+  <!-- hero -->
+  <header class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow">
+    <div class="absolute inset-0 opacity-40" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
+    <div class="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">employee management</h1>
+        <p class="mt-1 text-sm md:text-base text-gray-600 dark:text-gray-300">
+          approve employee accounts per branch and view approved users
         </p>
-        
-        <div class="text-center mb-6">
-            <div id="deleteEmployeeName" class="font-semibold text-lg"></div>
-            <div id="deleteEmployeeId" class="text-sm text-gray-500 dark:text-gray-400"></div>
-        </div>
-        
-        <div class="flex justify-center gap-3">
-            <button id="cancelDeleteBtn" class="px-4 py-2 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition ripple">
-                Cancel
-            </button>
-            <button id="confirmDeleteBtn" class="px-4 py-2 rounded-xl bg-red-500 text-white hover:shadow-glow transition ripple">
-                Delete Employee
-            </button>
-        </div>
+      </div>
+
+      <div class="flex items-center gap-3 mt-4 lg:mt-0">
+        <a href="{% url 'signup_ui' %}" class="px-4 py-2 rounded-xl text-white gradient-accent hover:opacity-95 transition flex items-center justify-center gap-2 ripple">
+          <iconify-icon icon="ph:user-plus-duotone"></iconify-icon>
+          signup page
+        </a>
+      </div>
     </div>
+  </header>
+
+  {# counts (server-side) #}
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <div class="glass rounded-2xl p-5 shadow">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-sm text-slate-500 dark:text-slate-400">total users</div>
+          <div class="text-2xl font-extrabold mt-1">
+            {{ pending_profiles|length|add:approved_profiles|length }}
+          </div>
+        </div>
+        <iconify-icon icon="ph:users-duotone" class="text-2xl text-accent"></iconify-icon>
+      </div>
+      <div class="text-xs text-slate-500 dark:text-slate-400 mt-3">pending + approved</div>
+    </div>
+
+    <div class="glass rounded-2xl p-5 shadow">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-sm text-slate-500 dark:text-slate-400">pending</div>
+          <div class="text-2xl font-extrabold mt-1">{{ pending_profiles|length }}</div>
+        </div>
+        <iconify-icon icon="ph:hourglass-duotone" class="text-2xl text-amber-500"></iconify-icon>
+      </div>
+      <div class="text-xs text-slate-500 dark:text-slate-400 mt-3">waiting for approval</div>
+    </div>
+
+    <div class="glass rounded-2xl p-5 shadow">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-sm text-slate-500 dark:text-slate-400">approved</div>
+          <div class="text-2xl font-extrabold mt-1">{{ approved_profiles|length }}</div>
+        </div>
+        <iconify-icon icon="ph:check-circle-duotone" class="text-2xl text-green-500"></iconify-icon>
+      </div>
+      <div class="text-xs text-slate-500 dark:text-slate-400 mt-3">can login</div>
+    </div>
+
+    <div class="glass rounded-2xl p-5 shadow">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-sm text-slate-500 dark:text-slate-400">your branch</div>
+          <div class="text-2xl font-extrabold mt-1">
+            {% if request.user.is_superuser %}
+              all
+            {% else %}
+              {% if request.user.profile.branch %}{{ request.user.profile.branch }}{% else %}—{% endif %}
+            {% endif %}
+          </div>
+        </div>
+        <iconify-icon icon="ph:buildings-duotone" class="text-2xl text-blue-500"></iconify-icon>
+      </div>
+      <div class="text-xs text-slate-500 dark:text-slate-400 mt-3">scope of visibility</div>
+    </div>
+
+  </div>
+
+  <!-- table -->
+  <div class="glass rounded-2xl p-5 shadow overflow-hidden">
+    <div class="overflow-x-auto fancy-scroll">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead>
+          <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th class="px-4 py-3">user</th>
+            <th class="px-4 py-3">email</th>
+            <th class="px-4 py-3">branch</th>
+            <th class="px-4 py-3">status</th>
+            <th class="px-4 py-3">created</th>
+            <th class="px-4 py-3 text-right">actions</th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+
+          <!-- pending section -->
+          <tr class="bg-amber-50/40 dark:bg-amber-500/10">
+            <td colspan="6" class="px-4 py-3 text-sm font-semibold text-amber-700 dark:text-amber-300">
+              pending accounts
+            </td>
+          </tr>
+
+          {% for p in pending_profiles %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+              <td class="px-4 py-3 font-medium">{{ p.user.username }}</td>
+              <td class="px-4 py-3">{{ p.user.email|default:"—" }}</td>
+              <td class="px-4 py-3">{{ p.branch|default:"—" }}</td>
+              <td class="px-4 py-3">
+                <span class="status-badge status-onleave">pending</span>
+              </td>
+              <td class="px-4 py-3">
+                {% if p.created_at %}{{ p.created_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}
+              </td>
+
+              <td class="px-4 py-3 text-right">
+                <div class="inline-flex items-center gap-2">
+
+                  <!-- approve -->
+                  <form method="post" action="{% url 'approve_user' p.id %}" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-approve ripple">
+                      <iconify-icon icon="ph:check-circle-duotone"></iconify-icon>
+                      approve
+                    </button>
+                  </form>
+
+                  <!-- reject -->
+                  <form method="post" action="{% url 'reject_user' p.id %}" class="inline"
+                        onsubmit="return confirm('reject this account? this will remove the user from the system.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-reject ripple">
+                      <iconify-icon icon="ph:x-circle-duotone"></iconify-icon>
+                      reject
+                    </button>
+                  </form>
+
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">
+                no pending accounts
+              </td>
+            </tr>
+          {% endfor %}
+
+          <!-- approved section -->
+          <tr class="bg-emerald-50/40 dark:bg-emerald-500/10">
+            <td colspan="6" class="px-4 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+              approved accounts
+            </td>
+          </tr>
+
+          {% for p in approved_profiles %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+              <td class="px-4 py-3 font-medium">{{ p.user.username }}</td>
+              <td class="px-4 py-3">{{ p.user.email|default:"—" }}</td>
+              <td class="px-4 py-3">{{ p.branch|default:"—" }}</td>
+              <td class="px-4 py-3">
+                <span class="status-badge status-active">approved</span>
+              </td>
+              <td class="px-4 py-3">
+                {% if p.created_at %}{{ p.created_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}
+              </td>
+              <td class="px-4 py-3 text-right">
+                <span class="text-xs text-slate-400">—</span>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">
+                no approved accounts yet
+              </td>
+            </tr>
+          {% endfor %}
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
+{% endblock %}
 
-</div><!-- Progress Bar --><div id="topProgress" class="fixed top-0 left-0 h-1 w-0 z-[60] opacity-0 transition-all duration-300"></div><!-- Toast Host --><div id="toastHost" aria-live="polite"></div> {% endblock %}
 {% block extra_js %}
+<script>
+  // theme handling (kept from your file)
+  const themeToggle = document.getElementById('themeToggle');
+  function setThemeMode(mode) {
+    if (mode === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+    localStorage.setItem('ih_theme', mode);
+    localStorage.setItem('iht_theme_v1', mode);
+  }
+  const savedTheme = localStorage.getItem('ih_theme') || localStorage.getItem('iht_theme_v1') || 'light';
+  setThemeMode(savedTheme);
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      setThemeMode(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
+    });
+  }
 
-<script> // ---------- THEME HANDLING ---------- const themeToggle = document.getElementById('themeToggle'); function setThemeMode(mode) { if (mode === 'dark') { document.documentElement.classList.add('dark'); } else { document.documentElement.classList.remove('dark'); } localStorage.setItem('ih_theme', mode); localStorage.setItem('iht_theme_v1', mode); } const savedTheme = localStorage.getItem('ih_theme') || localStorage.getItem('iht_theme_v1') || 'light'; setThemeMode(savedTheme); if (themeToggle) { themeToggle.addEventListener('click', () => { setThemeMode(document.documentElement.classList.contains('dark') ? 'light' : 'dark'); }); } // ---------- PREFERENCES HANDLING ---------- function getPrefs() { try { return JSON.parse(localStorage.getItem('ih_prefs')) || {}; } catch { return {}; } } function setPrefs(p) { localStorage.setItem('ih_prefs', JSON.stringify(p)); } function applyPrefs(p) { if (p.accent) document.documentElement.setAttribute('data-accent', p.accent); if (p.bg) document.documentElement.setAttribute('data-bg', p.bg); if (p.density) document.documentElement.setAttribute('data-density', p.density); if (p.font) document.documentElement.setAttribute('data-font', p.font); document.documentElement.classList.toggle('reduce-motion', !!p.reduceMotion); document.documentElement.classList.toggle('high-contrast', !!p.contrast); } function applyGlass(val) { const alpha = parseFloat(val || '0.6'); document.documentElement.style.setProperty('--card-bg', `rgba(255, 255, 255, ${alpha})`); document.documentElement.style.setProperty('--card-border', `rgba(255, 255, 255, ${Math.max(0, Math.min(1, alpha * 0.6))})`); } function applySidebar(size) { const map = { narrow: '14rem', default: '18rem', wide: '22rem' }; const px = map[size] || map.default; document.documentElement.style.setProperty('--sidebar', px); } function applyPrefsExtended(p) { if (p.glass) applyGlass(p.glass); if (p.sidebar) applySidebar(p.sidebar); const glassIntensity = document.getElementById('glassIntensity'); const contrastToggle = document.getElementById('contrastToggle'); const motionToggle = document.getElementById('motionToggle'); if (glassIntensity) glassIntensity.value = p.glass || '0.6'; if (contrastToggle) contrastToggle.checked = !!p.contrast; if (motionToggle) motionToggle.checked = !!p.reduceMotion; } // Initialize preferences const initPrefs = getPrefs(); applyPrefs(initPrefs); applyPrefsExtended(initPrefs); // Wire up preference controls (assuming they exist in base layout) document.addEventListener('DOMContentLoaded', () => { const accentBtns = document.querySelectorAll('[data-accent]'); const bgBtns = document.querySelectorAll('[data-bg]'); const densityBtns = document.querySelectorAll('[data-density]'); const fontBtns = document.querySelectorAll('[data-font]'); const sidebarBtns = document.querySelectorAll('[data-sidebar]'); const glassIntensity = document.getElementById('glassIntensity'); const contrastToggle = document.getElementById('contrastToggle'); const motionToggle = document.getElementById('motionToggle'); const saveSettings = document.getElementById('saveSettings'); const exportPrefs = document.getElementById('exportPrefs'); const importPrefsBtn = document.getElementById('importPrefsBtn'); const prefsFile = document.getElementById('prefsFile'); accentBtns.forEach(b => b.addEventListener('click', () => { document.documentElement.setAttribute('data-accent', b.dataset.accent); })); bgBtns.forEach(b => b.addEventListener('click', () => { document.documentElement.setAttribute('data-bg', b.dataset.bg); })); densityBtns.forEach(b => b.addEventListener('click', () => { document.documentElement.setAttribute('data-density', b.dataset.density); })); fontBtns.forEach(b => b.addEventListener('click', () => { document.documentElement.setAttribute('data-font', b.dataset.font); })); sidebarBtns.forEach(b => b.addEventListener('click', () => { applySidebar(b.dataset.sidebar); })); if (glassIntensity) { glassIntensity.addEventListener('input', () => applyGlass(glassIntensity.value)); } if (contrastToggle) { contrastToggle.addEventListener('change', () => { document.documentElement.classList.toggle('high-contrast', contrastToggle.checked); }); } if (motionToggle) { motionToggle.addEventListener('change', () => { document.documentElement.classList.toggle('reduce-motion', motionToggle.checked); }); } if (saveSettings) { saveSettings.addEventListener('click', () => { const prev = getPrefs(); const p = { accent: document.documentElement.getAttribute('data-accent') || prev.accent || 'teal', bg: document.documentElement.getAttribute('data-bg') || prev.bg || 'gradient', density: document.documentElement.getAttribute('data-density') || prev.density || 'comfortable', font: document.documentElement.getAttribute('data-font') || prev.font || 'base', reduceMotion: motionToggle ? motionToggle.checked : !!prev.reduceMotion, glass: glassIntensity ? glassIntensity.value : (prev.glass || '0.6'), sidebar: prev.sidebar || 'default', contrast: contrastToggle ? contrastToggle.checked : !!prev.contrast }; setPrefs(p); showToast('Preferences saved', 'success'); }); } if (exportPrefs) { exportPrefs.addEventListener('click', () => { const blob = new Blob([JSON.stringify(getPrefs(), null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'ih_prefs.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showToast('Preferences exported', 'success'); }); } if (importPrefsBtn && prefsFile) { importPrefsBtn.addEventListener('click', () => prefsFile.click()); prefsFile.addEventListener('change', async (e) => { const file = e.target.files[0]; if (!file) return; try { const text = await file.text(); const json = JSON.parse(text); setPrefs(json); applyPrefs(json); applyPrefsExtended(json); showToast('Preferences imported', 'success'); } catch { showToast('Invalid preferences file', 'error'); } }); } }); // ---------- TOAST SYSTEM ---------- const toastHost = document.getElementById('toastHost'); function showToast(msg, type = 'info', duration = 3000) { const toast = document.createElement('div'); toast.className = `toast ${type}`; toast.innerHTML = ` <div class="flex items-center gap-2"> <iconify-icon icon="ph:${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : type === 'warn' ? 'warning-circle' : 'info'}"></iconify-icon> <div>${msg}</div> </div> `; toastHost.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(-10px)'; setTimeout(() => toast.remove(), 300); }, duration); } // ---------- PROGRESS BAR ---------- const topProgress = document.getElementById('topProgress'); function progressStart() { topProgress.style.transition = 'none'; topProgress.style.width = '0'; topProgress.style.opacity = '1'; requestAnimationFrame(() => { topProgress.style.transition = 'width 0.8s ease'; topProgress.style.width = '75%'; }); } function progressDone() { topProgress.style.width = '100%'; setTimeout(() => { topProgress.style.opacity = '0'; setTimeout(() => { topProgress.style.width = '0'; }, 300); }, 100); } // ---------- EMPLOYEE MANAGEMENT ---------- const STORAGE_KEY = 'iht_employees_v1'; const AUDIT_KEY = 'iht_audit_v1'; let employees = []; let currentPage = 1; const itemsPerPage = 10; let employeeToDelete = null; // Initialize with sample data if empty function initializeData() { const stored = localStorage.getItem(STORAGE_KEY); if (!stored) { const sampleData = [ { id: 'EMP001', name: 'John Smith', email: 'john.smith@company.com', contact: '+1 (555) 123-4567', department: 'Engineering', position: 'Senior Developer', status: 'active', dateHired: '2022-03-15', address: '123 Main St, San Francisco, CA', avatar: 'https://ui-avatars.com/api/?name=John+Smith&background=14b8a6&color=fff' }, { id: 'EMP002', name: 'Sarah Johnson', email: 'sarah.j@company.com', contact: '+1 (555) 987-6543', department: 'Marketing', position: 'Marketing Manager', status: 'active', dateHired: '2021-08-22', address: '456 Oak Ave, New York, NY', avatar: 'https://ui-avatars.com/api/?name=Sarah+Johnson&background=8b5cf6&color=fff' }, { id: 'EMP003', name: 'Michael Chen', email: 'michael.chen@company.com', contact: '+1 (555) 456-7890', department: 'Sales', position: 'Sales Director', status: 'onleave', dateHired: '2020-11-30', address: '789 Pine Rd, Chicago, IL', avatar: 'https://ui-avatars.com/api/?name=Michael+Chen&background=f59e0b&color=fff' }, { id: 'EMP004', name: 'Emma Wilson', email: 'emma.wilson@company.com', contact: '+1 (555) 321-6547', department: 'HR', position: 'HR Manager', status: 'active', dateHired: '2023-01-10', address: '321 Elm St, Austin, TX', avatar: 'https://ui-avatars.com/api/?name=Emma+Wilson&background=f43f5e&color=fff' } ]; localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleData)); // Initialize audit trail const auditData = [ { timestamp: new Date().toISOString(), action: 'System initialized with sample data', user: 'System' } ]; localStorage.setItem(AUDIT_KEY, JSON.stringify(auditData)); } } // Load employees from localStorage function loadEmployees() { initializeData(); const data = localStorage.getItem(STORAGE_KEY); employees = data ? JSON.parse(data) : []; updateStats(); renderTable(); updateDepartmentFilter(); } // Save employees to localStorage function saveEmployees() { localStorage.setItem(STORAGE_KEY, JSON.stringify(employees)); updateStats(); } // Add audit entry function addAuditEntry(action, details = '') { const audit = JSON.parse(localStorage.getItem(AUDIT_KEY) || '[]'); audit.unshift({ timestamp: new Date().toISOString(), action, details, user: 'Admin' }); // Keep only last 50 entries if (audit.length > 50) audit.length = 50; localStorage.setItem(AUDIT_KEY, JSON.stringify(audit)); renderAuditTrail(); } // Update statistics function updateStats() { const total = employees.length; const active = employees.filter(e => e.status === 'active').length; const departments = [...new Set(employees.map(e => e.department).filter(Boolean))].length; const thisMonth = new Date().getMonth(); const thisYear = new Date().getFullYear(); const newThisMonth = employees.filter(e => { const hired = new Date(e.dateHired); return hired.getMonth() === thisMonth && hired.getFullYear() === thisYear; }).length; document.getElementById('totalEmployees').textContent = total; document.getElementById('activeEmployees').textContent = active; document.getElementById('totalDepartments').textContent = departments; document.getElementById('newThisMonth').textContent = newThisMonth; } // Update department filter options function updateDepartmentFilter() { const filter = document.getElementById('departmentFilter'); const departments = [...new Set(employees.map(e => e.department).filter(Boolean))].sort(); // Keep "All Departments" option const allOption = filter.querySelector('option[value="all"]'); filter.innerHTML = ''; filter.appendChild(allOption); departments.forEach(dept => { const option = document.createElement('option'); option.value = dept; option.textContent = dept; filter.appendChild(option); }); } // Render employee table function renderTable() { const tbody = document.getElementById('employeeTableBody'); const searchTerm = document.getElementById('searchInput').value.toLowerCase(); const departmentFilter = document.getElementById('departmentFilter').value; const statusFilter = document.getElementById('statusFilter').value; // Filter employees let filtered = employees.filter(emp => { const matchesSearch = emp.name.toLowerCase().includes(searchTerm) || emp.id.toLowerCase().includes(searchTerm) || emp.email.toLowerCase().includes(searchTerm) || emp.department?.toLowerCase().includes(searchTerm) || emp.position?.toLowerCase().includes(searchTerm); const matchesDept = departmentFilter === 'all' || emp.department === departmentFilter; const matchesStatus = statusFilter === 'all' || emp.status === statusFilter; return matchesSearch && matchesDept && matchesStatus; }); // Pagination const totalPages = Math.ceil(filtered.length / itemsPerPage); if (currentPage > totalPages) currentPage = Math.max(1, totalPages); const startIndex = (currentPage - 1) * itemsPerPage; const endIndex = startIndex + itemsPerPage; const pageData = filtered.slice(startIndex, endIndex); // Clear table tbody.innerHTML = ''; // Add rows pageData.forEach((emp, index) => { const row = document.createElement('tr'); row.className = 'hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors'; let statusClass = 'status-active'; if (emp.status === 'onleave') statusClass = 'status-onleave'; if (emp.status === 'terminated') statusClass = 'status-terminated'; row.innerHTML = ` <td class="px-4 py-3"> <div class="w-10 h-10 rounded-full overflow-hidden"> <img src="${emp.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=${document.documentElement.getAttribute('data-accent') === 'teal' ? '14b8a6' : document.documentElement.getAttribute('data-accent') === 'purple' ? '8b5cf6' : document.documentElement.getAttribute('data-accent') === 'rose' ? 'f43f5e' : 'f59e0b'}&color=fff`}" alt="${emp.name}" class="w-full h-full object-cover"> </div> </td> <td class="px-4 py-3 font-medium">${emp.id}</td> <td class="px-4 py-3 font-medium">${emp.name}</td> <td class="px-4 py-3">${emp.department || '—'}</td> <td class="px-4 py-3">${emp.position || '—'}</td> <td class="px-4 py-3"> <span class="status-badge ${statusClass}">${emp.status.charAt(0).toUpperCase() + emp.status.slice(1)}</span> </td> <td class="px-4 py-3">${emp.dateHired ? new Date(emp.dateHired).toLocaleDateString() : '—'}</td> <td class="px-4 py-3 text-right"> <div class="flex justify-end gap-2"> <button class="view-employee-btn px-3 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition ripple" data-id="${emp.id}"> <iconify-icon icon="ph:eye-duotone"></iconify-icon> </button> <button class="edit-employee-btn px-3 py-1 rounded-lg bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/20 transition ripple" data-id="${emp.id}"> <iconify-icon icon="ph:pencil-duotone"></iconify-icon> </button> <button class="delete-employee-btn px-3 py-1 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition ripple" data-id="${emp.id}"> <iconify-icon icon="ph:trash-duotone"></iconify-icon> </button> </div> </td> `; tbody.appendChild(row); }); // Update table info const tableInfo = document.getElementById('tableInfo'); const showing = filtered.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, filtered.length)}` : '0'; tableInfo.textContent = `Showing ${showing} of ${filtered.length} employees`; // Update pagination buttons document.getElementById('prevPageBtn').disabled = currentPage <= 1; document.getElementById('nextPageBtn').disabled = currentPage >= totalPages; } // Render audit trail function renderAuditTrail() { const container = document.getElementById('auditTrailList'); const audit = JSON.parse(localStorage.getItem(AUDIT_KEY) || '[]'); container.innerHTML = ''; audit.slice(0, 10).forEach(entry => { const item = document.createElement('div'); item.className = 'text-sm'; const time = new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); item.innerHTML = ` <div class="font-medium">${entry.action}</div> <div class="text-xs text-gray-500 dark:text-gray-400">${time} • ${entry.details || ''}</div> `; container.appendChild(item); }); } // Calculate tenure function calculateTenure(dateHired) { if (!dateHired) return '—'; const hired = new Date(dateHired); const now = new Date(); let years = now.getFullYear() - hired.getFullYear(); let months = now.getMonth() - hired.getMonth(); if (months < 0) { years--; months += 12; } return `${years}y ${months}m`; } // Export to CSV function exportToCSV() { progressStart(); const headers = ['ID', 'Name', 'Email', 'Contact', 'Department', 'Position', 'Status', 'Date Hired', 'Address']; const rows = employees.map(emp => [ emp.id, emp.name, emp.email, emp.contact, emp.department, emp.position, emp.status, emp.dateHired, emp.address ]); // CSV quoting function const quote = (value) => { if (value === null || value === undefined) return '""'; const string = String(value); if (string.includes(',') || string.includes('"') || string.includes('\n') || string.includes('\r')) { return '"' + string.replace(/"/g, '""') + '"'; } return string; }; const csvContent = [ headers.map(quote).join(','), ...rows.map(row => row.map(quote).join(',')) ].join('\n'); const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `employees_export_${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url); addAuditEntry('Exported employees to CSV', `${employees.length} records`); showToast('CSV exported successfully', 'success'); setTimeout(() => progressDone(), 500); } // Import from CSV function importFromCSV(file) { progressStart(); const reader = new FileReader(); reader.onload = function(e) { try { const content = e.target.result; const lines = content.split('\n').filter(line => line.trim()); if (lines.length < 2) { throw new Error('CSV file is empty or has no data rows'); } const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '')); // Find column indices const idIndex = headers.findIndex(h => h.toLowerCase().includes('id')); const nameIndex = headers.findIndex(h => h.toLowerCase().includes('name')); const emailIndex = headers.findIndex(h => h.toLowerCase().includes('email')); const contactIndex = headers.findIndex(h => h.toLowerCase().includes('contact') || h.toLowerCase().includes('phone')); const deptIndex = headers.findIndex(h => h.toLowerCase().includes('department')); const positionIndex = headers.findIndex(h => h.toLowerCase().includes('position')); const statusIndex = headers.findIndex(h => h.toLowerCase().includes('status')); const hiredIndex = headers.findIndex(h => h.toLowerCase().includes('hired') || h.toLowerCase().includes('date')); const addressIndex = headers.findIndex(h => h.toLowerCase().includes('address')); const newEmployees = []; for (let i = 1; i < lines.length; i++) { // Simple CSV parsing (for demo purposes) const cells = lines[i].split(',').map(cell => { let val = cell.trim(); if (val.startsWith('"') && val.endsWith('"')) { val = val.slice(1, -1).replace(/""/g, '"'); } return val; }); const id = cells[idIndex] || `EMP${String(employees.length + newEmployees.length + 1).padStart(3, '0')}`; const name = cells[nameIndex] || 'Unknown'; // Check if employee already exists const existingIndex = employees.findIndex(e => e.id === id); const employee = { id, name, email: cells[emailIndex] || '', contact: cells[contactIndex] || '', department: cells[deptIndex] || '', position: cells[positionIndex] || '', status: cells[statusIndex] || 'active', dateHired: cells[hiredIndex] || new Date().toISOString().split('T')[0], address: cells[addressIndex] || '', avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=14b8a6&color=fff` }; if (existingIndex >= 0) { // Update existing employees[existingIndex] = { ...employees[existingIndex], ...employee }; } else { // Add new newEmployees.push(employee); employees.unshift(employee); } } saveEmployees(); addAuditEntry('Imported employees from CSV', `${newEmployees.length} new, ${lines.length - 1 - newEmployees.length} updated`); showToast(`Imported ${newEmployees.length} new employees, updated ${lines.length - 1 - newEmployees.length}`, 'success'); progressDone(); } catch (error) { showToast(`Import failed: ${error.message}`, 'error'); progressDone(); } }; reader.readAsText(file); } // Open add employee modal function openAddEmployeeModal() { document.getElementById('modalTitle').textContent = 'Add Employee'; document.getElementById('employeeForm').reset(); document.getElementById('employeeId').value = ''; // Generate new ID const lastId = employees.length > 0 ? Math.max(...employees.map(e => parseInt(e.id.replace('EMP', '')) || 0)) : 0; document.getElementById('empId').value = `EMP${String(lastId + 1).padStart(3, '0')}`; document.getElementById('employeeModal').classList.remove('hidden'); } // Open edit employee modal function openEditEmployeeModal(id) { const employee = employees.find(e => e.id === id); if (!employee) return; document.getElementById('modalTitle').textContent = 'Edit Employee'; document.getElementById('employeeId').value = employee.id; document.getElementById('empId').value = employee.id; document.getElementById('fullName').value = employee.name; document.getElementById('email').value = employee.email; document.getElementById('contact').value = employee.contact; document.getElementById('department').value = employee.department || ''; document.getElementById('position').value = employee.position || ''; document.getElementById('status').value = employee.status; document.getElementById('dateHired').value = employee.dateHired; document.getElementById('address').value = employee.address || ''; document.getElementById('employeeModal').classList.remove('hidden'); } // Open view employee modal function openViewEmployeeModal(id) { const employee = employees.find(e => e.id === id); if (!employee) return; document.getElementById('viewName').textContent = employee.name; document.getElementById('viewId').textContent = `ID: ${employee.id}`; document.getElementById('viewEmail').textContent = employee.email; document.getElementById('viewContact').textContent = employee.contact; document.getElementById('viewDepartment').textContent = employee.department || '—'; document.getElementById('viewPosition').textContent = employee.position || '—'; document.getElementById('viewDateHired').textContent = employee.dateHired ? new Date(employee.dateHired).toLocaleDateString() : '—'; document.getElementById('viewTenure').textContent = calculateTenure(employee.dateHired); document.getElementById('viewAddress').textContent = employee.address || '—'; document.getElementById('viewAvatar').src = employee.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name)}&background=14b8a6&color=fff`; // Status badge const statusEl = document.getElementById('viewStatus'); statusEl.innerHTML = ''; let statusClass = 'status-active'; if (employee.status === 'onleave') statusClass = 'status-onleave'; if (employee.status === 'terminated') statusClass = 'status-terminated'; const badge = document.createElement('span'); badge.className = `status-badge ${statusClass}`; badge.textContent = employee.status.charAt(0).toUpperCase() + employee.status.slice(1); statusEl.appendChild(badge); // Set edit and delete button data document.getElementById('editFromViewBtn').dataset.id = employee.id; document.getElementById('deleteFromViewBtn').dataset.id = employee.id; document.getElementById('viewEmployeeModal').classList.remove('hidden'); } // Open delete confirmation modal function openDeleteModal(id) { const employee = employees.find(e => e.id === id); if (!employee) return; employeeToDelete = id; document.getElementById('deleteEmployeeName').textContent = employee.name; document.getElementById('deleteEmployeeId').textContent = `ID: ${employee.id}`; document.getElementById('deleteModal').classList.remove('hidden'); } // Initialize event listeners document.addEventListener('DOMContentLoaded', () => { loadEmployees(); renderAuditTrail(); // Modal buttons const employeeModal = document.getElementById('employeeModal'); const viewEmployeeModal = document.getElementById('viewEmployeeModal'); const deleteModal = document.getElementById('deleteModal'); // Add employee button document.getElementById('addEmployeeBtn').addEventListener('click', openAddEmployeeModal); document.getElementById('quickAddBtn').addEventListener('click', openAddEmployeeModal); // Close modal buttons document.getElementById('closeModalBtn').addEventListener('click', () => employeeModal.classList.add('hidden')); document.getElementById('cancelModalBtn').addEventListener('click', () => employeeModal.classList.add('hidden')); document.getElementById('closeViewModalBtn').addEventListener('click', () => viewEmployeeModal.classList.add('hidden')); document.getElementById('cancelDeleteBtn').addEventListener('click', () => { deleteModal.classList.add('hidden'); employeeToDelete = null; }); // Employee form submission document.getElementById('employeeForm').addEventListener('submit', (e) => { e.preventDefault(); const id = document.getElementById('employeeId').value; const isEdit = !!id; const employee = { id: document.getElementById('empId').value, name: document.getElementById('fullName').value, email: document.getElementById('email').value, contact: document.getElementById('contact').value, department: document.getElementById('department').value, position: document.getElementById('position').value, status: document.getElementById('status').value, dateHired: document.getElementById('dateHired').value, address: document.getElementById('address').value, avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(document.getElementById('fullName').value)}&background=${document.documentElement.getAttribute('data-accent') === 'teal' ? '14b8a6' : document.documentElement.getAttribute('data-accent') === 'purple' ? '8b5cf6' : document.documentElement.getAttribute('data-accent') === 'rose' ? 'f43f5e' : 'f59e0b'}&color=fff` }; if (isEdit) { // Update existing const index = employees.findIndex(e => e.id === id); if (index >= 0) { employees[index] = { ...employees[index], ...employee }; addAuditEntry('Updated employee', employee.id); showToast('Employee updated successfully', 'success'); } } else { // Add new employees.unshift(employee); addAuditEntry('Added new employee', employee.id); showToast('Employee added successfully', 'success'); } saveEmployees(); employeeModal.classList.add('hidden'); }); // Edit from view document.getElementById('editFromViewBtn').addEventListener('click', (e) => { const id = e.target.dataset.id; viewEmployeeModal.classList.add('hidden'); openEditEmployeeModal(id); }); // Delete from view document.getElementById('deleteFromViewBtn').addEventListener('click', (e) => { const id = e.target.dataset.id; viewEmployeeModal.classList.add('hidden'); openDeleteModal(id); }); // Confirm delete document.getElementById('confirmDeleteBtn').addEventListener('click', () => { if (!employeeToDelete) return; const employee = employees.find(e => e.id === employeeToDelete); const index = employees.findIndex(e => e.id === employeeToDelete); if (index >= 0) { employees.splice(index, 1); saveEmployees(); addAuditEntry('Deleted employee', employeeToDelete); showToast('Employee deleted successfully', 'success'); } deleteModal.classList.add('hidden'); employeeToDelete = null; }); // Table event delegation document.getElementById('employeeTableBody').addEventListener('click', (e) => { const target = e.target.closest('button'); if (!target) return; const id = target.dataset.id; if (target.classList.contains('view-employee-btn')) { openViewEmployeeModal(id); } else if (target.classList.contains('edit-employee-btn')) { openEditEmployeeModal(id); } else if (target.classList.contains('delete-employee-btn')) { openDeleteModal(id); } }); // Export buttons document.getElementById('exportCsvBtn').addEventListener('click', exportToCSV); document.getElementById('quickExportBtn').addEventListener('click', exportToCSV); // Import buttons document.getElementById('importCsvFile').addEventListener('change', (e) => { if (e.target.files.length > 0) { importFromCSV(e.target.files[0]); e.target.value = ''; } }); document.getElementById('quickImportFile').addEventListener('change', (e) => { if (e.target.files.length > 0) { importFromCSV(e.target.files[0]); e.target.value = ''; } }); // Download template document.getElementById('downloadTemplateBtn').addEventListener('click', () => { const template = `ID,Name,Email,Contact,Department,Position,Status,Date Hired,Address EMP001,John Smith,john.smith@company.com,+1 (555) 123-4567,Engineering,Senior Developer,active,2023-01-15,123 Main St EMP002,Jane Doe,jane.doe@company.com,+1 (555) 987-6543,Marketing,Marketing Manager,active,2023-02-01,456 Oak Ave EMP003,Robert Johnson,robert.j@company.com,+1 (555) 456-7890,Sales,Sales Representative,onleave,2022-11-30,789 Pine Rd`; const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'employee_template.csv'; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url); showToast('Template downloaded', 'success'); }); // Filter events document.getElementById('searchInput').addEventListener('input', () => { currentPage = 1; renderTable(); }); document.getElementById('departmentFilter').addEventListener('change', () => { currentPage = 1; renderTable(); }); document.getElementById('statusFilter').addEventListener('change', () => { currentPage = 1; renderTable(); }); // Pagination document.getElementById('prevPageBtn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTable(); } }); document.getElementById('nextPageBtn').addEventListener('click', () => { currentPage++; renderTable(); }); // Keyboard shortcuts document.addEventListener('keydown', (e) => { // Don't trigger if typing in input/textarea if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return; if (e.key === 'n' && e.ctrlKey) { e.preventDefault(); openAddEmployeeModal(); } else if (e.key === 'Escape') { employeeModal.classList.add('hidden'); viewEmployeeModal.classList.add('hidden'); deleteModal.classList.add('hidden'); } else if (e.key === '?' || e.key === '/') { e.preventDefault(); document.getElementById('searchInput').focus(); } }); }); </script>
+  // toast system
+  const toastHost = document.getElementById('toastHost');
+  function showToast(msg, type = 'info', duration = 3200) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+      <div class="flex items-center gap-2">
+        <iconify-icon icon="ph:${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : type === 'warn' ? 'warning-circle' : 'info'}"></iconify-icon>
+        <div>${msg}</div>
+      </div>
+    `;
+    toastHost.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-10px)';
+      setTimeout(() => toast.remove(), 250);
+    }, duration);
+  }
+
+  // django messages -> toast
+  {% if messages %}
+    {% for m in messages %}
+      showToast("{{ m|escapejs }}", "{{ m.tags|default:'info' }}");
+    {% endfor %}
+  {% endif %}
+</script>
 {% endblock %}

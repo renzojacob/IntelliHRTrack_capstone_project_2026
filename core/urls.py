@@ -8,18 +8,32 @@ urlpatterns = [
     path("auth/signup/", views.signup_ui, name="signup_ui"),
     path("auth/logout/", auth_views.LogoutView.as_view(next_page="login_ui"), name="logout"),
 
-
-
     # -------------------------
     # Admin UI
     # -------------------------
     path("admin-ui/dashboard/", views.admin_dashboard, name="admin_dashboard"),
+
     path("admin-ui/biometrics/", views.admin_biometrics_attendance, name="admin_biometrics"),
     path("admin-ui/biometrics/import/", views.admin_biometrics_import, name="admin_biometrics_import"),
     path("admin-ui/biometrics/template/", views.admin_biometrics_template, name="admin_biometrics_template"),
     path("admin-ui/biometrics/export/", views.admin_biometrics_export, name="admin_biometrics_export"),
 
     path("admin-ui/employees/", views.admin_employee_management, name="admin_employees"),
+
+    # ✅ approve
+    path(
+        "admin-ui/employees/approve/<int:profile_id>/",
+        views.approve_user,
+        name="approve_user"
+    ),
+
+    # 🔴 reject (ADD THIS)
+    path(
+        "admin-ui/employees/reject/<int:profile_id>/",
+        views.reject_user,
+        name="reject_user"
+    ),
+
     path("admin-ui/scheduling/", views.admin_shift_scheduling, name="admin_scheduling"),
     path("admin-ui/leave/", views.admin_leave_approval, name="admin_leave"),
     path("admin-ui/payroll/", views.admin_payroll, name="admin_payroll"),
@@ -34,7 +48,7 @@ urlpatterns = [
     path("admin-ui/biometrics/records/<int:pk>/delete/", views.attendance_delete, name="admin_attendance_delete"),
 
     # -------------------------
-    # Employee UI (NEW)
+    # Employee UI
     # -------------------------
     path("employee/dashboard/", views.employee_dashboard, name="employee_dashboard"),
     path("employee/attendance/", views.employee_attendance, name="employee_attendance"),
