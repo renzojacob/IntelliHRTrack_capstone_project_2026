@@ -1,6 +1,7 @@
 {% load static %}
 <aside data-resizable class="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col gap-6 p-6 pr-3 overflow-y-auto fancy-scroll big-scroll">
   <div class="glass rounded-2xl p-4 shadow-glow text-slate-800 dark:text-slate-100">
+
     <!-- Brand -->
     <div class="flex items-center gap-3 mb-6">
       <div class="w-11 h-11 rounded-xl gradient-accent text-white flex items-center justify-center font-extrabold shadow-lg">IH</div>
@@ -9,9 +10,9 @@
         <p class="text-xs text-gray-500 dark:text-gray-400">Admin Command Center</p>
       </div>
     </div>
-    
+
     <div class="neon-divider"></div>
-    
+
     <!-- Navigation -->
     <nav class="mt-3">
       <ul class="space-y-1">
@@ -21,48 +22,56 @@
             <span class="font-medium">Dashboard</span>
           </a>
         </li>
+
         <li>
           <a href="{% url 'admin_biometrics' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'biometrics' %}ring ring-white/30 bg-accent/10{% endif %}">
             <iconify-icon icon="ph:fingerprint-simple-duotone" class="text-accent"></iconify-icon>
             <span>Biometrics & Attendance</span>
           </a>
         </li>
+
         <li>
           <a href="{% url 'admin_employees' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'employees' %}ring ring-white/30 bg-accent/10{% endif %}">
             <iconify-icon icon="ph:users-three-duotone" class="text-accent"></iconify-icon>
             <span>Employee Management</span>
           </a>
         </li>
+
         <li>
           <a href="{% url 'admin_scheduling' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'scheduling' %}ring ring-white/30 bg-accent/10{% endif %}">
             <iconify-icon icon="ph:calendar-check-duotone" class="text-accent"></iconify-icon>
             <span>Shift Scheduling</span>
           </a>
         </li>
+
         <li>
           <a href="{% url 'admin_leave' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'leave' %}ring ring-white/30 bg-accent/10{% endif %}">
             <iconify-icon icon="ph:airplane-tilt-duotone" class="text-accent"></iconify-icon>
             <span>Leave Approval</span>
           </a>
         </li>
+
         <li>
           <a href="{% url 'admin_payroll' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'payroll' %}ring ring-white/30 bg-accent/10{% endif %}">
             <iconify-icon icon="ph:currency-dollar-duotone" class="text-accent"></iconify-icon>
             <span>Payroll</span>
           </a>
         </li>
+
         <li>
           <a href="{% url 'admin_reports' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'reports' %}ring ring-white/30 bg-accent/10{% endif %}">
             <iconify-icon icon="ph:graph-duotone" class="text-accent"></iconify-icon>
             <span>Reports</span>
           </a>
         </li>
+
         <li>
           <a href="{% url 'admin_analytics' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'analytics' %}ring ring-white/30 bg-accent/10{% endif %}">
             <iconify-icon icon="ph:brain-duotone" class="text-accent"></iconify-icon>
             <span>AI Analytics</span>
           </a>
         </li>
+
         <li>
           <a href="{% url 'admin_system' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'system' %}ring ring-white/30 bg-accent/10{% endif %}">
             <iconify-icon icon="ph:gear-six-duotone" class="text-accent"></iconify-icon>
@@ -71,21 +80,21 @@
         </li>
       </ul>
     </nav>
-    
+
     <div class="neon-divider my-4"></div>
-    
-    <!-- Customization Section -->
+
+    <!-- Customization Section (RESTORED) -->
     <div class="space-y-3">
       <button id="customizeLayout" class="w-full px-3 py-2 text-white rounded-xl gradient-accent hover:shadow-glow ring-1 ring-white/30 transition flex items-center justify-center gap-2">
         <iconify-icon icon="ph:sliders-duotone"></iconify-icon>
         <span>Customize Layout</span>
       </button>
-      
+
       <button id="shortcutsBtn" class="w-full px-3 py-2 rounded-xl glass hover:shadow-glow transition flex items-center justify-center gap-2">
         <iconify-icon icon="ph:keyboard-duotone"></iconify-icon>
         <span>Keyboard Shortcuts</span>
       </button>
-      
+
       <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300">
         <span class="flex items-center gap-2">
           <iconify-icon icon="ph:sun-dim-duotone" class="hidden dark:inline"></iconify-icon>
@@ -98,18 +107,34 @@
         </button>
       </div>
     </div>
-    
+
     <div class="neon-divider my-4"></div>
-    
+
+    <!-- Logout -->
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button
+        type="submit"
+        class="w-full flex items-center justify-center gap-3 px-3 py-2 rounded-xl
+               bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white
+               transition ring-1 ring-red-500/30 hover:shadow-glow">
+        <iconify-icon icon="ph:sign-out-duotone"></iconify-icon>
+        <span class="font-medium">Logout</span>
+      </button>
+    </form>
+
+    <div class="neon-divider my-4"></div>
+
     <!-- Footer -->
     <div class="text-xs text-gray-500 dark:text-gray-400 text-center">
       <p>© IntelliHRTrack</p>
       <p class="mt-1 text-xs opacity-60">v2.0 • Premium Admin</p>
     </div>
+
   </div>
 </aside>
 
-<!-- Mobile header toggle (for main content) -->
+<!-- Mobile header toggle -->
 <div class="lg:hidden mb-4">
   <button onclick="document.querySelector('#mobileMenuFab').click()" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl glass shadow-glow">
     <iconify-icon icon="ph:list-duotone"></iconify-icon>
