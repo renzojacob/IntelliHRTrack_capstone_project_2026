@@ -6,6 +6,7 @@ import re
 from datetime import datetime
 
 from django.contrib import messages
+from django.contrib.auth import authenticate, login
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -20,6 +21,34 @@ from .models import AttendanceRecord
 # Auth UI pages
 # =========================
 def login_ui(request):
+    # Already logged in? Send to proper dashboard
+    if request.user.is_authenticated:
+        if request.user.is_staff or request.user.is_superuser:
+            return redirect("admin_dashboard")
+        return redirect("employee_dashboard")
+
+    # Login submit
+    if request.method == "POST":
+        username = (request.POST.get("username") or "").strip()
+        password = request.POST.get("password") or ""
+
+        user = authenticate(request, username=username, password=password)
+        if user is None:
+            messages.error(request, "Invalid username or password.")
+            return render(request, "auth/login.html")
+
+        login(request, user)
+
+        # Support ?next= redirect if present
+        next_url = request.GET.get("next") or request.POST.get("next")
+        if next_url:
+            return redirect(next_url)
+
+        # Role-based redirect
+        if user.is_staff or user.is_superuser:
+            return redirect("admin_dashboard")
+        return redirect("employee_dashboard")
+
     return render(request, "auth/login.html")
 
 
@@ -615,8 +644,6 @@ def admin_biometrics_import(request):
             context["can_import"] = False
             return render(request, "admin/Biometrics_attendance.html", context)
 
-        # IMPORTANT: if the HTML export splits pages, _read_excel() now concatenates ALL Detail2 tables,
-        # so len(rows) should match your real number of records.
         _save_import_cache(request, branch=branch, skip_duplicates=skip_duplicates, rows=rows)
 
         context["import_summary"] = f"✓ Validation passed! {len(rows)} row(s) ready to import."
@@ -637,7 +664,6 @@ def admin_biometrics_import(request):
 
     try:
         with transaction.atomic():
-            # cached mapped rows
             if rows and isinstance(rows[0], dict) and "employee_id" in rows[0] and "timestamp" in rows[0] and (not upload):
                 for idx, r in enumerate(rows, start=2):
                     employee_id = (r.get("employee_id") or "").strip()
@@ -670,7 +696,6 @@ def admin_biometrics_import(request):
                         failed += 1
                         import_errors.append(f"Row {idx}: {e}")
             else:
-                # import from freshly parsed file rows
                 for idx, row in enumerate(rows, start=2):
                     mapped = _map_row(row, branch=branch)
 
