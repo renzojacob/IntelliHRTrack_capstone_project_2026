@@ -1,0 +1,740 @@
+{% extends 'employee/base_employee.html' %}
+
+{% block title %}Employee Dashboard | IntelliHRTrack{% endblock %}
+
+{% block content %}
+<!-- Hero / Welcome -->
+      <header id="section-top" class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow reveal">
+        <div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="relative">
+              <img class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-4 border-white/50 shadow-lg" src="https://randomuser.me/api/portraits/men/32.jpg" alt="Renzo">
+              <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
+            </div>
+            <div>
+              <h1 id="welcomeMessage" class="text-2xl md:text-3xl font-extrabold tracking-tight">Good morning, Renzo!</h1>
+              <p class="text-sm md:text-base text-gray-600 dark:text-gray-300 mt-1">Today is <span id="currentDate">--</span></p>
+              <div class="flex items-center gap-2 mt-2 text-sm">
+                <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">ID: EMP-8472</span>
+                <span class="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full">Sales Department</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="mobileMenu" class="lg:hidden p-2 rounded-xl glass" aria-label="Open Menu"><iconify-icon icon="ph:list-duotone"></iconify-icon></button>
+            <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-xl glass text-xs">
+              <span id="netDot" class="inline-block w-2.5 h-2.5 rounded-full bg-green-500" title="Online"></span>
+              <span id="headerClock">--:--:--</span>
+            </div>
+            <!-- Header theme toggle mirrors sidebar toggle -->
+            <button id="themeToggleHeader" class="p-2 rounded-xl glass hover:shadow-glow transition">
+              <iconify-icon icon="ph:sun-dim-duotone" class="hidden dark:inline text-accent"></iconify-icon>
+              <iconify-icon icon="ph:moon-stars-duotone" class="dark:hidden text-accent"></iconify-icon>
+            </button>
+          </div>
+        </div>
+      </header>
+
+  <!-- Quick Actions -->
+      <div class="glass rounded-3xl p-4 shadow reveal">
+        <div class="flex flex-wrap justify-center gap-3">
+          <button class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition hover-lift ripple w-24">
+            <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+              <iconify-icon icon="ph:airplane-takeoff-duotone"></iconify-icon>
+            </div>
+            <span class="text-xs font-medium">Apply Leave</span>
+          </button>
+          <button class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition hover-lift ripple w-24">
+            <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+              <iconify-icon icon="ph:file-text-duotone"></iconify-icon>
+            </div>
+            <span class="text-xs font-medium">View Payslip</span>
+          </button>
+          <button class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition hover-lift ripple w-24">
+            <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+              <iconify-icon icon="ph:calendar-blank-duotone"></iconify-icon>
+            </div>
+            <span class="text-xs font-medium">View Schedule</span>
+          </button>
+          <button class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition hover-lift ripple w-24">
+            <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+              <iconify-icon icon="ph:clock-counter-clockwise-duotone"></iconify-icon>
+            </div>
+            <span class="text-xs font-medium">Time Logs</span>
+          </button>
+          <button class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition hover-lift ripple w-24">
+            <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+              <iconify-icon icon="ph:certificate-duotone"></iconify-icon>
+            </div>
+            <span class="text-xs font-medium">Certificate</span>
+          </button>
+          <button class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition hover-lift ripple w-24">
+            <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+              <iconify-icon icon="ph:user-circle-duotone"></iconify-icon>
+            </div>
+            <span class="text-xs font-medium">Profile</span>
+          </button>
+        </div>
+  </div>
+  <script>
+  // Active link highlighter (filename based)
+  (function(){const file=location.pathname.split('/').pop();document.querySelectorAll('aside nav a').forEach(a=>{const href=a.getAttribute('href');if(!href) return; if(href===file){a.classList.add('gradient-accent','text-white','shadow-glow');a.classList.remove('glass');} else {a.classList.remove('gradient-accent','text-white');if(!a.classList.contains('glass')) a.classList.add('glass');}});})();
+  // Theme toggle hookup (sidebar + header)
+  (function(){function save(){localStorage.setItem('ih_theme',document.documentElement.classList.contains('dark')?'dark':'light');}['themeToggle','themeToggleHeader'].forEach(id=>{const el=document.getElementById(id);if(el){el.addEventListener('click',()=>{document.documentElement.classList.toggle('dark');save();});}});})();
+  </script>
+
+      <!-- Main Grid -->
+      <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <!-- Left Column -->
+        <div class="space-y-6">
+          <!-- Attendance Status -->
+          <div class="glass rounded-3xl p-6 shadow reveal">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <h2 class="text-xl font-bold">Attendance Status</h2>
+              <div class="flex items-center gap-2 text-sm">
+                <div class="flex items-center gap-1">
+                  <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                  <span>Checked In</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                  <span>Checked Out</span>
+                </div>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="p-6 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/20 rounded-2xl border border-green-200 dark:border-green-700 text-center">
+                <div class="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-4">
+                  <iconify-icon icon="ph:check-circle-duotone" class="text-white text-2xl"></iconify-icon>
+                </div>
+                <h3 class="text-lg font-bold text-green-800 dark:text-green-300">Currently Checked In</h3>
+                <p class="text-sm text-green-600 dark:text-green-400 mt-2">You checked in at <span class="font-semibold">8:45 AM</span></p>
+                <p class="text-xs text-green-500 dark:text-green-500 mt-1">Duration: <span id="workDuration">7h 15m</span></p>
+                <button id="checkOutBtn" class="mt-4 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-all ripple w-full">
+                  Check Out Now
+                </button>
+              </div>
+              <div class="space-y-4">
+                <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl border border-blue-200 dark:border-blue-700">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium">Last Check-In</span>
+                    <span class="text-xs text-gray-500">Today</span>
+                  </div>
+                  <p class="text-lg font-bold mt-1">8:45 AM</p>
+                </div>
+                <div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-700">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium">Last Check-Out</span>
+                    <span class="text-xs text-gray-500">Yesterday</span>
+                  </div>
+                  <p class="text-lg font-bold mt-1">6:12 PM</p>
+                </div>
+                <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-xl border border-amber-200 dark:border-amber-700">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium">Total Hours This Week</span>
+                    <span class="text-xs text-gray-500">Mon-Fri</span>
+                  </div>
+                  <p class="text-lg font-bold mt-1">38.5 hours</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendance Snapshot -->
+          <div class="glass rounded-3xl p-6 shadow reveal">
+            <h2 class="text-xl font-bold mb-6">Attendance Snapshot</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-xl text-center">
+                <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-3">
+                  <iconify-icon icon="ph:check-circle-duotone" class="text-white text-xl"></iconify-icon>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Days Present</p>
+                <p class="text-2xl font-bold mt-1">18</p>
+                <p class="text-xs text-green-500 mt-1">This month</p>
+              </div>
+              <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-xl text-center">
+                <div class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center mx-auto mb-3">
+                  <iconify-icon icon="ph:clock-duotone" class="text-white text-xl"></iconify-icon>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Late Arrivals</p>
+                <p class="text-2xl font-bold mt-1">3</p>
+                <p class="text-xs text-amber-500 mt-1">-2 from last month</p>
+              </div>
+              <div class="p-4 bg-red-50 dark:bg-red-900/30 rounded-xl text-center">
+                <div class="w-12 h-12 rounded-full bg-red-500 flex items-center justify-center mx-auto mb-3">
+                  <iconify-icon icon="ph:prohibit-inset-duotone" class="text-white text-xl"></iconify-icon>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Absent Days</p>
+                <p class="text-2xl font-bold mt-1">0</p>
+                <p class="text-xs text-red-500 mt-1">Perfect record!</p>
+              </div>
+              <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl text-center">
+                <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center mx-auto mb-3">
+                  <iconify-icon icon="ph:trend-up-duotone" class="text-white text-xl"></iconify-icon>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">On-Time Rate</p>
+                <p class="text-2xl font-bold mt-1">94%</p>
+                <p class="text-xs text-blue-500 mt-1">+8% improvement</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendance Trend Chart -->
+          <div class="glass rounded-3xl p-6 shadow reveal">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-xl font-bold">Attendance Trend</h2>
+              <div class="flex items-center gap-2">
+                <button class="px-3 py-1 rounded-lg glass text-sm">Weekly</button>
+                <button class="px-3 py-1 rounded-lg glass text-sm bg-accent text-white">Monthly</button>
+              </div>
+            </div>
+            <div class="h-64"><canvas id="attendanceChart"></canvas></div>
+          </div>
+
+          <!-- Overtime & Work Hours -->
+          <div class="glass rounded-3xl p-6 shadow reveal">
+            <h2 class="text-xl font-bold mb-6">Overtime &amp; Work Hours</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="p-6 bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/20 rounded-2xl border border-purple-200 dark:border-purple-700">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="font-bold text-purple-800 dark:text-purple-300">Overtime This Month</h3>
+                  <iconify-icon icon="ph:clock-countdown-duotone" class="text-purple-500 text-xl"></iconify-icon>
+                </div>
+                <div class="flex items-end gap-2">
+                  <span class="text-3xl font-bold text-purple-700 dark:text-purple-300">12.5</span>
+                  <span class="text-lg text-purple-600 dark:text-purple-400 mb-1">hours</span>
+                </div>
+                <div class="flex items-center gap-2 mt-4">
+                  <iconify-icon icon="ph:trend-up-duotone" class="text-green-500"></iconify-icon>
+                  <span class="text-sm text-green-600 dark:text-green-400">+2.5h from last month</span>
+                </div>
+              </div>
+              <div class="space-y-4">
+                <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium">Regular Hours</span>
+                    <span class="text-xs text-gray-500">This week</span>
+                  </div>
+                  <p class="text-xl font-bold mt-1">38.5 hours</p>
+                </div>
+                <div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-xl">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium">Overtime Rate</span>
+                    <span class="text-xs text-gray-500">1.5x pay</span>
+                  </div>
+                  <p class="text-xl font-bold mt-1">$45.75/hr</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Performance Timeline -->
+          <div class="glass rounded-3xl p-6 shadow reveal">
+            <h2 class="text-xl font-bold mb-6">Performance Timeline</h2>
+            <div class="space-y-4">
+              <div class="flex items-start gap-4">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    <iconify-icon icon="ph:trophy-duotone"></iconify-icon>
+                  </div>
+                  <div class="flex-1 w-0.5 bg-green-200 dark:bg-green-800 mt-2"></div>
+                </div>
+                <div class="flex-1 pb-4">
+                  <p class="font-medium">100th Day Perfect Attendance</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Achieved on March 15, 2023</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-4">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                    <iconify-icon icon="ph:star-duotone"></iconify-icon>
+                  </div>
+                  <div class="flex-1 w-0.5 bg-blue-200 dark:bg-blue-800 mt-2"></div>
+                </div>
+                <div class="flex-1 pb-4">
+                  <p class="font-medium">On-Time Record Streak: 45 days</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Current active streak</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-4">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white">
+                    <iconify-icon icon="ph:medal-duotone"></iconify-icon>
+                  </div>
+                  <div class="flex-1 w-0.5 bg-purple-200 dark:bg-purple-800 mt-2"></div>
+                </div>
+                <div class="flex-1">
+                  <p class="font-medium">Employee of the Month</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Awarded for February 2023</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+  <!-- Right Column -->
+  <div class="space-y-6">
+          <!-- Shift Overview -->
+          <div class="glass rounded-3xl p-6 shadow reveal">
+            <h2 class="text-xl font-bold mb-4">Shift Overview</h2>
+            <div class="p-4 bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/20 rounded-2xl border border-blue-200 dark:border-blue-700">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-blue-800 dark:text-blue-300">Next Shift</h3>
+                <span class="px-2 py-1 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-xs rounded-full">Regular</span>
+              </div>
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                  <iconify-icon icon="ph:calendar-blank-duotone"></iconify-icon>
+                </div>
+                <div>
+                  <p class="text-lg font-bold">Tomorrow, 9:00 AM - 6:00 PM</p>
+                  <p class="text-sm text-blue-600 dark:text-blue-400">8-hour shift</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <iconify-icon icon="ph:user-duotone" class="text-blue-500"></iconify-icon>
+                <span class="text-blue-700 dark:text-blue-300">Supervisor: Sarah Johnson</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leave Summary -->
+          <div class="glass rounded-3xl p-6 shadow reveal">
+            <h2 class="text-xl font-bold mb-4">Leave Summary</h2>
+            <div class="space-y-4">
+              <div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-xl border border-green-200 dark:border-green-700">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-sm font-medium text-green-800 dark:text-green-300">Vacation Leave</span>
+                  <span class="text-xs text-green-600 dark:text-green-400">15 days/year</span>
+                </div>
+                <div class="w-full bg-green-200 dark:bg-green-800 rounded-full h-2">
+                  <div class="bg-green-500 h-2 rounded-full" style="width: 60%"></div>
+                </div>
+                <div class="flex justify-between text-xs mt-1">
+                  <span class="text-green-600 dark:text-green-400">9 days used</span>
+                  <span class="text-green-600 dark:text-green-400">6 days remaining</span>
+                </div>
+              </div>
+              <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl border border-blue-200 dark:border-blue-700">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-sm font-medium text-blue-800 dark:text-blue-300">Sick Leave</span>
+                  <span class="text-xs text-blue-600 dark:text-blue-400">10 days/year</span>
+                </div>
+                <div class="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+                  <div class="bg-blue-500 h-2 rounded-full" style="width: 30%"></div>
+                </div>
+                <div class="flex justify-between text-xs mt-1">
+                  <span class="text-blue-600 dark:text-blue-400">3 days used</span>
+                  <span class="text-blue-600 dark:text-blue-400">7 days remaining</span>
+                </div>
+              </div>
+              <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-xl border border-amber-200 dark:border-amber-700">
+                <div class="flex justify-between items-center">
+                  <span class="text-sm font-medium text-amber-800 dark:text-amber-300">Pending Requests</span>
+                  <span class="text-xs px-2 py-1 bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-200 rounded-full">2 requests</span>
+                </div>
+                <div class="mt-2 space-y-2">
+                  <div class="flex justify-between text-xs">
+                    <span>Vacation: Dec 20-23</span>
+                    <span class="text-amber-600 dark:text-amber-400">Pending</span>
+                  </div>
+                  <div class="flex justify-between text-xs">
+                    <span>Sick Leave: Nov 15</span>
+                    <span class="text-amber-600 dark:text-amber-400">Pending</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payroll Overview -->
+          <div class="glass rounded-3xl p-6 shadow reveal">
+            <h2 class="text-xl font-bold mb-4">Payroll Overview</h2>
+            <div class="p-4 bg-gradient-to-br from-indigo-50 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/20 rounded-2xl border border-indigo-200 dark:border-indigo-700 mb-4">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-medium text-indigo-800 dark:text-indigo-300">Latest Payslip</span>
+                <span class="text-xs text-indigo-600 dark:text-indigo-400">Oct 15-31, 2023</span>
+              </div>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-sm text-indigo-700 dark:text-indigo-300">Gross Earnings</span>
+                  <span class="font-bold text-indigo-800 dark:text-indigo-200">$4,250.00</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-indigo-700 dark:text-indigo-300">Deductions</span>
+                  <span class="font-bold text-indigo-800 dark:text-indigo-200">-$850.00</span>
+                </div>
+                <div class="flex justify-between border-t border-indigo-200 dark:border-indigo-700 pt-2">
+                  <span class="text-sm font-medium text-indigo-800 dark:text-indigo-300">Net Pay</span>
+                  <span class="font-bold text-lg text-indigo-900 dark:text-indigo-100">$3,400.00</span>
+                </div>
+              </div>
+            </div>
+            <button class="w-full px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-medium transition-all ripple flex items-center justify-center gap-2">
+              <iconify-icon icon="ph:file-text-duotone"></iconify-icon>
+              View Detailed Payslip
+            </button>
+          </div>
+
+          <!-- AI Attendance Insights -->
+          <div class="glass rounded-3xl p-6 shadow reveal">
+            <h2 class="text-xl font-bold mb-4">AI Attendance Insights</h2>
+            <div class="space-y-4">
+              <div class="p-4 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-700">
+                <div class="flex items-start gap-3">
+                  <iconify-icon icon="ph:trend-up-duotone" class="text-green-500 mt-1"></iconify-icon>
+                  <div>
+                    <p class="font-medium text-green-800 dark:text-green-300">Your on-time rate improved by 8% this month.</p>
+                    <p class="text-sm text-green-600 dark:text-green-400 mt-1">Great job maintaining consistency!</p>
+                  </div>
+                </div>
+              </div>
+              <div class="p-4 bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+                <div class="flex items-start gap-3">
+                  <iconify-icon icon="ph:clock-countdown-duotone" class="text-blue-500 mt-1"></iconify-icon>
+                  <div>
+                    <p class="font-medium text-blue-800 dark:text-blue-300">You've worked 12.5 overtime hours this month.</p>
+                    <p class="text-sm text-blue-600 dark:text-blue-400 mt-1">Consider balancing your work schedule.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="p-4 bg-gradient-to-br from-amber-50 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/20 rounded-xl border border-amber-200 dark:border-amber-700">
+                <div class="flex items-start gap-3">
+                  <iconify-icon icon="ph:calendar-blank-duotone" class="text-amber-500 mt-1"></iconify-icon>
+                  <div>
+                    <p class="font-medium text-amber-800 dark:text-amber-300">You have 6 vacation days remaining.</p>
+                    <p class="text-sm text-amber-600 dark:text-amber-400 mt-1">Plan your time off before the year ends.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notifications -->
+          <div class="glass rounded-3xl p-6 shadow reveal">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-bold">Notifications</h2>
+              <span class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs rounded-full">3 new</span>
+            </div>
+            <div class="space-y-3 max-h-80 overflow-y-auto fancy-scroll">
+              <div class="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0">
+                  <iconify-icon icon="ph:check-circle-duotone"></iconify-icon>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium">Leave request approved</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Your vacation for Dec 20-23 has been approved.</p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">2 hours ago</p>
+                </div>
+                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                  <iconify-icon icon="ph:x-duotone"></iconify-icon>
+                </button>
+              </div>
+              <div class="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white flex-shrink-0">
+                  <iconify-icon icon="ph:file-text-duotone"></iconify-icon>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium">New payslip available</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Your payslip for Oct 15-31 is now available.</p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">1 day ago</p>
+                </div>
+                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                  <iconify-icon icon="ph:x-duotone"></iconify-icon>
+                </button>
+              </div>
+              <div class="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/30 rounded-xl">
+                <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white flex-shrink-0">
+                  <iconify-icon icon="ph:calendar-blank-duotone"></iconify-icon>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium">Schedule change</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Your shift on Friday has been moved to 10 AM - 7 PM.</p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">2 days ago</p>
+                </div>
+                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                  <iconify-icon icon="ph:x-duotone"></iconify-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- Attendance Certificate -->
+          <div class="glass rounded-3xl p-6 shadow reveal">
+            <h2 class="text-xl font-bold mb-4">Attendance Certificate</h2>
+            <div class="p-4 bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/20 rounded-xl border border-amber-200 dark:border-amber-700 mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center text-white">
+                  <iconify-icon icon="ph:certificate-duotone"></iconify-icon>
+                </div>
+                <div>
+                  <p class="font-medium text-amber-800 dark:text-amber-300">Generate Certificate</p>
+                  <p class="text-sm text-amber-600 dark:text-amber-400">Export your attendance record for any period</p>
+                </div>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Period</label>
+                <select class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 glass py-2 px-3">
+                  <option>Last 30 days</option>
+                  <option>Current Month</option>
+                  <option>Last Quarter</option>
+                  <option>Custom Range</option>
+                </select>
+              </div>
+              <button class="w-full px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-medium transition-all ripple flex items-center justify-center gap-2">
+                <iconify-icon icon="ph:download-duotone"></iconify-icon>
+                Generate PDF Certificate
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Moved from right: Announcements (to balance columns) -->
+      <section class="xl:hidden"></section>
+      <div class="hidden"></div>
+      <!-- Place Announcements at the end of the left column stack for xl screens -->
+      <div class="hidden xl:block">
+        <script>
+          // On large screens, append Announcements to the first column to balance 6/6
+          (function(){
+            const leftCol = document.querySelector('main section.grid > div.space-y-6');
+            if(!leftCol) return;
+            const ann = document.createElement('div');
+            ann.className = 'glass rounded-3xl p-6 shadow reveal';
+            ann.innerHTML = `
+              <h2 class="text-xl font-bold mb-4">Announcements</h2>
+              <div class="space-y-4">
+                <div class="p-4 bg-gradient-to-br from-purple-50 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-700">
+                  <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white flex-shrink-0">
+                      <iconify-icon icon="ph:megaphone-duotone"></iconify-icon>
+                    </div>
+                    <div>
+                      <p class="font-medium text-purple-800 dark:text-purple-300">Holiday Schedule Update</p>
+                      <p class="text-sm text-purple-600 dark:text-purple-400 mt-1">Office will be closed from Dec 25 to Jan 1 for the holidays.</p>
+                      <p class="text-xs text-purple-500 dark:text-purple-500 mt-2">Posted: Nov 15, 2023</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="p-4 bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+                  <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0">
+                      <iconify-icon icon="ph:users-three-duotone"></iconify-icon>
+                    </div>
+                    <div>
+                      <p class="font-medium text-blue-800 dark:text-blue-300">Team Building Event</p>
+                      <p class="text-sm text-blue-600 dark:text-blue-400 mt-1">Annual team building scheduled for Nov 25 at Central Park.</p>
+                      <p class="text-xs text-blue-500 dark:text-blue-500 mt-2">Posted: Nov 10, 2023</p>
+                    </div>
+                  </div>
+                </div>
+              </div>`;
+            leftCol.appendChild(ann);
+          })();
+        </script>
+      </div>
+
+      <footer class="pb-8 pt-2 text-xs text-gray-500 dark:text-gray-400 text-center">© IntelliHRTrack • Employee Dashboard</footer>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ---------- THEME ----------
+    const themeToggle = document.getElementById('themeToggle');
+    const themeToggleHeader = document.getElementById('themeToggleHeader');
+    function toggleTheme(){
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('ih_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+    themeToggle?.addEventListener('click', toggleTheme);
+    themeToggleHeader?.addEventListener('click', toggleTheme);
+    if (localStorage.getItem('ih_theme') === 'dark') document.documentElement.classList.add('dark');
+
+    // ---------- CLOCK + NETWORK STATUS ----------
+    const headerClock = document.getElementById('headerClock');
+    const netDot = document.getElementById('netDot');
+    function updateClock(){ if(headerClock) headerClock.textContent = new Date().toLocaleTimeString(); }
+    setInterval(updateClock, 1000); updateClock();
+    function updateNet(){ const on = navigator.onLine; if(netDot){ netDot.classList.toggle('bg-green-500', on); netDot.classList.toggle('bg-rose-500', !on); netDot.title = on ? 'Online' : 'Offline'; } }
+    window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); updateNet();
+
+    // ---------- SETTINGS PANEL ----------
+    const customizeBtn = document.getElementById('customizeLayout');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const closeSettings = document.getElementById('closeSettings');
+    const saveSettings = document.getElementById('saveSettings');
+    const resetSettings = document.getElementById('resetSettings');
+    const motionToggle = document.getElementById('motionToggle');
+
+    function openSettings(){ settingsPanel.classList.remove('hidden'); settingsPanel.classList.add('flex'); }
+    function closeSettingsFn(){ settingsPanel.classList.add('hidden'); settingsPanel.classList.remove('flex'); }
+    customizeBtn?.addEventListener('click', openSettings);
+    closeSettings?.addEventListener('click', closeSettingsFn);
+    settingsPanel?.addEventListener('click', (e)=>{ if(e.target === settingsPanel) closeSettingsFn(); });
+
+    const accentBtns = Array.from(document.querySelectorAll('#settingsPanel [data-accent]'));
+    const bgBtns = Array.from(document.querySelectorAll('#settingsPanel [data-bg]'));
+    const densityBtns = Array.from(document.querySelectorAll('#settingsPanel [data-density]'));
+
+    function getPrefs(){ try{ return JSON.parse(localStorage.getItem('ih_prefs')) || {}; }catch{ return {}; } }
+    function setPrefs(p){ localStorage.setItem('ih_prefs', JSON.stringify(p)); }
+    function applyPrefs(p){
+      if(p.accent) document.documentElement.setAttribute('data-accent', p.accent);
+      if(p.bg) document.documentElement.setAttribute('data-bg', p.bg);
+      document.documentElement.setAttribute('data-density', p.density||'comfortable');
+      document.documentElement.classList.toggle('reduce-motion', !!p.reduceMotion);
+      if(motionToggle) motionToggle.checked = !!p.reduceMotion;
+    }
+    const initPrefs = getPrefs(); applyPrefs(initPrefs);
+    accentBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-accent', b.dataset.accent)));
+    bgBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-bg', b.dataset.bg)));
+    densityBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-density', b.dataset.density)));
+    saveSettings?.addEventListener('click', ()=>{
+      const prev = getPrefs();
+      const p = {
+        accent: document.documentElement.getAttribute('data-accent'),
+        bg: document.documentElement.getAttribute('data-bg'),
+        density: document.documentElement.getAttribute('data-density'),
+        reduceMotion: motionToggle && motionToggle.checked,
+        glass: glassIntensity ? glassIntensity.value : (prev.glass||'0.6'),
+        sidebar: (prev.sidebar)||'default',
+        contrast: contrastToggle ? contrastToggle.checked : !!prev.contrast,
+        font: document.documentElement.getAttribute('data-font') || prev.font || 'base'
+      };
+      const activeSidebar = document.activeElement && document.activeElement.getAttribute('data-sidebar');
+      if(activeSidebar) p.sidebar = activeSidebar;
+      setPrefs(p); applyPrefs(p); applyPrefsExtended(p); closeSettingsFn();
+    });
+    resetSettings?.addEventListener('click', ()=>{ const p = {accent:'teal', bg:'gradient', density:'comfortable', reduceMotion:false}; setPrefs(p); applyPrefs(p); });
+
+    // ---------- TOASTS ----------
+    const toastHost = document.getElementById('toastHost');
+    function showToast(msg, type='info'){
+      if(!toastHost) return;
+      const item = document.createElement('div');
+      item.className = `toast ${type==='success'?'success':type==='warning'?'warn':type==='error'?'error':'info'} glass`;
+      item.innerHTML = `<div class="flex items-start gap-2">
+        <iconify-icon icon="${type==='success'?'ph:check-circle-duotone':type==='warning'?'ph:warning-duotone':type==='error'?'ph:x-circle-duotone':'ph:info-duotone'}" class="mt-0.5 text-accent"></iconify-icon>
+        <div class="text-sm">${msg}</div>
+      </div>`;
+      toastHost.appendChild(item);
+      setTimeout(()=>{ item.style.transition='opacity .4s ease, transform .4s ease'; item.style.opacity='0'; item.style.transform='translateY(-6px)'; }, 2600);
+      setTimeout(()=> item.remove(), 3100);
+    }
+    setTimeout(()=>{ try{ showToast('Employee dashboard ready','success'); }catch(_){} }, 700);
+
+    // ---------- BACK TO TOP ----------
+    const backToTop = document.getElementById('backToTop');
+    window.addEventListener('scroll', ()=>{ if(window.scrollY > 400) backToTop?.classList.remove('hidden'); else backToTop?.classList.add('hidden'); });
+    backToTop?.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+
+    // ---------- COMMAND PALETTE (minimal) ----------
+    // Optional: add later if needed
+
+    // ---------- SHORTCUTS MODAL ----------
+    const shortcutsModal = document.getElementById('shortcutsModal');
+    const shortcutsBtn = document.getElementById('shortcutsBtn');
+    const closeShortcuts = document.getElementById('closeShortcuts');
+    function openShortcuts(){ shortcutsModal.classList.remove('hidden'); shortcutsModal.classList.add('flex'); }
+    function closeShortcutsFn(){ shortcutsModal.classList.add('hidden'); shortcutsModal.classList.remove('flex'); }
+    shortcutsBtn?.addEventListener('click', openShortcuts);
+    closeShortcuts?.addEventListener('click', closeShortcutsFn);
+    shortcutsModal?.addEventListener('click', (e)=>{ if(e.target===shortcutsModal) closeShortcutsFn(); });
+    document.addEventListener('keydown', (e)=>{
+      if(e.target && ['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+      if(e.key.toLowerCase()==='s'){ e.preventDefault(); openSettings(); }
+      if(e.key.toLowerCase()==='t'){ e.preventDefault(); toggleTheme(); }
+      if(e.key === '?'){ e.preventDefault(); openShortcuts(); }
+    });
+
+    // ---------- MOBILE SIDEBAR ----------
+    const mobileMenuBtn = document.getElementById('mobileMenu');
+    const mobileSidebar = document.getElementById('mobileSidebar');
+    const mobilePanel = document.getElementById('mobilePanel');
+    const mobileBackdrop = document.getElementById('mobileBackdrop');
+    const mobileClose = document.getElementById('closeMobile');
+    const mobileNavContent = document.getElementById('mobileNavContent');
+    function openMobile(){
+      const desk = document.querySelector('aside nav ul');
+      if(desk && mobileNavContent){ mobileNavContent.innerHTML=''; mobileNavContent.appendChild(desk.cloneNode(true));
+        mobileNavContent.querySelectorAll('a').forEach(a=>{
+          a.addEventListener('click', (ev)=>{ const tgt = a.getAttribute('data-target'); if(tgt){ ev.preventDefault(); const el = document.querySelector(tgt); if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); } closeMobile(); }});
+        });
+      }
+      mobileSidebar.classList.remove('hidden');
+      requestAnimationFrame(()=> mobilePanel.classList.remove('-translate-x-full'));
+    }
+    function closeMobile(){ mobilePanel.classList.add('-translate-x-full'); setTimeout(()=> mobileSidebar.classList.add('hidden'), 250); }
+    mobileMenuBtn?.addEventListener('click', openMobile);
+    mobileBackdrop?.addEventListener('click', closeMobile);
+    mobileClose?.addEventListener('click', closeMobile);
+
+    // ---------- MICRO-INTERACTIONS ----------
+    Array.from(document.querySelectorAll('.glass')).forEach(el=> el.classList.add('hover-lift'));
+    Array.from(document.querySelectorAll('button')).forEach(el=> el.classList.add('ripple'));
+
+    // ---------- REVEAL ON SCROLL ----------
+    const revealables = Array.from(document.querySelectorAll('.reveal'));
+    const io = new IntersectionObserver(entries=>{ entries.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('in-view'); io.unobserve(en.target); } }); }, { threshold: 0.12 });
+    revealables.forEach(el=> io.observe(el));
+
+    // ---------- PREFS EXTENDED ----------
+    const glassIntensity = document.getElementById('glassIntensity');
+    const contrastToggle = document.getElementById('contrastToggle');
+    const sidebarBtns = Array.from(document.querySelectorAll('#settingsPanel [data-sidebar]'));
+    const fontBtns = Array.from(document.querySelectorAll('#settingsPanel [data-font]'));
+    function applyGlass(val){ const alpha = parseFloat(val||'0.6'); document.documentElement.style.setProperty('--card-bg', `rgba(255,255,255,${alpha})`); document.documentElement.style.setProperty('--card-border', `rgba(255,255,255,${Math.max(0, Math.min(1, alpha*0.6))})`); }
+    function applySidebar(size){ const map = { narrow:'14rem', default:'18rem', wide:'22rem' }; const px = map[size] || map.default; document.documentElement.style.setProperty('--sidebar', px); }
+    function applyFont(f){ const size = f==='small'? '0.95rem' : f==='large'? '1.05rem' : '1rem'; document.documentElement.setAttribute('data-font', f||'base'); document.body.style.fontSize = size; }
+    function applyPrefsExtended(p){ if(p.glass) applyGlass(p.glass); if(p.sidebar) applySidebar(p.sidebar); if(p.contrast) document.documentElement.classList.toggle('high-contrast', !!p.contrast); if(p.font) applyFont(p.font); if(glassIntensity) glassIntensity.value = p.glass || '0.6'; if(contrastToggle) contrastToggle.checked = !!p.contrast; }
+    applyPrefsExtended(getPrefs());
+    sidebarBtns.forEach(b=> b.addEventListener('click', ()=> applySidebar(b.dataset.sidebar)));
+    fontBtns.forEach(b=> b.addEventListener('click', ()=> applyFont(b.dataset.font)));
+    glassIntensity?.addEventListener('input', ()=> applyGlass(glassIntensity.value));
+    contrastToggle?.addEventListener('change', ()=> document.documentElement.classList.toggle('high-contrast', contrastToggle.checked));
+
+    // ---------- USER-SPECIFIC LOGIC ----------
+    // Welcome message and date
+    function updateWelcomeMessage(){
+      const hour = new Date().getHours();
+      const welcomeElement = document.getElementById('welcomeMessage');
+      if(!welcomeElement) return;
+      let greeting = 'Hello';
+      if (hour < 12) greeting = 'Good morning'; else if (hour < 18) greeting = 'Good afternoon'; else greeting = 'Good evening';
+      welcomeElement.textContent = `${greeting}, Renzo!`;
+    }
+    function updateCurrentDate(){ const options = { weekday:'long', year:'numeric', month:'long', day:'numeric' }; const el = document.getElementById('currentDate'); if(el) el.textContent = new Date().toLocaleDateString('en-US', options); }
+    function updateWorkDuration(){ const checkInTime = new Date(); checkInTime.setHours(8,45,0); const now = new Date(); const diffMs = now - checkInTime; const diffHrs = Math.floor(diffMs / (1000*60*60)); const diffMins = Math.floor((diffMs % (1000*60*60)) / (1000*60)); const el = document.getElementById('workDuration'); if(el) el.textContent = `${diffHrs}h ${diffMins}m`; }
+    updateWelcomeMessage(); updateCurrentDate(); updateWorkDuration(); setInterval(()=>{ updateClock(); updateWorkDuration(); }, 1000);
+
+    // Attendance chart
+    try {
+      const attendanceCtx = document.getElementById('attendanceChart')?.getContext('2d');
+      if(attendanceCtx){
+        new Chart(attendanceCtx, {
+          type: 'line',
+          data: {
+            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+            datasets: [
+              { label: 'Present Days', data: [5,5,4,4], borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', tension: 0.3, fill: true },
+              { label: 'Late Arrivals', data: [1,1,0,1], borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', tension: 0.3, fill: true }
+            ]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+        });
+      }
+    } catch(e){}
+
+    // Check-out button
+    const checkOutBtn = document.getElementById('checkOutBtn');
+    checkOutBtn?.addEventListener('click', function(){
+      const btn = this; btn.textContent = 'Checking Out...'; btn.disabled = true;
+      setTimeout(()=>{ alert('Successfully checked out! Have a great evening.'); btn.textContent = 'Checked Out'; btn.classList.remove('bg-red-500','hover:bg-red-600'); btn.classList.add('bg-gray-400'); }, 1500);
+    });
+  </script>
+{% endblock %}

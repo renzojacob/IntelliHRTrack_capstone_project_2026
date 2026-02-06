@@ -1,1 +1,465 @@
-4
+{% extends 'employee/base_employee.html' %}
+
+{% block title %}Notifications | IntelliHRTrack{% endblock %}
+
+{% block content %}
+<!-- Hero / Title -->
+            <header class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow reveal">
+                <div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
+                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="relative">
+                            <img class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-4 border-white/50 shadow-lg" src="https://randomuser.me/api/portraits/men/34.jpg" alt="User">
+                            <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">Notification Center</h1>
+                            <p class="text-sm md:text-base text-gray-600 dark:text-gray-300 mt-1">Stay updated with all your important alerts and messages</p>
+                            <div class="flex items-center gap-2 mt-2 text-sm">
+                                <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">Marketing Dept</span>
+                                <span class="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full">ID: EMP-8472</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button id="mobileMenu" class="lg:hidden p-2 rounded-xl glass" aria-label="Open Menu"><iconify-icon icon="ph:list-duotone"></iconify-icon></button>
+                        <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-xl glass text-xs">
+                            <span id="netDot" class="inline-block w-2.5 h-2.5 rounded-full bg-green-500" title="Online"></span>
+                            <span id="headerClock">--:--:--</span>
+                        </div>
+                        <button id="themeToggleHeader" class="p-2 rounded-xl glass hover:shadow-glow transition">
+                            <iconify-icon icon="ph:sun-dim-duotone" class="hidden dark:inline text-accent"></iconify-icon>
+                            <iconify-icon icon="ph:moon-stars-duotone" class="dark:hidden text-accent"></iconify-icon>
+                        </button>
+                        <div class="relative">
+                            <button id="notificationDropdownBtn" class="px-3 py-2 rounded-xl glass ripple flex items-center gap-2">
+                                <iconify-icon icon="ph:bell-duotone"></iconify-icon>
+                                <span id="headerBadge" class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 text-xs rounded-full bg-rose-500 text-white">5</span>
+                            </button>
+                            <div id="notificationDropdown" class="hidden absolute right-0 mt-2 w-80 glass rounded-xl shadow-glow z-50 p-2">
+                                <div class="px-2 py-1 text-xs text-gray-500">New</div>
+                                <div class="space-y-2 max-h-80 overflow-auto">
+                                    <div class="p-3 rounded-lg bg-white/70 dark:bg-slate-900/40 border border-white/40 dark:border-white/10 flex gap-3">
+                                        <div class="w-10 h-10 rounded-full bg-blue-100/70 dark:bg-blue-900/30 flex items-center justify-center"><iconify-icon icon="ph:money-duotone" class="text-blue-600"></iconify-icon></div>
+                                        <div class="flex-1 text-sm">
+                                            <div class="font-medium">New payslip available</div>
+                                            <div class="text-xs text-gray-500">Your payslip for Nov 1-15 is ready to view • 2h ago</div>
+                                        </div>
+                                    </div>
+                                    <div class="p-3 rounded-lg bg-white/70 dark:bg-slate-900/40 border border-white/40 dark:border-white/10 flex gap-3">
+                                        <div class="w-10 h-10 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 flex items-center justify-center"><iconify-icon icon="ph:calendar-check-duotone" class="text-emerald-600"></iconify-icon></div>
+                                        <div class="flex-1 text-sm">
+                                            <div class="font-medium">Leave request approved</div>
+                                            <div class="text-xs text-gray-500">Vacation leave Dec 20-25 • 5h ago</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-2 text-center"><a href="#" class="text-sm text-accent">View all</a></div>
+                            </div>
+                        </div>
+                        <button id="markAllReadBtn" class="px-3 py-2 rounded-xl glass ripple flex items-center gap-2"><iconify-icon icon="ph:checks-duotone"></iconify-icon> Mark all read</button>
+                        <button id="clearAllBtn" class="px-3 py-2 rounded-xl glass ripple flex items-center gap-2"><iconify-icon icon="ph:trash-duotone"></iconify-icon> Clear</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Balanced Grid -->
+            <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <!-- Left Column -->
+                <div class="space-y-6">
+                    <!-- Categories -->
+                    <div class="glass rounded-3xl p-6 shadow reveal">
+                        <h3 class="font-semibold mb-4">Categories</h3>
+                        <div class="space-y-2" id="categoryList">
+                            <button class="category-tab w-full text-left px-3 py-2 rounded-xl glass hover:shadow-glow transition flex items-center gap-3 tab-active" data-category="all">
+                                <iconify-icon icon="ph:inbox-duotone" class="text-blue-500"></iconify-icon>
+                                <span>All Notifications</span>
+                                <span class="ml-auto text-xs px-2 py-1 rounded-full bg-blue-100/80 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200">12</span>
+                            </button>
+                            <button class="category-tab w-full text-left px-3 py-2 rounded-xl glass hover:shadow-glow transition flex items-center gap-3" data-category="system">
+                                <iconify-icon icon="ph:gear-duotone" class="text-gray-500"></iconify-icon>
+                                <span>System Updates</span>
+                                <span class="ml-auto text-xs px-2 py-1 rounded-full bg-gray-100/80 dark:bg-gray-800/60 text-gray-800 dark:text-gray-200">3</span>
+                            </button>
+                            <button class="category-tab w-full text-left px-3 py-2 rounded-xl glass hover:shadow-glow transition flex items-center gap-3" data-category="payroll">
+                                <iconify-icon icon="ph:currency-dollar-duotone" class="text-emerald-600"></iconify-icon>
+                                <span>Payroll</span>
+                                <span class="ml-auto text-xs px-2 py-1 rounded-full bg-emerald-100/80 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200">2</span>
+                            </button>
+                            <button class="category-tab w-full text-left px-3 py-2 rounded-xl glass hover:shadow-glow transition flex items-center gap-3" data-category="attendance">
+                                <iconify-icon icon="ph:user-switch-duotone" class="text-purple-600"></iconify-icon>
+                                <span>Attendance</span>
+                                <span class="ml-auto text-xs px-2 py-1 rounded-full bg-purple-100/80 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200">4</span>
+                            </button>
+                            <button class="category-tab w-full text-left px-3 py-2 rounded-xl glass hover:shadow-glow transition flex items-center gap-3" data-category="leave">
+                                <iconify-icon icon="ph:umbrella-duotone" class="text-amber-600"></iconify-icon>
+                                <span>Leave</span>
+                                <span class="ml-auto text-xs px-2 py-1 rounded-full bg-amber-100/80 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">3</span>
+                            </button>
+                            <button class="category-tab w-full text-left px-3 py-2 rounded-xl glass hover:shadow-glow transition flex items-center gap-3" data-category="announcements">
+                                <iconify-icon icon="ph:megaphone-duotone" class="text-rose-600"></iconify-icon>
+                                <span>Announcements</span>
+                                <span class="ml-auto text-xs px-2 py-1 rounded-full bg-rose-100/80 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200">2</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filter & Sort -->
+                    <div class="glass rounded-3xl p-6 shadow reveal">
+                        <h3 class="font-semibold mb-4">Filter &amp; Sort</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sort By</label>
+                                <select class="w-full px-3 py-2 rounded-xl glass bg-white/70 dark:bg-slate-900/40 border border-white/40 dark:border-white/10">
+                                    <option>Newest First</option>
+                                    <option>Oldest First</option>
+                                    <option>Priority Level</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
+                                <div class="grid grid-cols-3 gap-2 text-sm">
+                                    <label class="flex items-center gap-2"><input type="checkbox" class="w-4 h-4" checked> High</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" class="w-4 h-4" checked> Normal</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" class="w-4 h-4" checked> Info</label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Time Range</label>
+                                <select class="w-full px-3 py-2 rounded-xl glass bg-white/70 dark:bg-slate-900/40 border border-white/40 dark:border-white/10">
+                                    <option>Last 7 days</option>
+                                    <option>Last 30 days</option>
+                                    <option>Last 3 months</option>
+                                    <option>All time</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+                                <div class="relative">
+                                    <input type="text" placeholder="Search notifications..." class="w-full px-3 py-2 pl-10 rounded-xl glass bg-white/70 dark:bg-slate-900/40 border border-white/40 dark:border-white/10">
+                                    <iconify-icon icon="ph:magnifying-glass-duotone" class="absolute left-3 top-2.5 text-gray-400"></iconify-icon>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="space-y-6">
+                    <!-- Controls -->
+                    <div class="glass rounded-3xl p-4 shadow reveal flex items-center justify-between">
+                        <h3 class="font-semibold">Notifications</h3>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-500">Auto-refresh</span>
+                            <label class="relative inline-flex items-center cursor-pointer select-none">
+                                <input id="autoRefreshToggle" type="checkbox" class="sr-only peer" checked>
+                                <div class="w-10 h-6 bg-gray-300 dark:bg-gray-700 rounded-full peer-checked:bg-emerald-500 transition-colors"></div>
+                                <div class="toggle-dot absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div>
+                            </label>
+                            <button id="refreshBtn" class="p-2 rounded-xl glass hover:shadow-glow"><iconify-icon id="refreshIcon" icon="ph:arrows-clockwise-duotone" class="text-gray-600 dark:text-gray-300"></iconify-icon></button>
+                        </div>
+                    </div>
+
+                    <!-- Notification List -->
+                    <div id="notificationList" class="glass rounded-3xl p-0 shadow reveal divide-y divide-white/40 dark:divide-white/10 max-h-[70vh] overflow-y-auto">
+                        <!-- Urgent -->
+                        <div class="p-4">
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0">
+                                    <div class="w-12 h-12 rounded-full bg-rose-100/80 dark:bg-rose-900/30 flex items-center justify-center"><iconify-icon icon="ph:warning-duotone" class="text-rose-600"></iconify-icon></div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between">
+                                        <div>
+                                            <span class="inline-block bg-rose-100/80 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200 text-[10px] px-2 py-0.5 rounded-full mb-1">High Priority</span>
+                                            <h4 class="font-semibold">System Maintenance Tonight</h4>
+                                        </div>
+                                        <div class="text-right text-xs text-gray-500">
+                                            <span>Today, 10:30 AM</span>
+                                            <div class="mt-1 flex items-center justify-end gap-1"><span class="inline-block w-2 h-2 rounded-full bg-rose-500"></span><span>Unread</span></div>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Scheduled system maintenance will occur tonight from 11 PM to 2 AM. Please save all your work before this time.</p>
+                                    <div class="mt-3 flex gap-2 text-xs">
+                                        <button class="px-3 py-1 rounded-xl glass">Acknowledge</button>
+                                        <button class="px-3 py-1 rounded-xl glass">View Details</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- New: Payroll -->
+                        <div class="p-4">
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0">
+                                    <div class="w-12 h-12 rounded-full bg-emerald-100/80 dark:bg-emerald-900/30 flex items-center justify-center"><iconify-icon icon="ph:money-duotone" class="text-emerald-600"></iconify-icon></div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between">
+                                        <div>
+                                            <span class="inline-block bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 text-[10px] px-2 py-0.5 rounded-full mb-1">Payroll</span>
+                                            <h4 class="font-semibold">New Payslip Available</h4>
+                                        </div>
+                                        <div class="text-right text-xs text-gray-500">
+                                            <span>Today, 9:15 AM</span>
+                                            <div class="mt-1 flex items-center justify-end gap-1"><span class="inline-block w-2 h-2 rounded-full bg-blue-500"></span><span>Unread</span></div>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Your payslip for the period Nov 1-15, 2023 is now available. You can view and download it from the payroll section.</p>
+                                    <div class="mt-3 flex gap-2 text-xs">
+                                        <button class="px-3 py-1 rounded-xl glass">View Payslip</button>
+                                        <button class="px-3 py-1 rounded-xl glass">Download PDF</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- New: Leave -->
+                        <div class="p-4">
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0">
+                                    <div class="w-12 h-12 rounded-full bg-amber-100/80 dark:bg-amber-900/30 flex items-center justify-center"><iconify-icon icon="ph:airplane-duotone" class="text-amber-600"></iconify-icon></div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between">
+                                        <div>
+                                            <span class="inline-block bg-amber-100/80 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-[10px] px-2 py-0.5 rounded-full mb-1">Leave</span>
+                                            <h4 class="font-semibold">Leave Request Approved</h4>
+                                        </div>
+                                        <div class="text-right text-xs text-gray-500">
+                                            <span>Yesterday, 3:45 PM</span>
+                                            <div class="mt-1 flex items-center justify-end gap-1"><span class="inline-block w-2 h-2 rounded-full bg-blue-500"></span><span>Unread</span></div>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Your vacation leave request for December 20-25, 2023 has been approved by your manager.</p>
+                                    <div class="mt-3 flex gap-2 text-xs">
+                                        <button class="px-3 py-1 rounded-xl glass">View Details</button>
+                                        <button class="px-3 py-1 rounded-xl glass">Add to Calendar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Read: Attendance -->
+                        <div class="p-4">
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0">
+                                    <div class="w-12 h-12 rounded-full bg-purple-100/80 dark:bg-purple-900/30 flex items-center justify-center"><iconify-icon icon="ph:user-switch-duotone" class="text-purple-600"></iconify-icon></div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between">
+                                        <div>
+                                            <span class="inline-block bg-purple-100/80 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 text-[10px] px-2 py-0.5 rounded-full mb-1">Attendance</span>
+                                            <h4 class="font-semibold">Shift Change Approved</h4>
+                                        </div>
+                                        <div class="text-right text-xs text-gray-500">
+                                            <span>Yesterday, 11:20 AM</span>
+                                            <div class="mt-1 flex items-center justify-end gap-1"><iconify-icon icon="ph:check-circle-duotone" class="text-emerald-500"></iconify-icon><span>Read</span></div>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Your request to change your shift from 9 AM-5 PM to 10 AM-6 PM starting next week has been approved.</p>
+                                    <div class="mt-3 flex gap-2 text-xs">
+                                        <button class="px-3 py-1 rounded-xl glass">View Schedule</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Read: Announcement -->
+                        <div class="p-4">
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0">
+                                    <div class="w-12 h-12 rounded-full bg-blue-100/80 dark:bg-blue-900/30 flex items-center justify-center"><iconify-icon icon="ph:megaphone-duotone" class="text-blue-600"></iconify-icon></div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between">
+                                        <div>
+                                            <span class="inline-block bg-blue-100/80 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-[10px] px-2 py-0.5 rounded-full mb-1">Announcement</span>
+                                            <h4 class="font-semibold">Quarterly Team Building</h4>
+                                        </div>
+                                        <div class="text-right text-xs text-gray-500">
+                                            <span>2 days ago</span>
+                                            <div class="mt-1 flex items-center justify-end gap-1"><iconify-icon icon="ph:check-circle-duotone" class="text-emerald-500"></iconify-icon><span>Read</span></div>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Save the date! Our quarterly team building event is scheduled for December 15 at Mountain View Resort.</p>
+                                    <div class="mt-3 flex gap-2 text-xs">
+                                        <button class="px-3 py-1 rounded-xl glass">RSVP Now</button>
+                                        <button class="px-3 py-1 rounded-xl glass">View Details</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Archive Toggle -->
+                    <div class="text-center">
+                        <button id="toggleArchiveBtn" class="px-3 py-2 rounded-xl glass ripple text-sm flex items-center gap-2 mx-auto"><iconify-icon icon="ph:archive-duotone"></iconify-icon><span>Show Archived Notifications</span></button>
+                    </div>
+
+                    <!-- Archive Section -->
+                    <div id="archiveSection" class="hidden glass rounded-3xl p-4 shadow">
+                        <h4 class="font-semibold mb-3">Archived Notifications</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="p-3 rounded-xl glass flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-full bg-gray-100/80 dark:bg-gray-800/60 flex items-center justify-center"><iconify-icon icon="ph:file-text-duotone" class="text-gray-500"></iconify-icon></div>
+                                <div class="flex-1"><div class="flex justify-between"><div class="font-medium">Tax Form Submission Reminder</div><span class="text-xs text-gray-500">1 week ago</span></div><div class="text-xs text-gray-500 mt-1">Reminder to submit your tax forms by November 30</div></div>
+                            </div>
+                            <div class="p-3 rounded-xl glass flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-full bg-gray-100/80 dark:bg-gray-800/60 flex items-center justify-center"><iconify-icon icon="ph:users-duotone" class="text-gray-500"></iconify-icon></div>
+                                <div class="flex-1"><div class="flex justify-between"><div class="font-medium">Department Meeting</div><span class="text-xs text-gray-500">2 weeks ago</span></div><div class="text-xs text-gray-500 mt-1">Monthly department meeting scheduled for October 25</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <script>
+            // Active link highlighter (filename based)
+            (function(){const file=location.pathname.split('/').pop();document.querySelectorAll('aside nav a').forEach(a=>{const href=a.getAttribute('href');if(!href) return; if(href===file){a.classList.add('gradient-accent','text-white','shadow-glow');a.classList.remove('glass');} else {a.classList.remove('gradient-accent','text-white');if(!a.classList.contains('glass')) a.classList.add('glass');}});})();
+            // Theme toggle hookup
+            (function(){function save(){localStorage.setItem('ih_theme',document.documentElement.classList.contains('dark')?'dark':'light');}['themeToggle','themeToggleHeader'].forEach(id=>{const el=document.getElementById(id);if(el){el.addEventListener('click',()=>{document.documentElement.classList.toggle('dark');save();});}});})();
+            </script>
+
+            <footer class="pb-8 pt-2 text-xs text-gray-500 dark:text-gray-400 text-center">© IntelliHRTrack • Notifications</footer>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+        // Theme
+        const themeToggle = document.getElementById('themeToggle');
+        const themeToggleHeader = document.getElementById('themeToggleHeader');
+        function toggleTheme(){ document.documentElement.classList.toggle('dark'); localStorage.setItem('ih_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); }
+        themeToggle?.addEventListener('click', toggleTheme); themeToggleHeader?.addEventListener('click', toggleTheme);
+        if (localStorage.getItem('ih_theme') === 'dark') document.documentElement.classList.add('dark');
+
+        // Clock & network
+        const headerClock = document.getElementById('headerClock'); const netDot = document.getElementById('netDot');
+        function updateClock(){ if(headerClock) headerClock.textContent = new Date().toLocaleTimeString(); }
+        setInterval(updateClock, 1000); updateClock();
+        function updateNet(){ const on = navigator.onLine; if(netDot){ netDot.classList.toggle('bg-green-500', on); netDot.classList.toggle('bg-rose-500', !on); netDot.title = on ? 'Online' : 'Offline'; } }
+        window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); updateNet();
+
+        // Settings panel
+        const customizeBtn = document.getElementById('customizeLayout'); const settingsPanel = document.getElementById('settingsPanel'); const closeSettings = document.getElementById('closeSettings'); const saveSettings = document.getElementById('saveSettings'); const resetSettings = document.getElementById('resetSettings'); const motionToggle = document.getElementById('motionToggle');
+        function openSettings(){ settingsPanel.classList.remove('hidden'); settingsPanel.classList.add('flex'); }
+        function closeSettingsFn(){ settingsPanel.classList.add('hidden'); settingsPanel.classList.remove('flex'); }
+        customizeBtn?.addEventListener('click', openSettings); closeSettings?.addEventListener('click', closeSettingsFn); settingsPanel?.addEventListener('click', (e)=>{ if(e.target===settingsPanel) closeSettingsFn(); });
+        const accentBtns = Array.from(document.querySelectorAll('#settingsPanel [data-accent]')); const bgBtns = Array.from(document.querySelectorAll('#settingsPanel [data-bg]')); const densityBtns = Array.from(document.querySelectorAll('#settingsPanel [data-density]'));
+        function getPrefs(){ try{ return JSON.parse(localStorage.getItem('ih_prefs')) || {}; }catch{ return {}; } }
+        function setPrefs(p){ localStorage.setItem('ih_prefs', JSON.stringify(p)); }
+        function applyPrefs(p){ if(p.accent) document.documentElement.setAttribute('data-accent', p.accent); if(p.bg) document.documentElement.setAttribute('data-bg', p.bg); document.documentElement.setAttribute('data-density', p.density||'comfortable'); document.documentElement.classList.toggle('reduce-motion', !!p.reduceMotion); if(motionToggle) motionToggle.checked = !!p.reduceMotion; }
+        const initPrefs = getPrefs(); applyPrefs(initPrefs);
+        accentBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-accent', b.dataset.accent)));
+        bgBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-bg', b.dataset.bg)));
+        densityBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-density', b.dataset.density)));
+        // Extended prefs
+        const glassIntensity = document.getElementById('glassIntensity'); const contrastToggle = document.getElementById('contrastToggle'); const sidebarBtns = Array.from(document.querySelectorAll('#settingsPanel [data-sidebar]')); const fontBtns = Array.from(document.querySelectorAll('#settingsPanel [data-font]'));
+        function applyGlass(val){ const a=parseFloat(val||'0.6'); document.documentElement.style.setProperty('--card-bg', `rgba(255,255,255,${a})`); document.documentElement.style.setProperty('--card-border', `rgba(255,255,255,${Math.max(0, Math.min(1, a*0.6))})`); }
+        function applySidebar(size){ const map={narrow:'14rem',default:'18rem',wide:'22rem'}; document.documentElement.style.setProperty('--sidebar', map[size]||map.default); }
+        function applyFont(f){ const s = f==='small'? '0.95rem' : f==='large'? '1.05rem' : '1rem'; document.documentElement.setAttribute('data-font', f||'base'); document.body.style.fontSize = s; }
+        function applyPrefsExtended(p){ if(p.glass) applyGlass(p.glass); if(p.sidebar) applySidebar(p.sidebar); if(p.contrast) document.documentElement.classList.toggle('high-contrast', !!p.contrast); if(p.font) applyFont(p.font); if(glassIntensity) glassIntensity.value = p.glass || '0.6'; if(contrastToggle) contrastToggle.checked = !!p.contrast; }
+        applyPrefsExtended(getPrefs());
+        sidebarBtns.forEach(b=> b.addEventListener('click', ()=> applySidebar(b.dataset.sidebar)));
+        fontBtns.forEach(b=> b.addEventListener('click', ()=> applyFont(b.dataset.font)));
+        glassIntensity?.addEventListener('input', ()=> applyGlass(glassIntensity.value));
+        contrastToggle?.addEventListener('change', ()=> document.documentElement.classList.toggle('high-contrast', contrastToggle.checked));
+        saveSettings?.addEventListener('click', ()=>{ const prev=getPrefs(); const p={ accent:document.documentElement.getAttribute('data-accent'), bg:document.documentElement.getAttribute('data-bg'), density:document.documentElement.getAttribute('data-density'), reduceMotion: motionToggle&&motionToggle.checked, glass: glassIntensity?glassIntensity.value:(prev.glass||'0.6'), sidebar:(prev.sidebar)||'default', contrast: contrastToggle?contrastToggle.checked:!!prev.contrast, font: document.documentElement.getAttribute('data-font')||prev.font||'base' }; const activeSidebar = document.activeElement && document.activeElement.getAttribute('data-sidebar'); if(activeSidebar) p.sidebar=activeSidebar; setPrefs(p); applyPrefs(p); applyPrefsExtended(p); closeSettingsFn(); });
+        resetSettings?.addEventListener('click', ()=>{ const p={accent:'teal', bg:'gradient', density:'comfortable', reduceMotion:false}; setPrefs(p); applyPrefs(p); });
+
+        // Toasts & back to top
+        const toastHost = document.getElementById('toastHost'); function showToast(msg, type='info'){ if(!toastHost) return; const item=document.createElement('div'); item.className=`toast ${type==='success'?'success':type==='warning'?'warn':type==='error'?'error':'info'} glass`; item.innerHTML = `<div class="flex items-start gap-2"><iconify-icon icon="${type==='success'?'ph:check-circle-duotone':type==='warning'?'ph:warning-duotone':type==='error'?'ph:x-circle-duotone':'ph:info-duotone'}" class="mt-0.5 text-accent"></iconify-icon><div class="text-sm">${msg}</div></div>`; toastHost.appendChild(item); setTimeout(()=>{ item.style.transition='opacity .4s ease, transform .4s ease'; item.style.opacity='0'; item.style.transform='translateY(-6px)'; }, 2600); setTimeout(()=> item.remove(), 3100); }
+        setTimeout(()=>{ try{ showToast('Notifications ready','success'); }catch(_){} }, 700);
+        const backToTop = document.getElementById('backToTop'); window.addEventListener('scroll', ()=>{ if(window.scrollY>400) backToTop?.classList.remove('hidden'); else backToTop?.classList.add('hidden'); }); backToTop?.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+
+        // Shortcuts modal
+        const shortcutsModal = document.getElementById('shortcutsModal'); const shortcutsBtn = document.getElementById('shortcutsBtn'); const closeShortcuts = document.getElementById('closeShortcuts'); function openShortcuts(){ shortcutsModal.classList.remove('hidden'); shortcutsModal.classList.add('flex'); } function closeShortcutsFn(){ shortcutsModal.classList.add('hidden'); shortcutsModal.classList.remove('flex'); } shortcutsBtn?.addEventListener('click', openShortcuts); closeShortcuts?.addEventListener('click', closeShortcutsFn); shortcutsModal?.addEventListener('click', (e)=>{ if(e.target===shortcutsModal) closeShortcutsFn(); }); document.addEventListener('keydown', (e)=>{ if(e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return; if(e.key.toLowerCase()==='s'){ e.preventDefault(); openSettings(); } if(e.key.toLowerCase()==='t'){ e.preventDefault(); toggleTheme(); } if(e.key==='?'){ e.preventDefault(); openShortcuts(); } });
+
+        // Mobile sidebar
+        const mobileMenuBtn = document.getElementById('mobileMenu'); const mobileSidebar = document.getElementById('mobileSidebar'); const mobilePanel = document.getElementById('mobilePanel'); const mobileBackdrop = document.getElementById('mobileBackdrop'); const mobileClose = document.getElementById('closeMobile'); const mobileNavContent = document.getElementById('mobileNavContent');
+        function openMobile(){ const desk=document.querySelector('aside nav ul'); if(desk && mobileNavContent){ mobileNavContent.innerHTML=''; mobileNavContent.appendChild(desk.cloneNode(true)); mobileNavContent.querySelectorAll('a').forEach(a=> a.addEventListener('click', ()=> closeMobile())); } mobileSidebar.classList.remove('hidden'); requestAnimationFrame(()=> mobilePanel.classList.remove('-translate-x-full')); }
+        function closeMobile(){ mobilePanel.classList.add('-translate-x-full'); setTimeout(()=> mobileSidebar.classList.add('hidden'), 250); }
+        mobileMenuBtn?.addEventListener('click', openMobile); mobileBackdrop?.addEventListener('click', closeMobile); mobileClose?.addEventListener('click', closeMobile);
+
+        // Dropdown toggle
+        const dropdownBtn = document.getElementById('notificationDropdownBtn');
+        const dropdown = document.getElementById('notificationDropdown');
+        dropdownBtn?.addEventListener('click', (e)=>{ e.stopPropagation(); dropdown.classList.toggle('hidden'); });
+        document.addEventListener('click', ()=> dropdown?.classList.add('hidden'));
+
+        // Category tabs
+        const categoryTabs = Array.from(document.querySelectorAll('.category-tab'));
+        categoryTabs.forEach(tab=> tab.addEventListener('click', ()=>{
+            categoryTabs.forEach(t=> t.classList.remove('tab-active'));
+            tab.classList.add('tab-active');
+            // Placeholder for actual filtering
+            console.log('Category switched:', tab.dataset.category);
+        }));
+
+        // Mark all read
+        const markAllReadBtn = document.getElementById('markAllReadBtn');
+        markAllReadBtn?.addEventListener('click', ()=>{
+            // Replace unread indicators with Read
+            document.querySelectorAll('#notificationList .bg-blue-500, #notificationList .bg-rose-500').forEach(d=> d.classList.remove('bg-blue-500','bg-rose-500'));
+            document.querySelectorAll('#notificationList .flex .text-xs').forEach(el=>{
+                if(el.textContent?.trim()==='Unread') el.textContent='Read';
+            });
+            const badge = document.getElementById('headerBadge'); if(badge){ badge.textContent='0'; badge.classList.remove('notification-badge'); }
+            showToast('All notifications marked as read','success');
+        });
+
+        // Clear all
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        clearAllBtn?.addEventListener('click', ()=>{
+            if(confirm('Clear all notifications?')){
+                const list=document.getElementById('notificationList');
+                list.innerHTML = '<div class="p-8 text-center text-gray-500 dark:text-gray-400"><iconify-icon icon="ph:inbox-duotone" class="text-3xl mb-2"></iconify-icon><p>No notifications to display</p></div>';
+                const badge = document.getElementById('headerBadge'); if(badge){ badge.textContent='0'; badge.classList.remove('notification-badge'); }
+                showToast('Cleared','info');
+            }
+        });
+
+        // Auto-refresh toggle visual assist for non-peer browsers
+        const autoToggle = document.getElementById('autoRefreshToggle'); const toggleDot = document.querySelector('.toggle-dot');
+        autoToggle?.addEventListener('change', ()=>{ if(!autoToggle.checked){ toggleDot?.classList.remove('translate-x-4'); } else { toggleDot?.classList.add('translate-x-4'); } });
+
+        // Manual refresh
+        const refreshBtn = document.getElementById('refreshBtn'); const refreshIcon = document.getElementById('refreshIcon');
+        refreshBtn?.addEventListener('click', ()=>{
+            refreshIcon.classList.add('animate-spin');
+            setTimeout(()=>{ refreshIcon.classList.remove('animate-spin'); showToast('Notifications updated','success'); }, 1000);
+        });
+
+        // Simulate new notification
+        setTimeout(()=>{
+            const item = document.createElement('div'); item.className='p-4';
+            item.innerHTML = `
+                <div class="flex gap-4">
+                    <div class="flex-shrink-0">
+                        <div class="w-12 h-12 rounded-full bg-blue-100/80 dark:bg-blue-900/30 flex items-center justify-center"><iconify-icon icon="ph:bell-duotone" class="text-blue-600"></iconify-icon></div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between">
+                            <div>
+                                <span class="inline-block bg-blue-100/80 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-[10px] px-2 py-0.5 rounded-full mb-1">System</span>
+                                <h4 class="font-semibold">New Feature Available</h4>
+                            </div>
+                            <div class="text-right text-xs text-gray-500">
+                                <span>Just now</span>
+                                <div class="mt-1 flex items-center justify-end gap-1"><span class="inline-block w-2 h-2 rounded-full bg-blue-500"></span><span>Unread</span></div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">The new analytics dashboard is now available. Check it out for detailed insights into your work patterns.</p>
+                        <div class="mt-3 flex gap-2 text-xs"><button class="px-3 py-1 rounded-xl glass">Explore Now</button></div>
+                    </div>
+                </div>`;
+            const list=document.getElementById('notificationList'); list.insertBefore(item, list.firstChild);
+            const badge=document.getElementById('headerBadge'); if(badge){ const n=parseInt(badge.textContent||'0'); badge.textContent=String(n+1); }
+            dropdownBtn?.classList.add('ring-2','ring-yellow-400'); setTimeout(()=> dropdownBtn?.classList.remove('ring-2','ring-yellow-400'), 1500);
+        }, 8000);
+
+        // Punctuality-like micro interactions
+        Array.from(document.querySelectorAll('.glass')).forEach(el=> el.classList.add('hover-lift'));
+        Array.from(document.querySelectorAll('button')).forEach(el=> el.classList.add('ripple'));
+        const revealables = Array.from(document.querySelectorAll('.reveal')); const io = new IntersectionObserver(entries=>{ entries.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('in-view'); io.unobserve(en.target); } }); }, { threshold: 0.12 }); revealables.forEach(el=> io.observe(el));
+    </script>
+{% endblock %}

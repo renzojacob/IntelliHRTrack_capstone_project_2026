@@ -62,6 +62,44 @@ def admin_system_administration(request):
     return render(request, "admin/system_administration.html", {"current": "system"})
 
 
+
+# =========================
+# Employee UI pages
+# =========================
+def employee_dashboard(request):
+    return render(request, "employee/dashboard.html", {"current": "dashboard"})
+
+
+def employee_attendance(request):
+    return render(request, "employee/attendance.html", {"current": "attendance"})
+
+
+def employee_schedule(request):
+    return render(request, "employee/schedule.html", {"current": "schedule"})
+
+
+def employee_leave(request):
+    return render(request, "employee/leave.html", {"current": "leave"})
+
+
+def employee_payroll(request):
+    return render(request, "employee/payroll.html", {"current": "payroll"})
+
+
+def employee_analytics(request):
+    return render(request, "employee/analytics.html", {"current": "analytics"})
+
+
+def employee_notifications(request):
+    return render(request, "employee/notification.html", {"current": "notification"})
+
+
+def employee_profile(request):
+    # your file is named: setting_&_profile.html
+    return render(request, "employee/setting_&_profile.html", {"current": "profile"})
+
+
+
 # =========================
 # Helpers (Normalization)
 # =========================
