@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -47,3 +48,27 @@ class AttendanceRecord(models.Model):
 
     def __str__(self):
         return f"{self.employee_id} @ {self.timestamp} ({self.attendance_status}) [{self.branch}]"
+
+
+# =========================
+# NEW: User Profile (Branch + Approval)
+# =========================
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+    branch = models.CharField(max_length=100, db_index=True)
+    is_approved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "core_userprofile"
+        indexes = [
+            models.Index(fields=["branch", "is_approved"]),
+        ]
+
+    def __str__(self):
+        status = "APPROVED" if self.is_approved else "PENDING"
+        return f"{self.user.username} ({self.branch}) - {status}"
