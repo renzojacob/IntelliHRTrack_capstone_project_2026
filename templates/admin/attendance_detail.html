@@ -6,13 +6,12 @@
     <h1 class="text-xl font-semibold text-gray-900 mb-4">Record Detail</h1>
 
     <div class="space-y-2 text-sm">
-      <p><b>Employee ID:</b> {{ obj.employee_id }}</p>
+      <p><b>Person ID:</b> {{ obj.employee_id }}</p>
       <p><b>Name:</b> {{ obj.full_name }}</p>
-      <p><b>Timestamp:</b> {{ obj.timestamp }}</p>
-      <p><b>Event Type:</b> {{ obj.event_type }}</p>
-      <p><b>Device:</b> {{ obj.device_name }}</p>
-      <p><b>Verification:</b> {{ obj.verification_mode }}</p>
-      <p><b>Event Code:</b> {{ obj.event_code }}</p>
+      <p><b>Department:</b> {{ obj.department }}</p>
+      <p><b>Branch:</b> {{ obj.branch }}</p>
+      <p><b>Time:</b> {{ obj.timestamp }}</p>
+      <p><b>Attendance Status:</b> {{ obj.get_attendance_status_display }}</p>
     </div>
 
     <div class="mt-6 flex gap-3">

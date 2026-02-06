@@ -18,13 +18,16 @@ urlpatterns = [
     path("admin-ui/analytics/", views.admin_analytics, name="admin_analytics"),
     path("admin-ui/system/", views.admin_system_administration, name="admin_system"),
 
-    # CRUD for attendance records
+     # admin UI
+    path("admin-ui/dashboard/", views.admin_dashboard, name="admin_dashboard"),
+    path("admin-ui/biometrics/", views.admin_biometrics_attendance, name="admin_biometrics"),
+    path("admin-ui/biometrics/import/", views.admin_biometrics_import, name="admin_biometrics_import"),
+    path("admin-ui/biometrics/template/", views.admin_biometrics_template, name="admin_biometrics_template"),
+    path("admin-ui/biometrics/export/", views.admin_biometrics_export, name="admin_biometrics_export"),
+
+    # CRUD
     path("admin-ui/biometrics/records/new/", views.attendance_create, name="admin_attendance_create"),
     path("admin-ui/biometrics/records/<int:pk>/", views.attendance_detail, name="admin_attendance_detail"),
     path("admin-ui/biometrics/records/<int:pk>/edit/", views.attendance_update, name="admin_attendance_update"),
     path("admin-ui/biometrics/records/<int:pk>/delete/", views.attendance_delete, name="admin_attendance_delete"),
-
-    # Export / Download
-    path("admin-ui/biometrics/template/", views.admin_biometrics_template, name="admin_biometrics_template"),
-    path("admin-ui/biometrics/export/", views.admin_biometrics_export, name="admin_biometrics_export"),
 ]

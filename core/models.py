@@ -2,26 +2,33 @@ from django.db import models
 
 
 class AttendanceRecord(models.Model):
-    EVENT_IN = "IN"
-    EVENT_OUT = "OUT"
-    EVENT_UNKNOWN = "UNKNOWN"
+    STATUS_CHECKIN = "CHECK_IN"
+    STATUS_CHECKOUT = "CHECK_OUT"
+    STATUS_UNKNOWN = "UNKNOWN"
 
-    EVENT_TYPE_CHOICES = [
-        (EVENT_IN, "IN"),
-        (EVENT_OUT, "OUT"),
-        (EVENT_UNKNOWN, "UNKNOWN"),
+    ATTENDANCE_STATUS_CHOICES = [
+        (STATUS_CHECKIN, "Check-in"),
+        (STATUS_CHECKOUT, "Check-out"),
+        (STATUS_UNKNOWN, "Unknown"),
     ]
 
-    employee_id = models.CharField(max_length=64, db_index=True)
+    # Required fields you want to store
+    employee_id = models.CharField(max_length=64, db_index=True)  # Person ID
     full_name = models.CharField(max_length=255, blank=True)
-    timestamp = models.DateTimeField(db_index=True)
-    event_type = models.CharField(
-        max_length=16, choices=EVENT_TYPE_CHOICES, default=EVENT_UNKNOWN
+    department = models.CharField(max_length=255, blank=True)
+    branch = models.CharField(max_length=100, blank=True, db_index=True)
+
+    timestamp = models.DateTimeField(db_index=True)  # Time
+    attendance_status = models.CharField(
+        max_length=16,
+        choices=ATTENDANCE_STATUS_CHOICES,
+        default=STATUS_UNKNOWN,
+        db_index=True,
     )
-    device_name = models.CharField(max_length=128, blank=True)
-    verification_mode = models.CharField(max_length=64, blank=True)
-    event_code = models.CharField(max_length=64, blank=True)
+
+    # (Optional) keep raw row for debugging; remove if you truly don't want it
     raw_row = models.JSONField(default=dict, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -29,14 +36,14 @@ class AttendanceRecord(models.Model):
         db_table = "core_attendancerecord"
         indexes = [
             models.Index(fields=["employee_id", "timestamp"]),
-            models.Index(fields=["-created_at"]),
+            models.Index(fields=["branch", "timestamp"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=["employee_id", "timestamp", "event_type"],
-                name="unique_emp_ts_event"
+                fields=["employee_id", "timestamp", "attendance_status", "branch"],
+                name="unique_emp_ts_status_branch",
             )
         ]
 
     def __str__(self):
-        return f"{self.employee_id} @ {self.timestamp} ({self.event_type})"
+        return f"{self.employee_id} @ {self.timestamp} ({self.attendance_status}) [{self.branch}]"

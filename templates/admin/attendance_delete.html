@@ -1,36 +1,28 @@
 {% extends 'admin/base_admin.html' %}
-{% block title %}Attendance Record | IntelliHRTrack{% endblock %}
+{% block title %}Delete Attendance Record | IntelliHRTrack{% endblock %}
 {% block content %}
 <div class="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
   <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-6">
-    <h1 class="text-xl font-semibold text-gray-900 mb-4">
-      {% if mode == "edit" %}Edit{% else %}Create{% endif %} Attendance Record
-    </h1>
+    <h1 class="text-xl font-semibold text-gray-900 mb-2">Delete Record</h1>
+    <p class="text-sm text-gray-600 mb-6">Are you sure you want to delete this attendance record?</p>
 
-    <form method="post" class="space-y-4">
+    <div class="rounded-lg bg-gray-50 p-4 text-sm space-y-1">
+      <div><b>Person ID:</b> {{ obj.employee_id }}</div>
+      <div><b>Name:</b> {{ obj.full_name }}</div>
+      <div><b>Department:</b> {{ obj.department }}</div>
+      <div><b>Branch:</b> {{ obj.branch }}</div>
+      <div><b>Time:</b> {{ obj.timestamp }}</div>
+      <div><b>Status:</b> {{ obj.get_attendance_status_display }}</div>
+    </div>
+
+    <form method="post" class="mt-6 flex gap-3">
       {% csrf_token %}
-      {{ form.non_field_errors }}
-
-      {% for field in form %}
-        <div>
-          <label class="block text-sm font-medium text-gray-700">{{ field.label }}</label>
-          <div class="mt-1">
-            {{ field }}
-          </div>
-          {% if field.errors %}
-            <p class="text-sm text-red-600 mt-1">{{ field.errors|striptags }}</p>
-          {% endif %}
-        </div>
-      {% endfor %}
-
-      <div class="flex gap-3 pt-2">
-        <button class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700" type="submit">
-          Save
-        </button>
-        <a class="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50" href="{% url 'admin_biometrics' %}">
-          Cancel
-        </a>
-      </div>
+      <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700">
+        Yes, delete
+      </button>
+      <a href="{% url 'admin_biometrics' %}" class="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50">
+        Cancel
+      </a>
     </form>
   </div>
 </div>
