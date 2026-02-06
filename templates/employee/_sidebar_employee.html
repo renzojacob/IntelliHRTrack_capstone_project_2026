@@ -1,0 +1,94 @@
+<nav class="glass rounded-3xl p-4 h-full flex flex-col">
+  <!-- Brand -->
+  <div class="flex items-center gap-3">
+    <div class="h-10 w-10 rounded-2xl gradient-accent grid place-items-center text-white font-extrabold">IH</div>
+    <div>
+      <div class="font-extrabold leading-tight">IntelliHRTrack</div>
+      <div class="text-xs text-slate-500 dark:text-slate-300">Employee Portal</div>
+    </div>
+  </div>
+
+  <div class="mt-4 neon-divider"></div>
+
+  <!-- Links -->
+  <div class="mt-4 flex-1 overflow-auto fancy-scroll">
+    <ul class="space-y-1 text-sm">
+      <li>
+        <a href="{% url 'employee_dashboard' %}"
+           class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/30 dark:hover:bg-white/10">
+          <iconify-icon icon="ph:house-duotone" class="text-accent"></iconify-icon>
+          Dashboard
+        </a>
+      </li>
+
+      <li>
+        <a href="{% url 'employee_attendance' %}"
+           class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/30 dark:hover:bg-white/10">
+          <iconify-icon icon="ph:fingerprint-duotone" class="text-accent"></iconify-icon>
+          Attendance
+        </a>
+      </li>
+
+      <li>
+        <a href="{% url 'employee_schedule' %}"
+           class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/30 dark:hover:bg-white/10">
+          <iconify-icon icon="ph:calendar-check-duotone" class="text-accent"></iconify-icon>
+          Schedule
+        </a>
+      </li>
+
+      <li>
+        <a href="{% url 'employee_leave' %}"
+           class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/30 dark:hover:bg-white/10">
+          <iconify-icon icon="ph:umbrella-duotone" class="text-accent"></iconify-icon>
+          Leave
+        </a>
+      </li>
+
+      <li>
+        <a href="{% url 'employee_payroll' %}"
+           class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/30 dark:hover:bg-white/10">
+          <iconify-icon icon="ph:money-duotone" class="text-accent"></iconify-icon>
+          Payroll
+        </a>
+      </li>
+
+      <li>
+        <a href="{% url 'employee_analytics' %}"
+           class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/30 dark:hover:bg-white/10">
+          <iconify-icon icon="ph:chart-line-up-duotone" class="text-accent"></iconify-icon>
+          Analytics
+        </a>
+      </li>
+
+      <li>
+        <a href="{% url 'employee_notifications' %}"
+           class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/30 dark:hover:bg-white/10">
+          <iconify-icon icon="ph:bell-duotone" class="text-accent"></iconify-icon>
+          Notifications
+        </a>
+      </li>
+
+      <li>
+        <a href="{% url 'employee_profile' %}"
+           class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/30 dark:hover:bg-white/10">
+          <iconify-icon icon="ph:user-circle-duotone" class="text-accent"></iconify-icon>
+          Settings & Profile
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="mt-4 neon-divider"></div>
+
+  <!-- Bottom actions -->
+  <div class="mt-4 grid gap-2">
+    <a href="{% url 'login_ui' %}"
+       class="px-3 py-2 rounded-xl bg-white/70 dark:bg-white/10 border border-white/30 dark:border-white/10 text-center hover:shadow">
+      Logout
+    </a>
+    <div class="text-xs text-slate-500 dark:text-slate-400 text-center">
+      Sidebar adapts to your “Customize” settings
+    </div>
+  </div>
+</nav>

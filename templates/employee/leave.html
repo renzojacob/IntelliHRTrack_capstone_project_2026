@@ -1,0 +1,815 @@
+{% extends 'employee/base_employee.html' %}
+
+{% block title %}Leave | IntelliHRTrack{% endblock %}
+
+{% block content %}
+<!-- Header -->
+      <header class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-lg reveal">
+        <div class="absolute inset-0 opacity-40 animate-shine"></div>
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="relative">
+              <img class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-4 border-white/50 shadow-lg" src="https://randomuser.me/api/portraits/men/32.jpg" alt="Renzo">
+              <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
+            </div>
+            <div>
+              <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">Leave & Requests</h1>
+              <p class="text-sm md:text-base text-gray-600 dark:text-gray-300 mt-1">Manage your time off, track balances, and submit requests</p>
+              <div class="flex items-center gap-2 mt-2 text-sm">
+                <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">ID: EMP-8472</span>
+                <span class="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full">Sales Department</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="mobileMenu" class="lg:hidden p-2 rounded-xl glass" aria-label="Open Menu"><iconify-icon icon="ph:list-duotone"></iconify-icon></button>
+            <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-xl glass text-xs">
+              <span id="netDot" class="inline-block w-2.5 h-2.5 rounded-full bg-green-500" title="Online"></span>
+              <span id="headerClock">--:--:--</span>
+            </div>
+            <!-- Header theme toggle mirrors sidebar toggle -->
+            <button id="themeToggleHeader" class="p-2 rounded-xl glass hover:shadow-glow transition">
+              <iconify-icon icon="ph:sun-dim-duotone" class="hidden dark:inline text-accent"></iconify-icon>
+              <iconify-icon icon="ph:moon-stars-duotone" class="dark:hidden text-accent"></iconify-icon>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Feature 5: Leave Summary Dashboard -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="glass rounded-2xl p-4 shadow transition hover:shadow-lg hover-lift">
+          <div class="text-xs text-gray-500 dark:text-gray-400">Total Leaves This Year</div>
+          <div class="mt-1 text-2xl font-extrabold">18</div>
+          <div class="text-sm text-blue-500 flex items-center gap-1">
+            <iconify-icon icon="ph:trend-up-duotone"></iconify-icon>
+            <span>+5 from last year</span>
+          </div>
+        </div>
+        
+        <div class="glass rounded-2xl p-4 shadow transition hover:shadow-lg hover-lift">
+          <div class="text-xs text-gray-500 dark:text-gray-400">Pending Requests</div>
+          <div class="mt-1 text-2xl font-extrabold text-amber-600">3</div>
+          <div class="text-sm text-amber-500 flex items-center gap-1">
+            <iconify-icon icon="ph:clock-duotone"></iconify-icon>
+            <span>Awaiting approval</span>
+          </div>
+        </div>
+        
+        <div class="glass rounded-2xl p-4 shadow transition hover:shadow-lg hover-lift">
+          <div class="text-xs text-gray-500 dark:text-gray-400">Remaining Vacation</div>
+          <div class="mt-1 text-2xl font-extrabold">6</div>
+          <div class="text-sm text-green-500 flex items-center gap-1">
+            <iconify-icon icon="ph:beach-duotone"></iconify-icon>
+            <span>days available</span>
+          </div>
+        </div>
+        
+        <div class="glass rounded-2xl p-4 shadow transition hover:shadow-lg hover-lift">
+          <div class="text-xs text-gray-500 dark:text-gray-400">Approval Rate</div>
+          <div class="mt-1 text-2xl font-extrabold text-purple-600">92%</div>
+          <div class="text-sm text-purple-500 flex items-center gap-1">
+            <iconify-icon icon="ph:check-circle-duotone"></iconify-icon>
+            <span>High success rate</span>
+          </div>
+        </div>
+      </div>
+
+  <!-- Balanced two-column layout (was 3 cols with left spanning 2) -->
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <!-- Left Column -->
+  <div class="space-y-6">
+          <!-- Feature 1: Leave Application Form -->
+          <div class="glass rounded-3xl p-6 shadow-lg reveal">
+            <h2 class="text-xl font-bold mb-4">Apply for Leave</h2>
+            <div class="space-y-4">
+              <!-- Feature 2: Leave Type Selection Dropdown -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Leave Type</label>
+                <select class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 glass py-3 px-4">
+                  <option value="">Select leave type...</option>
+                  <option value="vacation">Vacation Leave</option>
+                  <option value="sick">Sick Leave</option>
+                  <option value="emergency">Emergency Leave</option>
+                  <option value="official">Official Business</option>
+                  <option value="maternity">Maternity Leave</option>
+                  <option value="paternity">Paternity Leave</option>
+                </select>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Start Date</label>
+                  <input type="date" class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 glass py-3 px-4">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">End Date</label>
+                  <input type="date" class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 glass py-3 px-4">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Duration</label>
+                <div class="flex gap-4">
+                  <label class="flex items-center">
+                    <input type="radio" name="duration" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2" checked>
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Full Day</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input type="radio" name="duration" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Half Day (AM)</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input type="radio" name="duration" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Half Day (PM)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reason</label>
+                <textarea class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 glass py-3 px-4" rows="3" placeholder="Please provide details for your leave request..."></textarea>
+              </div>
+
+              <!-- Feature 9: Upload Supporting Documents -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Supporting Documents</label>
+                <div class="flex items-center justify-center w-full">
+                  <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer glass hover:border-accent transition-colors">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                      <iconify-icon icon="ph:cloud-arrow-up-duotone" class="text-gray-400 text-2xl mb-2"></iconify-icon>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">Click to upload or drag and drop</p>
+                      <p class="text-xs text-gray-400 dark:text-gray-500">PDF, DOC, JPG up to 10MB</p>
+                    </div>
+                    <input type="file" class="hidden" multiple>
+                  </label>
+                </div>
+              </div>
+
+              <div class="flex gap-3 pt-2">
+                <button class="flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-all ripple">
+                  Submit Leave Request
+                </button>
+                <button class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-medium transition-all ripple">
+                  Save as Draft
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feature 4: Leave Request Status Table -->
+          <div class="glass rounded-3xl p-6 shadow-lg reveal">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <h2 class="text-xl font-bold">Leave Request History</h2>
+              <div class="flex items-center gap-3">
+                <select class="px-4 py-2 rounded-xl glass text-sm">
+                  <option>All Status</option>
+                  <option>Pending</option>
+                  <option>Approved</option>
+                  <option>Declined</option>
+                </select>
+                <!-- Feature 11: Request History Export -->
+                <button class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm transition-all ripple flex items-center gap-2">
+                  <iconify-icon icon="ph:export-duotone"></iconify-icon>
+                  Export
+                </button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-gray-200 dark:border-gray-700">
+                    <th class="text-left p-3">Leave Type</th>
+                    <th class="text-left p-3">Dates</th>
+                    <th class="text-left p-3">Duration</th>
+                    <th class="text-left p-3">Status</th>
+                    <th class="text-left p-3">Approver</th>
+                    <th class="text-left p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td class="p-3">
+                      <div class="flex items-center gap-2">
+                        <iconify-icon icon="ph:beach-duotone" class="text-blue-500"></iconify-icon>
+                        <span>Vacation Leave</span>
+                      </div>
+                    </td>
+                    <td class="p-3">Dec 20 - 23, 2023</td>
+                    <td class="p-3">4 days</td>
+                    <td class="p-3">
+                      <span class="px-2 py-1 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs rounded-full">Pending</span>
+                    </td>
+                    <td class="p-3">Sarah Johnson</td>
+                    <td class="p-3">
+                      <!-- Feature 8: Cancel Leave Request Option -->
+                      <button class="text-red-500 hover:text-red-700 text-xs">Cancel</button>
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td class="p-3">
+                      <div class="flex items-center gap-2">
+                        <iconify-icon icon="ph:first-aid-duotone" class="text-amber-500"></iconify-icon>
+                        <span>Sick Leave</span>
+                      </div>
+                    </td>
+                    <td class="p-3">Nov 15, 2023</td>
+                    <td class="p-3">1 day</td>
+                    <td class="p-3">
+                      <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">Approved</span>
+                    </td>
+                    <td class="p-3">Sarah Johnson</td>
+                    <td class="p-3">
+                      <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td class="p-3">
+                      <div class="flex items-center gap-2">
+                        <iconify-icon icon="ph:warning-circle-duotone" class="text-red-500"></iconify-icon>
+                        <span>Emergency Leave</span>
+                      </div>
+                    </td>
+                    <td class="p-3">Oct 28, 2023</td>
+                    <td class="p-3">1 day</td>
+                    <td class="p-3">
+                      <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">Approved</span>
+                    </td>
+                    <td class="p-3">Michael Chen</td>
+                    <td class="p-3">
+                      <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                    </td>
+                  </tr>
+                  <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td class="p-3">
+                      <div class="flex items-center gap-2">
+                        <iconify-icon icon="ph:briefcase-duotone" class="text-purple-500"></iconify-icon>
+                        <span>Official Business</span>
+                      </div>
+                    </td>
+                    <td class="p-3">Oct 15, 2023</td>
+                    <td class="p-3">1 day</td>
+                    <td class="p-3">
+                      <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">Approved</span>
+                    </td>
+                    <td class="p-3">Sarah Johnson</td>
+                    <td class="p-3">
+                      <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                    </td>
+                  </tr>
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td class="p-3">
+                      <div class="flex items-center gap-2">
+                        <iconify-icon icon="ph:beach-duotone" class="text-blue-500"></iconify-icon>
+                        <span>Vacation Leave</span>
+                      </div>
+                    </td>
+                    <td class="p-3">Sep 5 - 9, 2023</td>
+                    <td class="p-3">5 days</td>
+                    <td class="p-3">
+                      <span class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs rounded-full">Declined</span>
+                    </td>
+                    <td class="p-3">Sarah Johnson</td>
+                    <td class="p-3">
+                      <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Moved Leave Calendar here from right column for balance -->
+          <!-- Feature 7: Leave Calendar View (moved) -->
+          <div class="glass rounded-3xl p-6 shadow-lg reveal">
+            <h2 class="text-xl font-bold mb-4">Leave Calendar</h2>
+            <div class="flex items-center justify-between mb-4">
+              <button class="p-2 rounded-lg glass">
+                <iconify-icon icon="ph:caret-left-duotone"></iconify-icon>
+              </button>
+              <h3 class="font-bold">November 2023</h3>
+              <button class="p-2 rounded-lg glass">
+                <iconify-icon icon="ph:caret-right-duotone"></iconify-icon>
+              </button>
+            </div>
+            <div class="grid grid-cols-7 gap-1 text-center text-xs mb-2">
+              <div class="p-2 font-medium">Sun</div>
+              <div class="p-2 font-medium">Mon</div>
+              <div class="p-2 font-medium">Tue</div>
+              <div class="p-2 font-medium">Wed</div>
+              <div class="p-2 font-medium">Thu</div>
+              <div class="p-2 font-medium">Fri</div>
+              <div class="p-2 font-medium">Sat</div>
+            </div>
+            <div class="grid grid-cols-7 gap-1">
+              <div class="calendar-day p-2 text-center text-gray-400">29</div>
+              <div class="calendar-day p-2 text-center text-gray-400">30</div>
+              <div class="calendar-day p-2 text-center text-gray-400">31</div>
+              <div class="calendar-day p-2 text-center">1</div>
+              <div class="calendar-day p-2 text-center">2</div>
+              <div class="calendar-day p-2 text-center">3</div>
+              <div class="calendar-day p-2 text-center">4</div>
+              <div class="calendar-day p-2 text-center">5</div>
+              <div class="calendar-day p-2 text-center">6</div>
+              <div class="calendar-day p-2 text-center">7</div>
+              <div class="calendar-day p-2 text-center">8</div>
+              <div class="calendar-day p-2 text-center">9</div>
+              <div class="calendar-day p-2 text-center">10</div>
+              <div class="calendar-day p-2 text-center">11</div>
+              <div class="calendar-day p-2 text-center">12</div>
+              <div class="calendar-day p-2 text-center">13</div>
+              <div class="calendar-day p-2 text-center bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 rounded" title="Sick Leave - Pending">14</div>
+              <div class="calendar-day p-2 text-center">15</div>
+              <div class="calendar-day p-2 text-center">16</div>
+              <div class="calendar-day p-2 text-center">17</div>
+              <div class="calendar-day p-2 text-center">18</div>
+              <div class="calendar-day p-2 text-center">19</div>
+              <div class="calendar-day p-2 text-center">20</div>
+              <div class="calendar-day p-2 text-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded" title="Vacation Leave - Approved">21</div>
+              <div class="calendar-day p-2 text-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded" title="Vacation Leave - Approved">22</div>
+              <div class="calendar-day p-2 text-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded" title="Vacation Leave - Approved">23</div>
+              <div class="calendar-day p-2 text-center">24</div>
+              <div class="calendar-day p-2 text-center">25</div>
+              <div class="calendar-day p-2 text-center">26</div>
+              <div class="calendar-day p-2 text-center">27</div>
+              <div class="calendar-day p-2 text-center">28</div>
+              <div class="calendar-day p-2 text-center">29</div>
+              <div class="calendar-day p-2 text-center">30</div>
+              <div class="calendar-day p-2 text-center text-gray-400">1</div>
+              <div class="calendar-day p-2 text-center text-gray-400">2</div>
+            </div>
+            <div class="flex items-center justify-center gap-4 mt-4 text-xs">
+              <div class="flex items-center gap-1">
+                <div class="w-3 h-3 bg-blue-500 rounded"></div>
+                <span>Approved</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <div class="w-3 h-3 bg-amber-500 rounded"></div>
+                <span>Pending</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <div class="w-3 h-3 bg-red-500 rounded"></div>
+                <span>Declined</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column (calendar removed for balance) -->
+        <div class="space-y-6">
+          <!-- Feature 3: Leave Balance Tracker -->
+          <div class="glass rounded-3xl p-6 shadow-lg reveal">
+            <h2 class="text-xl font-bold mb-4">Leave Balance</h2>
+            <div class="space-y-4">
+              <div class="p-4 leave-vacation rounded-xl">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-medium text-blue-800 dark:text-blue-300">Vacation Leave</span>
+                  <span class="text-sm text-blue-600 dark:text-blue-400">15 days/year</span>
+                </div>
+                <div class="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+                  <div class="bg-blue-500 h-2 rounded-full" style="width: 60%"></div>
+                </div>
+                <div class="flex justify-between text-xs mt-1">
+                  <span class="text-blue-600 dark:text-blue-400">9 days used</span>
+                  <span class="text-blue-600 dark:text-blue-400">6 days remaining</span>
+                </div>
+              </div>
+              <div class="p-4 leave-sick rounded-xl">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-medium text-amber-800 dark:text-amber-300">Sick Leave</span>
+                  <span class="text-sm text-amber-600 dark:text-amber-400">10 days/year</span>
+                </div>
+                <div class="w-full bg-amber-200 dark:bg-amber-800 rounded-full h-2">
+                  <div class="bg-amber-500 h-2 rounded-full" style="width: 30%"></div>
+                </div>
+                <div class="flex justify-between text-xs mt-1">
+                  <span class="text-amber-600 dark:text-amber-400">3 days used</span>
+                  <span class="text-amber-600 dark:text-amber-400">7 days remaining</span>
+                </div>
+              </div>
+              <div class="p-4 leave-emergency rounded-xl">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-medium text-red-800 dark:text-red-300">Emergency Leave</span>
+                  <span class="text-sm text-red-600 dark:text-red-400">5 days/year</span>
+                </div>
+                <div class="w-full bg-red-200 dark:bg-red-800 rounded-full h-2">
+                  <div class="bg-red-500 h-2 rounded-full" style="width: 20%"></div>
+                </div>
+                <div class="flex justify-between text-xs mt-1">
+                  <span class="text-red-600 dark:text-red-400">1 day used</span>
+                  <span class="text-red-600 dark:text-red-400">4 days remaining</span>
+                </div>
+              </div>
+              <div class="p-4 leave-official rounded-xl">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-medium text-purple-800 dark:text-purple-300">Official Business</span>
+                  <span class="text-sm text-purple-600 dark:text-purple-400">Unlimited</span>
+                </div>
+                <div class="w-full bg-purple-200 dark:bg-purple-800 rounded-full h-2">
+                  <div class="bg-purple-500 h-2 rounded-full" style="width: 45%"></div>
+                </div>
+                <div class="flex justify-between text-xs mt-1">
+                  <span class="text-purple-600 dark:text-purple-400">9 days used</span>
+                  <span class="text-purple-600 dark:text-purple-400">Unlimited</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feature 6: AI Leave Insight Summary -->
+          <div class="glass rounded-3xl p-6 shadow-lg reveal">
+            <h2 class="text-xl font-bold mb-4">AI Leave Insights</h2>
+            <div class="space-y-4">
+              <div class="p-4 bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+                <div class="flex items-start gap-3">
+                  <iconify-icon icon="ph:trend-up-duotone" class="text-blue-500 mt-1"></iconify-icon>
+                  <div>
+                    <p class="font-medium text-blue-800 dark:text-blue-300">You've used 60% of your vacation leave this quarter.</p>
+                    <p class="text-sm text-blue-600 dark:text-blue-400 mt-1">Consider planning remaining days strategically.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="p-4 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-700">
+                <div class="flex items-start gap-3">
+                  <iconify-icon icon="ph:check-circle-duotone" class="text-green-500 mt-1"></iconify-icon>
+                  <div>
+                    <p class="font-medium text-green-800 dark:text-green-300">No sick leave used this month — great attendance consistency.</p>
+                    <p class="text-sm text-green-600 dark:text-green-400 mt-1">Keep maintaining your health!</p>
+                  </div>
+                </div>
+              </div>
+              <div class="p-4 bg-gradient-to-br from-amber-50 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/20 rounded-xl border border-amber-200 dark:border-amber-700">
+                <div class="flex items-start gap-3">
+                  <iconify-icon icon="ph:calendar-blank-duotone" class="text-amber-500 mt-1"></iconify-icon>
+                  <div>
+                    <p class="font-medium text-amber-800 dark:text-amber-300">You have 3 pending leave requests.</p>
+                    <p class="text-sm text-amber-600 dark:text-amber-400 mt-1">Average approval time: 2-3 business days.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- Feature 10: Leave Approval Notifications -->
+          <div class="glass rounded-3xl p-6 shadow-lg reveal">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-bold">Leave Notifications</h2>
+              <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">2 new</span>
+            </div>
+            <div class="space-y-3 max-h-60 overflow-y-auto fancy-scroll">
+              <div class="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white flex-shrink-0">
+                  <iconify-icon icon="ph:check-circle-duotone"></iconify-icon>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium">Leave Request Approved</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Your sick leave for November 14 has been approved.</p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">2 hours ago</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0">
+                  <iconify-icon icon="ph:clock-duotone"></iconify-icon>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium">New Leave Request</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Your vacation request for December is pending approval.</p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">1 day ago</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/30 rounded-xl">
+                <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white flex-shrink-0">
+                  <iconify-icon icon="ph:info-duotone"></iconify-icon>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium">Document Required</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Please upload medical certificate for your sick leave.</p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">3 days ago</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature 14: Leave Request Analytics -->
+      <div class="glass rounded-3xl p-6 shadow-lg reveal">
+        <h2 class="text-xl font-bold mb-4">Leave Analytics</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="p-6 bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/20 rounded-2xl border border-blue-200 dark:border-blue-700">
+            <h3 class="font-bold text-blue-800 dark:text-blue-300 mb-4">Leave Distribution</h3>
+            <div class="h-64">
+              <canvas id="leaveDistributionChart"></canvas>
+            </div>
+          </div>
+          <div class="p-6 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/20 rounded-2xl border border-green-200 dark:border-green-700">
+            <h3 class="font-bold text-green-800 dark:text-green-300 mb-4">Monthly Trend</h3>
+            <div class="h-64">
+              <canvas id="leaveTrendChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature 15: Leave Policy Viewer -->
+      <div class="glass rounded-3xl p-6 shadow-lg reveal">
+        <h2 class="text-xl font-bold mb-4">Leave Policies</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+            <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white mb-3">
+              <iconify-icon icon="ph:beach-duotone"></iconify-icon>
+            </div>
+            <h3 class="font-bold text-blue-800 dark:text-blue-300 mb-2">Vacation Leave</h3>
+            <p class="text-sm text-blue-600 dark:text-blue-400">15 days per year, accrues monthly</p>
+            <p class="text-xs text-blue-500 dark:text-blue-500 mt-2">Can be carried over up to 5 days</p>
+          </div>
+          <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-xl">
+            <div class="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-white mb-3">
+              <iconify-icon icon="ph:first-aid-duotone"></iconify-icon>
+            </div>
+            <h3 class="font-bold text-amber-800 dark:text-amber-300 mb-2">Sick Leave</h3>
+            <p class="text-sm text-amber-600 dark:text-amber-400">10 days per year, requires medical certificate after 3 days</p>
+            <p class="text-xs text-amber-500 dark:text-amber-500 mt-2">No carry over allowed</p>
+          </div>
+          <div class="p-4 bg-red-50 dark:bg-red-900/30 rounded-xl">
+            <div class="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center text-white mb-3">
+              <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
+            </div>
+            <h3 class="font-bold text-red-800 dark:text-red-300 mb-2">Emergency Leave</h3>
+            <p class="text-sm text-red-600 dark:text-red-400">5 days per year for family emergencies</p>
+            <p class="text-xs text-red-500 dark:text-red-500 mt-2">Requires immediate supervisor approval</p>
+          </div>
+          <div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
+            <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white mb-3">
+              <iconify-icon icon="ph:briefcase-duotone"></iconify-icon>
+            </div>
+            <h3 class="font-bold text-purple-800 dark:text-purple-300 mb-2">Official Business</h3>
+            <p class="text-sm text-purple-600 dark:text-purple-400">No limit for company-related activities</p>
+            <p class="text-xs text-purple-500 dark:text-purple-500 mt-2">Requires prior department head approval</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature 13: HR Contact or Clarification Form -->
+      <div class="glass rounded-3xl p-6 shadow-lg reveal">
+        <h2 class="text-xl font-bold mb-4">Contact HR</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subject</label>
+              <select class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 glass py-3 px-4">
+                <option value="">Select subject...</option>
+                <option value="policy">Leave Policy Clarification</option>
+                <option value="balance">Leave Balance Inquiry</option>
+                <option value="application">Application Issues</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message</label>
+              <textarea class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 glass py-3 px-4" rows="4" placeholder="Describe your question or concern..."></textarea>
+            </div>
+            <button class="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-all ripple">
+              Send Message to HR
+            </button>
+          </div>
+          <div class="p-6 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/20 rounded-2xl border border-green-200 dark:border-green-700">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white">
+                <iconify-icon icon="ph:headset-duotone"></iconify-icon>
+              </div>
+              <div>
+                <h3 class="font-bold text-green-800 dark:text-green-300">HR Support</h3>
+                <p class="text-sm text-green-600 dark:text-green-400">We're here to help</p>
+              </div>
+            </div>
+            <div class="space-y-2 text-sm">
+              <div class="flex items-center gap-2">
+                <iconify-icon icon="ph:clock-duotone" class="text-green-500"></iconify-icon>
+                <span class="text-green-700 dark:text-green-300">Response Time: 24-48 hours</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <iconify-icon icon="ph:envelope-duotone" class="text-green-500"></iconify-icon>
+                <span class="text-green-700 dark:text-green-300">hr-support@company.com</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <iconify-icon icon="ph:phone-duotone" class="text-green-500"></iconify-icon>
+                <span class="text-green-700 dark:text-green-300">+1 (555) 123-4567</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="pb-8 pt-2 text-xs text-gray-500 dark:text-gray-400 text-center">© IntelliHRTrack • Leave & Requests Portal</footer>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Active link highlighter (filename based)
+    (function(){const file=location.pathname.split('/').pop();document.querySelectorAll('aside nav a').forEach(a=>{const href=a.getAttribute('href');if(!href) return; if(href===file){a.classList.add('gradient-accent','text-white','shadow-glow');a.classList.remove('glass');} else {a.classList.remove('gradient-accent','text-white');if(!a.classList.contains('glass')) a.classList.add('glass');}});})();
+    // Theme toggle hookup
+    (function(){function save(){localStorage.setItem('ih_theme',document.documentElement.classList.contains('dark')?'dark':'light');}['themeToggle','themeToggleHeader'].forEach(id=>{const el=document.getElementById(id);if(el){el.addEventListener('click',()=>{document.documentElement.classList.toggle('dark');save();});}});})();
+    </script>
+
+<script>
+    // ---------- THEME ----------
+    const themeToggle = document.getElementById('themeToggle');
+    const themeToggleHeader = document.getElementById('themeToggleHeader');
+    function toggleTheme(){
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('ih_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+    themeToggle?.addEventListener('click', toggleTheme);
+    themeToggleHeader?.addEventListener('click', toggleTheme);
+    if (localStorage.getItem('ih_theme') === 'dark') document.documentElement.classList.add('dark');
+
+    // ---------- CLOCK + NETWORK STATUS ----------
+    const headerClock = document.getElementById('headerClock');
+    const netDot = document.getElementById('netDot');
+    function updateClock(){ if(headerClock) headerClock.textContent = new Date().toLocaleTimeString(); }
+    setInterval(updateClock, 1000); updateClock();
+    function updateNet(){ const on = navigator.onLine; if(netDot){ netDot.classList.toggle('bg-green-500', on); netDot.classList.toggle('bg-rose-500', !on); netDot.title = on ? 'Online' : 'Offline'; } }
+    window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); updateNet();
+
+    // ---------- SETTINGS PANEL ----------
+    const customizeBtn = document.getElementById('customizeLayout');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const closeSettings = document.getElementById('closeSettings');
+    const saveSettings = document.getElementById('saveSettings');
+    const resetSettings = document.getElementById('resetSettings');
+    const motionToggle = document.getElementById('motionToggle');
+
+    function openSettings(){ settingsPanel.classList.remove('hidden'); settingsPanel.classList.add('flex'); }
+    function closeSettingsFn(){ settingsPanel.classList.add('hidden'); settingsPanel.classList.remove('flex'); }
+    customizeBtn?.addEventListener('click', openSettings);
+    closeSettings?.addEventListener('click', closeSettingsFn);
+    settingsPanel?.addEventListener('click', (e)=>{ if(e.target === settingsPanel) closeSettingsFn(); });
+
+    const accentBtns = Array.from(document.querySelectorAll('#settingsPanel [data-accent]'));
+    const bgBtns = Array.from(document.querySelectorAll('#settingsPanel [data-bg]'));
+    const densityBtns = Array.from(document.querySelectorAll('#settingsPanel [data-density]'));
+
+    function getPrefs(){ try{ return JSON.parse(localStorage.getItem('ih_prefs')) || {}; }catch{ return {}; } }
+    function setPrefs(p){ localStorage.setItem('ih_prefs', JSON.stringify(p)); }
+    function applyPrefs(p){
+      if(p.accent) document.documentElement.setAttribute('data-accent', p.accent);
+      if(p.bg) document.documentElement.setAttribute('data-bg', p.bg);
+      document.documentElement.setAttribute('data-density', p.density||'comfortable');
+      document.documentElement.classList.toggle('reduce-motion', !!p.reduceMotion);
+      if(motionToggle) motionToggle.checked = !!p.reduceMotion;
+    }
+    const initPrefs = getPrefs(); applyPrefs(initPrefs);
+    accentBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-accent', b.dataset.accent)));
+    bgBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-bg', b.dataset.bg)));
+    densityBtns.forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-density', b.dataset.density)));
+    saveSettings?.addEventListener('click', ()=>{
+      const prev = getPrefs();
+      const p = {
+        accent: document.documentElement.getAttribute('data-accent'),
+        bg: document.documentElement.getAttribute('data-bg'),
+        density: document.documentElement.getAttribute('data-density'),
+        reduceMotion: motionToggle && motionToggle.checked,
+        glass: glassIntensity ? glassIntensity.value : (prev.glass||'0.6'),
+        sidebar: (prev.sidebar)||'default',
+        contrast: contrastToggle ? contrastToggle.checked : !!prev.contrast,
+        font: document.documentElement.getAttribute('data-font') || prev.font || 'base'
+      };
+      const activeSidebar = document.activeElement && document.activeElement.getAttribute('data-sidebar');
+      if(activeSidebar) p.sidebar = activeSidebar;
+      setPrefs(p); applyPrefs(p); applyPrefsExtended(p); closeSettingsFn();
+    });
+    resetSettings?.addEventListener('click', ()=>{ const p = {accent:'teal', bg:'gradient', density:'comfortable', reduceMotion:false}; setPrefs(p); applyPrefs(p); });
+
+    // ---------- TOASTS ----------
+    const toastHost = document.getElementById('toastHost');
+    function showToast(msg, type='info'){
+      if(!toastHost) return;
+      const item = document.createElement('div');
+      item.className = `toast ${type==='success'?'success':type==='warning'?'warn':type==='error'?'error':'info'} glass`;
+      item.innerHTML = `<div class="flex items-start gap-2">
+        <iconify-icon icon="${type==='success'?'ph:check-circle-duotone':type==='warning'?'ph:warning-duotone':type==='error'?'ph:x-circle-duotone':'ph:info-duotone'}" class="mt-0.5 text-accent"></iconify-icon>
+        <div class="text-sm">${msg}</div>
+      </div>`;
+      toastHost.appendChild(item);
+      setTimeout(()=>{ item.style.transition='opacity .4s ease, transform .4s ease'; item.style.opacity='0'; item.style.transform='translateY(-6px)'; }, 2600);
+      setTimeout(()=> item.remove(), 3100);
+    }
+    setTimeout(()=>{ try{ showToast('Leave & Requests ready','success'); }catch(_){} }, 700);
+
+    // ---------- BACK TO TOP ----------
+    const backToTop = document.getElementById('backToTop');
+    window.addEventListener('scroll', ()=>{ if(window.scrollY > 400) backToTop?.classList.remove('hidden'); else backToTop?.classList.add('hidden'); });
+    backToTop?.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+
+    // ---------- SHORTCUTS MODAL ----------
+    const shortcutsModal = document.getElementById('shortcutsModal');
+    const shortcutsBtn = document.getElementById('shortcutsBtn');
+    const closeShortcuts = document.getElementById('closeShortcuts');
+    function openShortcuts(){ shortcutsModal.classList.remove('hidden'); shortcutsModal.classList.add('flex'); }
+    function closeShortcutsFn(){ shortcutsModal.classList.add('hidden'); shortcutsModal.classList.remove('flex'); }
+    shortcutsBtn?.addEventListener('click', openShortcuts);
+    closeShortcuts?.addEventListener('click', closeShortcutsFn);
+    shortcutsModal?.addEventListener('click', (e)=>{ if(e.target===shortcutsModal) closeShortcutsFn(); });
+    document.addEventListener('keydown', (e)=>{
+      if(e.target && ['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+      if(e.key.toLowerCase()==='s'){ e.preventDefault(); openSettings(); }
+      if(e.key.toLowerCase()==='t'){ e.preventDefault(); toggleTheme(); }
+      if(e.key === '?'){ e.preventDefault(); openShortcuts(); }
+    });
+
+    // ---------- MOBILE SIDEBAR ----------
+    const mobileMenuBtn = document.getElementById('mobileMenu');
+    const mobileSidebar = document.getElementById('mobileSidebar');
+    const mobilePanel = document.getElementById('mobilePanel');
+    const mobileBackdrop = document.getElementById('mobileBackdrop');
+    const mobileClose = document.getElementById('closeMobile');
+    const mobileNavContent = document.getElementById('mobileNavContent');
+    function openMobile(){
+      const desk = document.querySelector('aside nav ul');
+      if(desk && mobileNavContent){ mobileNavContent.innerHTML=''; mobileNavContent.appendChild(desk.cloneNode(true));
+        mobileNavContent.querySelectorAll('a').forEach(a=>{
+          a.addEventListener('click', ()=>{ closeMobile(); });
+        });
+      }
+      mobileSidebar.classList.remove('hidden');
+      requestAnimationFrame(()=> mobilePanel.classList.remove('-translate-x-full'));
+    }
+    function closeMobile(){ mobilePanel.classList.add('-translate-x-full'); setTimeout(()=> mobileSidebar.classList.add('hidden'), 250); }
+    mobileMenuBtn?.addEventListener('click', openMobile);
+    mobileBackdrop?.addEventListener('click', closeMobile);
+    mobileClose?.addEventListener('click', closeMobile);
+
+    // ---------- MICRO-INTERACTIONS ----------
+    Array.from(document.querySelectorAll('.glass')).forEach(el=> el.classList.add('hover-lift'));
+    Array.from(document.querySelectorAll('button')).forEach(el=> el.classList.add('ripple'));
+
+    // ---------- REVEAL ON SCROLL ----------
+    const revealables = Array.from(document.querySelectorAll('.reveal'));
+    const io = new IntersectionObserver(entries=>{ entries.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('in-view'); io.unobserve(en.target); } }); }, { threshold: 0.12 });
+    revealables.forEach(el=> io.observe(el));
+
+    // ---------- PREFS EXTENDED ----------
+    const glassIntensity = document.getElementById('glassIntensity');
+    const contrastToggle = document.getElementById('contrastToggle');
+    const sidebarBtns = Array.from(document.querySelectorAll('#settingsPanel [data-sidebar]'));
+    const fontBtns = Array.from(document.querySelectorAll('#settingsPanel [data-font]'));
+    function applyGlass(val){ const alpha = parseFloat(val||'0.6'); document.documentElement.style.setProperty('--card-bg', `rgba(255,255,255,${alpha})`); document.documentElement.style.setProperty('--card-border', `rgba(255,255,255,${Math.max(0, Math.min(1, alpha*0.6))})`); }
+    function applySidebar(size){ const map = { narrow:'14rem', default:'18rem', wide:'22rem' }; const px = map[size] || map.default; document.documentElement.style.setProperty('--sidebar', px); }
+    function applyFont(f){ const size = f==='small'? '0.95rem' : f==='large'? '1.05rem' : '1rem'; document.documentElement.setAttribute('data-font', f||'base'); document.body.style.fontSize = size; }
+    function applyPrefsExtended(p){ if(p.glass) applyGlass(p.glass); if(p.sidebar) applySidebar(p.sidebar); if(p.contrast) document.documentElement.classList.toggle('high-contrast', !!p.contrast); if(p.font) applyFont(p.font); if(glassIntensity) glassIntensity.value = p.glass || '0.6'; if(contrastToggle) contrastToggle.checked = !!p.contrast; }
+    applyPrefsExtended(getPrefs());
+    sidebarBtns.forEach(b=> b.addEventListener('click', ()=> applySidebar(b.dataset.sidebar)));
+    fontBtns.forEach(b=> b.addEventListener('click', ()=> applyFont(b.dataset.font)));
+    glassIntensity?.addEventListener('input', ()=> applyGlass(glassIntensity.value));
+    contrastToggle?.addEventListener('change', ()=> document.documentElement.classList.toggle('high-contrast', contrastToggle.checked));
+
+    // ---------- LEAVE PAGE LOGIC ----------
+    // Charts
+    try {
+      const distributionCtx = document.getElementById('leaveDistributionChart')?.getContext('2d');
+      if(distributionCtx){
+        new Chart(distributionCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Vacation', 'Sick', 'Emergency', 'Official'],
+            datasets: [{ data: [9,3,1,5], backgroundColor: ['#3b82f6','#f59e0b','#ef4444','#8b5cf6'], borderWidth: 0 }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+      }
+      const trendCtx = document.getElementById('leaveTrendChart')?.getContext('2d');
+      if(trendCtx){
+        new Chart(trendCtx, {
+          type: 'line',
+          data: {
+            labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov'],
+            datasets: [{ label: 'Leave Days', data: [2,1,3,2,1,4,2,1,5,1,2], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.3, fill: true }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+      }
+    } catch(e){}
+
+    // Date validation
+    const startDateInput = document.querySelector('input[type="date"]');
+    const endDateInput = document.querySelectorAll('input[type="date"]')[1];
+    function validateDates(){ if(startDateInput?.value && endDateInput?.value){ const s=new Date(startDateInput.value); const e=new Date(endDateInput.value); if(e < s){ alert('End date cannot be before start date'); endDateInput.value=''; } } }
+    startDateInput?.addEventListener('change', validateDates);
+    endDateInput?.addEventListener('change', validateDates);
+
+    // Cancel request buttons
+    document.querySelectorAll('.text-red-500').forEach(btn=>{
+      btn.addEventListener('click', function(){
+        const row = this.closest('tr');
+        const leaveType = row.querySelector('td:first-child span')?.textContent || 'leave';
+        const dates = row.querySelector('td:nth-child(2)')?.textContent || '';
+        if(confirm(`Are you sure you want to cancel your ${leaveType} for ${dates}?`)){
+          row.style.opacity='0.5'; this.textContent='Cancelling...'; this.disabled=true;
+          setTimeout(()=>{ row.remove(); try{ showToast('Leave request cancelled','success'); }catch(_){} }, 1200);
+        }
+      });
+    });
+  </script>
+{% endblock %}

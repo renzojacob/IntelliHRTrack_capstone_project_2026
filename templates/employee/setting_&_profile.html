@@ -1,0 +1,453 @@
+{% extends 'employee/base_employee.html' %}
+
+{% block title %}Settings & Profile | IntelliHRTrack{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+            <header class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow reveal">
+                <div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
+                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 text-sm opacity-80"><span id="headerClock">--:--:--</span><span class="mx-1">•</span><span class="flex items-center gap-1"><span id="netDot" class="inline-block w-2 h-2 rounded-full bg-green-500"></span><span>Network</span></span></div>
+                        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">Settings &amp; Profile</h1>
+                        <p class="opacity-80">Manage your personal info, account security, and preferences.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="mobileMenu" class="lg:hidden p-2 rounded-xl glass hover:shadow-glow"><iconify-icon icon="ph:list-duotone"></iconify-icon></button>
+                        <button id="themeToggleHeader" class="p-2 rounded-xl glass hover:shadow-glow"><iconify-icon icon="ph:sun-horizon-duotone"></iconify-icon></button>
+                        <button id="customizeLayoutHeader" class="px-3 py-2 rounded-xl text-white bg-accent hover:shadow-glow">Customize</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Balanced layout: left = profile/quick, right = tabbed settings -->
+            <section class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <!-- Left column -->
+                <div class="space-y-6 xl:col-span-1">
+                    <div class="glass rounded-2xl p-6 shadow reveal">
+                        <div class="flex items-start gap-4">
+                            <div class="relative">
+                                <img class="w-20 h-20 rounded-2xl object-cover border-4 border-white/50 shadow-lg" src="https://randomuser.me/api/portraits/men/34.jpg" alt="User">
+                                <span class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h3 class="text-lg font-semibold">John Smith</h3>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400">Senior Marketing Specialist</p>
+                                    </div>
+                                    <button class="px-3 py-2 rounded-xl glass hover:shadow-glow text-sm"><iconify-icon icon="ph:pencil-simple-duotone" class="mr-1"></iconify-icon> Edit</button>
+                                </div>
+                                <div class="mt-4 grid grid-cols-3 gap-3">
+                                    <div class="glass rounded-xl p-3 text-center">
+                                        <div class="text-xs opacity-70">Employee ID</div>
+                                        <div class="font-semibold">EMP-0452</div>
+                                    </div>
+                                    <div class="glass rounded-xl p-3 text-center">
+                                        <div class="text-xs opacity-70">Department</div>
+                                        <div class="font-semibold">Marketing</div>
+                                    </div>
+                                    <div class="glass rounded-xl p-3 text-center">
+                                        <div class="text-xs opacity-70">Joined</div>
+                                        <div class="font-semibold">Jan 2020</div>
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="opacity-80">Profile completion</span>
+                                        <span class="text-accent font-semibold">85%</span>
+                                    </div>
+                                    <div class="h-2 bg-white/50 dark:bg-white/10 rounded-full mt-2">
+                                        <div class="h-2 rounded-full gradient-accent" style="width:85%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick actions -->
+                    <div class="glass rounded-2xl p-6 shadow reveal">
+                        <h4 class="font-semibold mb-3">Quick Actions</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button class="rounded-xl glass p-3 text-left hover:shadow-glow"><iconify-icon icon="ph:file-arrow-down-duotone" class="text-accent mr-2"></iconify-icon> Download Data</button>
+                            <button class="rounded-xl glass p-3 text-left hover:shadow-glow"><iconify-icon icon="ph:envelope-open-duotone" class="text-accent mr-2"></iconify-icon> Verify Email</button>
+                            <button class="rounded-xl glass p-3 text-left hover:shadow-glow"><iconify-icon icon="ph:phone-duotone" class="text-accent mr-2"></iconify-icon> Verify Phone</button>
+                            <button class="rounded-xl glass p-3 text-left hover:shadow-glow text-rose-600"><iconify-icon icon="ph:user-switch-duotone" class="mr-2"></iconify-icon> Deactivate</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Language & Region -->
+                    <div class="glass rounded-2xl p-6 shadow reveal">
+                        <h4 class="font-semibold mb-4">Language & Region</h4>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm opacity-80 mb-2">Language</label>
+                                <select class="w-full rounded-xl glass p-3 outline-none">
+                                    <option>English</option>
+                                    <option>Filipino</option>
+                                    <option>Spanish</option>
+                                    <option>Japanese</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm opacity-80 mb-2">Time Zone</label>
+                                <select class="w-full rounded-xl glass p-3 outline-none">
+                                    <option>(GMT+8) Manila</option>
+                                    <option>(GMT-5) New York</option>
+                                    <option>(GMT+0) London</option>
+                                    <option>(GMT+9) Tokyo</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm opacity-80 mb-2">Date Format</label>
+                                <div class="flex flex-wrap gap-3">
+                                    <label class="flex items-center">
+                                        <input type="radio" name="date-format" class="text-accent focus:ring-accent" checked>
+                                        <span class="ml-2 text-sm">MM/DD/YYYY</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="date-format" class="text-accent focus:ring-accent">
+                                        <span class="ml-2 text-sm">DD/MM/YYYY</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="date-format" class="text-accent focus:ring-accent">
+                                        <span class="ml-2 text-sm">YYYY-MM-DD</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right column -->
+                <div class="space-y-6 xl:col-span-2">
+                    <!-- Tab buttons -->
+                    <div class="glass rounded-2xl p-2 shadow reveal">
+                        <div class="flex flex-wrap gap-2">
+                            <button data-tab="tab-personal" class="tab-btn px-3 py-2 rounded-xl glass tab-active"><iconify-icon icon="ph:user-duotone" class="mr-1 text-accent"></iconify-icon> Personal</button>
+                            <button data-tab="tab-security" class="tab-btn px-3 py-2 rounded-xl glass"><iconify-icon icon="ph:shield-check-duotone" class="mr-1 text-accent"></iconify-icon> Security</button>
+                            <button data-tab="tab-notif" class="tab-btn px-3 py-2 rounded-xl glass"><iconify-icon icon="ph:bell-duotone" class="mr-1 text-accent"></iconify-icon> Notifications</button>
+                            <button data-tab="tab-preferences" class="tab-btn px-3 py-2 rounded-xl glass"><iconify-icon icon="ph:sliders-duotone" class="mr-1 text-accent"></iconify-icon> Preferences</button>
+                            <button data-tab="tab-privacy" class="tab-btn px-3 py-2 rounded-xl glass"><iconify-icon icon="ph:lock-duotone" class="mr-1 text-accent"></iconify-icon> Privacy</button>
+                        </div>
+                    </div>
+
+                    <!-- Personal -->
+                    <div id="tab-personal" class="tab-panel glass rounded-2xl p-6 shadow reveal">
+                        <h3 class="text-xl font-semibold mb-4">Personal Information</h3>
+                        <form class="space-y-5">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <label class="block">
+                                    <span class="text-sm opacity-80">First Name</span>
+                                    <input class="mt-1 w-full rounded-xl glass p-3 outline-none" value="John" />
+                                </label>
+                                <label class="block">
+                                    <span class="text-sm opacity-80">Last Name</span>
+                                    <input class="mt-1 w-full rounded-xl glass p-3 outline-none" value="Smith" />
+                                </label>
+                            </div>
+                            <label class="block">
+                                <span class="text-sm opacity-80">Email Address</span>
+                                <div class="mt-1 flex">
+                                    <input type="email" class="flex-1 rounded-l-xl glass p-3 outline-none" value="john.smith@company.com" />
+                                    <button type="button" class="rounded-r-xl px-4 bg-accent text-white">Verify</button>
+                                </div>
+                                <div class="text-xs text-emerald-600 mt-1 flex items-center"><iconify-icon icon="ph:check-circle-duotone" class="mr-1"></iconify-icon> Email verified</div>
+                            </label>
+                            <label class="block">
+                                <span class="text-sm opacity-80">Phone Number</span>
+                                <div class="mt-1 flex">
+                                    <input type="tel" class="flex-1 rounded-l-xl glass p-3 outline-none" value="+63 912 345 6789" />
+                                    <button type="button" class="rounded-r-xl px-4 bg-accent text-white">Verify</button>
+                                </div>
+                                <div class="text-xs text-amber-600 mt-1 flex items-center"><iconify-icon icon="ph:warning-circle-duotone" class="mr-1"></iconify-icon> Phone not verified</div>
+                            </label>
+                            <label class="block">
+                                <span class="text-sm opacity-80">Address</span>
+                                <textarea rows="3" class="mt-1 w-full rounded-xl glass p-3 outline-none">123 Business Avenue, Makati City, Metro Manila</textarea>
+                            </label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <label class="block">
+                                    <span class="text-sm opacity-80">Emergency Contact</span>
+                                    <input class="mt-1 w-full rounded-xl glass p-3 outline-none" placeholder="Full name" />
+                                </label>
+                                <label class="block">
+                                    <span class="text-sm opacity-80">Emergency Phone</span>
+                                    <input class="mt-1 w-full rounded-xl glass p-3 outline-none" placeholder="e.g. +63 ..." />
+                                </label>
+                            </div>
+                            <div class="pt-2 flex gap-2 justify-end">
+                                <button type="button" class="px-4 py-2 rounded-xl glass hover:shadow-glow">Cancel</button>
+                                <button type="submit" class="px-4 py-2 rounded-xl text-white bg-accent hover:shadow-glow">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Security -->
+                    <div id="tab-security" class="tab-panel glass rounded-2xl p-6 shadow reveal hidden">
+                        <h3 class="text-xl font-semibold mb-4">Account Security</h3>
+                        <div class="grid grid-cols-1 gap-6">
+                            <div>
+                                <h4 class="font-semibold mb-2">Change Password</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <input type="password" placeholder="Current" class="rounded-xl glass p-3 outline-none" />
+                                    <input id="newPassword" type="password" placeholder="New" class="rounded-xl glass p-3 outline-none" />
+                                    <input type="password" placeholder="Confirm" class="rounded-xl glass p-3 outline-none" />
+                                </div>
+                                <div class="mt-2 h-1 rounded-full bg-white/40">
+                                    <div id="pwdStrength" class="h-1 rounded-full bg-amber-500" style="width:35%"></div>
+                                </div>
+                                <div class="text-xs opacity-80 mt-2">Use 8+ chars with upper/lowercase, a number, and a symbol.</div>
+                                <button class="mt-3 px-4 py-2 rounded-xl text-white bg-accent hover:shadow-glow">Update Password</button>
+                            </div>
+
+                            <div>
+                                <h4 class="font-semibold mb-2">Two-Factor Authentication</h4>
+                                <div class="flex items-center justify-between rounded-xl glass p-3">
+                                    <div>
+                                        <div class="font-medium">Authenticator App</div>
+                                        <div class="text-sm opacity-80">Protect your account with one-time codes</div>
+                                    </div>
+                                    <button class="px-3 py-2 rounded-xl glass hover:shadow-glow">Enable</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notifications -->
+                    <div id="tab-notif" class="tab-panel glass rounded-2xl p-6 shadow reveal hidden">
+                        <h3 class="text-xl font-semibold mb-4">Notification Preferences</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-start justify-between rounded-xl glass p-4">
+                                <div>
+                                    <div class="font-medium">Payroll Alerts</div>
+                                    <div class="text-sm opacity-80">Get notified when new payslips are available</div>
+                                </div>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer" checked>
+                                    <span class="w-12 h-6 bg-white/40 peer-checked:bg-emerald-500 rounded-full relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:w-5 after:h-5 after:rounded-full after:transition-all peer-checked:after:left-6"></span>
+                                </label>
+                            </div>
+                            <div class="flex items-start justify-between rounded-xl glass p-4">
+                                <div>
+                                    <div class="font-medium">Attendance Updates</div>
+                                    <div class="text-sm opacity-80">Receive updates about your attendance records</div>
+                                </div>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer" checked>
+                                    <span class="w-12 h-6 bg-white/40 peer-checked:bg-emerald-500 rounded-full relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:w-5 after:h-5 after:rounded-full after:transition-all peer-checked:after:left-6"></span>
+                                </label>
+                            </div>
+                            <div class="flex items-start justify-between rounded-xl glass p-4">
+                                <div>
+                                    <div class="font-medium">System Announcements</div>
+                                    <div class="text-sm opacity-80">Important company-wide announcements</div>
+                                </div>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer" checked>
+                                    <span class="w-12 h-6 bg-white/40 peer-checked:bg-emerald-500 rounded-full relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:w-5 after:h-5 after:rounded-full after:transition-all peer-checked:after:left-6"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="pt-4 text-right">
+                            <button class="px-4 py-2 rounded-xl text-white bg-accent hover:shadow-glow">Save Notification Settings</button>
+                        </div>
+                    </div>
+
+                    <!-- Preferences -->
+                    <div id="tab-preferences" class="tab-panel glass rounded-2xl p-6 shadow reveal hidden">
+                        <h3 class="text-xl font-semibold mb-4">Preferences</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <button data-density="comfortable" class="pref-btn rounded-xl glass p-4 text-left border border-transparent">
+                                <div class="text-lg font-semibold">Comfortable</div>
+                                <div class="text-sm opacity-80">Default spacing</div>
+                            </button>
+                            <button data-density="compact" class="pref-btn rounded-xl glass p-4 text-left border border-transparent">
+                                <div class="text-lg font-semibold">Compact</div>
+                                <div class="text-sm opacity-80">Fit more on screen</div>
+                            </button>
+                            <button data-density="cozy" class="pref-btn rounded-xl glass p-4 text-left border border-transparent">
+                                <div class="text-lg font-semibold">Cozy</div>
+                                <div class="text-sm opacity-80">Relaxed spacing</div>
+                            </button>
+                        </div>
+                        <div class="mt-4">
+                            <div class="font-semibold mb-2">Accent</div>
+                            <div class="flex flex-wrap gap-2">
+                                <button data-accent="teal" class="w-8 h-8 rounded-full gradient-accent ring-2 ring-white/50"></button>
+                                <button data-accent="purple" class="w-8 h-8 rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600"></button>
+                                <button data-accent="rose" class="w-8 h-8 rounded-full bg-gradient-to-br from-rose-500 to-pink-600"></button>
+                                <button data-accent="amber" class="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600"></button>
+                            </div>
+                        </div>
+                        <div class="pt-4 text-right">
+                            <button id="savePrefs" class="px-4 py-2 rounded-xl text-white bg-accent hover:shadow-glow">Save Preferences</button>
+                        </div>
+                    </div>
+
+                    <!-- Privacy -->
+                    <div id="tab-privacy" class="tab-panel glass rounded-2xl p-6 shadow reveal hidden">
+                        <h3 class="text-xl font-semibold mb-4">Privacy &amp; Data</h3>
+                        <div class="space-y-4">
+                            <div class="rounded-xl glass p-4 flex items-start justify-between">
+                                <div>
+                                    <div class="font-medium">Biometric Data Usage</div>
+                                    <div class="text-sm opacity-80">Consent to use biometric data for attendance tracking</div>
+                                </div>
+                                <span class="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">Accepted</span>
+                            </div>
+                            <div class="rounded-xl glass p-4 flex items-start justify-between">
+                                <div>
+                                    <div class="font-medium">Data Processing Agreement</div>
+                                    <div class="text-sm opacity-80">Agreement for processing personal data</div>
+                                </div>
+                                <span class="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">Accepted</span>
+                            </div>
+                            <div class="rounded-xl glass p-4 flex items-start justify-between">
+                                <div>
+                                    <div class="font-medium">Marketing Communications</div>
+                                    <div class="text-sm opacity-80">Receive promotional communications</div>
+                                </div>
+                                <span class="text-xs px-2 py-1 rounded-full bg-rose-500/20 text-rose-700 dark:text-rose-300">Declined</span>
+                            </div>
+                        </div>
+                        <div class="pt-4 flex justify-end gap-2">
+                            <button class="px-4 py-2 rounded-xl glass hover:shadow-glow">Review Consents</button>
+                            <button class="px-4 py-2 rounded-xl text-white bg-accent hover:shadow-glow">Download My Data</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Activity -->
+            <section class="glass rounded-2xl p-6 shadow reveal">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-semibold">Recent Activity</h3>
+                    <button class="px-3 py-2 rounded-xl glass hover:shadow-glow text-sm">View All</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="rounded-xl glass p-4 flex gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center"><iconify-icon icon="ph:key-duotone" class="text-emerald-600"></iconify-icon></div>
+                        <div>
+                            <div class="font-medium">Password changed</div>
+                            <div class="text-xs opacity-80">2 days ago</div>
+                        </div>
+                    </div>
+                    <div class="rounded-xl glass p-4 flex gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center"><iconify-icon icon="ph:user-circle-gear-duotone" class="text-blue-600"></iconify-icon></div>
+                        <div>
+                            <div class="font-medium">Profile updated</div>
+                            <div class="text-xs opacity-80">1 week ago</div>
+                        </div>
+                    </div>
+                    <div class="rounded-xl glass p-4 flex gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center"><iconify-icon icon="ph:device-mobile-duotone" class="text-violet-600"></iconify-icon></div>
+                        <div>
+                            <div class="font-medium">New device login</div>
+                            <div class="text-xs opacity-80">2 weeks ago</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Active link highlighter (filename based)
+    (function(){const file=location.pathname.split('/').pop();document.querySelectorAll('aside nav a').forEach(a=>{const href=a.getAttribute('href');if(!href) return; if(href===file){a.classList.add('gradient-accent','text-white','shadow-glow');a.classList.remove('glass');} else {a.classList.remove('gradient-accent','text-white');if(!a.classList.contains('glass')) a.classList.add('glass');}});})();
+    // Theme toggle hookup
+    (function(){function save(){localStorage.setItem('ih_theme',document.documentElement.classList.contains('dark')?'dark':'light');}['themeToggle','themeToggleHeader'].forEach(id=>{const el=document.getElementById(id);if(el){el.addEventListener('click',()=>{document.documentElement.classList.toggle('dark');save();});}});})();
+    </script>
+
+<script>
+        // Theme toggle with persistence
+        const themeToggle = document.getElementById('themeToggle');
+        const themeToggleHeader = document.getElementById('themeToggleHeader');
+        function toggleTheme(){ document.documentElement.classList.toggle('dark'); localStorage.setItem('ih_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); }
+        themeToggle?.addEventListener('click', toggleTheme); themeToggleHeader?.addEventListener('click', toggleTheme);
+        if (localStorage.getItem('ih_theme') === 'dark') document.documentElement.classList.add('dark');
+
+        // Clock + Network
+        const headerClock = document.getElementById('headerClock'); const netDot = document.getElementById('netDot');
+        function updateClock(){ if(headerClock) headerClock.textContent = new Date().toLocaleTimeString(); }
+        setInterval(updateClock, 1000); updateClock();
+        function updateNet(){ const on = navigator.onLine; if(netDot){ netDot.classList.toggle('bg-green-500', on); netDot.classList.toggle('bg-rose-500', !on); netDot.title = on ? 'Online' : 'Offline'; } }
+        window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); updateNet();
+
+        // Settings panel prefs (ih_prefs)
+        const customizeBtn = document.getElementById('customizeLayout');
+        const customizeBtnHeader = document.getElementById('customizeLayoutHeader');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const closeSettings = document.getElementById('closeSettings');
+        const saveSettings = document.getElementById('saveSettings');
+        const resetSettings = document.getElementById('resetSettings');
+        function openSettings(){ settingsPanel.classList.remove('hidden'); settingsPanel.classList.add('flex'); }
+        function closeSettingsFn(){ settingsPanel.classList.add('hidden'); settingsPanel.classList.remove('flex'); }
+        customizeBtn?.addEventListener('click', openSettings); 
+        customizeBtnHeader?.addEventListener('click', openSettings);
+        closeSettings?.addEventListener('click', closeSettingsFn); 
+        settingsPanel?.addEventListener('click', (e)=>{ if(e.target===settingsPanel) closeSettingsFn(); });
+        function getPrefs(){ try{ return JSON.parse(localStorage.getItem('ih_prefs')) || {}; }catch{ return {}; } }
+        function setPrefs(p){ localStorage.setItem('ih_prefs', JSON.stringify(p)); }
+        function applyPrefs(p){ if(p.accent) document.documentElement.setAttribute('data-accent', p.accent); if(p.bg) document.documentElement.setAttribute('data-bg', p.bg); document.documentElement.setAttribute('data-density', p.density||'comfortable'); }
+        const initPrefs = getPrefs(); applyPrefs(initPrefs);
+        document.querySelectorAll('#settingsPanel [data-accent]').forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-accent', b.dataset.accent)));
+        document.querySelectorAll('#settingsPanel [data-bg]').forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-bg', b.dataset.bg)));
+        document.querySelectorAll('#settingsPanel [data-density]').forEach(b=> b.addEventListener('click', ()=> document.documentElement.setAttribute('data-density', b.dataset.density)));
+        saveSettings?.addEventListener('click', ()=>{ const p = { accent: document.documentElement.getAttribute('data-accent'), bg: document.documentElement.getAttribute('data-bg'), density: document.documentElement.getAttribute('data-density') }; setPrefs(p); applyPrefs(p); closeSettingsFn(); });
+        resetSettings?.addEventListener('click', ()=>{ const p={accent:'teal', bg:'gradient', density:'comfortable'}; setPrefs(p); applyPrefs(p); });
+
+        // Tabs
+        const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
+        const tabPanels = Array.from(document.querySelectorAll('.tab-panel'));
+        function setActive(tabId){ tabPanels.forEach(p=> p.classList.toggle('hidden', p.id !== tabId)); tabButtons.forEach(b=> b.classList.toggle('tab-active', b.dataset.tab===tabId)); }
+        tabButtons.forEach(btn=> btn.addEventListener('click', ()=> setActive(btn.dataset.tab)));
+        function initTabs(){ setActive('tab-personal'); }
+        initTabs();
+
+        // Password strength visual
+        const pwd = document.getElementById('newPassword'); const bar = document.getElementById('pwdStrength');
+        pwd?.addEventListener('input', ()=>{ const v=pwd.value; let s=0; if(v.length>=8) s+=25; if(/[A-Z]/.test(v)&&/[a-z]/.test(v)) s+=25; if(/\d/.test(v)) s+=25; if(/[^A-Za-z0-9]/.test(v)) s+=25; const w=Math.max(5, s); bar.style.width=w+'%'; bar.className = 'h-1 rounded-full ' + (w<40?'bg-rose-500':w<70?'bg-amber-500':'bg-emerald-500'); });
+
+        // Preferences quick saves in Preferences tab
+        document.getElementById('savePrefs')?.addEventListener('click', ()=>{
+            const p = getPrefs(); p.density = document.documentElement.getAttribute('data-density'); p.accent = document.documentElement.getAttribute('data-accent'); setPrefs(p); showToast('Preferences saved','success');
+        });
+
+        // Shortcuts modal
+        const shortcutsModal = document.getElementById('shortcutsModal'); const shortcutsBtn = document.getElementById('shortcutsBtn'); const closeShortcuts = document.getElementById('closeShortcuts');
+        function openShortcuts(){ shortcutsModal.classList.remove('hidden'); shortcutsModal.classList.add('flex'); }
+        function closeShortcutsFn(){ shortcutsModal.classList.add('hidden'); shortcutsModal.classList.remove('flex'); }
+        shortcutsBtn?.addEventListener('click', openShortcuts); closeShortcuts?.addEventListener('click', closeShortcutsFn); shortcutsModal?.addEventListener('click', (e)=>{ if(e.target===shortcutsModal) closeShortcutsFn(); });
+        document.addEventListener('keydown', (e)=>{ if(e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return; if(e.key.toLowerCase()==='s'){ e.preventDefault(); openSettings(); } if(e.key.toLowerCase()==='t'){ e.preventDefault(); toggleTheme(); } if(e.key==='?'){ e.preventDefault(); openShortcuts(); } });
+
+        // Mobile sidebar
+        const mobileMenuBtn = document.getElementById('mobileMenu'); const mobileSidebar = document.getElementById('mobileSidebar'); const mobilePanel = document.getElementById('mobilePanel'); const mobileBackdrop = document.getElementById('mobileBackdrop'); const mobileClose = document.getElementById('closeMobile'); const mobileNavContent = document.getElementById('mobileNavContent');
+        function openMobile(){ const desk=document.querySelector('aside nav ul'); if(desk && mobileNavContent){ mobileNavContent.innerHTML=''; mobileNavContent.appendChild(desk.cloneNode(true)); mobileNavContent.querySelectorAll('a').forEach(a=> a.addEventListener('click', ()=> closeMobile())); } mobileSidebar.classList.remove('hidden'); requestAnimationFrame(()=> mobilePanel.classList.remove('-translate-x-full')); }
+        function closeMobile(){ mobilePanel.classList.add('-translate-x-full'); setTimeout(()=> mobileSidebar.classList.add('hidden'), 250); }
+        mobileMenuBtn?.addEventListener('click', openMobile); mobileBackdrop?.addEventListener('click', closeMobile); mobileClose?.addEventListener('click', closeMobile);
+
+        // Micro-interactions & reveal
+        Array.from(document.querySelectorAll('.glass')).forEach(el=> el.classList.add('hover-lift'));
+        const revealables = Array.from(document.querySelectorAll('.reveal'));
+        const io = new IntersectionObserver(entries=>{ entries.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('in-view'); io.unobserve(en.target); } }); }, { threshold: 0.12 });
+        revealables.forEach(el=> io.observe(el));
+
+        // Toasts
+        const toastHost = document.getElementById('toastHost');
+        function showToast(msg, type='info'){
+            if(!toastHost) return; const item = document.createElement('div');
+            item.className = `toast ${type==='success'?'success':type==='warning'?'warn':type==='error'?'error':'info'} glass`;
+            item.innerHTML = `<div class="flex items-start gap-2"><iconify-icon icon="${type==='success'?'ph:check-circle-duotone':type==='warning'?'ph:warning-duotone':type==='error'?'ph:x-circle-duotone':'ph:info-duotone'}" class="mt-0.5 text-accent"></iconify-icon><div class="text-sm">${msg}</div></div>`;
+            toastHost.appendChild(item); setTimeout(()=>{ item.style.transition='opacity .4s ease, transform .4s ease'; item.style.opacity='0'; item.style.transform='translateY(-6px)'; }, 2600); setTimeout(()=> item.remove(), 3100);
+        }
+        setTimeout(()=>{ try{ showToast('Settings & Profile ready','success'); }catch(_){} }, 700);
+
+        // Back to top
+        const backToTop = document.getElementById('backToTop');
+        window.addEventListener('scroll', ()=>{ if(window.scrollY > 400) backToTop?.classList.remove('hidden'); else backToTop?.classList.add('hidden'); });
+        backToTop?.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+    </script>
+{% endblock %}
