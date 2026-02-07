@@ -13,6 +13,8 @@ urlpatterns = [
     # -------------------------
     path("admin-ui/dashboard/", views.admin_dashboard, name="admin_dashboard"),
     path("admin-ui/leave/", views.admin_leave_approval, name="admin_leave"),
+    path("admin-ui/leave/<int:leave_id>/approve/", views.admin_leave_approve, name="admin_leave_approve"),
+    path("admin-ui/leave/<int:leave_id>/reject/", views.admin_leave_reject, name="admin_leave_reject"),
 
     path("admin-ui/biometrics/", views.admin_biometrics_attendance, name="admin_biometrics"),
     path("admin-ui/biometrics/import/", views.admin_biometrics_import, name="admin_biometrics_import"),
@@ -36,7 +38,6 @@ urlpatterns = [
     ),
 
     path("admin-ui/scheduling/", views.admin_shift_scheduling, name="admin_scheduling"),
-    path("admin-ui/leave/", views.admin_leave_approval, name="admin_leave"),
     path("admin-ui/payroll/", views.admin_payroll, name="admin_payroll"),
     path("admin-ui/reports/", views.admin_reports, name="admin_reports"),
     path("admin-ui/analytics/", views.admin_analytics, name="admin_analytics"),
@@ -55,6 +56,7 @@ urlpatterns = [
     path("employee/attendance/", views.employee_attendance, name="employee_attendance"),
     path("employee/schedule/", views.employee_schedule, name="employee_schedule"),
     path("employee/leave/", views.employee_leave, name="employee_leave"),
+    path("employee/leave/<int:leave_id>/cancel/", views.employee_leave_cancel, name="employee_leave_cancel"),
     path("employee/payroll/", views.employee_payroll, name="employee_payroll"),
     path("employee/analytics/", views.employee_analytics, name="employee_analytics"),
     path("employee/notifications/", views.employee_notifications, name="employee_notifications"),

@@ -4,682 +4,406 @@
 
 {% block extra_head %}
 <style>
-		:root { --accent:#14b8a6; --accent-to:#0ea5a0; --card-bg:rgba(255,255,255,0.6); --card-border:rgba(255,255,255,0.35);
-			--noise:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.035"/></svg>'); }
-		html[data-accent="teal"] { --accent:#14b8a6; --accent-to:#0ea5a0; }
-		html[data-accent="purple"] { --accent:#8b5cf6; --accent-to:#7c3aed; }
-		html[data-accent="rose"] { --accent:#f43f5e; --accent-to:#e11d48; }
-		html[data-accent="amber"] { --accent:#f59e0b; --accent-to:#d97706; }
-		html[data-bg="gradient"] body::before { content:""; position:fixed; inset:0; z-index:-2; background:
-			radial-gradient(800px 400px at 10% -10%, rgba(59,130,246,0.15), transparent 60%),
-			radial-gradient(600px 300px at 120% 0%, rgba(20,184,166,0.18), transparent 60%),
-			linear-gradient(120deg, rgba(2,6,23,0.03), rgba(2,6,23,0.06)); }
-		html[data-bg="image"] body::before { content:""; position:fixed; inset:0; z-index:-2; background:url('https://images.unsplash.com/photo-1527689368864-3a821dbccc34?auto=format&fit=crop&w=2100&q=60') center/cover no-repeat fixed; filter:saturate(1.05) brightness(0.95); }
-		body::after { content:""; position:fixed; inset:0; pointer-events:none; z-index:-1; background-image:var(--noise); }
+  :root { --accent:#14b8a6; --accent-to:#0ea5a0; --card-bg:rgba(255,255,255,0.6); --card-border:rgba(255,255,255,0.35);
+    --noise:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.035"/></svg>'); }
+  html[data-accent="teal"] { --accent:#14b8a6; --accent-to:#0ea5a0; }
+  html[data-accent="purple"] { --accent:#8b5cf6; --accent-to:#7c3aed; }
+  html[data-accent="rose"] { --accent:#f43f5e; --accent-to:#e11d48; }
+  html[data-accent="amber"] { --accent:#f59e0b; --accent-to:#d97706; }
+  html[data-bg="gradient"] body::before { content:""; position:fixed; inset:0; z-index:-2; background:
+    radial-gradient(800px 400px at 10% -10%, rgba(59,130,246,0.15), transparent 60%),
+    radial-gradient(600px 300px at 120% 0%, rgba(20,184,166,0.18), transparent 60%),
+    linear-gradient(120deg, rgba(2,6,23,0.03), rgba(2,6,23,0.06)); }
+  html[data-bg="image"] body::before { content:""; position:fixed; inset:0; z-index:-2; background:url('https://images.unsplash.com/photo-1527689368864-3a821dbccc34?auto=format&fit=crop&w=2100&q=60') center/cover no-repeat fixed; filter:saturate(1.05) brightness(0.95); }
+  body::after { content:""; position:fixed; inset:0; pointer-events:none; z-index:-1; background-image:var(--noise); }
 
-		.glass { background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--card-border); }
-		.dark .glass { background: rgba(15,23,42,0.60); border-color: rgba(255,255,255,0.08); }
-		.gradient-accent { background-image: linear-gradient(135deg, var(--accent), var(--accent-to)); }
-		.text-accent { color: var(--accent); }
-		.neon-divider { height:1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity:.6; }
-		.fancy-scroll::-webkit-scrollbar { height:10px; width:10px; }
-		.fancy-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), var(--accent-to)); border-radius:9999px; }
-		.fancy-scroll::-webkit-scrollbar-track { background: transparent; }
-		.big-scroll { scrollbar-width:auto; scrollbar-color: var(--accent) transparent; }
-		.big-scroll::-webkit-scrollbar { width:16px; height:16px; }
-		.big-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), var(--accent-to)); border-radius:12px; border:3px solid transparent; background-clip: content-box; }
-		.ripple { position: relative; overflow: hidden; }
-		.ripple::after { content:''; position:absolute; inset:0; background: radial-gradient(circle, rgba(255,255,255,0.3) 1%, transparent 1%) center/15000%; opacity:0; transition: opacity .5s; }
-		.ripple:active::after { opacity:1; background-size:100%; transition:0s; }
-		:root { --sidebar: 18rem; }
-		@media (min-width: 1024px){ aside[data-resizable]{ width: var(--sidebar) !important; } main[data-shift]{ margin-left: var(--sidebar) !important; } }
-		#toastHost { position: fixed; top: 16px; right: 16px; display: grid; gap: 10px; z-index: 80; pointer-events: none; }
-		.toast { pointer-events: auto; min-width: 220px; max-width: 360px; padding: 10px 12px; border-radius: 12px; box-shadow: 0 10px 20px rgba(2,6,23,.2); border: 1px solid rgba(255,255,255,.35); }
-		.toast.info { background: var(--card-bg); }
-		.toast.success { background: linear-gradient(135deg, rgba(16,185,129,.15), rgba(20,184,166,.25)); }
-		.toast.warn { background: linear-gradient(135deg, rgba(245,158,11,.15), rgba(245,158,11,.28)); }
-		.toast.error { background: linear-gradient(135deg, rgba(244,63,94,.15), rgba(244,63,94,.28)); }
-		#topProgress { background-image: linear-gradient(90deg, var(--accent), var(--accent-to)); }
-		select, input, textarea { color: #111827; }
-		.dark select, .dark input, .dark textarea { background-color: rgba(255,255,255,0.08); color: #e5e7eb; border-color: rgba(255,255,255,0.15); }
-		.dark select option { background-color: #0f172a; color: #e5e7eb; }
+  .glass { background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--card-border); }
+  .dark .glass { background: rgba(15,23,42,0.60); border-color: rgba(255,255,255,0.08); }
+  .gradient-accent { background-image: linear-gradient(135deg, var(--accent), var(--accent-to)); }
+  .text-accent { color: var(--accent); }
+  .neon-divider { height:1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity:.6; }
+  .ripple { position: relative; overflow: hidden; }
+  .ripple::after { content:''; position:absolute; inset:0; background: radial-gradient(circle, rgba(255,255,255,0.3) 1%, transparent 1%) center/15000%; opacity:0; transition: opacity .5s; }
+  .ripple:active::after { opacity:1; background-size:100%; transition:0s; }
+  #toastHost { position: fixed; top: 16px; right: 16px; display: grid; gap: 10px; z-index: 80; pointer-events: none; }
+  .toast { pointer-events: auto; min-width: 220px; max-width: 360px; padding: 10px 12px; border-radius: 12px; box-shadow: 0 10px 20px rgba(2,6,23,.2); border: 1px solid rgba(255,255,255,.35); }
+  .toast.info { background: var(--card-bg); }
+  .toast.success { background: linear-gradient(135deg, rgba(16,185,129,.15), rgba(20,184,166,.25)); }
+  .toast.warn { background: linear-gradient(135deg, rgba(245,158,11,.15), rgba(245,158,11,.28)); }
+  .toast.error { background: linear-gradient(135deg, rgba(244,63,94,.15), rgba(244,63,94,.28)); }
+  #topProgress { background-image: linear-gradient(90deg, var(--accent), var(--accent-to)); }
+  select, input, textarea { color: #111827; }
+  .dark select, .dark input, .dark textarea { background-color: rgba(255,255,255,0.08); color: #e5e7eb; border-color: rgba(255,255,255,0.15); }
+  .dark select option { background-color: #0f172a; color: #e5e7eb; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- Toast host (optional, safe kahit walang messages) -->
 <div id="toastHost"></div>
 <div id="topProgress" class="fixed left-0 top-0 h-1 w-0 opacity-0 z-[100]"></div>
 
-<!-- Hero -->
-<header id="section-top" class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow">
-	<div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
-	<div class="relative z-10 flex items-center justify-between gap-4">
-		<div>
-			<h2 class="text-2xl md:text-3xl font-extrabold tracking-tight">Leave & Absences — Manager Console</h2>
-			<p class="mt-1 text-sm md:text-base text-gray-600 dark:text-gray-300">
-				Approve policies and requests, plan blackout periods, and keep balance in check.
-			</p>
-		</div>
-		<div class="flex items-center gap-3">
-			<button id="btnAiAssistant" class="px-4 py-2 rounded-xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:shadow-glow transition flex items-center justify-center gap-2 ripple">
-				<iconify-icon icon="ph:robot-duotone"></iconify-icon> AI Assistant
-			</button>
-			<button id="btnNotify" class="px-3 py-2 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center justify-center gap-2 ripple">
-				<iconify-icon icon="ph:bell-duotone" class="text-accent"></iconify-icon> Alerts
-			</button>
-		</div>
-	</div>
+<header class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow">
+  <div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
+  <div class="relative z-10 flex items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight">Leave & Absences — Manager Console</h2>
+      <p class="mt-1 text-sm md:text-base text-gray-600 dark:text-gray-300">
+        Approve requests and keep leave tracking branch-safe.
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="btnAiAssistant" class="px-4 py-2 rounded-xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:shadow-glow transition flex items-center justify-center gap-2 ripple">
+        <iconify-icon icon="ph:robot-duotone"></iconify-icon> AI Assistant
+      </button>
+      <button id="btnNotify" class="px-3 py-2 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center justify-center gap-2 ripple">
+        <iconify-icon icon="ph:bell-duotone" class="text-accent"></iconify-icon> Alerts
+      </button>
+    </div>
+  </div>
 </header>
 
-<!-- Stats Cards -->
-<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-	<div class="glass rounded-2xl p-5 shadow hover:shadow-glow transition">
-		<div class="flex justify-between items-start">
-			<div>
-				<div class="text-xs text-slate-500">Pending Approvals</div>
-				<div class="text-2xl font-extrabold mt-1">{{ pending_count|default:0 }}</div>
-				<div class="text-xs text-amber-600 mt-2 flex items-center gap-1">⏳ Requires attention</div>
-			</div>
-			<div class="w-10 h-10 rounded-xl bg-amber-500/90 text-white flex items-center justify-center">⏱</div>
-		</div>
-	</div>
-
-	<div class="glass rounded-2xl p-5 shadow hover:shadow-glow transition">
-		<div class="flex justify-between items-start">
-			<div>
-				<div class="text-xs text-slate-500">On Leave Today</div>
-				<div class="text-2xl font-extrabold mt-1">{{ on_leave_today|default:0 }}</div>
-				<div class="text-xs text-blue-600 mt-2 flex items-center gap-1">📅 Branch-filtered</div>
-			</div>
-			<div class="w-10 h-10 rounded-xl bg-blue-600/90 text-white flex items-center justify-center">🏝</div>
-		</div>
-	</div>
-
-	<div class="glass rounded-2xl p-5 shadow hover:shadow-glow transition">
-		<div class="flex justify-between items-start">
-			<div>
-				<div class="text-xs text-slate-500">Approved Today</div>
-				<div class="text-2xl font-extrabold mt-1">{{ approved_today|default:0 }}</div>
-				<div class="text-xs text-emerald-600 mt-2 flex items-center gap-1">✅ Latest actions</div>
-			</div>
-			<div class="w-10 h-10 rounded-xl bg-emerald-600/90 text-white flex items-center justify-center">✔</div>
-		</div>
-	</div>
-
-	<div class="glass rounded-2xl p-5 shadow hover:shadow-glow transition">
-		<div class="flex justify-between items-start">
-			<div>
-				<div class="text-xs text-slate-500">Upcoming Expirations</div>
-				<div class="text-2xl font-extrabold mt-1">{{ upcoming_expirations|default:0 }}</div>
-				<div class="text-xs text-purple-600 mt-2 flex items-center gap-1">⏳ Within 30 days</div>
-			</div>
-			<div class="w-10 h-10 rounded-xl bg-purple-600/90 text-white flex items-center justify-center">⌛</div>
-		</div>
-	</div>
-</section>
-
-<!-- Tabs + Action Bar -->
 <section class="glass rounded-2xl shadow overflow-hidden mt-4">
-	<div class="border-b border-white/40 dark:border-white/10">
-		<nav class="flex overflow-x-auto -mb-px">
-			<button data-tab="requests" class="tab-btn py-4 px-6 border-b-2 border-accent text-accent font-medium flex items-center whitespace-nowrap">
-				<iconify-icon icon="ph:inbox-duotone" class="mr-2"></iconify-icon> Leave Requests
-			</button>
-			<button data-tab="calendar" class="tab-btn py-4 px-6 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
-				<iconify-icon icon="ph:calendar-duotone" class="mr-2"></iconify-icon> Leave Calendar
-			</button>
-			<button data-tab="policies" class="tab-btn py-4 px-6 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
-				<iconify-icon icon="ph:gear-six-duotone" class="mr-2"></iconify-icon> Policy Builder
-			</button>
-			<button data-tab="analytics" class="tab-btn py-4 px-6 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
-				<iconify-icon icon="ph:chart-pie-duotone" class="mr-2"></iconify-icon> Analytics
-			</button>
-			<button data-tab="docs" class="tab-btn py-4 px-6 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
-				<iconify-icon icon="ph:file-text-duotone" class="mr-2"></iconify-icon> Documentation
-			</button>
-		</nav>
-	</div>
+  <div class="p-6">
 
-	<div class="p-6">
+    {% if messages %}
+      <div class="mb-4 space-y-2">
+        {% for message in messages %}
+          <div class="glass rounded-xl p-3 border border-white/40 dark:border-white/10 text-sm">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
 
-		<!-- REQUESTS TAB -->
-		<div id="tab-requests" class="tab-pane block">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+      <div>
+        <h3 class="text-xl font-bold">Leave Requests</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Showing requests based on your permission (superuser = all branches, staff = own branch).
+        </p>
+      </div>
+    </div>
 
-			<!-- Django messages (optional) -->
-			{% if messages %}
-				<div class="mb-4 space-y-2">
-					{% for message in messages %}
-						<div class="glass rounded-xl p-3 border border-white/40 dark:border-white/10 text-sm">
-							{{ message }}
-						</div>
-					{% endfor %}
-				</div>
-			{% endif %}
+    <!-- Admin summary cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-4">
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Total Requests</div>
+        <div class="text-2xl font-extrabold mt-1">{{ total_count|default:0 }}</div>
+      </div>
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Pending</div>
+        <div class="text-2xl font-extrabold mt-1 text-amber-500">{{ pending_count|default:0 }}</div>
+      </div>
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Approved</div>
+        <div class="text-2xl font-extrabold mt-1 text-emerald-600">{{ approved_count|default:0 }}</div>
+      </div>
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Rejected</div>
+        <div class="text-2xl font-extrabold mt-1 text-rose-600">{{ rejected_count|default:0 }}</div>
+      </div>
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Approved Days (yr)</div>
+        <div class="text-2xl font-extrabold mt-1 text-blue-600">{{ total_leave_used|default:0 }}</div>
+      </div>
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Pending Days (reserved)</div>
+        <div class="text-2xl font-extrabold mt-1 text-yellow-600">{{ pending_days|default:0 }}</div>
+      </div>
+    </div>
 
-			<!-- Action Bar -->
-			<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-				<div>
-					<h3 class="text-xl font-bold">Pending Leave Requests</h3>
-					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-						Review, approve or decline employee leave requests (branch-safe)
-					</p>
-				</div>
-				<div class="flex flex-wrap gap-3">
-					<button id="btnCreatePolicy" class="px-4 py-2 rounded-lg text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:shadow-glow transition flex items-center gap-2 ripple">
-						<iconify-icon icon="ph:plus-duotone"></iconify-icon> Create Policy
-					</button>
-					<button id="btnExport" class="px-4 py-2 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center gap-2 ripple">
-						<iconify-icon icon="ph:arrow-square-out-duotone"></iconify-icon> Export
-					</button>
-					<button id="btnBulkImport" class="px-4 py-2 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center gap-2 ripple">
-						<iconify-icon icon="ph:upload-duotone"></iconify-icon> Bulk Import
-					</button>
-					<button id="btnAiCheck" class="px-4 py-2 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center gap-2 ripple">
-						<iconify-icon icon="ph:robot-duotone"></iconify-icon> AI Check
-					</button>
-				</div>
-			</div>
+    <!-- Two-column layout: table + notifications/calendar -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Main table (wider) -->
+      <div class="lg:col-span-2">
+        <div class="glass rounded-xl border border-white/40 dark:border-white/10 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-white/40 dark:divide-white/10">
+              <thead class="bg-white/60 dark:bg-slate-800/60">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Leave Type</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Dates</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Duration</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Reviewed</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
 
-			<!-- Leave Requests Table -->
-			<div class="glass rounded-xl border border-white/40 dark:border-white/10 overflow-hidden mb-6">
-				<div class="overflow-x-auto">
-					<table class="min-w-full divide-y divide-white/40 dark:divide-white/10">
-						<thead class="bg-white/60 dark:bg-slate-800/60">
-							<tr>
-								<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
-								<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Leave Type</th>
-								<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Dates</th>
-								<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Duration</th>
-								<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
-								<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Reviewed</th>
-								<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
-							</tr>
-						</thead>
+          {# ✅ THIS PART IS THE IMPORTANT FIX #}
+          <tbody class="divide-y divide-white/40 dark:divide-white/10">
+            {% if leave_requests %}
+              {% for l in leave_requests %}
+                <tr class="hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
 
-						<tbody class="divide-y divide-white/40 dark:divide-white/10">
-							{% if leaves %}
-								{% for l in leaves %}
-								<tr class="hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
-									<!-- Employee -->
-									<td class="px-6 py-4 whitespace-nowrap">
-										<div class="flex items-center">
-											<div class="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center border-2 border-blue-500">
-												<span class="text-xs font-bold text-slate-600 dark:text-slate-200">
-													{{ l.employee.user.username|slice:":2"|upper }}
-												</span>
-											</div>
-											<div class="ml-4">
-												<div class="text-sm font-medium">
-													{{ l.employee.user.get_full_name|default:l.employee.user.username }}
-												</div>
-												<div class="text-xs text-gray-500 dark:text-gray-400">
-													Branch: {{ l.branch.name|default:"—" }}
-												</div>
-											</div>
-										</div>
-									</td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <div class="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center border-2 border-blue-500">
+                        <span class="text-xs font-bold text-slate-600 dark:text-slate-200">
+                          {{ l.employee.username|slice:":2"|upper }}
+                        </span>
+                      </div>
+                      <div class="ml-4">
+                        <div class="text-sm font-medium">
+                          {{ l.employee.get_full_name|default:l.employee.username }}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                          Branch: {{ l.branch.name|default:"—" }}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
 
-									<!-- Leave Type -->
-									<td class="px-6 py-4 whitespace-nowrap">
-										<span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-											{{ l.leave_type }}
-										</span>
-									</td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      {{ l.get_leave_type_display|default:l.leave_type }}
+                    </span>
+                  </td>
 
-									<!-- Dates -->
-									<td class="px-6 py-4 whitespace-nowrap">
-										<div class="text-sm">{{ l.start_date|date:"M d, Y" }} - {{ l.end_date|date:"M d, Y" }}</div>
-										<div class="text-xs text-gray-500">Requested: {{ l.created_at|date:"M d, Y • h:i A" }}</div>
-									</td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm">{{ l.start_date|date:"M d, Y" }} - {{ l.end_date|date:"M d, Y" }}</div>
+                    <div class="text-xs text-gray-500">Requested: {{ l.created_at|date:"M d, Y • h:i A" }}</div>
+                  </td>
 
-									<!-- Duration (simple) -->
-									<td class="px-6 py-4 whitespace-nowrap text-sm">
-										{{ l.duration_days|default:"—" }}
-									</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    {{ l.get_duration_display|default:l.duration|default:"—" }}
+                  </td>
 
-									<!-- Status -->
-									<td class="px-6 py-4 whitespace-nowrap">
-										{% if l.status == "PENDING" %}
-											<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Pending</span>
-										{% elif l.status == "APPROVED" %}
-											<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">Approved</span>
-										{% else %}
-											<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200">Rejected</span>
-										{% endif %}
-									</td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    {% if l.status == "PENDING" %}
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Pending</span>
+                    {% elif l.status == "APPROVED" %}
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">Approved</span>
+                    {% elif l.status == "REJECTED" %}
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200">Rejected</span>
+                    {% elif l.status == "CANCELLED" %}
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-200">Cancelled</span>
+                    {% else %}
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ l.status }}</span>
+                    {% endif %}
+                  </td>
 
-									<!-- Reviewed -->
-									<td class="px-6 py-4 whitespace-nowrap">
-										<div class="text-xs text-gray-500 dark:text-gray-400">
-											{% if l.reviewed_by %}
-												By: {{ l.reviewed_by.username }}
-												{% if l.reviewed_at %}<div>{{ l.reviewed_at|date:"M d, Y • h:i A" }}</div>{% endif %}
-											{% else %}
-												Awaiting admin decision
-											{% endif %}
-										</div>
-									</td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      {% if l.reviewed_by %}
+                        By: {{ l.reviewed_by.username }}
+                        {% if l.reviewed_at %}<div>{{ l.reviewed_at|date:"M d, Y • h:i A" }}</div>{% endif %}
+                      {% else %}
+                        Awaiting admin decision
+                      {% endif %}
+                    </div>
+                  </td>
 
-									<!-- Actions -->
-									<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-										<div class="flex gap-2 flex-wrap">
-											{% if l.status == "PENDING" %}
-												<form method="POST" action="{% url 'admin_decide_leave' l.id 'approve' %}">
-													{% csrf_token %}
-													<button type="submit"
-														class="text-emerald-600 hover:text-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1 rounded-lg">
-														<iconify-icon icon="ph:check-fat" class="mr-1"></iconify-icon>Approve
-													</button>
-												</form>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div class="flex gap-2 flex-wrap">
+                      {% if l.status == "PENDING" %}
+                        <form method="POST" action="{% url 'admin_leave_approve' l.id %}">
+                          {% csrf_token %}
+                          <button type="submit"
+                            class="text-emerald-600 hover:text-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1 rounded-lg">
+                            <iconify-icon icon="ph:check-fat" class="mr-1"></iconify-icon>Approve
+                          </button>
+                        </form>
 
-												<form method="POST" action="{% url 'admin_decide_leave' l.id 'reject' %}">
-													{% csrf_token %}
-													<button type="submit"
-														class="text-rose-600 hover:text-rose-800 bg-rose-50 dark:bg-rose-900/30 px-3 py-1 rounded-lg">
-														<iconify-icon icon="ph:x" class="mr-1"></iconify-icon>Deny
-													</button>
-												</form>
-											{% endif %}
+                        <form method="POST" action="{% url 'admin_leave_reject' l.id %}">
+                          {% csrf_token %}
+                          <button type="submit"
+                            class="text-rose-600 hover:text-rose-800 bg-rose-50 dark:bg-rose-900/30 px-3 py-1 rounded-lg">
+                            <iconify-icon icon="ph:x" class="mr-1"></iconify-icon>Deny
+                          </button>
+                        </form>
+                      {% endif %}
 
-											<button type="button"
-												class="text-blue-600 hover:text-blue-800 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg"
-												onclick="openLeaveModal(
-													'{{ l.id }}',
-													'{{ l.employee.user.get_full_name|default:l.employee.user.username|escapejs }}',
-													'{{ l.leave_type|escapejs }}',
-													'{{ l.start_date|date:'Y-m-d' }}',
-													'{{ l.end_date|date:'Y-m-d' }}',
-													'{{ l.reason|default:''|escapejs }}',
-													'{{ l.branch.name|default:''|escapejs }}',
-													'{{ l.status|escapejs }}'
-												)">
-												<iconify-icon icon="ph:eye" class="mr-1"></iconify-icon>View
-											</button>
-										</div>
-									</td>
-								</tr>
-								{% endfor %}
-							{% else %}
-								<tr>
-									<td colspan="7" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-										✅ No pending leave requests for your branch.
-									</td>
-								</tr>
-							{% endif %}
-						</tbody>
+                      <button type="button"
+                        class="btn-view-leave text-blue-600 hover:text-blue-800 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg"
+                        data-id="{{ l.id }}"
+                        data-employee="{{ l.employee.get_full_name|default:l.employee.username|escapejs }}"
+                        data-type="{{ l.get_leave_type_display|default:l.leave_type|escapejs }}"
+                        data-start="{{ l.start_date|date:'Y-m-d' }}"
+                        data-end="{{ l.end_date|date:'Y-m-d' }}"
+                        data-reason="{{ l.reason|default:''|escapejs }}"
+                        data-branch="{{ l.branch.name|default:''|escapejs }}"
+                        data-status="{{ l.status|escapejs }}">
+                        <iconify-icon icon="ph:eye" class="mr-1"></iconify-icon>View
+                      </button>
+                    </div>
+                  </td>
 
-					</table>
-				</div>
-			</div>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="7" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                  ✅ No leave requests found.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
 
-			<!-- Leave Balance + Blackout (demo block, optional) -->
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2">
-				<div class="glass rounded-xl p-6 border border-white/40 dark:border-white/10">
-					<h3 class="text-lg font-semibold mb-4">Leave Balance Overview (Demo)</h3>
-					<div class="space-y-4">
-						<div>
-							<div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Vacation Days</span><span class="font-medium">12.5 / 20 days</span></div>
-							<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3"><div class="bg-blue-500 h-3 rounded-full" style="width: 62.5%"></div></div>
-						</div>
-						<div>
-							<div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Sick Leave</span><span class="font-medium">3 / 10 days</span></div>
-							<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3"><div class="bg-rose-500 h-3 rounded-full" style="width: 30%"></div></div>
-						</div>
-						<div>
-							<div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Personal Days</span><span class="font-medium">5 / 5 days</span></div>
-							<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3"><div class="bg-purple-500 h-3 rounded-full" style="width: 100%"></div></div>
-						</div>
-					</div>
-				</div>
-				<div class="glass rounded-xl p-6 border border-white/40 dark:border-white/10">
-					<h3 class="text-lg font-semibold mb-4">Upcoming Blackout Periods (Demo)</h3>
-					<div class="space-y-3">
-						<div class="flex items-center justify-between p-3 bg-rose-50 dark:bg-rose-900/30 rounded-lg">
-							<div>
-								<p class="font-medium">Year-End Closing</p>
-								<p class="text-xs text-gray-500 dark:text-gray-400">Dec 25 - Jan 2</p>
-							</div>
-							<span class="px-2 py-1 bg-rose-100 dark:bg-rose-800 text-rose-800 dark:text-rose-200 text-xs rounded-full">No Leave</span>
-						</div>
-						<div class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg">
-							<div>
-								<p class="font-medium">Audit Period</p>
-								<p class="text-xs text-gray-500 dark:text-gray-400">Jan 15 - Jan 30</p>
-							</div>
-							<span class="px-2 py-1 bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-200 text-xs rounded-full">Restricted</span>
-						</div>
-					</div>
-				</div>
-			</div>
+        </table>
+      </div>
+        </div>
+      </div>
 
-		</div>
+      <!-- Right sidebar: Notifications + Calendar -->
+      <div class="space-y-6">
+        <!-- Notifications -->
+        <div class="glass rounded-2xl p-5 shadow-md">
+          <h3 class="text-lg font-bold mb-4">Recent Activity</h3>
+          {% if notifications %}
+            <ul class="space-y-3">
+              {% for note in notifications %}
+                <li class="p-3 rounded-lg bg-white/50 dark:bg-gray-800 text-xs">{{ note }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-xs text-gray-500 dark:text-gray-400">No recent activity.</p>
+          {% endif %}
+        </div>
 
-		<!-- CALENDAR TAB (demo) -->
-		<div id="tab-calendar" class="tab-pane hidden">
-			<div class="flex items-center justify-between mb-4">
-				<h3 class="text-lg font-semibold">Team Leave Calendar — <span id="leaveCalMonthLabel">Month</span></h3>
-				<div class="flex gap-2">
-					<button id="btnLeaveCalPrev" class="px-3 py-2 rounded-lg glass">Prev</button>
-					<button id="btnLeaveCalToday" class="px-3 py-2 rounded-lg glass">Today</button>
-					<button id="btnLeaveCalNext" class="px-3 py-2 rounded-lg glass">Next</button>
-				</div>
-			</div>
-			<div class="glass rounded-xl border border-white/40 dark:border-white/10 overflow-hidden">
-				<div class="grid grid-cols-7 text-center text-xs font-medium bg-white/50 dark:bg-slate-800/50">
-					<div class="p-2">Mon</div><div class="p-2">Tue</div><div class="p-2">Wed</div><div class="p-2">Thu</div><div class="p-2">Fri</div><div class="p-2">Sat</div><div class="p-2">Sun</div>
-				</div>
-				<div id="leaveCalendarGrid" class="grid grid-cols-7 gap-0 divide-x divide-y divide-white/40 dark:divide-white/10"></div>
-			</div>
-			<div class="text-xs text-gray-500 dark:text-gray-400 mt-2">Demo calendar. Hook into your data-source to populate real events.</div>
-		</div>
+        <!-- Calendar -->
+        <div class="glass rounded-2xl p-5 shadow-md">
+          <h3 class="text-lg font-bold mb-4">Leave Schedule</h3>
+          <div class="grid grid-cols-7 gap-1 text-xs text-center">
+            {% for event in calendar_events %}
+              <div class="p-2 rounded-lg
+                {% if event.status == 'APPROVED' %}
+                  bg-green-200 dark:bg-green-900 text-green-900 dark:text-green-100
+                {% elif event.status == 'PENDING' %}
+                  bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100
+                {% else %}
+                  bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                {% endif %}
+              ">
+                <div class="font-semibold text-[10px]">{{ event.start }}</div>
+                <div class="truncate text-[9px]">{{ event.title }}</div>
+              </div>
+            {% empty %}
+              <p class="text-xs text-gray-500 col-span-7">No leave scheduled.</p>
+            {% endfor %}
+          </div>
+          <p class="text-xs text-gray-400 mt-3">Green = Approved, Amber = Pending</p>
+        </div>
+      </div>
+    </div>
 
-		<!-- POLICY BUILDER TAB (demo localStorage) -->
-		<div id="tab-policies" class="tab-pane hidden">
-			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-				<div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
-					<h3 class="font-semibold mb-3 flex items-center gap-2"><iconify-icon icon="ph:sliders-duotone" class="text-accent"></iconify-icon> Create Policy</h3>
-					<form id="policyForm" class="space-y-3">
-						<div>
-							<label class="text-xs text-gray-500">Name</label>
-							<input id="polName" type="text" required class="mt-1 w-full px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" placeholder="e.g., Vacation Policy" />
-						</div>
-						<div class="grid grid-cols-2 gap-3">
-							<div>
-								<label class="text-xs text-gray-500">Accrual rate (days/year)</label>
-								<input id="polAccrual" type="number" step="0.5" min="0" class="mt-1 w-full px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" value="20" />
-							</div>
-							<div>
-								<label class="text-xs text-gray-500">Carryover limit (days)</label>
-								<input id="polCarry" type="number" step="0.5" min="0" class="mt-1 w-full px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" value="5" />
-							</div>
-						</div>
-						<div>
-							<label class="text-xs text-gray-500">Eligible roles (comma separated)</label>
-							<input id="polRoles" type="text" class="mt-1 w-full px-3 py-2 rounded-lg border border-white/40 dark:border-white/10 glass" placeholder="Full-time, Part-time" />
-						</div>
-						<label class="flex items-center gap-2 text-sm"><input id="polRequiresDocs" type="checkbox" class="w-4 h-4" /> Require medical documents for Sick Leave</label>
-						<div class="flex gap-2 justify-end">
-							<button type="reset" class="px-3 py-2 rounded-lg glass">Clear</button>
-							<button type="submit" class="px-3 py-2 rounded-lg text-white gradient-accent">Save Policy</button>
-						</div>
-					</form>
-				</div>
-				<div class="lg:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
-					<div class="flex items-center justify-between mb-3">
-						<h3 class="font-semibold">Saved Policies</h3>
-						<div class="flex gap-2">
-							<button id="polExport" class="px-3 py-2 rounded-lg glass text-sm">Export JSON</button>
-							<button id="polImportBtn" class="px-3 py-2 rounded-lg glass text-sm">Import JSON</button>
-							<input id="polFile" type="file" accept="application/json" class="hidden" />
-							<button id="polClearAll" class="px-3 py-2 rounded-lg glass text-sm">Clear All</button>
-						</div>
-					</div>
-					<div id="polList" class="grid gap-3"></div>
-					<div id="polEmpty" class="text-sm text-gray-500 dark:text-gray-400">No policies yet. Create one on the left.</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- ANALYTICS TAB (optional demo; requires Chart.js if you want) -->
-		<div id="tab-analytics" class="tab-pane hidden">
-			<div class="glass rounded-xl p-6 border border-white/40 dark:border-white/10">
-				<div class="text-sm text-gray-500 dark:text-gray-400">
-					Analytics demo section. (Optional) You can wire this to real DB queries later.
-				</div>
-			</div>
-		</div>
-
-		<!-- DOCUMENTATION TAB -->
-		<div id="tab-docs" class="tab-pane hidden">
-			<div class="glass rounded-xl p-6 border border-white/40 dark:border-white/10">
-				<div class="flex items-center gap-3 mb-3">
-					<iconify-icon icon="ph:file-text-duotone" class="text-accent text-2xl"></iconify-icon>
-					<h3 class="text-lg font-semibold">Documentation</h3>
-				</div>
-				<ul class="list-disc pl-6 space-y-2 text-sm text-gray-700 dark:text-gray-300">
-					<li>Employee submits leave → system auto-assigns branch</li>
-					<li>Admin sees only requests in their own branch</li>
-					<li>Approve/Reject has server-side branch security check</li>
-					<li>Employee can view their own request statuses</li>
-				</ul>
-			</div>
-		</div>
-
-	</div>
+  </div>
 </section>
 
 <!-- Leave Details Modal -->
 <div id="leaveModal" class="hidden fixed inset-0 z-[90] items-center justify-center">
-	<div class="absolute inset-0 bg-black/40" onclick="closeLeaveModal()"></div>
-	<div class="relative glass rounded-2xl p-6 w-[min(720px,92vw)] shadow-xl border border-white/40 dark:border-white/10">
-		<div class="flex items-start justify-between gap-3">
-			<div>
-				<h3 class="text-lg font-bold">Leave Request Details</h3>
-				<p class="text-xs text-gray-500 dark:text-gray-400">Review request info (branch-safe)</p>
-			</div>
-			<button class="px-3 py-1 rounded-lg glass" onclick="closeLeaveModal()">Close</button>
-		</div>
+  <div class="absolute inset-0 bg-black/40" onclick="closeLeaveModal()"></div>
+  <div class="relative glass rounded-2xl p-6 w-[min(720px,92vw)] shadow-xl border border-white/40 dark:border-white/10">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <h3 class="text-lg font-bold">Leave Request Details</h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Review request info (branch-safe)</p>
+      </div>
+      <button class="px-3 py-1 rounded-lg glass" onclick="closeLeaveModal()">Close</button>
+    </div>
 
-		<div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-			<div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
-				<div class="text-xs text-gray-500">Employee</div>
-				<div id="mEmployee" class="font-semibold mt-1">—</div>
-			</div>
-			<div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
-				<div class="text-xs text-gray-500">Branch</div>
-				<div id="mBranch" class="font-semibold mt-1">—</div>
-			</div>
-			<div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
-				<div class="text-xs text-gray-500">Leave Type</div>
-				<div id="mType" class="font-semibold mt-1">—</div>
-			</div>
-			<div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
-				<div class="text-xs text-gray-500">Dates</div>
-				<div id="mDates" class="font-semibold mt-1">—</div>
-			</div>
+    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+      <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Employee</div>
+        <div id="mEmployee" class="font-semibold mt-1">—</div>
+      </div>
+      <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Branch</div>
+        <div id="mBranch" class="font-semibold mt-1">—</div>
+      </div>
+      <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Leave Type</div>
+        <div id="mType" class="font-semibold mt-1">—</div>
+      </div>
+      <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Dates</div>
+        <div id="mDates" class="font-semibold mt-1">—</div>
+      </div>
 
-			<div class="md:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
-				<div class="text-xs text-gray-500">Reason</div>
-				<div id="mReason" class="mt-1 whitespace-pre-wrap">—</div>
-			</div>
-			<div class="md:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
-				<div class="text-xs text-gray-500">Status</div>
-				<div id="mStatus" class="font-semibold mt-1">—</div>
-			</div>
-		</div>
-	</div>
+      <div class="md:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Reason</div>
+        <div id="mReason" class="mt-1 whitespace-pre-wrap">—</div>
+      </div>
+      <div class="md:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Status</div>
+        <div id="mStatus" class="font-semibold mt-1">—</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <footer class="pb-8 pt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
-	© IntelliHRTrack • Module 5 — Leave interactions are branch-safe.
+  © IntelliHRTrack • Module 5 — Leave interactions are branch-safe.
 </footer>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
-	// ---------- TOASTS ----------
-	const toastHost = document.getElementById('toastHost');
-	function showToast(msg, type='info', duration=2200){
-		if(!toastHost) return;
-		const t = document.createElement('div');
-		t.className = `toast ${type}`;
-		t.innerHTML = `<div class="text-sm">${msg}</div>`;
-		toastHost.appendChild(t);
-		setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(-6px)'; setTimeout(()=> t.remove(), 300); }, duration);
-	}
+  const toastHost = document.getElementById('toastHost');
+  function showToast(msg, type='info', duration=2200){
+    if(!toastHost) return;
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<div class="text-sm">${msg}</div>`;
+    toastHost.appendChild(t);
+    setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(-6px)'; setTimeout(()=> t.remove(), 300); }, duration);
+  }
 
-	// ---------- TOP PROGRESS ----------
-	const topProgress = document.getElementById('topProgress');
-	function progressStart(){ if(!topProgress) return; topProgress.style.transition='none'; topProgress.style.width='0'; topProgress.style.opacity='1'; requestAnimationFrame(()=>{ topProgress.style.transition='width .8s ease'; topProgress.style.width='75%'; }); }
-	function progressDone(){ if(!topProgress) return; topProgress.style.width='100%'; setTimeout(()=>{ topProgress.style.opacity='0'; topProgress.style.width='0'; }, 350); }
+  const topProgress = document.getElementById('topProgress');
+  function progressStart(){ if(!topProgress) return; topProgress.style.transition='none'; topProgress.style.width='0'; topProgress.style.opacity='1'; requestAnimationFrame(()=>{ topProgress.style.transition='width .8s ease'; topProgress.style.width='75%'; }); }
+  function progressDone(){ if(!topProgress) return; topProgress.style.width='100%'; setTimeout(()=>{ topProgress.style.opacity='0'; topProgress.style.width='0'; }, 350); }
 
-	// Hook buttons for feedback
-	const hooks = [
-		['btnCreatePolicy','Creating policy…','success',900],
-		['btnExport','Exporting… (wire endpoint later)','info',800],
-		['btnBulkImport','Opening importer… (wire endpoint later)','info',800],
-		['btnAiCheck','Running AI checks… (demo)','success',1200],
-		['btnAiAssistant','Launching assistant…','info',700],
-		['btnNotify','Checking notifications…','info',600],
-	];
-	hooks.forEach(([id,msg,type,dur])=>{
-		const el=document.getElementById(id);
-		if(!el) return;
-		el.addEventListener('click', ()=>{
-			progressStart();
-			showToast(msg,type);
-			setTimeout(progressDone, dur);
-		});
-	});
+  const hooks = [
+    ['btnAiAssistant','Launching assistant…','info',700],
+    ['btnNotify','Checking notifications…','info',600],
+  ];
+  hooks.forEach(([id,msg,type,dur])=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('click', ()=>{
+      progressStart();
+      showToast(msg,type);
+      setTimeout(progressDone, dur);
+    });
+  });
 
-	// ---------- Tabs ----------
-	const tabBtns = Array.from(document.querySelectorAll('.tab-btn'));
-	const panes = {
-		requests: document.getElementById('tab-requests'),
-		calendar: document.getElementById('tab-calendar'),
-		policies: document.getElementById('tab-policies'),
-		analytics: document.getElementById('tab-analytics'),
-		docs: document.getElementById('tab-docs')
-	};
-	function activateTab(name){
-		Object.entries(panes).forEach(([k,el])=>{
-			if(!el) return;
-			if(k===name){ el.classList.remove('hidden'); el.classList.add('block'); }
-			else { el.classList.add('hidden'); el.classList.remove('block'); }
-		});
-		tabBtns.forEach(b=>{
-			if(b.dataset.tab===name){
-				b.classList.add('text-accent','border-accent');
-				b.classList.remove('border-transparent');
-				b.classList.remove('text-gray-500','dark:text-gray-400');
-			}else{
-				b.classList.remove('text-accent','border-accent');
-				b.classList.add('border-transparent','text-gray-500');
-			}
-		});
-	}
-	tabBtns.forEach(b=> b.addEventListener('click', ()=> activateTab(b.dataset.tab)));
+  function openLeaveModal(id, employee, type, start, end, reason, branch, status){
+    const modal = document.getElementById('leaveModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
 
-	// ---------- Leave modal ----------
-	function openLeaveModal(id, employee, type, start, end, reason, branch, status){
-		const modal = document.getElementById('leaveModal');
-		modal.classList.remove('hidden');
-		modal.classList.add('flex');
+    document.getElementById('mEmployee').textContent = employee || '—';
+    document.getElementById('mBranch').textContent = branch || '—';
+    document.getElementById('mType').textContent = type || '—';
+    document.getElementById('mDates').textContent = `${start} → ${end}`;
+    document.getElementById('mReason').textContent = reason || '—';
+    document.getElementById('mStatus').textContent = status || '—';
+  }
+  function closeLeaveModal(){
+    const modal = document.getElementById('leaveModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+  window.openLeaveModal = openLeaveModal;
+  window.closeLeaveModal = closeLeaveModal;
 
-		document.getElementById('mEmployee').textContent = employee || '—';
-		document.getElementById('mBranch').textContent = branch || '—';
-		document.getElementById('mType').textContent = type || '—';
-		document.getElementById('mDates').textContent = `${start} → ${end}`;
-		document.getElementById('mReason').textContent = reason || '—';
-		document.getElementById('mStatus').textContent = status || '—';
-	}
-	function closeLeaveModal(){
-		const modal = document.getElementById('leaveModal');
-		modal.classList.add('hidden');
-		modal.classList.remove('flex');
-	}
-	window.openLeaveModal = openLeaveModal;
-	window.closeLeaveModal = closeLeaveModal;
-
-	// ---------- Demo Calendar ----------
-	const leaveCalendarGrid = document.getElementById('leaveCalendarGrid');
-	const leaveCalMonthLabel = document.getElementById('leaveCalMonthLabel');
-	const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-	const lcToday = new Date();
-	let lcYear = lcToday.getFullYear();
-	let lcMonth = lcToday.getMonth(); // 0-11
-	function monthLabel(y,m){ return `${monthNames[m]} ${y}`; }
-	function renderLeaveCalendar(){
-		if(!leaveCalendarGrid) return;
-		leaveCalendarGrid.innerHTML = '';
-		if(leaveCalMonthLabel) leaveCalMonthLabel.textContent = monthLabel(lcYear, lcMonth);
-		const first = new Date(lcYear, lcMonth, 1);
-		const startWeekday = (first.getDay() + 6) % 7; // Monday=0
-		const daysInMonth = new Date(lcYear, lcMonth+1, 0).getDate();
-		const totalCells = 35;
-		for(let i=0;i<totalCells;i++){
-			const day = i - startWeekday + 1;
-			const inMonth = day>0 && day<=daysInMonth;
-			const cell = document.createElement('div');
-			cell.className = 'p-2 h-24 align-top ' + (inMonth ? '' : 'opacity-40');
-			cell.innerHTML = `<div class="text-[11px]">${inMonth?day:''}</div>`;
-			leaveCalendarGrid.appendChild(cell);
-		}
-	}
-	document.getElementById('btnLeaveCalPrev')?.addEventListener('click', ()=>{ lcMonth--; if(lcMonth<0){ lcMonth=11; lcYear--; } renderLeaveCalendar(); });
-	document.getElementById('btnLeaveCalToday')?.addEventListener('click', ()=>{ const t=new Date(); lcYear=t.getFullYear(); lcMonth=t.getMonth(); renderLeaveCalendar(); });
-	document.getElementById('btnLeaveCalNext')?.addEventListener('click', ()=>{ lcMonth++; if(lcMonth>11){ lcMonth=0; lcYear++; } renderLeaveCalendar(); });
-	renderLeaveCalendar();
-
-	// ---------- Policy Builder (localStorage demo) ----------
-	const POL_KEY='iht_leave_policies_v1';
-	function loadPolicies(){ try{ return JSON.parse(localStorage.getItem(POL_KEY))||[]; }catch{ return []; } }
-	function savePolicies(arr){ localStorage.setItem(POL_KEY, JSON.stringify(arr)); }
-	function renderPolicies(){
-		const list=document.getElementById('polList');
-		const empty=document.getElementById('polEmpty');
-		if(!list) return;
-		const arr=loadPolicies();
-		list.innerHTML='';
-		if(!arr.length){ if(empty) empty.style.display='block'; return; }
-		if(empty) empty.style.display='none';
-		arr.forEach((p,i)=>{
-			const row=document.createElement('div');
-			row.className='glass rounded-lg p-3 flex items-center justify-between border border-white/40 dark:border-white/10';
-			row.innerHTML=`<div><div class="font-medium text-sm">${p.name}</div><div class="text-xs text-gray-500">Accrual: ${p.accrual}/yr • Carryover: ${p.carry} • Roles: ${(p.roles||[]).join(', ')||'—'} ${p.docs?'• Docs required':''}</div></div><button data-del="${i}" class="px-2 py-1 rounded-lg glass text-xs">Delete</button>`;
-			list.appendChild(row);
-		});
-		list.querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=>{
-			const arr=loadPolicies();
-			arr.splice(parseInt(b.getAttribute('data-del')),1);
-			savePolicies(arr);
-			renderPolicies();
-		}));
-	}
-	document.getElementById('policyForm')?.addEventListener('submit', (e)=>{
-		e.preventDefault();
-		const name=document.getElementById('polName').value.trim();
-		if(!name){ showToast('Name required','warn'); return; }
-		const accrual=parseFloat(document.getElementById('polAccrual').value||'0');
-		const carry=parseFloat(document.getElementById('polCarry').value||'0');
-		const roles=document.getElementById('polRoles').value.split(',').map(s=>s.trim()).filter(Boolean);
-		const docs=document.getElementById('polRequiresDocs').checked;
-		const arr=loadPolicies();
-		arr.push({id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())),name,accrual,carry,roles,docs});
-		savePolicies(arr);
-		renderPolicies();
-		e.target.reset();
-		showToast('Policy saved','success');
-	});
-	document.getElementById('polExport')?.addEventListener('click', ()=>{
-		const blob=new Blob([JSON.stringify(loadPolicies(),null,2)],{type:'application/json'});
-		const url=URL.createObjectURL(blob);
-		const a=document.createElement('a');
-		a.href=url; a.download='leave_policies.json';
-		document.body.appendChild(a); a.click(); a.remove();
-		URL.revokeObjectURL(url);
-	});
-	const polImportBtn=document.getElementById('polImportBtn');
-	const polFile=document.getElementById('polFile');
-	polImportBtn?.addEventListener('click', ()=> polFile && polFile.click());
-	polFile?.addEventListener('change', async ()=>{
-		const f=polFile.files&&polFile.files[0];
-		if(!f) return;
-		try{
-			const txt=await f.text();
-			const json=JSON.parse(txt);
-			if(Array.isArray(json)){ savePolicies(json); renderPolicies(); showToast('Policies imported','success'); }
-			else{ showToast('Invalid policy file','error'); }
-		}catch{ showToast('Import failed','error'); }
-	});
-	document.getElementById('polClearAll')?.addEventListener('click', ()=>{
-		savePolicies([]);
-		renderPolicies();
-		showToast('Policies cleared','info');
-	});
-	renderPolicies();
+  // Delegated click handler for View buttons (uses data-* attributes)
+  document.addEventListener('click', function(evt){
+    const btn = evt.target.closest && evt.target.closest('.btn-view-leave');
+    if(!btn) return;
+    openLeaveModal(
+      btn.dataset.id,
+      btn.dataset.employee,
+      btn.dataset.type,
+      btn.dataset.start,
+      btn.dataset.end,
+      btn.dataset.reason,
+      btn.dataset.branch,
+      btn.dataset.status
+    );
+  });
 </script>
 {% endblock %}
