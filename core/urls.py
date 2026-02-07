@@ -12,6 +12,7 @@ urlpatterns = [
     # Admin UI
     # -------------------------
     path("admin-ui/dashboard/", views.admin_dashboard, name="admin_dashboard"),
+    path("admin-ui/leave/", views.admin_leave_approval, name="admin_leave"),
 
     path("admin-ui/biometrics/", views.admin_biometrics_attendance, name="admin_biometrics"),
     path("admin-ui/biometrics/import/", views.admin_biometrics_import, name="admin_biometrics_import"),
@@ -58,4 +59,6 @@ urlpatterns = [
     path("employee/analytics/", views.employee_analytics, name="employee_analytics"),
     path("employee/notifications/", views.employee_notifications, name="employee_notifications"),
     path("employee/profile/", views.employee_profile, name="employee_profile"),
+    
+    
 ]
