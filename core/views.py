@@ -17,6 +17,8 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import AttendanceImportForm, AttendanceRecordForm
 from .models import AttendanceRecord, UserProfile, Branch
+from django.utils import timezone
+from .models import LeaveRequest, LeaveAttachment
 
 
 # =========================
@@ -250,12 +252,208 @@ def reject_user(request, profile_id):
     messages.success(request, f"Rejected: {username} ({branch_name})")
     return redirect("admin_employees")
 
-
 @login_required
 def admin_leave_approval(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
-    return render(request, "admin/leave_approval.html", {"current": "leave"})
+
+    qs = LeaveRequest.objects.select_related(
+        "employee", "branch", "reviewed_by"
+    ).order_by("-created_at")
+
+    # ✅ Superuser: ALL branches, no profile/branch needed
+    if request.user.is_superuser:
+        pass
+    else:
+        # ✅ Staff admin: MUST have profile + branch
+        try:
+            admin_profile = request.user.profile
+        except UserProfile.DoesNotExist:
+            messages.error(request, "Admin profile missing. Please contact superuser.")
+            qs = qs.none()
+        else:
+            if not admin_profile.branch_id:
+                messages.error(request, "Admin has no branch assigned. Please assign a branch.")
+                qs = qs.none()
+            else:
+                qs = qs.filter(branch_id=admin_profile.branch_id)
+
+    status_filter = (request.GET.get("status") or "").strip().upper()
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+
+    # Summary counts based on the filtered queryset (branch-aware)
+    total_count = qs.count()
+    approved_count = qs.filter(status=LeaveRequest.STATUS_APPROVED).count()
+    rejected_count = qs.filter(status=LeaveRequest.STATUS_REJECTED).count()
+    pending_count = qs.filter(status=LeaveRequest.STATUS_PENDING).count()
+    draft_count = qs.filter(status=LeaveRequest.STATUS_DRAFT).count()
+    cancelled_count = qs.filter(status=LeaveRequest.STATUS_CANCELLED).count()
+
+    # Calculate total approved leave days in the current year (branch-scoped)
+    year = timezone.now().year
+
+    def _days_within_year(start_date, end_date, year):
+        from datetime import date
+
+        yr_start = date(year, 1, 1)
+        yr_end = date(year, 12, 31)
+        s = max(start_date, yr_start)
+        e = min(end_date, yr_end)
+        if e < s:
+            return 0
+        return (e - s).days + 1
+
+    total_leave_used = 0.0
+    for lr in qs.filter(status=LeaveRequest.STATUS_APPROVED):
+        days = _days_within_year(lr.start_date, lr.end_date, year)
+        if lr.duration in (LeaveRequest.DURATION_HALF_AM, LeaveRequest.DURATION_HALF_PM):
+            total_leave_used += 0.5 * days
+        else:
+            total_leave_used += days
+
+    # Calculate pending days reserved (aggregate for branch/org)
+    pending_days = 0.0
+    for lr in qs.filter(status=LeaveRequest.STATUS_PENDING):
+        days = _days_within_year(lr.start_date, lr.end_date, year)
+        if lr.duration in (LeaveRequest.DURATION_HALF_AM, LeaveRequest.DURATION_HALF_PM):
+            pending_days += 0.5 * days
+        else:
+            pending_days += days
+
+    # Generate notifications (recent activity: both reviewed actions + new pending)
+    notifications = []
+    
+    # Get recently reviewed requests (approved/rejected)
+    reviewed_qs = qs.filter(reviewed_at__isnull=False).order_by("-reviewed_at")[:3]
+    for lr in reviewed_qs:
+        emp = lr.employee.get_full_name() or lr.employee.username
+        if lr.status == LeaveRequest.STATUS_APPROVED:
+            notifications.append(
+                f"✅ Approved {emp}'s {lr.get_leave_type_display()} ({lr.start_date.strftime('%b %d')} - {lr.end_date.strftime('%b %d')})"
+            )
+        elif lr.status == LeaveRequest.STATUS_REJECTED:
+            notifications.append(
+                f"❌ Rejected {emp}'s {lr.get_leave_type_display()} ({lr.start_date.strftime('%b %d')} - {lr.end_date.strftime('%b %d')})"
+            )
+    
+    # Get newly submitted pending requests (no review yet)
+    new_pending_qs = qs.filter(status=LeaveRequest.STATUS_PENDING, reviewed_at__isnull=True).order_by("-created_at")[:3]
+    for lr in new_pending_qs:
+        emp = lr.employee.get_full_name() or lr.employee.username
+        notifications.insert(
+            0,  # Insert at front to show new submissions first
+            f"📋 New request from {emp}: {lr.get_leave_type_display()} ({lr.start_date.strftime('%b %d')} - {lr.end_date.strftime('%b %d')})"
+        )
+    
+    # Limit to 5 total notifications
+    notifications = notifications[:5]
+
+    # Generate calendar events (pending + approved)
+    calendar_events = []
+    for lr in qs.filter(status__in=[LeaveRequest.STATUS_APPROVED, LeaveRequest.STATUS_PENDING]):
+        emp = lr.employee.username
+        calendar_events.append({
+            "start": lr.start_date.strftime("%b %d"),
+            "title": f"{emp}: {lr.get_leave_type_display()[:3]}",
+            "status": lr.status,
+        })
+
+    return render(
+        request,
+        "admin/leave_approval.html",
+        {
+            "current": "leave",
+            "leave_requests": qs,
+            "status_filter": status_filter,
+            "total_count": total_count,
+            "approved_count": approved_count,
+            "rejected_count": rejected_count,
+            "pending_count": pending_count,
+            "draft_count": draft_count,
+            "cancelled_count": cancelled_count,
+            "total_leave_used": int(total_leave_used),
+            "pending_days": int(pending_days),
+            # notifications and calendar
+            "notifications": notifications,
+            "calendar_events": calendar_events,
+        },
+    )
+
+
+@login_required
+@require_POST
+def admin_leave_approve(request, leave_id):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return redirect("login_ui")
+
+    lr = get_object_or_404(LeaveRequest, id=leave_id)
+
+    # ✅ Superuser: skip branch restriction
+    if not request.user.is_superuser:
+        try:
+            admin_branch_id = request.user.profile.branch_id
+        except UserProfile.DoesNotExist:
+            messages.error(request, "Admin profile missing.")
+            return redirect("admin_leave")
+        if not admin_branch_id:
+            messages.error(request, "Admin has no branch assigned.")
+            return redirect("admin_leave")
+        if lr.branch_id != admin_branch_id:
+            messages.error(request, "You can only approve requests in your branch.")
+            return redirect("admin_leave")
+
+    if lr.status != LeaveRequest.STATUS_PENDING:
+        messages.error(request, "Only pending requests can be approved.")
+        return redirect("admin_leave")
+
+    lr.status = LeaveRequest.STATUS_APPROVED
+    lr.reviewed_by = request.user
+    lr.reviewed_at = timezone.now()
+    lr.admin_note = (request.POST.get("admin_note") or "").strip()
+    lr.save()
+
+    messages.success(request, f"Approved leave request of {lr.employee.username}.")
+    return redirect("admin_leave")
+
+
+
+@login_required
+@require_POST
+def admin_leave_reject(request, leave_id):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return redirect("login_ui")
+
+    lr = get_object_or_404(LeaveRequest, id=leave_id)
+
+    # ✅ Superuser: skip branch restriction
+    if not request.user.is_superuser:
+        try:
+            admin_branch_id = request.user.profile.branch_id
+        except UserProfile.DoesNotExist:
+            messages.error(request, "Admin profile missing.")
+            return redirect("admin_leave")
+        if not admin_branch_id:
+            messages.error(request, "Admin has no branch assigned.")
+            return redirect("admin_leave")
+        if lr.branch_id != admin_branch_id:
+            messages.error(request, "You can only reject requests in your branch.")
+            return redirect("admin_leave")
+
+    if lr.status != LeaveRequest.STATUS_PENDING:
+        messages.error(request, "Only pending requests can be rejected.")
+        return redirect("admin_leave")
+
+    lr.status = LeaveRequest.STATUS_REJECTED
+    lr.reviewed_by = request.user
+    lr.reviewed_at = timezone.now()
+    lr.admin_note = (request.POST.get("admin_note") or "").strip()
+    lr.save()
+
+    messages.success(request, f"Rejected leave request of {lr.employee.username}.")
+    return redirect("admin_leave")
+
+
 
 
 @login_required
@@ -306,7 +504,205 @@ def employee_schedule(request):
 
 @login_required
 def employee_leave(request):
-    return render(request, "employee/leave.html", {"current": "leave"})
+    # optional: block if not approved
+    try:
+        if not (request.user.is_staff or request.user.is_superuser):
+            if not request.user.profile.is_approved:
+                messages.error(request, "Your account is pending approval by your branch admin.")
+                return redirect("employee_dashboard")
+    except UserProfile.DoesNotExist:
+        messages.error(request, "Account profile missing. Contact admin.")
+        return redirect("employee_dashboard")
+
+    # get employee branch
+    try:
+        emp_branch = request.user.profile.branch
+    except UserProfile.DoesNotExist:
+        messages.error(request, "Profile/Branch missing. Contact admin.")
+        return redirect("employee_dashboard")
+
+    if request.method == "POST":
+        leave_type = (request.POST.get("leave_type") or "").strip()
+        start_date = (request.POST.get("start_date") or "").strip()
+        end_date = (request.POST.get("end_date") or "").strip()
+        duration = (request.POST.get("duration") or LeaveRequest.DURATION_FULL).strip()
+        reason = (request.POST.get("reason") or "").strip()
+
+        is_draft = bool(request.POST.get("save_draft"))
+
+        # basic validation
+        if not leave_type:
+            messages.error(request, "Please select a leave type.")
+            return redirect("employee_leave")
+
+        if not start_date or not end_date:
+            messages.error(request, "Please select start and end date.")
+            return redirect("employee_leave")
+
+        if not reason:
+            messages.error(request, "Please enter a reason.")
+            return redirect("employee_leave")
+
+        # parse dates safely
+        try:
+            s = datetime.strptime(start_date, "%Y-%m-%d").date()
+            e = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError:
+            messages.error(request, "Invalid date format.")
+            return redirect("employee_leave")
+
+        if e < s:
+            messages.error(request, "End date cannot be before start date.")
+            return redirect("employee_leave")
+
+        status = LeaveRequest.STATUS_DRAFT if is_draft else LeaveRequest.STATUS_PENDING
+
+        lr = LeaveRequest.objects.create(
+            employee=request.user,
+            branch=emp_branch,
+            leave_type=leave_type,
+            start_date=s,
+            end_date=e,
+            duration=duration,
+            reason=reason,
+            status=status,
+        )
+
+        # attachments (multiple)
+        files = request.FILES.getlist("attachments")
+        for f in files:
+            LeaveAttachment.objects.create(leave_request=lr, file=f)
+
+        if is_draft:
+            messages.success(request, "Saved as draft.")
+        else:
+            messages.success(request, "Leave request submitted! Awaiting approval.")
+
+        return redirect("employee_leave")
+
+    # GET view: show only current user's requests
+    leave_requests = (
+        LeaveRequest.objects
+        .filter(employee=request.user)
+        .select_related("reviewed_by", "branch")
+        .prefetch_related("attachments")
+        .order_by("-created_at")
+    )
+
+    # Summary counts for the employee
+    year = timezone.now().year
+
+    total_count = leave_requests.count()
+    approved_count = leave_requests.filter(status=LeaveRequest.STATUS_APPROVED).count()
+    rejected_count = leave_requests.filter(status=LeaveRequest.STATUS_REJECTED).count()
+    pending_count = leave_requests.filter(status=LeaveRequest.STATUS_PENDING).count()
+    draft_count = leave_requests.filter(status=LeaveRequest.STATUS_DRAFT).count()
+    cancelled_count = leave_requests.filter(status=LeaveRequest.STATUS_CANCELLED).count()
+
+    # Calculate total leave days used this year (only APPROVED)
+    def _days_within_year(start_date, end_date, year):
+        from datetime import date
+
+        yr_start = date(year, 1, 1)
+        yr_end = date(year, 12, 31)
+        s = max(start_date, yr_start)
+        e = min(end_date, yr_end)
+        if e < s:
+            return 0
+        return (e - s).days + 1
+
+    total_leave_used = 0.0
+    approved_qs = leave_requests.filter(status=LeaveRequest.STATUS_APPROVED)
+    for lr in approved_qs:
+        days = _days_within_year(lr.start_date, lr.end_date, year)
+        if lr.duration in (LeaveRequest.DURATION_HALF_AM, LeaveRequest.DURATION_HALF_PM):
+            total_leave_used += 0.5 * days
+        else:
+            total_leave_used += days
+
+    # Calculate pending days reserved (pending requests count against available balance)
+    pending_days = 0.0
+    pending_qs = leave_requests.filter(status=LeaveRequest.STATUS_PENDING)
+    for lr in pending_qs:
+        days = _days_within_year(lr.start_date, lr.end_date, year)
+        if lr.duration in (LeaveRequest.DURATION_HALF_AM, LeaveRequest.DURATION_HALF_PM):
+            pending_days += 0.5 * days
+        else:
+            pending_days += days
+
+    # remaining leave (policy: 5 days per year; pending requests reserve days until approved/rejected)
+    remaining_leave = max(0, 5 - int(total_leave_used + pending_days))
+
+    # Generate notifications (recent status changes)
+    leave_notifications = []
+    for lr in leave_requests.order_by("-reviewed_at"):
+        if lr.status == LeaveRequest.STATUS_APPROVED and lr.reviewed_at:
+            leave_notifications.append(
+                f"✅ Your {lr.get_leave_type_display()} ({lr.start_date.strftime('%b %d')} - {lr.end_date.strftime('%b %d')}) was approved."
+            )
+        elif lr.status == LeaveRequest.STATUS_REJECTED and lr.reviewed_at:
+            note = f" Note: {lr.admin_note}" if lr.admin_note else ""
+            leave_notifications.append(
+                f"❌ Your {lr.get_leave_type_display()} ({lr.start_date.strftime('%b %d')} - {lr.end_date.strftime('%b %d')}) was rejected.{note}"
+            )
+        elif lr.status == LeaveRequest.STATUS_PENDING:
+            leave_notifications.append(
+                f"⏳ Your {lr.get_leave_type_display()} ({lr.start_date.strftime('%b %d')} - {lr.end_date.strftime('%b %d')}) is awaiting approval."
+            )
+    leave_notifications = leave_notifications[:5]  # Limit to 5 notifications
+
+    # Generate calendar events (approved + pending leaves)
+    calendar_events = []
+    for lr in leave_requests.filter(status__in=[LeaveRequest.STATUS_APPROVED, LeaveRequest.STATUS_PENDING]):
+        calendar_events.append({
+            "start": lr.start_date.strftime("%b %d"),
+            "title": f"{lr.get_leave_type_display()}",
+            "status": lr.status,
+        })
+
+    return render(
+        request,
+        "employee/leave.html",
+        {
+            "current": "leave",
+            "leave_requests": leave_requests,
+            "total_leave_used": int(total_leave_used),
+            "pending_leave_count": pending_count,
+            "remaining_leave": remaining_leave,
+            # additional counts
+            "total_requests_count": total_count,
+            "approved_count": approved_count,
+            "rejected_count": rejected_count,
+            "draft_count": draft_count,
+            "cancelled_count": cancelled_count,
+            # notifications and calendar
+            "leave_notifications": leave_notifications,
+            "calendar_events": calendar_events,
+        },
+    )
+
+
+@login_required
+@require_POST
+def employee_leave_cancel(request, leave_id):
+    lr = get_object_or_404(LeaveRequest, id=leave_id)
+
+    # security: only owner can cancel
+    if lr.employee_id != request.user.id:
+        messages.error(request, "You are not allowed to cancel this request.")
+        return redirect("employee_leave")
+
+    if lr.status != LeaveRequest.STATUS_PENDING:
+        messages.error(request, "Only pending requests can be cancelled.")
+        return redirect("employee_leave")
+
+    lr.status = LeaveRequest.STATUS_CANCELLED
+    lr.reviewed_by = None
+    lr.reviewed_at = None
+    lr.save()
+
+    messages.success(request, "Leave request cancelled.")
+    return redirect("employee_leave")
 
 
 @login_required
