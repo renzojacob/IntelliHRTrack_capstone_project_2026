@@ -5,11 +5,13 @@ import io
 import re
 from datetime import datetime
 
+from django import forms
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
+from django.db.models import Q  # ✅ NEW
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_datetime
@@ -73,6 +75,7 @@ def signup_ui(request):
     """
     Employee signup:
     - user chooses branch (Branch FK)
+    - user chooses employment type (COS / JO)
     - account created as PENDING (UserProfile.is_approved=False)
     - admin approves inside Employee Management
     """
@@ -87,6 +90,9 @@ def signup_ui(request):
         username = (request.POST.get("username") or "").strip()
         email = (request.POST.get("email") or "").strip()
         branch_id = (request.POST.get("branch") or "").strip()
+
+        employment_type = (request.POST.get("employment_type") or "").strip().upper()
+
         password = request.POST.get("password") or ""
         password2 = request.POST.get("password2") or ""
 
@@ -96,6 +102,14 @@ def signup_ui(request):
 
         if not branch_id:
             messages.error(request, "Please select your branch.")
+            return render(request, "auth/signup.html", {"branches": branches})
+
+        if not employment_type:
+            messages.error(request, "Please select your employment type.")
+            return render(request, "auth/signup.html", {"branches": branches})
+
+        if employment_type not in ("COS", "JO"):
+            messages.error(request, "Invalid employment type selected.")
             return render(request, "auth/signup.html", {"branches": branches})
 
         if not password:
@@ -123,8 +137,12 @@ def signup_ui(request):
                 password=password,
             )
 
-            # ✅ Create profile as PENDING (FK Branch)
-            UserProfile.objects.create(user=user, branch=branch, is_approved=False)
+            UserProfile.objects.create(
+                user=user,
+                branch=branch,
+                employment_type=employment_type,
+                is_approved=False
+            )
 
         except Branch.DoesNotExist:
             messages.error(request, "Invalid branch selected.")
@@ -159,31 +177,183 @@ def admin_analytics(request):
     return render(request, "admin/analytics.html", {"current": "analytics"})
 
 
+# ✅ NEW helper (used by employee management CRUD)
+def _scoped_profiles_for_admin(request):
+    """
+    Admin visibility rule:
+    - superuser: all branches
+    - staff admin: only their branch (request.user.profile.branch)
+    """
+    qs = UserProfile.objects.select_related("user", "branch").order_by("-created_at")
+    if request.user.is_superuser:
+        return qs
+    try:
+        admin_branch = request.user.profile.branch
+        return qs.filter(branch=admin_branch)
+    except UserProfile.DoesNotExist:
+        return qs.none()
+
+
 @login_required
 def admin_employee_management(request):
     """
-    Shows:
+    SAME PAGE:
     - Pending profiles for approval
     - Approved profiles list
+    - ✅ Employee Profiles CRUD table on the same page
 
     Rule:
     - Superuser sees all branches
-    - Staff admin sees only their branch (based on admin.profile.branch)
+    - Staff admin sees only their branch
     """
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
-    qs = UserProfile.objects.select_related("user", "branch").order_by("-created_at")
+    qs = _scoped_profiles_for_admin(request)
 
-    if not request.user.is_superuser:
-        try:
-            admin_branch = request.user.profile.branch
-            qs = qs.filter(branch=admin_branch)
-        except UserProfile.DoesNotExist:
-            qs = qs.none()
+    # =========================
+    # ✅ CRUD ACTIONS (same page POST)
+    # =========================
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
 
+        # resolve allowed branch
+        def _get_allowed_branch_from_post():
+            if request.user.is_superuser:
+                bid = (request.POST.get("branch_id") or "").strip()
+                if not bid:
+                    return None
+                return Branch.objects.filter(id=bid).first()
+            # staff admin: auto branch
+            try:
+                return request.user.profile.branch
+            except UserProfile.DoesNotExist:
+                return None
+
+        if action == "create_employee":
+            username = (request.POST.get("username") or "").strip()
+            email = (request.POST.get("email") or "").strip()
+            password = request.POST.get("password") or ""
+            department = (request.POST.get("department") or "").strip()
+            employment_type = (request.POST.get("employment_type") or "").strip().upper()
+            branch = _get_allowed_branch_from_post()
+
+            if not username:
+                messages.error(request, "Username is required.")
+                return redirect("admin_employees")
+
+            if not branch:
+                messages.error(request, "Branch is required.")
+                return redirect("admin_employees")
+
+            if employment_type not in ("COS", "JO"):
+                messages.error(request, "Employment type must be COS or JO.")
+                return redirect("admin_employees")
+
+            if not password or len(password) < 8:
+                messages.error(request, "Password is required (min 8 chars).")
+                return redirect("admin_employees")
+
+            if User.objects.filter(username=username).exists():
+                messages.error(request, "Username already exists.")
+                return redirect("admin_employees")
+
+            try:
+                with transaction.atomic():
+                    user = User.objects.create_user(
+                        username=username,
+                        email=email,
+                        password=password,
+                    )
+                    UserProfile.objects.create(
+                        user=user,
+                        branch=branch,
+                        department=department,
+                        employment_type=employment_type,
+                        is_approved=True,  # created by admin -> approved
+                    )
+                messages.success(request, f"Employee created: {username}")
+            except Exception as e:
+                messages.error(request, f"Create failed: {e}")
+
+            return redirect("admin_employees")
+
+        elif action == "update_employee":
+            profile_id = request.POST.get("profile_id")
+            prof = get_object_or_404(UserProfile.objects.select_related("user", "branch"), id=profile_id)
+
+            # staff admin can only edit same branch
+            if not request.user.is_superuser:
+                try:
+                    if prof.branch != request.user.profile.branch:
+                        messages.error(request, "You can only edit employees in your branch.")
+                        return redirect("admin_employees")
+                except UserProfile.DoesNotExist:
+                    messages.error(request, "Admin profile missing.")
+                    return redirect("admin_employees")
+
+            department = (request.POST.get("department") or "").strip()
+            employment_type = (request.POST.get("employment_type") or "").strip().upper()
+            email = (request.POST.get("email") or "").strip()
+
+            if employment_type not in ("COS", "JO"):
+                messages.error(request, "Employment type must be COS or JO.")
+                return redirect("admin_employees")
+
+            # superuser can change branch
+            if request.user.is_superuser:
+                bid = (request.POST.get("branch_id") or "").strip()
+                if bid:
+                    b = Branch.objects.filter(id=bid).first()
+                    if b:
+                        prof.branch = b
+
+            prof.department = department
+            prof.employment_type = employment_type
+            prof.save()
+
+            if email != prof.user.email:
+                prof.user.email = email
+                prof.user.save(update_fields=["email"])
+
+            messages.success(request, f"Updated: {prof.user.username}")
+            return redirect("admin_employees")
+
+        elif action == "delete_employee":
+            profile_id = request.POST.get("profile_id")
+            prof = get_object_or_404(UserProfile.objects.select_related("user", "branch"), id=profile_id)
+
+            # staff admin can only delete same branch
+            if not request.user.is_superuser:
+                try:
+                    if prof.branch != request.user.profile.branch:
+                        messages.error(request, "You can only delete employees in your branch.")
+                        return redirect("admin_employees")
+                except UserProfile.DoesNotExist:
+                    messages.error(request, "Admin profile missing.")
+                    return redirect("admin_employees")
+
+            username = prof.user.username
+            prof.user.delete()  # cascades profile
+            messages.success(request, f"Deleted employee: {username}")
+            return redirect("admin_employees")
+
+        # approve/reject are handled by separate endpoints, not here
+        else:
+            messages.error(request, "Invalid action.")
+            return redirect("admin_employees")
+
+    # =========================
+    # Page data (GET)
+    # =========================
     pending_profiles = qs.filter(is_approved=False)
     approved_profiles = qs.filter(is_approved=True)
+
+    # ✅ This is the table you want (separate CRUD table)
+    # You can include pending too if you want, but usually manage employees = approved only
+    employee_profiles = qs.filter(user__is_staff=False, user__is_superuser=False).order_by("user__username")
+
+    branches = Branch.objects.all().order_by("name")  # needed for superuser create/edit
 
     return render(
         request,
@@ -192,6 +362,10 @@ def admin_employee_management(request):
             "current": "employees",
             "pending_profiles": pending_profiles,
             "approved_profiles": approved_profiles,
+
+            # ✅ NEW context for the CRUD table
+            "employee_profiles": employee_profiles,
+            "branches": branches,
         },
     )
 
@@ -703,7 +877,6 @@ def admin_biometrics_attendance(request):
         "preview_rows": [],
         "import_errors": [],
         "import_summary": "",
-        # ✅ FIX: template expects (val,label) pairs
         "branches": Branch.objects.all().order_by("name").values_list("id", "name"),
         "can_import": bool(cache and cache.get("rows")),
     }
@@ -740,7 +913,6 @@ def admin_biometrics_import(request):
         "preview_rows": [],
         "import_errors": [],
         "import_summary": "",
-        # ✅ FIX: template expects (val,label) pairs
         "branches": Branch.objects.all().order_by("name").values_list("id", "name"),
         "can_import": False,
     }
@@ -761,15 +933,12 @@ def admin_biometrics_import(request):
     upload = form.cleaned_data.get("file") or form.cleaned_data.get("csv_file")
     skip_duplicates = form.cleaned_data.get("skip_duplicates", True)
 
-    # ✅ FIX: always resolve posted branch (likely ID) to a real branch name string
     branch_obj = form.cleaned_data.get("branch")
     branch_name = ""
 
     if hasattr(branch_obj, "name"):
-        # ModelChoiceField -> Branch instance
         branch_name = branch_obj.name
     else:
-        # likely POSTed branch id string (because <option value="{{ id }}">)
         branch_id = str(branch_obj or "").strip()
         if branch_id:
             b = Branch.objects.filter(id=branch_id).only("name").first()
@@ -781,7 +950,6 @@ def admin_biometrics_import(request):
 
     rows = None
 
-    # Import from cache if action=import and no new upload
     if action == "import" and not upload:
         cache = _load_import_cache(request)
         if not cache or not cache.get("rows"):
@@ -819,7 +987,6 @@ def admin_biometrics_import(request):
     preview = []
     validation_errors = []
 
-    # Detect if rows are already mapped cache rows
     is_cached_mapped = (
         rows
         and isinstance(rows[0], dict)
@@ -829,7 +996,6 @@ def admin_biometrics_import(request):
         and (action == "import" and not upload)
     )
 
-    # Build preview + validation
     if is_cached_mapped:
         for idx, r in enumerate(rows[:20], start=2):
             employee_id = (r.get("employee_id") or "").strip()
@@ -899,7 +1065,6 @@ def admin_biometrics_import(request):
 
     context["preview_rows"] = preview
 
-    # VALIDATE only
     if action == "validate":
         if validation_errors:
             context["import_errors"] = validation_errors[:10]
@@ -915,7 +1080,6 @@ def admin_biometrics_import(request):
         context["can_import"] = True
         return render(request, "admin/Biometrics_attendance.html", context)
 
-    # IMPORT
     if action != "import":
         context["import_errors"] = ["Invalid action."]
         return render(request, "admin/Biometrics_attendance.html", context)

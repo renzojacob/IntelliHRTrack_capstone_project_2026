@@ -19,6 +19,7 @@ urlpatterns = [
     path("admin-ui/biometrics/template/", views.admin_biometrics_template, name="admin_biometrics_template"),
     path("admin-ui/biometrics/export/", views.admin_biometrics_export, name="admin_biometrics_export"),
 
+    # ✅ Employee Management (approve/reject + CRUD in same page)
     path("admin-ui/employees/", views.admin_employee_management, name="admin_employees"),
 
     # ✅ approve
@@ -28,7 +29,7 @@ urlpatterns = [
         name="approve_user"
     ),
 
-    # 🔴 reject (ADD THIS)
+    # ✅ reject
     path(
         "admin-ui/employees/reject/<int:profile_id>/",
         views.reject_user,
@@ -59,6 +60,4 @@ urlpatterns = [
     path("employee/analytics/", views.employee_analytics, name="employee_analytics"),
     path("employee/notifications/", views.employee_notifications, name="employee_notifications"),
     path("employee/profile/", views.employee_profile, name="employee_profile"),
-    
-    
 ]
