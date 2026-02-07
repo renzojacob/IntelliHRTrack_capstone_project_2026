@@ -15,8 +15,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .forms import AttendanceImportForm, AttendanceRecordForm, BRANCH_CHOICES
-from .models import AttendanceRecord, UserProfile
+from .forms import AttendanceImportForm, AttendanceRecordForm
+from .models import AttendanceRecord, UserProfile, Branch
 
 
 # =========================
@@ -72,7 +72,7 @@ def logout_ui(request):
 def signup_ui(request):
     """
     Employee signup:
-    - user chooses branch
+    - user chooses branch (Branch FK)
     - account created as PENDING (UserProfile.is_approved=False)
     - admin approves inside Employee Management
     """
@@ -81,48 +81,57 @@ def signup_ui(request):
             return redirect("admin_dashboard")
         return redirect("employee_dashboard")
 
+    branches = Branch.objects.all().order_by("name")
+
     if request.method == "POST":
         username = (request.POST.get("username") or "").strip()
         email = (request.POST.get("email") or "").strip()
-        branch = (request.POST.get("branch") or "").strip()
+        branch_id = (request.POST.get("branch") or "").strip()
         password = request.POST.get("password") or ""
         password2 = request.POST.get("password2") or ""
 
         if not username:
             messages.error(request, "Username is required.")
-            return render(request, "auth/signup.html", {"branches": BRANCH_CHOICES})
+            return render(request, "auth/signup.html", {"branches": branches})
 
-        if not branch:
+        if not branch_id:
             messages.error(request, "Please select your branch.")
-            return render(request, "auth/signup.html", {"branches": BRANCH_CHOICES})
+            return render(request, "auth/signup.html", {"branches": branches})
 
         if not password:
             messages.error(request, "Password is required.")
-            return render(request, "auth/signup.html", {"branches": BRANCH_CHOICES})
+            return render(request, "auth/signup.html", {"branches": branches})
 
         if password != password2:
             messages.error(request, "Passwords do not match.")
-            return render(request, "auth/signup.html", {"branches": BRANCH_CHOICES})
+            return render(request, "auth/signup.html", {"branches": branches})
 
         if len(password) < 8:
             messages.error(request, "Password must be at least 8 characters.")
-            return render(request, "auth/signup.html", {"branches": BRANCH_CHOICES})
+            return render(request, "auth/signup.html", {"branches": branches})
 
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already exists.")
-            return render(request, "auth/signup.html", {"branches": BRANCH_CHOICES})
+            return render(request, "auth/signup.html", {"branches": branches})
 
         try:
+            branch = Branch.objects.get(id=branch_id)
+
             user = User.objects.create_user(
-                username=username, email=email, password=password
+                username=username,
+                email=email,
+                password=password,
             )
 
-            # ✅ Create profile as PENDING
+            # ✅ Create profile as PENDING (FK Branch)
             UserProfile.objects.create(user=user, branch=branch, is_approved=False)
 
+        except Branch.DoesNotExist:
+            messages.error(request, "Invalid branch selected.")
+            return render(request, "auth/signup.html", {"branches": branches})
         except Exception as e:
             messages.error(request, f"Signup failed: {e}")
-            return render(request, "auth/signup.html", {"branches": BRANCH_CHOICES})
+            return render(request, "auth/signup.html", {"branches": branches})
 
         messages.success(
             request,
@@ -130,7 +139,7 @@ def signup_ui(request):
         )
         return redirect("login_ui")
 
-    return render(request, "auth/signup.html", {"branches": BRANCH_CHOICES})
+    return render(request, "auth/signup.html", {"branches": branches})
 
 
 # =========================
@@ -164,7 +173,7 @@ def admin_employee_management(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
-    qs = UserProfile.objects.select_related("user").order_by("-created_at")
+    qs = UserProfile.objects.select_related("user", "branch").order_by("-created_at")
 
     if not request.user.is_superuser:
         try:
@@ -208,14 +217,17 @@ def approve_user(request, profile_id):
     prof.is_approved = True
     prof.save()
 
-    messages.success(request, f"Approved: {prof.user.username} ({prof.branch})")
+    messages.success(request, f"Approved: {prof.user.username} ({prof.branch.name})")
     return redirect("admin_employees")
 
 
-# ✅ Reject user (delete pending account)
 @login_required
 @require_POST
 def reject_user(request, profile_id):
+    """
+    Reject = delete the user (profile cascades)
+    Only superuser or staff admin of same branch can reject.
+    """
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
@@ -232,12 +244,10 @@ def reject_user(request, profile_id):
             return redirect("admin_employees")
 
     username = prof.user.username
-    branch = prof.branch
+    branch_name = prof.branch.name if prof.branch else "—"
 
-    # delete user (profile will delete too if on_delete=CASCADE)
     prof.user.delete()
-
-    messages.success(request, f"Rejected: {username} ({branch})")
+    messages.success(request, f"Rejected: {username} ({branch_name})")
     return redirect("admin_employees")
 
 
@@ -538,11 +548,7 @@ def _read_excel(file_obj, filename: str):
                 first_col = headers[0] if headers else None
                 if first_col:
                     df_d = df_d[
-                        df_d[first_col]
-                        .astype(str)
-                        .str.strip()
-                        .str.lower()
-                        != "person id"
+                        df_d[first_col].astype(str).str.strip().str.lower() != "person id"
                     ]
 
                 df_d = df_d.replace("", None).dropna(how="all").fillna("")
@@ -690,6 +696,8 @@ def admin_biometrics_attendance(request):
 
     cache = _load_import_cache(request)
 
+    # NOTE: if your AttendanceImportForm already has Branch choices,
+    # you don't need to pass branches, but keeping this won't hurt:
     context = {
         "current": "biometrics",
         "records": records,
@@ -697,7 +705,7 @@ def admin_biometrics_attendance(request):
         "preview_rows": [],
         "import_errors": [],
         "import_summary": "",
-        "branches": BRANCH_CHOICES,
+        "branches": Branch.objects.all().order_by("name"),
         "can_import": bool(cache and cache.get("rows")),
     }
     return render(request, "admin/Biometrics_attendance.html", context)
@@ -733,7 +741,7 @@ def admin_biometrics_import(request):
         "preview_rows": [],
         "import_errors": [],
         "import_summary": "",
-        "branches": BRANCH_CHOICES,
+        "branches": Branch.objects.all().order_by("name"),
         "can_import": False,
     }
 
@@ -752,7 +760,12 @@ def admin_biometrics_import(request):
 
     upload = form.cleaned_data.get("file") or form.cleaned_data.get("csv_file")
     skip_duplicates = form.cleaned_data.get("skip_duplicates", True)
-    branch = (form.cleaned_data.get("branch") or "").strip()
+
+    # IMPORTANT:
+    # If your AttendanceImportForm branch field is a ModelChoiceField(Branch),
+    # then branch_obj is Branch instance. If it's a CharField, it'll be str.
+    branch_obj = form.cleaned_data.get("branch")
+    branch_name = branch_obj.name if hasattr(branch_obj, "name") else str(branch_obj or "").strip()
 
     rows = None
 
@@ -765,7 +778,7 @@ def admin_biometrics_import(request):
             ]
             return render(request, "admin/Biometrics_attendance.html", context)
 
-        branch = cache.get("branch") or branch
+        branch_name = cache.get("branch") or branch_name
         skip_duplicates = cache.get("skip_duplicates", skip_duplicates)
         rows = cache["rows"]
     else:
@@ -823,7 +836,7 @@ def admin_biometrics_import(request):
                     "employee_id": employee_id or "—",
                     "full_name": (r.get("full_name") or "").strip() or "—",
                     "department": (r.get("department") or "").strip() or "—",
-                    "branch": (r.get("branch") or branch or "").strip() or "—",
+                    "branch": (r.get("branch") or branch_name or "").strip() or "—",
                     "timestamp": ts or "—",
                     "attendance_status": _status_label(r.get("attendance_status")),
                     "status": "valid" if is_valid else "invalid",
@@ -833,7 +846,7 @@ def admin_biometrics_import(request):
     else:
         meaningful = 0
         for idx, row in enumerate(rows, start=2):
-            mapped = _map_row(row, branch=branch)
+            mapped = _map_row(row, branch=branch_name)
 
             if (
                 not mapped["employee_id"]
@@ -885,7 +898,7 @@ def admin_biometrics_import(request):
             context["can_import"] = False
             return render(request, "admin/Biometrics_attendance.html", context)
 
-        _save_import_cache(request, branch=branch, skip_duplicates=skip_duplicates, rows=rows)
+        _save_import_cache(request, branch=branch_name, skip_duplicates=skip_duplicates, rows=rows)
         context["import_summary"] = f"✓ Validation passed! {len(rows)} row(s) ready to import."
         context["can_import"] = True
         return render(request, "admin/Biometrics_attendance.html", context)
@@ -915,7 +928,7 @@ def admin_biometrics_import(request):
                         "employee_id": employee_id,
                         "full_name": (r.get("full_name") or "").strip(),
                         "department": (r.get("department") or "").strip(),
-                        "branch": (r.get("branch") or branch or "").strip(),
+                        "branch": (r.get("branch") or branch_name or "").strip(),
                         "timestamp": ts,
                         "attendance_status": r.get("attendance_status")
                         or AttendanceRecord.STATUS_UNKNOWN,
@@ -936,7 +949,7 @@ def admin_biometrics_import(request):
                         import_errors.append(f"Row {idx}: {e}")
             else:
                 for idx, row in enumerate(rows, start=2):
-                    mapped = _map_row(row, branch=branch)
+                    mapped = _map_row(row, branch=branch_name)
 
                     if (
                         not mapped["employee_id"]
