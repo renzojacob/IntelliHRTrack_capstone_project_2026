@@ -696,8 +696,6 @@ def admin_biometrics_attendance(request):
 
     cache = _load_import_cache(request)
 
-    # NOTE: if your AttendanceImportForm already has Branch choices,
-    # you don't need to pass branches, but keeping this won't hurt:
     context = {
         "current": "biometrics",
         "records": records,
@@ -705,7 +703,8 @@ def admin_biometrics_attendance(request):
         "preview_rows": [],
         "import_errors": [],
         "import_summary": "",
-        "branches": Branch.objects.all().order_by("name"),
+        # ✅ FIX: template expects (val,label) pairs
+        "branches": Branch.objects.all().order_by("name").values_list("id", "name"),
         "can_import": bool(cache and cache.get("rows")),
     }
     return render(request, "admin/Biometrics_attendance.html", context)
@@ -741,7 +740,8 @@ def admin_biometrics_import(request):
         "preview_rows": [],
         "import_errors": [],
         "import_summary": "",
-        "branches": Branch.objects.all().order_by("name"),
+        # ✅ FIX: template expects (val,label) pairs
+        "branches": Branch.objects.all().order_by("name").values_list("id", "name"),
         "can_import": False,
     }
 
@@ -761,11 +761,23 @@ def admin_biometrics_import(request):
     upload = form.cleaned_data.get("file") or form.cleaned_data.get("csv_file")
     skip_duplicates = form.cleaned_data.get("skip_duplicates", True)
 
-    # IMPORTANT:
-    # If your AttendanceImportForm branch field is a ModelChoiceField(Branch),
-    # then branch_obj is Branch instance. If it's a CharField, it'll be str.
+    # ✅ FIX: always resolve posted branch (likely ID) to a real branch name string
     branch_obj = form.cleaned_data.get("branch")
-    branch_name = branch_obj.name if hasattr(branch_obj, "name") else str(branch_obj or "").strip()
+    branch_name = ""
+
+    if hasattr(branch_obj, "name"):
+        # ModelChoiceField -> Branch instance
+        branch_name = branch_obj.name
+    else:
+        # likely POSTed branch id string (because <option value="{{ id }}">)
+        branch_id = str(branch_obj or "").strip()
+        if branch_id:
+            b = Branch.objects.filter(id=branch_id).only("name").first()
+            branch_name = b.name if b else ""
+
+    if not branch_name:
+        context["import_errors"] = ["Invalid branch selected. Please choose a branch."]
+        return render(request, "admin/Biometrics_attendance.html", context)
 
     rows = None
 
