@@ -13,8 +13,8 @@
 
   <style>
     :root{
-      --primary:#14b8a6;       /* teal-500 */
-      --primary-dark:#0d9488;  /* teal-600 */
+      --primary:#14b8a6;
+      --primary-dark:#0d9488;
       --bg-left:#d9f7f2;
       --bg-right:#eefcf9;
       --card:rgba(255,255,255,.94);
@@ -36,7 +36,7 @@
 
     <div class="p-8">
 
-      <!-- Brand -->
+      <!-- ✅ BRAND (RESTORED) -->
       <div class="flex items-center gap-4 mb-6">
         <div class="w-12 h-12 rounded-2xl bg-[var(--primary)] text-white flex items-center justify-center font-bold">
           IH
@@ -60,7 +60,8 @@
            style="background:rgba(20,184,166,.08);
                   border-color:rgba(20,184,166,.25);
                   color:var(--primary-dark);">
-        <strong>Important:</strong> Choose the correct branch.  
+        <strong>Important:</strong>
+        Select the correct branch and employment details.
         Only admins of that branch can approve your account.
       </div>
 
@@ -83,7 +84,7 @@
         </div>
       {% endif %}
 
-      <!-- Form -->
+      <!-- FORM -->
       <form method="post" class="space-y-4">
         {% csrf_token %}
 
@@ -94,7 +95,7 @@
             <iconify-icon icon="ph:user-duotone" class="text-teal-600 text-lg"></iconify-icon>
             <input type="text" name="username" required
                    value="{{ request.POST.username|default:'' }}"
-                   class="w-full bg-transparent outline-none text-slate-900"
+                   class="w-full bg-transparent outline-none"
                    placeholder="your.username">
           </div>
         </div>
@@ -106,7 +107,7 @@
             <iconify-icon icon="ph:envelope-duotone" class="text-teal-600 text-lg"></iconify-icon>
             <input type="email" name="email"
                    value="{{ request.POST.email|default:'' }}"
-                   class="w-full bg-transparent outline-none text-slate-900"
+                   class="w-full bg-transparent outline-none"
                    placeholder="you@email.com">
           </div>
         </div>
@@ -116,19 +117,36 @@
           <label class="block text-sm font-medium mb-1">Branch</label>
           <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
             <iconify-icon icon="ph:buildings-duotone" class="text-teal-600 text-lg"></iconify-icon>
-            <select name="branch" required
-                    class="w-full bg-transparent outline-none text-slate-900">
-              <option value="" disabled {% if not request.POST.branch %}selected{% endif %}>
-                Select your branch
-              </option>
-
+            <select name="branch" required class="w-full bg-transparent outline-none">
+              <option value="" disabled selected>Select your branch</option>
               {% for b in branches %}
-                <option value="{{ b.id }}"
-                  {% if request.POST.branch == b.id|stringformat:"s" %}selected{% endif %}
-                >
-                  {{ b.name|title }}
-                </option>
+                <option value="{{ b.id }}">{{ b.name }}</option>
               {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- ✅ Department -->
+        <div>
+          <label class="block text-sm font-medium mb-1">Department</label>
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
+            <iconify-icon icon="ph:briefcase-metal-duotone" class="text-teal-600 text-lg"></iconify-icon>
+            <input type="text" name="department"
+                   value="{{ request.POST.department|default:'' }}"
+                   class="w-full bg-transparent outline-none"
+                   placeholder="e.g. HR, Accounting, Kitchen">
+          </div>
+        </div>
+
+        <!-- ✅ Employment Type -->
+        <div>
+          <label class="block text-sm font-medium mb-1">Employment Type</label>
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
+            <iconify-icon icon="ph:briefcase-duotone" class="text-teal-600 text-lg"></iconify-icon>
+            <select name="employment_type" required class="w-full bg-transparent outline-none">
+              <option value="" disabled selected>Select employment type</option>
+              <option value="COS">Contract of Service (COS)</option>
+              <option value="JO">Job Order (JO)</option>
             </select>
           </div>
         </div>
@@ -139,7 +157,7 @@
           <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
             <iconify-icon icon="ph:lock-key-duotone" class="text-teal-600 text-lg"></iconify-icon>
             <input type="password" name="password" required
-                   class="w-full bg-transparent outline-none text-slate-900"
+                   class="w-full bg-transparent outline-none"
                    placeholder="••••••••">
           </div>
         </div>
@@ -150,7 +168,7 @@
           <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
             <iconify-icon icon="ph:lock-duotone" class="text-teal-600 text-lg"></iconify-icon>
             <input type="password" name="password2" required
-                   class="w-full bg-transparent outline-none text-slate-900"
+                   class="w-full bg-transparent outline-none"
                    placeholder="••••••••">
           </div>
         </div>
@@ -165,12 +183,10 @@
         </button>
       </form>
 
-      <!-- Footer -->
+      <!-- ✅ LOGIN REDIRECT (RESTORED) -->
       <div class="mt-6 text-sm text-center text-slate-500">
         Already approved?
-        <a href="{% url 'login_ui' %}"
-           class="font-medium hover:underline"
-           style="color:var(--primary-dark);">
+        <a href="{% url 'login_ui' %}" class="font-medium hover:underline text-teal-700">
           Sign in
         </a>
       </div>

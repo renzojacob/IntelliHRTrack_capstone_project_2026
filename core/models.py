@@ -24,12 +24,11 @@ class AttendanceRecord(models.Model):
         (STATUS_UNKNOWN, "Unknown"),
     ]
 
-    # Required fields you want to store
     employee_id = models.CharField(max_length=64, db_index=True)  # Person ID
     full_name = models.CharField(max_length=255, blank=True)
     department = models.CharField(max_length=255, blank=True)
 
-    # ✅ FK to Branch (creates branch_id)
+    # FK to Branch
     branch = models.ForeignKey(
         Branch,
         on_delete=models.PROTECT,
@@ -47,7 +46,7 @@ class AttendanceRecord(models.Model):
         db_index=True,
     )
 
-    # (Optional) keep raw row for debugging; remove if you truly don't want it
+    # store raw imported row (optional but helpful)
     raw_row = models.JSONField(default=dict, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -72,22 +71,41 @@ class AttendanceRecord(models.Model):
 
 
 # =========================
-# User Profile (Branch + Approval)
+# User Profile
 # =========================
 class UserProfile(models.Model):
+    EMPLOYMENT_COS = "COS"
+    EMPLOYMENT_JO = "JO"
+
+    EMPLOYMENT_TYPE_CHOICES = [
+        (EMPLOYMENT_COS, "Contract of Service"),
+        (EMPLOYMENT_JO, "Job Order"),
+    ]
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="profile",
     )
 
-    # ✅ FK to Branch (creates branch_id)
     branch = models.ForeignKey(
         Branch,
         on_delete=models.PROTECT,
         related_name="profiles",
         null=True,
         blank=True,
+        db_index=True,
+    )
+
+    # NEW FIELDS
+    department = models.CharField(max_length=120, blank=True, db_index=True)
+
+    # IMPORTANT:
+    # if you want this required during signup, keep blank=False (default).
+    # if you want it optional, add blank=True.
+    employment_type = models.CharField(
+        max_length=3,
+        choices=EMPLOYMENT_TYPE_CHOICES,
         db_index=True,
     )
 
@@ -98,9 +116,12 @@ class UserProfile(models.Model):
         db_table = "core_userprofile"
         indexes = [
             models.Index(fields=["branch", "is_approved"]),
+            models.Index(fields=["department"]),
+            models.Index(fields=["employment_type"]),
         ]
 
     def __str__(self):
         status = "APPROVED" if self.is_approved else "PENDING"
         b = self.branch.name if self.branch else "—"
-        return f"{self.user.username} ({b}) - {status}"
+        dept = self.department or "—"
+        return f"{self.user.username} | {b} | {dept} | {self.employment_type} | {status}"
