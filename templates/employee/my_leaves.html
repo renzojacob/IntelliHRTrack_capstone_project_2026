@@ -1,0 +1,20 @@
+<h1>My Leave Requests</h1>
+
+<table border="1">
+  <tr>
+    <th>Type</th><th>Start</th><th>End</th><th>Status</th><th>Created</th>
+  </tr>
+  {% for l in leaves %}
+  <tr>
+    <td>{{ l.leave_type }}</td>
+    <td>{{ l.start_date }}</td>
+    <td>{{ l.end_date }}</td>
+    <td>{{ l.status }}</td>
+    <td>{{ l.created_at }}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="5">No leave requests yet.</td></tr>
+  {% endfor %}
+</table>
+
+<a href="{% url 'employee_request_leave' %}">Request another leave</a>
