@@ -3,24 +3,107 @@
 import csv
 import io
 import re
-from datetime import datetime
+from decimal import Decimal
+from datetime import date, datetime, time, timedelta
 
-from django import forms
+from django.conf import settings
+from django.db.models import Q
+
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
-from django.db.models import Q  # ✅ NEW
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import AttendanceImportForm, AttendanceRecordForm
 from .models import AttendanceRecord, UserProfile, Branch
-from django.utils import timezone
 from .models import LeaveRequest, LeaveAttachment
+
+from .models import (
+    Branch,
+    AttendanceRecord,
+    UserProfile,
+    PayrollPeriod,
+    PayrollRule,
+    EmployeeContribution,
+    HolidaySuspension,
+    PayrollBatch,
+    PayrollItem,
+)
+
+
+# =========================
+# Small helpers
+# =========================
+def _get_admin_branch(request):
+    """
+    For staff admins, returns their assigned branch (or None).
+    For superuser, returns None (meaning "all branches").
+    """
+    if request.user.is_superuser:
+        return None
+    try:
+        return request.user.profile.branch
+    except UserProfile.DoesNotExist:
+        return None
+
+
+def _scoped_branch_queryset_for_admin(request):
+    """
+    Superuser -> all branches
+    Staff admin -> only their branch
+    """
+    if request.user.is_superuser:
+        return Branch.objects.all().order_by("name")
+    b = _get_admin_branch(request)
+    if b:
+        return Branch.objects.filter(id=b.id).order_by("name")
+    return Branch.objects.none()
+
+
+def _apply_branch_choices_to_form(form, branches_qs):
+    """
+    ✅ CRITICAL FIX:
+    If form.branch is ModelChoiceField -> set queryset
+    Else -> set choices to branch IDs
+    """
+    if not form or "branch" not in getattr(form, "fields", {}):
+        return
+
+    field = form.fields["branch"]
+
+    # ModelChoiceField / ModelMultipleChoiceField
+    if hasattr(field, "queryset"):
+        field.queryset = branches_qs
+        return
+
+    # Plain ChoiceField fallback
+    try:
+        field.choices = [("", "Select branch")] + [(str(b.id), b.name) for b in branches_qs]
+    except Exception:
+        field.choices = [("", "Select branch")]
+
+
+def _get_branch_from_post(request, branches_qs):
+    """
+    Get branch from POST safely:
+    - supports 'branch' value being ID or name
+    - ensures it exists inside the allowed branches_qs
+    """
+    raw = (request.POST.get("branch") or "").strip()
+    if not raw:
+        return None
+
+    if raw.isdigit():
+        return branches_qs.filter(id=int(raw)).first()
+
+    return branches_qs.filter(name__iexact=raw).first()
 
 
 # =========================
@@ -92,7 +175,6 @@ def signup_ui(request):
         username = (request.POST.get("username") or "").strip()
         email = (request.POST.get("email") or "").strip()
         branch_id = (request.POST.get("branch") or "").strip()
-
         employment_type = (request.POST.get("employment_type") or "").strip().upper()
 
         password = request.POST.get("password") or ""
@@ -139,11 +221,12 @@ def signup_ui(request):
                 password=password,
             )
 
+            # NOTE: assumes your real UserProfile has employment_type field.
             UserProfile.objects.create(
                 user=user,
                 branch=branch,
                 employment_type=employment_type,
-                is_approved=False
+                is_approved=False,
             )
 
         except Branch.DoesNotExist:
@@ -179,12 +262,11 @@ def admin_analytics(request):
     return render(request, "admin/analytics.html", {"current": "analytics"})
 
 
-# ✅ NEW helper (used by employee management CRUD)
 def _scoped_profiles_for_admin(request):
     """
     Admin visibility rule:
     - superuser: all branches
-    - staff admin: only their branch (request.user.profile.branch)
+    - staff admin: only their branch
     """
     qs = UserProfile.objects.select_related("user", "branch").order_by("-created_at")
     if request.user.is_superuser:
@@ -203,30 +285,21 @@ def admin_employee_management(request):
     - Pending profiles for approval
     - Approved profiles list
     - ✅ Employee Profiles CRUD table on the same page
-
-    Rule:
-    - Superuser sees all branches
-    - Staff admin sees only their branch
     """
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
     qs = _scoped_profiles_for_admin(request)
 
-    # =========================
-    # ✅ CRUD ACTIONS (same page POST)
-    # =========================
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
 
-        # resolve allowed branch
         def _get_allowed_branch_from_post():
             if request.user.is_superuser:
                 bid = (request.POST.get("branch_id") or "").strip()
                 if not bid:
                     return None
                 return Branch.objects.filter(id=bid).first()
-            # staff admin: auto branch
             try:
                 return request.user.profile.branch
             except UserProfile.DoesNotExist:
@@ -272,7 +345,7 @@ def admin_employee_management(request):
                         branch=branch,
                         department=department,
                         employment_type=employment_type,
-                        is_approved=True,  # created by admin -> approved
+                        is_approved=True,
                     )
                 messages.success(request, f"Employee created: {username}")
             except Exception as e:
@@ -282,9 +355,11 @@ def admin_employee_management(request):
 
         elif action == "update_employee":
             profile_id = request.POST.get("profile_id")
-            prof = get_object_or_404(UserProfile.objects.select_related("user", "branch"), id=profile_id)
+            prof = get_object_or_404(
+                UserProfile.objects.select_related("user", "branch"),
+                id=profile_id,
+            )
 
-            # staff admin can only edit same branch
             if not request.user.is_superuser:
                 try:
                     if prof.branch != request.user.profile.branch:
@@ -302,7 +377,6 @@ def admin_employee_management(request):
                 messages.error(request, "Employment type must be COS or JO.")
                 return redirect("admin_employees")
 
-            # superuser can change branch
             if request.user.is_superuser:
                 bid = (request.POST.get("branch_id") or "").strip()
                 if bid:
@@ -323,9 +397,11 @@ def admin_employee_management(request):
 
         elif action == "delete_employee":
             profile_id = request.POST.get("profile_id")
-            prof = get_object_or_404(UserProfile.objects.select_related("user", "branch"), id=profile_id)
+            prof = get_object_or_404(
+                UserProfile.objects.select_related("user", "branch"),
+                id=profile_id,
+            )
 
-            # staff admin can only delete same branch
             if not request.user.is_superuser:
                 try:
                     if prof.branch != request.user.profile.branch:
@@ -336,26 +412,22 @@ def admin_employee_management(request):
                     return redirect("admin_employees")
 
             username = prof.user.username
-            prof.user.delete()  # cascades profile
+            prof.user.delete()
             messages.success(request, f"Deleted employee: {username}")
             return redirect("admin_employees")
 
-        # approve/reject are handled by separate endpoints, not here
         else:
             messages.error(request, "Invalid action.")
             return redirect("admin_employees")
 
-    # =========================
-    # Page data (GET)
-    # =========================
     pending_profiles = qs.filter(is_approved=False)
     approved_profiles = qs.filter(is_approved=True)
+    employee_profiles = qs.filter(
+        user__is_staff=False,
+        user__is_superuser=False,
+    ).order_by("user__username")
 
-    # ✅ This is the table you want (separate CRUD table)
-    # You can include pending too if you want, but usually manage employees = approved only
-    employee_profiles = qs.filter(user__is_staff=False, user__is_superuser=False).order_by("user__username")
-
-    branches = Branch.objects.all().order_by("name")  # needed for superuser create/edit
+    branches = Branch.objects.all().order_by("name")
 
     return render(
         request,
@@ -364,8 +436,6 @@ def admin_employee_management(request):
             "current": "employees",
             "pending_profiles": pending_profiles,
             "approved_profiles": approved_profiles,
-
-            # ✅ NEW context for the CRUD table
             "employee_profiles": employee_profiles,
             "branches": branches,
         },
@@ -380,7 +450,6 @@ def approve_user(request, profile_id):
 
     prof = get_object_or_404(UserProfile, id=profile_id)
 
-    # staff can only approve same branch
     if not request.user.is_superuser:
         try:
             if prof.branch != request.user.profile.branch:
@@ -400,16 +469,11 @@ def approve_user(request, profile_id):
 @login_required
 @require_POST
 def reject_user(request, profile_id):
-    """
-    Reject = delete the user (profile cascades)
-    Only superuser or staff admin of same branch can reject.
-    """
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
     prof = get_object_or_404(UserProfile, id=profile_id)
 
-    # staff can only reject same branch
     if not request.user.is_superuser:
         try:
             if prof.branch != request.user.profile.branch:
@@ -421,11 +485,14 @@ def reject_user(request, profile_id):
 
     username = prof.user.username
     branch_name = prof.branch.name if prof.branch else "—"
-
     prof.user.delete()
     messages.success(request, f"Rejected: {username} ({branch_name})")
     return redirect("admin_employees")
 
+
+# =========================
+# Leave Approval (Admin)
+# =========================
 @login_required
 def admin_leave_approval(request):
     if not (request.user.is_staff or request.user.is_superuser):
@@ -435,11 +502,9 @@ def admin_leave_approval(request):
         "employee", "branch", "reviewed_by"
     ).order_by("-created_at")
 
-    # ✅ Superuser: ALL branches, no profile/branch needed
     if request.user.is_superuser:
         pass
     else:
-        # ✅ Staff admin: MUST have profile + branch
         try:
             admin_profile = request.user.profile
         except UserProfile.DoesNotExist:
@@ -456,7 +521,6 @@ def admin_leave_approval(request):
     if status_filter:
         qs = qs.filter(status=status_filter)
 
-    # Summary counts based on the filtered queryset (branch-aware)
     total_count = qs.count()
     approved_count = qs.filter(status=LeaveRequest.STATUS_APPROVED).count()
     rejected_count = qs.filter(status=LeaveRequest.STATUS_REJECTED).count()
@@ -464,14 +528,12 @@ def admin_leave_approval(request):
     draft_count = qs.filter(status=LeaveRequest.STATUS_DRAFT).count()
     cancelled_count = qs.filter(status=LeaveRequest.STATUS_CANCELLED).count()
 
-    # Calculate total approved leave days in the current year (branch-scoped)
     year = timezone.now().year
 
     def _days_within_year(start_date, end_date, year):
-        from datetime import date
-
-        yr_start = date(year, 1, 1)
-        yr_end = date(year, 12, 31)
+        from datetime import date as _date
+        yr_start = _date(year, 1, 1)
+        yr_end = _date(year, 12, 31)
         s = max(start_date, yr_start)
         e = min(end_date, yr_end)
         if e < s:
@@ -486,7 +548,6 @@ def admin_leave_approval(request):
         else:
             total_leave_used += days
 
-    # Calculate pending days reserved (aggregate for branch/org)
     pending_days = 0.0
     for lr in qs.filter(status=LeaveRequest.STATUS_PENDING):
         days = _days_within_year(lr.start_date, lr.end_date, year)
@@ -495,10 +556,8 @@ def admin_leave_approval(request):
         else:
             pending_days += days
 
-    # Generate notifications (recent activity: both reviewed actions + new pending)
     notifications = []
-    
-    # Get recently reviewed requests (approved/rejected)
+
     reviewed_qs = qs.filter(reviewed_at__isnull=False).order_by("-reviewed_at")[:3]
     for lr in reviewed_qs:
         emp = lr.employee.get_full_name() or lr.employee.username
@@ -510,20 +569,16 @@ def admin_leave_approval(request):
             notifications.append(
                 f"❌ Rejected {emp}'s {lr.get_leave_type_display()} ({lr.start_date.strftime('%b %d')} - {lr.end_date.strftime('%b %d')})"
             )
-    
-    # Get newly submitted pending requests (no review yet)
+
     new_pending_qs = qs.filter(status=LeaveRequest.STATUS_PENDING, reviewed_at__isnull=True).order_by("-created_at")[:3]
     for lr in new_pending_qs:
         emp = lr.employee.get_full_name() or lr.employee.username
         notifications.insert(
-            0,  # Insert at front to show new submissions first
+            0,
             f"📋 New request from {emp}: {lr.get_leave_type_display()} ({lr.start_date.strftime('%b %d')} - {lr.end_date.strftime('%b %d')})"
         )
-    
-    # Limit to 5 total notifications
     notifications = notifications[:5]
 
-    # Generate calendar events (pending + approved)
     calendar_events = []
     for lr in qs.filter(status__in=[LeaveRequest.STATUS_APPROVED, LeaveRequest.STATUS_PENDING]):
         emp = lr.employee.username
@@ -548,7 +603,6 @@ def admin_leave_approval(request):
             "cancelled_count": cancelled_count,
             "total_leave_used": int(total_leave_used),
             "pending_days": int(pending_days),
-            # notifications and calendar
             "notifications": notifications,
             "calendar_events": calendar_events,
         },
@@ -563,7 +617,6 @@ def admin_leave_approve(request, leave_id):
 
     lr = get_object_or_404(LeaveRequest, id=leave_id)
 
-    # ✅ Superuser: skip branch restriction
     if not request.user.is_superuser:
         try:
             admin_branch_id = request.user.profile.branch_id
@@ -591,7 +644,6 @@ def admin_leave_approve(request, leave_id):
     return redirect("admin_leave")
 
 
-
 @login_required
 @require_POST
 def admin_leave_reject(request, leave_id):
@@ -600,7 +652,6 @@ def admin_leave_reject(request, leave_id):
 
     lr = get_object_or_404(LeaveRequest, id=leave_id)
 
-    # ✅ Superuser: skip branch restriction
     if not request.user.is_superuser:
         try:
             admin_branch_id = request.user.profile.branch_id
@@ -628,8 +679,9 @@ def admin_leave_reject(request, leave_id):
     return redirect("admin_leave")
 
 
-
-
+# =========================
+# Admin pages (simple renders)
+# =========================
 @login_required
 def admin_payroll(request):
     if not (request.user.is_staff or request.user.is_superuser):
@@ -659,7 +711,7 @@ def admin_system_administration(request):
 
 
 # =========================
-# Employee UI pages
+# Employee pages (simple renders)
 # =========================
 @login_required
 def employee_dashboard(request):
@@ -678,7 +730,6 @@ def employee_schedule(request):
 
 @login_required
 def employee_leave(request):
-    # optional: block if not approved
     try:
         if not (request.user.is_staff or request.user.is_superuser):
             if not request.user.profile.is_approved:
@@ -688,7 +739,6 @@ def employee_leave(request):
         messages.error(request, "Account profile missing. Contact admin.")
         return redirect("employee_dashboard")
 
-    # get employee branch
     try:
         emp_branch = request.user.profile.branch
     except UserProfile.DoesNotExist:
@@ -704,7 +754,6 @@ def employee_leave(request):
 
         is_draft = bool(request.POST.get("save_draft"))
 
-        # basic validation
         if not leave_type:
             messages.error(request, "Please select a leave type.")
             return redirect("employee_leave")
@@ -717,7 +766,6 @@ def employee_leave(request):
             messages.error(request, "Please enter a reason.")
             return redirect("employee_leave")
 
-        # parse dates safely
         try:
             s = datetime.strptime(start_date, "%Y-%m-%d").date()
             e = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -742,19 +790,13 @@ def employee_leave(request):
             status=status,
         )
 
-        # attachments (multiple)
         files = request.FILES.getlist("attachments")
         for f in files:
             LeaveAttachment.objects.create(leave_request=lr, file=f)
 
-        if is_draft:
-            messages.success(request, "Saved as draft.")
-        else:
-            messages.success(request, "Leave request submitted! Awaiting approval.")
-
+        messages.success(request, "Saved as draft." if is_draft else "Leave request submitted! Awaiting approval.")
         return redirect("employee_leave")
 
-    # GET view: show only current user's requests
     leave_requests = (
         LeaveRequest.objects
         .filter(employee=request.user)
@@ -763,7 +805,6 @@ def employee_leave(request):
         .order_by("-created_at")
     )
 
-    # Summary counts for the employee
     year = timezone.now().year
 
     total_count = leave_requests.count()
@@ -773,12 +814,10 @@ def employee_leave(request):
     draft_count = leave_requests.filter(status=LeaveRequest.STATUS_DRAFT).count()
     cancelled_count = leave_requests.filter(status=LeaveRequest.STATUS_CANCELLED).count()
 
-    # Calculate total leave days used this year (only APPROVED)
     def _days_within_year(start_date, end_date, year):
-        from datetime import date
-
-        yr_start = date(year, 1, 1)
-        yr_end = date(year, 12, 31)
+        from datetime import date as _date
+        yr_start = _date(year, 1, 1)
+        yr_end = _date(year, 12, 31)
         s = max(start_date, yr_start)
         e = min(end_date, yr_end)
         if e < s:
@@ -786,28 +825,23 @@ def employee_leave(request):
         return (e - s).days + 1
 
     total_leave_used = 0.0
-    approved_qs = leave_requests.filter(status=LeaveRequest.STATUS_APPROVED)
-    for lr in approved_qs:
+    for lr in leave_requests.filter(status=LeaveRequest.STATUS_APPROVED):
         days = _days_within_year(lr.start_date, lr.end_date, year)
         if lr.duration in (LeaveRequest.DURATION_HALF_AM, LeaveRequest.DURATION_HALF_PM):
             total_leave_used += 0.5 * days
         else:
             total_leave_used += days
 
-    # Calculate pending days reserved (pending requests count against available balance)
     pending_days = 0.0
-    pending_qs = leave_requests.filter(status=LeaveRequest.STATUS_PENDING)
-    for lr in pending_qs:
+    for lr in leave_requests.filter(status=LeaveRequest.STATUS_PENDING):
         days = _days_within_year(lr.start_date, lr.end_date, year)
         if lr.duration in (LeaveRequest.DURATION_HALF_AM, LeaveRequest.DURATION_HALF_PM):
             pending_days += 0.5 * days
         else:
             pending_days += days
 
-    # remaining leave (policy: 5 days per year; pending requests reserve days until approved/rejected)
     remaining_leave = max(0, 5 - int(total_leave_used + pending_days))
 
-    # Generate notifications (recent status changes)
     leave_notifications = []
     for lr in leave_requests.order_by("-reviewed_at"):
         if lr.status == LeaveRequest.STATUS_APPROVED and lr.reviewed_at:
@@ -823,9 +857,8 @@ def employee_leave(request):
             leave_notifications.append(
                 f"⏳ Your {lr.get_leave_type_display()} ({lr.start_date.strftime('%b %d')} - {lr.end_date.strftime('%b %d')}) is awaiting approval."
             )
-    leave_notifications = leave_notifications[:5]  # Limit to 5 notifications
+    leave_notifications = leave_notifications[:5]
 
-    # Generate calendar events (approved + pending leaves)
     calendar_events = []
     for lr in leave_requests.filter(status__in=[LeaveRequest.STATUS_APPROVED, LeaveRequest.STATUS_PENDING]):
         calendar_events.append({
@@ -843,13 +876,11 @@ def employee_leave(request):
             "total_leave_used": int(total_leave_used),
             "pending_leave_count": pending_count,
             "remaining_leave": remaining_leave,
-            # additional counts
             "total_requests_count": total_count,
             "approved_count": approved_count,
             "rejected_count": rejected_count,
             "draft_count": draft_count,
             "cancelled_count": cancelled_count,
-            # notifications and calendar
             "leave_notifications": leave_notifications,
             "calendar_events": calendar_events,
         },
@@ -861,7 +892,6 @@ def employee_leave(request):
 def employee_leave_cancel(request, leave_id):
     lr = get_object_or_404(LeaveRequest, id=leave_id)
 
-    # security: only owner can cancel
     if lr.employee_id != request.user.id:
         messages.error(request, "You are not allowed to cancel this request.")
         return redirect("employee_leave")
@@ -891,25 +921,23 @@ def employee_analytics(request):
 
 @login_required
 def employee_notifications(request):
-    # NOTE: your template name earlier was "employee/notification.html"
     return render(request, "employee/notification.html", {"current": "notification"})
 
 
 @login_required
 def employee_profile(request):
-    # your file is named: setting_&_profile.html
     return render(request, "employee/setting_&_profile.html", {"current": "profile"})
 
 
 # =========================
-# Helpers (Normalization)
+# Biometrics helpers (Normalization)
 # =========================
 def _norm_key(s: str) -> str:
     if s is None:
         return ""
     s = str(s)
-    s = s.replace("\ufeff", "")  # BOM
-    s = s.replace("\xa0", " ")  # NBSP
+    s = s.replace("\ufeff", "")
+    s = s.replace("\xa0", " ")
     s = s.strip().lower()
     s = re.sub(r"\s+", " ", s)
     return s
@@ -928,25 +956,14 @@ def _row_norm_dict(row: dict) -> dict:
     return out
 
 
-# =========================
-# Status + Timestamp parsing
-# =========================
 def _normalize_status(value: str) -> str:
     if not value:
         return AttendanceRecord.STATUS_UNKNOWN
 
     v = str(value).strip().upper()
 
-    checkin = {"IN", "CHECKIN", "CHECK-IN", "CHECK IN", "TIME IN", "CLOCK IN", "ENTRY"}
-    checkout = {
-        "OUT",
-        "CHECKOUT",
-        "CHECK-OUT",
-        "CHECK OUT",
-        "TIME OUT",
-        "CLOCK OUT",
-        "EXIT",
-    }
+    checkin = {"IN", "CHECKIN", "CHECK-IN", "CHECK IN", "TIME IN", "CLOCK IN", "ENTRY", "CHECK IN "}
+    checkout = {"OUT", "CHECKOUT", "CHECK-OUT", "CHECK OUT", "TIME OUT", "CLOCK OUT", "EXIT", "CHECK OUT "}
     noneish = {"NONE", "N/A", "NA", "NULL", "-", "UNKNOWN"}
 
     if v in checkin:
@@ -964,18 +981,29 @@ def _normalize_status(value: str) -> str:
     return AttendanceRecord.STATUS_UNKNOWN
 
 
+def _ensure_aware(dt: datetime) -> datetime:
+    """
+    ✅ Payroll fix: ensure timezone-awareness consistently when USE_TZ=True.
+    """
+    if not dt:
+        return dt
+    if settings.USE_TZ and timezone.is_naive(dt):
+        return timezone.make_aware(dt, timezone.get_current_timezone())
+    return dt
+
+
 def _parse_timestamp(value):
     if not value:
         return None
 
     if isinstance(value, datetime):
-        return value
+        return _ensure_aware(value)
 
     s = str(value).strip()
 
     dt = parse_datetime(s)
     if dt:
-        return dt
+        return _ensure_aware(dt)
 
     fmts = [
         "%Y-%m-%d %H:%M:%S",
@@ -989,7 +1017,7 @@ def _parse_timestamp(value):
     ]
     for f in fmts:
         try:
-            return datetime.strptime(s, f)
+            return _ensure_aware(datetime.strptime(s, f))
         except ValueError:
             continue
 
@@ -1000,9 +1028,6 @@ def _status_label(value: str) -> str:
     return dict(AttendanceRecord.ATTENDANCE_STATUS_CHOICES).get(value, value)
 
 
-# =========================
-# File readers
-# =========================
 def _read_csv(file_obj):
     raw = file_obj.read()
     encodings = ["utf-8-sig", "utf-8", "cp1252", "latin-1", "iso-8859-1"]
@@ -1026,7 +1051,6 @@ def _read_csv(file_obj):
             key = (k or "").strip()
             val = v.strip() if isinstance(v, str) else v
             cleaned[key] = val
-
         if any(str(x).strip() for x in cleaned.values() if x is not None):
             rows.append(cleaned)
 
@@ -1046,10 +1070,6 @@ def _df_to_rows(df):
 
 
 def _find_header_row_in_df(df):
-    """
-    Detail1 sometimes contains title rows above headers.
-    We search for a row containing 'Person ID' (case-insensitive).
-    """
     for i in range(len(df.index)):
         row_vals = [str(x).strip().lower() for x in df.iloc[i].tolist()]
         if "person id" in row_vals:
@@ -1058,13 +1078,6 @@ def _find_header_row_in_df(df):
 
 
 def _read_excel(file_obj, filename: str):
-    """
-    Handles:
-    - real XLSX/XLS
-    - Hikvision HTML-as-XLS:
-        Detail1 = header table
-        Detail2 = data table (may be split into multiple tables/pages)
-    """
     try:
         import pandas as pd
     except ImportError:
@@ -1074,7 +1087,7 @@ def _read_excel(file_obj, filename: str):
     raw = file_obj.read()
     head = raw[:500].lstrip().lower()
 
-    # --- HTML-as-XLS detection ---
+    # HTML-as-XLS detection (Hikvision exports sometimes)
     if (
         head.startswith(b"<html")
         or head.startswith(b"<!doctype")
@@ -1091,14 +1104,9 @@ def _read_excel(file_obj, filename: str):
         if text is None:
             raise ValueError("File looks like HTML but could not decode it.")
 
-        # Try class-based parse: Detail1 headers + ALL Detail2 tables concatenated
         try:
-            header_tables = pd.read_html(
-                io.StringIO(text), attrs={"class": "Detail1"}, header=None
-            )
-            data_tables = pd.read_html(
-                io.StringIO(text), attrs={"class": "Detail2"}, header=None
-            )
+            header_tables = pd.read_html(io.StringIO(text), attrs={"class": "Detail1"}, header=None)
+            data_tables = pd.read_html(io.StringIO(text), attrs={"class": "Detail2"}, header=None)
 
             if header_tables and data_tables:
                 df_h = header_tables[0].fillna("")
@@ -1109,35 +1117,26 @@ def _read_excel(file_obj, filename: str):
                 headers = [str(x).strip() for x in df_h.iloc[header_row_idx].tolist()]
                 headers = [h if h else f"col_{i}" for i, h in enumerate(headers)]
 
-                # concat ALL Detail2 tables
                 df_d = pd.concat([d.fillna("") for d in data_tables], ignore_index=True)
-
                 headers = headers[: len(df_d.columns)]
                 df_d.columns = headers
 
                 first_col = headers[0] if headers else None
                 if first_col:
-                    df_d = df_d[
-                        df_d[first_col].astype(str).str.strip().str.lower() != "person id"
-                    ]
+                    df_d = df_d[df_d[first_col].astype(str).str.strip().str.lower() != "person id"]
 
                 df_d = df_d.replace("", None).dropna(how="all").fillna("")
                 return _df_to_rows(df_d)
         except Exception:
             pass
 
-        # fallback: parse all tables and choose a large data-like table
         try:
             tables = pd.read_html(io.StringIO(text), header=None)
             if not tables:
                 raise ValueError("No tables found in HTML file.")
 
             candidates = [t for t in tables if t.shape[1] >= 5]
-            df_best = (
-                max(candidates, key=lambda d: d.shape[0])
-                if candidates
-                else max(tables, key=lambda d: d.shape[0])
-            )
+            df_best = max(candidates, key=lambda d: d.shape[0]) if candidates else max(tables, key=lambda d: d.shape[0])
 
             row0 = [str(x).strip().lower() for x in df_best.iloc[0].tolist()]
             if "person id" in row0 and "time" in row0:
@@ -1149,7 +1148,7 @@ def _read_excel(file_obj, filename: str):
         except Exception as e:
             raise ValueError(f"HTML-as-Excel detected but failed to parse tables: {e}")
 
-    # --- Real Excel (.xls/.xlsx) ---
+    # Real Excel
     ext = filename.lower().split(".")[-1]
     engine = "openpyxl" if ext == "xlsx" else "xlrd" if ext == "xls" else None
 
@@ -1163,10 +1162,7 @@ def _read_excel(file_obj, filename: str):
         raise ValueError(f"Error reading Excel file: {e}")
 
 
-# =========================
-# Row mapping (robust headers)
-# =========================
-def _map_row(row: dict, branch: str) -> dict:
+def _map_row(row: dict, branch_obj: Branch) -> dict:
     r = _row_norm_dict(row)
 
     employee_id = (
@@ -1185,47 +1181,41 @@ def _map_row(row: dict, branch: str) -> dict:
     ts_raw = (r.get("time") or r.get("date time") or r.get("timestamp") or "").strip()
     ts = _parse_timestamp(ts_raw)
 
-    status_raw = (
-        r.get("attendance status") or r.get("status") or r.get("event type") or ""
-    ).strip()
+    status_raw = (r.get("attendance status") or r.get("status") or r.get("event type") or "").strip()
     status = _normalize_status(status_raw)
 
     return {
         "employee_id": employee_id,
         "full_name": full_name,
         "department": department,
-        "branch": (branch or "").strip(),
+        "branch": branch_obj,
         "timestamp": ts,
         "attendance_status": status,
         "raw_row": row,
     }
 
 
-# =========================
-# Session cache helpers
-# =========================
-SESSION_KEY = "attendance_import_cache_v1"
+SESSION_KEY = "attendance_import_cache_v2"
 
 
-def _save_import_cache(request, branch: str, skip_duplicates: bool, rows: list):
+def _save_import_cache(request, branch_obj: Branch, skip_duplicates: bool, rows: list):
     cached = {
-        "branch": branch,
+        "branch_id": branch_obj.id if branch_obj else None,
         "skip_duplicates": bool(skip_duplicates),
         "rows": [],
     }
 
     for row in rows:
-        mapped = _map_row(row, branch=branch)
+        mapped = _map_row(row, branch_obj=branch_obj)
         cached["rows"].append(
             {
                 "employee_id": mapped["employee_id"],
                 "full_name": mapped["full_name"],
                 "department": mapped["department"],
-                "branch": mapped["branch"],
-                "timestamp": mapped["timestamp"].isoformat(sep=" ")
-                if mapped["timestamp"]
-                else "",
+                "branch_id": branch_obj.id if branch_obj else None,
+                "timestamp": mapped["timestamp"].isoformat(sep=" ") if mapped["timestamp"] else "",
                 "attendance_status": mapped["attendance_status"],
+                "raw_row": mapped.get("raw_row", {}),
             }
         )
 
@@ -1251,20 +1241,26 @@ def admin_biometrics_attendance(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
-    records = AttendanceRecord.objects.all().order_by("-timestamp")[:100]
+    branches_qs = _scoped_branch_queryset_for_admin(request)
+
+    records_qs = AttendanceRecord.objects.select_related("branch").all()
+    admin_branch = _get_admin_branch(request)
+    if admin_branch:
+        records_qs = records_qs.filter(branch=admin_branch)
+
+    records = records_qs.order_by("-timestamp")[:100]
 
     kpi = {
-        "present": AttendanceRecord.objects.filter(
-            attendance_status=AttendanceRecord.STATUS_CHECKIN
-        ).count(),
+        "present": records_qs.filter(attendance_status=AttendanceRecord.STATUS_CHECKIN).count(),
         "late": 0,
         "absent": 0,
-        "last_sync": AttendanceRecord.objects.order_by("-created_at")
-        .values_list("created_at", flat=True)
-        .first(),
+        "last_sync": records_qs.order_by("-created_at").values_list("created_at", flat=True).first(),
     }
 
     cache = _load_import_cache(request)
+
+    form = AttendanceImportForm()
+    _apply_branch_choices_to_form(form, branches_qs)
 
     context = {
         "current": "biometrics",
@@ -1273,10 +1269,11 @@ def admin_biometrics_attendance(request):
         "preview_rows": [],
         "import_errors": [],
         "import_summary": "",
-        "branches": Branch.objects.all().order_by("name").values_list("id", "name"),
+        "branches": branches_qs.values_list("id", "name"),
         "can_import": bool(cache and cache.get("rows")),
+        "form": form,
     }
-    return render(request, "admin/Biometrics_attendance.html", context)
+    return render(request, "admin/biometrics_attendance.html", context)
 
 
 # =========================
@@ -1288,18 +1285,22 @@ def admin_biometrics_import(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
-    form = AttendanceImportForm(request.POST, request.FILES)
+    branches_qs = _scoped_branch_queryset_for_admin(request)
 
-    records = AttendanceRecord.objects.all().order_by("-timestamp")[:100]
+    form = AttendanceImportForm(request.POST, request.FILES)
+    _apply_branch_choices_to_form(form, branches_qs)
+
+    records_qs = AttendanceRecord.objects.select_related("branch").all()
+    admin_branch = _get_admin_branch(request)
+    if admin_branch:
+        records_qs = records_qs.filter(branch=admin_branch)
+
+    records = records_qs.order_by("-timestamp")[:100]
     kpi = {
-        "present": AttendanceRecord.objects.filter(
-            attendance_status=AttendanceRecord.STATUS_CHECKIN
-        ).count(),
+        "present": records_qs.filter(attendance_status=AttendanceRecord.STATUS_CHECKIN).count(),
         "late": 0,
         "absent": 0,
-        "last_sync": AttendanceRecord.objects.order_by("-created_at")
-        .values_list("created_at", flat=True)
-        .first(),
+        "last_sync": records_qs.order_by("-created_at").values_list("created_at", flat=True).first(),
     }
 
     context = {
@@ -1309,11 +1310,12 @@ def admin_biometrics_import(request):
         "preview_rows": [],
         "import_errors": [],
         "import_summary": "",
-        "branches": Branch.objects.all().order_by("name").values_list("id", "name"),
+        "branches": branches_qs.values_list("id", "name"),
         "can_import": False,
+        "form": form,
     }
 
-    action = request.POST.get("action", "validate")
+    action = (request.POST.get("action") or "validate").strip().lower()
 
     if not form.is_valid():
         context["import_errors"] = []
@@ -1321,46 +1323,46 @@ def admin_biometrics_import(request):
             for e in errs:
                 context["import_errors"].append(f"{field}: {e}")
         if not context["import_errors"]:
-            context["import_errors"] = [
-                "File upload failed. Please choose a valid CSV/Excel file."
-            ]
-        return render(request, "admin/Biometrics_attendance.html", context)
+            context["import_errors"] = ["File upload failed. Please choose a valid CSV/Excel file."]
+        return render(request, "admin/biometrics_attendance.html", context)
 
-    upload = form.cleaned_data.get("file") or form.cleaned_data.get("csv_file")
+    upload = form.cleaned_data.get("file")
     skip_duplicates = form.cleaned_data.get("skip_duplicates", True)
 
     branch_obj = form.cleaned_data.get("branch")
-    branch_name = ""
 
-    if hasattr(branch_obj, "name"):
-        branch_name = branch_obj.name
-    else:
-        branch_id = str(branch_obj or "").strip()
-        if branch_id:
-            b = Branch.objects.filter(id=branch_id).only("name").first()
-            branch_name = b.name if b else ""
+    if branch_obj and not isinstance(branch_obj, Branch):
+        branch_obj = _get_branch_from_post(request, branches_qs)
 
-    if not branch_name:
-        context["import_errors"] = ["Invalid branch selected. Please choose a branch."]
-        return render(request, "admin/Biometrics_attendance.html", context)
+    if not branch_obj:
+        context["import_errors"] = ["Invalid branch selected. Please choose a valid branch."]
+        return render(request, "admin/biometrics_attendance.html", context)
 
     rows = None
+    is_cached_mapped = False
 
     if action == "import" and not upload:
         cache = _load_import_cache(request)
         if not cache or not cache.get("rows"):
-            context["import_errors"] = [
-                "No validated data found. Please upload and Validate first."
-            ]
-            return render(request, "admin/Biometrics_attendance.html", context)
+            context["import_errors"] = ["No validated data found. Please upload and Validate first."]
+            return render(request, "admin/biometrics_attendance.html", context)
 
-        branch_name = cache.get("branch") or branch_name
+        cached_branch_id = cache.get("branch_id")
+        if cached_branch_id:
+            cached_branch = branches_qs.filter(id=cached_branch_id).first()
+            if not cached_branch:
+                context["import_errors"] = ["Cached branch is not allowed. Please validate again."]
+                _clear_import_cache(request)
+                return render(request, "admin/biometrics_attendance.html", context)
+            branch_obj = cached_branch
+
         skip_duplicates = cache.get("skip_duplicates", skip_duplicates)
         rows = cache["rows"]
+        is_cached_mapped = True
     else:
         if not upload:
             context["import_errors"] = ["No file received. Please select a file to upload."]
-            return render(request, "admin/Biometrics_attendance.html", context)
+            return render(request, "admin/biometrics_attendance.html", context)
 
         filename = (upload.name or "").lower().strip()
 
@@ -1374,23 +1376,14 @@ def admin_biometrics_import(request):
                 raise ValueError("Unsupported file type. Upload .csv, .xls, or .xlsx")
         except Exception as e:
             context["import_errors"] = [str(e)]
-            return render(request, "admin/Biometrics_attendance.html", context)
+            return render(request, "admin/biometrics_attendance.html", context)
 
         if not rows:
             context["import_errors"] = ["File is empty or has no data rows."]
-            return render(request, "admin/Biometrics_attendance.html", context)
+            return render(request, "admin/biometrics_attendance.html", context)
 
     preview = []
     validation_errors = []
-
-    is_cached_mapped = (
-        rows
-        and isinstance(rows[0], dict)
-        and "employee_id" in rows[0]
-        and "timestamp" in rows[0]
-        and "attendance_status" in rows[0]
-        and (action == "import" and not upload)
-    )
 
     if is_cached_mapped:
         for idx, r in enumerate(rows[:20], start=2):
@@ -1410,7 +1403,7 @@ def admin_biometrics_import(request):
                     "employee_id": employee_id or "—",
                     "full_name": (r.get("full_name") or "").strip() or "—",
                     "department": (r.get("department") or "").strip() or "—",
-                    "branch": (r.get("branch") or branch_name or "").strip() or "—",
+                    "branch": branch_obj.name if branch_obj else "—",
                     "timestamp": ts or "—",
                     "attendance_status": _status_label(r.get("attendance_status")),
                     "status": "valid" if is_valid else "invalid",
@@ -1420,7 +1413,7 @@ def admin_biometrics_import(request):
     else:
         meaningful = 0
         for idx, row in enumerate(rows, start=2):
-            mapped = _map_row(row, branch=branch_name)
+            mapped = _map_row(row, branch_obj=branch_obj)
 
             if (
                 not mapped["employee_id"]
@@ -1444,7 +1437,7 @@ def admin_biometrics_import(request):
                         "employee_id": mapped["employee_id"] or "—",
                         "full_name": mapped["full_name"] or "—",
                         "department": mapped["department"] or "—",
-                        "branch": mapped["branch"] or "—",
+                        "branch": branch_obj.name if branch_obj else "—",
                         "timestamp": mapped["timestamp"] or "—",
                         "attendance_status": _status_label(mapped["attendance_status"]),
                         "status": "valid" if is_valid else "invalid",
@@ -1464,21 +1457,19 @@ def admin_biometrics_import(request):
     if action == "validate":
         if validation_errors:
             context["import_errors"] = validation_errors[:10]
-            context["import_summary"] = (
-                f"Validation detected {len(validation_errors)} error(s). Fix and try again."
-            )
+            context["import_summary"] = f"Validation detected {len(validation_errors)} error(s). Fix and try again."
             _clear_import_cache(request)
             context["can_import"] = False
-            return render(request, "admin/Biometrics_attendance.html", context)
+            return render(request, "admin/biometrics_attendance.html", context)
 
-        _save_import_cache(request, branch=branch_name, skip_duplicates=skip_duplicates, rows=rows)
+        _save_import_cache(request, branch_obj=branch_obj, skip_duplicates=skip_duplicates, rows=rows)
         context["import_summary"] = f"✓ Validation passed! {len(rows)} row(s) ready to import."
         context["can_import"] = True
-        return render(request, "admin/Biometrics_attendance.html", context)
+        return render(request, "admin/biometrics_attendance.html", context)
 
     if action != "import":
         context["import_errors"] = ["Invalid action."]
-        return render(request, "admin/Biometrics_attendance.html", context)
+        return render(request, "admin/biometrics_attendance.html", context)
 
     created = 0
     skipped = 0
@@ -1496,19 +1487,18 @@ def admin_biometrics_import(request):
                         failed += 1
                         continue
 
-                    mapped = {
-                        "employee_id": employee_id,
-                        "full_name": (r.get("full_name") or "").strip(),
-                        "department": (r.get("department") or "").strip(),
-                        "branch": (r.get("branch") or branch_name or "").strip(),
-                        "timestamp": ts,
-                        "attendance_status": r.get("attendance_status")
-                        or AttendanceRecord.STATUS_UNKNOWN,
-                        "raw_row": r,
-                    }
+                    attendance_status = r.get("attendance_status") or AttendanceRecord.STATUS_UNKNOWN
 
                     try:
-                        AttendanceRecord.objects.create(**mapped)
+                        AttendanceRecord.objects.create(
+                            employee_id=employee_id,
+                            full_name=(r.get("full_name") or "").strip(),
+                            department=(r.get("department") or "").strip(),
+                            branch=branch_obj,
+                            timestamp=ts,
+                            attendance_status=attendance_status,
+                            raw_row=r.get("raw_row", r),
+                        )
                         created += 1
                     except IntegrityError:
                         if skip_duplicates:
@@ -1521,7 +1511,7 @@ def admin_biometrics_import(request):
                         import_errors.append(f"Row {idx}: {e}")
             else:
                 for idx, row in enumerate(rows, start=2):
-                    mapped = _map_row(row, branch=branch_name)
+                    mapped = _map_row(row, branch_obj=branch_obj)
 
                     if (
                         not mapped["employee_id"]
@@ -1550,26 +1540,24 @@ def admin_biometrics_import(request):
 
     except Exception as e:
         context["import_errors"] = [f"Import failed: {e}"]
-        return render(request, "admin/Biometrics_attendance.html", context)
+        return render(request, "admin/biometrics_attendance.html", context)
 
     _clear_import_cache(request)
 
-    context["import_summary"] = (
-        f"✓ Import complete: {created} created | {skipped} skipped | {failed} failed"
-    )
+    context["import_summary"] = f"✓ Import complete: {created} created | {skipped} skipped | {failed} failed"
     if import_errors:
         context["import_errors"] = import_errors[:10]
 
-    context["records"] = AttendanceRecord.objects.all().order_by("-timestamp")[:100]
-    context["kpi"]["present"] = AttendanceRecord.objects.filter(
-        attendance_status=AttendanceRecord.STATUS_CHECKIN
-    ).count()
-    context["kpi"]["last_sync"] = AttendanceRecord.objects.order_by("-created_at").values_list(
-        "created_at", flat=True
-    ).first()
+    records_qs2 = AttendanceRecord.objects.select_related("branch").all()
+    if admin_branch:
+        records_qs2 = records_qs2.filter(branch=admin_branch)
+
+    context["records"] = records_qs2.order_by("-timestamp")[:100]
+    context["kpi"]["present"] = records_qs2.filter(attendance_status=AttendanceRecord.STATUS_CHECKIN).count()
+    context["kpi"]["last_sync"] = records_qs2.order_by("-created_at").values_list("created_at", flat=True).first()
     context["can_import"] = False
 
-    return render(request, "admin/Biometrics_attendance.html", context)
+    return render(request, "admin/biometrics_attendance.html", context)
 
 
 # =========================
@@ -1593,39 +1581,33 @@ def admin_biometrics_export(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
-    records = AttendanceRecord.objects.all().order_by("-timestamp")
+    qs = AttendanceRecord.objects.select_related("branch").all().order_by("-timestamp")
 
     employee_id = request.GET.get("employee_id", "").strip()
     branch = request.GET.get("branch", "").strip()
 
     if employee_id:
-        records = records.filter(employee_id__icontains=employee_id)
+        qs = qs.filter(employee_id__icontains=employee_id)
+
     if branch:
-        records = records.filter(branch=branch)
+        if str(branch).isdigit():
+            qs = qs.filter(branch_id=int(branch))
+        else:
+            qs = qs.filter(branch__name__icontains=branch)
 
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = 'attachment; filename="attendance_export.csv"'
 
     writer = csv.writer(response)
-    writer.writerow(
-        [
-            "Person ID",
-            "Name",
-            "Department",
-            "Branch",
-            "Time",
-            "Attendance Status",
-            "Created At",
-        ]
-    )
+    writer.writerow(["Person ID", "Name", "Department", "Branch", "Time", "Attendance Status", "Created At"])
 
-    for rec in records:
+    for rec in qs:
         writer.writerow(
             [
                 rec.employee_id,
                 rec.full_name,
                 rec.department,
-                rec.branch,
+                rec.branch.name if rec.branch else "",
                 rec.timestamp.strftime("%Y-%m-%d %H:%M:%S") if rec.timestamp else "",
                 _status_label(rec.attendance_status),
                 rec.created_at.strftime("%Y-%m-%d %H:%M:%S") if rec.created_at else "",
@@ -1643,7 +1625,7 @@ def attendance_list(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
-    records = AttendanceRecord.objects.all().order_by("-timestamp")
+    records = AttendanceRecord.objects.select_related("branch").all().order_by("-timestamp")
 
     page = int(request.GET.get("page", 1))
     per_page = 50
@@ -1668,10 +1650,8 @@ def attendance_detail(request, pk):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
-    obj = get_object_or_404(AttendanceRecord, pk=pk)
-    return render(
-        request, "admin/attendance_detail.html", {"current": "biometrics", "obj": obj}
-    )
+    obj = get_object_or_404(AttendanceRecord.objects.select_related("branch"), pk=pk)
+    return render(request, "admin/attendance_detail.html", {"current": "biometrics", "obj": obj})
 
 
 @login_required
@@ -1679,14 +1659,25 @@ def attendance_create(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
+    branches_qs = _scoped_branch_queryset_for_admin(request)
+
     if request.method == "POST":
         form = AttendanceRecordForm(request.POST)
+        _apply_branch_choices_to_form(form, branches_qs)
+
         if form.is_valid():
-            form.save()
+            obj = form.save(commit=False)
+
+            admin_branch = _get_admin_branch(request)
+            if admin_branch:
+                obj.branch = admin_branch
+
+            obj.save()
             messages.success(request, "Record created successfully!")
             return redirect("admin_biometrics")
     else:
         form = AttendanceRecordForm()
+        _apply_branch_choices_to_form(form, branches_qs)
 
     return render(
         request,
@@ -1705,16 +1696,31 @@ def attendance_update(request, pk):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
-    obj = get_object_or_404(AttendanceRecord, pk=pk)
+    branches_qs = _scoped_branch_queryset_for_admin(request)
+
+    obj = get_object_or_404(AttendanceRecord.objects.select_related("branch"), pk=pk)
+
+    admin_branch = _get_admin_branch(request)
+    if admin_branch and obj.branch_id != admin_branch.id:
+        messages.error(request, "You can only edit attendance records in your branch.")
+        return redirect("admin_biometrics")
 
     if request.method == "POST":
         form = AttendanceRecordForm(request.POST, instance=obj)
+        _apply_branch_choices_to_form(form, branches_qs)
+
         if form.is_valid():
-            form.save()
+            edited = form.save(commit=False)
+
+            if admin_branch:
+                edited.branch = admin_branch
+
+            edited.save()
             messages.success(request, "Record updated successfully!")
             return redirect("admin_biometrics")
     else:
         form = AttendanceRecordForm(instance=obj)
+        _apply_branch_choices_to_form(form, branches_qs)
 
     return render(
         request,
@@ -1734,7 +1740,12 @@ def attendance_delete(request, pk):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
-    obj = get_object_or_404(AttendanceRecord, pk=pk)
+    obj = get_object_or_404(AttendanceRecord.objects.select_related("branch"), pk=pk)
+
+    admin_branch = _get_admin_branch(request)
+    if admin_branch and obj.branch_id != admin_branch.id:
+        messages.error(request, "You can only delete attendance records in your branch.")
+        return redirect("admin_biometrics")
 
     if request.method == "POST":
         obj.delete()
@@ -1749,3 +1760,590 @@ def attendance_delete(request, pk):
             "obj": obj,
         },
     )
+
+
+#==============================================================
+# -------------------------
+# Payroll helpers
+# -------------------------
+def _time_to_dt(d: date, t: time):
+    return datetime.combine(d, t)
+
+
+def _daterange(d1: date, d2: date):
+    cur = d1
+    while cur <= d2:
+        yield cur
+        cur += timedelta(days=1)
+
+
+def _get_or_create_rules(branch: Branch) -> PayrollRule:
+    rules, _ = PayrollRule.objects.get_or_create(branch=branch)
+    return rules
+
+
+def _get_or_create_contrib(profile: UserProfile) -> EmployeeContribution:
+    contrib, _ = EmployeeContribution.objects.get_or_create(profile=profile)
+    return contrib
+
+
+def _scoped_branch_for_admin_or_404(request, branch_id: int | None):
+    """
+    staff admin -> only their branch
+    superuser -> any branch
+    """
+    if request.user.is_superuser:
+        if branch_id:
+            return Branch.objects.filter(id=branch_id).first()
+        return None
+
+    try:
+        b = request.user.profile.branch
+    except UserProfile.DoesNotExist:
+        return None
+
+    if branch_id and b and int(branch_id) != b.id:
+        return None
+    return b
+
+
+def _attendance_summary_for_period(employee_id: str, branch: Branch, period: PayrollPeriod, rules: PayrollRule):
+    """
+    ✅ FIXED: avoids naive vs aware datetime comparisons.
+    """
+    start, end = period.start_date, period.end_date
+
+    qs = AttendanceRecord.objects.filter(
+        branch=branch,
+        employee_id=employee_id,
+        timestamp__date__gte=start,
+        timestamp__date__lte=end,
+    ).order_by("timestamp")
+
+    by_day = {}
+    for rec in qs:
+        d = rec.timestamp.date()
+        by_day.setdefault(d, {"ins": [], "outs": []})
+        if rec.attendance_status == AttendanceRecord.STATUS_CHECKIN:
+            by_day[d]["ins"].append(rec.timestamp)
+        elif rec.attendance_status == AttendanceRecord.STATUS_CHECKOUT:
+            by_day[d]["outs"].append(rec.timestamp)
+
+    days_present = 0
+    days_absent = 0
+    late_minutes_total = 0
+    undertime_minutes_total = 0
+    has_missing_logs = False
+
+    grace = int(rules.grace_minutes_normal or 0)
+
+    # cutoff time (work_start + grace)
+    start_limit_time = (datetime.combine(date.today(), rules.work_start_time) + timedelta(minutes=grace)).time()
+
+    tz = timezone.get_current_timezone() if settings.USE_TZ else None
+
+    for d in _daterange(start, end):
+        logs = by_day.get(d)
+        if not logs or (not logs["ins"] and not logs["outs"]):
+            days_absent += 1
+            continue
+
+        if logs["ins"]:
+            days_present += 1
+        else:
+            has_missing_logs = True
+
+        if logs["ins"] and not logs["outs"]:
+            has_missing_logs = True
+        if logs["outs"] and not logs["ins"]:
+            has_missing_logs = True
+
+        # Late calc
+        if logs["ins"]:
+            first_in = min(logs["ins"])  # may be aware
+            cutoff_dt = datetime.combine(d, start_limit_time)
+            if settings.USE_TZ:
+                cutoff_dt = timezone.make_aware(cutoff_dt, tz) if timezone.is_naive(cutoff_dt) else cutoff_dt
+                first_in = _ensure_aware(first_in)
+
+            if first_in > cutoff_dt:
+                late_minutes_total += int((first_in - cutoff_dt).total_seconds() // 60)
+
+        # Undertime calc
+        if logs["outs"]:
+            last_out = max(logs["outs"])
+            end_dt = datetime.combine(d, rules.work_end_time)
+            if settings.USE_TZ:
+                end_dt = timezone.make_aware(end_dt, tz) if timezone.is_naive(end_dt) else end_dt
+                last_out = _ensure_aware(last_out)
+
+            if last_out < end_dt:
+                undertime_minutes_total += int((end_dt - last_out).total_seconds() // 60)
+
+    return {
+        "days_present": days_present,
+        "days_absent": days_absent,
+        "total_late_minutes": late_minutes_total,
+        "total_undertime_minutes": undertime_minutes_total,
+        "has_missing_logs": has_missing_logs,
+        "by_day": by_day,
+    }
+
+
+def _is_holiday_for(branch: Branch, d: date):
+    """
+    ✅ FIXED: uses Q() not models.Q()
+    """
+    qs = HolidaySuspension.objects.filter(date=d).filter(
+        Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
+        | Q(scope=HolidaySuspension.SCOPE_REGION)
+        | Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=branch)
+    )
+    return qs.first()
+
+
+def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod, rules: PayrollRule):
+    contrib = _get_or_create_contrib(profile)
+
+    candidate_ids = [str(profile.user.username), str(profile.user.id)]
+    picked_id = candidate_ids[0]
+    if not AttendanceRecord.objects.filter(branch=branch, employee_id=picked_id).exists():
+        picked_id = candidate_ids[1]
+
+    summary = _attendance_summary_for_period(picked_id, branch, period, rules)
+
+    days_present = summary["days_present"]
+    days_absent = summary["days_absent"]
+    late_minutes = summary["total_late_minutes"]
+    undertime_minutes = summary["total_undertime_minutes"]
+    has_missing_logs = summary["has_missing_logs"]
+
+    base = Decimal("0.00")
+    absences = days_absent
+
+    if profile.employment_type == UserProfile.EMP_JO:
+        base = (Decimal(profile.daily_rate or 0) * Decimal(days_present))
+    else:
+        ms = Decimal(profile.monthly_salary or 0)
+        if period.pay_mode == PayrollPeriod.PAY_MONTHLY:
+            base = ms
+        else:
+            base = (ms / Decimal("2.0"))
+
+    premium = Decimal("0.00")
+    if profile.has_premium and base > 0:
+        premium = (base * (Decimal(rules.premium_rate_percent or 0) / Decimal("100")))
+
+    overtime_pay = Decimal("0.00")
+
+    late_pen = (Decimal(rules.late_penalty_per_minute or 0) * Decimal(late_minutes))
+    under_pen = (Decimal(rules.undertime_penalty_per_minute or 0) * Decimal(undertime_minutes))
+
+    sss = Decimal(contrib.sss_amount or 0)
+    pagibig = Decimal(contrib.pagibig_amount or 0)
+    if contrib.philhealth_mode == EmployeeContribution.PHILHEALTH_FIXED:
+        philhealth = Decimal(contrib.philhealth_value or 0)
+    else:
+        philhealth = (base * (Decimal(contrib.philhealth_value or 0) / Decimal("100")))
+
+    gov_total = sss + pagibig + philhealth
+
+    gross = base + premium + overtime_pay
+
+    tax = Decimal("0.00")
+    if gross > 0:
+        tax = gross * (Decimal(rules.tax_rate_percent or 0) / Decimal("100"))
+
+    deductions_total = late_pen + under_pen + gov_total + tax
+
+    net = gross - deductions_total
+    if net < 0:
+        net = Decimal("0.00")
+
+    issues = []
+    if has_missing_logs:
+        issues.append("Missing logs")
+    if rules.lunch_break_required:
+        issues.append("Lunch logs not tracked")
+
+    return {
+        "attendance_summary": summary,
+        "computed_payroll": {
+            "base": base,
+            "premium": premium,
+            "ot": overtime_pay,
+            "late_minutes": late_minutes,
+            "undertime_minutes": undertime_minutes,
+            "absences": absences,
+            "deductions": deductions_total,
+            "net": net,
+        },
+        "gov": {
+            "sss": sss,
+            "pagibig": pagibig,
+            "philhealth": philhealth,
+            "tax": tax,
+            "gov_total": gov_total,
+        },
+        "issues": ", ".join([x for x in issues if x]),
+        "picked_employee_id": picked_id,
+    }
+
+
+# -------------------------
+# Admin payroll page (REAL context)
+# -------------------------
+@login_required
+def admin_payroll(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return redirect("login_ui")
+
+    selected_branch = request.GET.get("branch")
+    branch_obj = _scoped_branch_for_admin_or_404(request, selected_branch)
+    if not request.user.is_superuser and not branch_obj:
+        messages.error(request, "Admin has no branch assigned.")
+        return redirect("admin_dashboard")
+
+    if request.user.is_superuser:
+        branches = Branch.objects.all().order_by("name")
+    else:
+        branches = Branch.objects.filter(id=branch_obj.id).order_by("name")
+
+    payroll_periods = PayrollPeriod.objects.all().order_by("-start_date")[:24]
+    selected_period = request.GET.get("period")
+    period_obj = None
+    if selected_period and str(selected_period).isdigit():
+        period_obj = PayrollPeriod.objects.filter(id=int(selected_period)).first()
+    if not period_obj:
+        period_obj = payroll_periods.first()
+
+    if request.user.is_superuser and not branch_obj:
+        branch_obj = branches.first()
+
+    payroll_rules = _get_or_create_rules(branch_obj) if branch_obj else None
+
+    holidays = HolidaySuspension.objects.all().order_by("-date")[:50]
+    if branch_obj:
+        holidays = HolidaySuspension.objects.filter(
+            Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
+            | Q(scope=HolidaySuspension.SCOPE_REGION)
+            | Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=branch_obj)
+        ).order_by("-date")[:50]
+
+    payroll_batches = PayrollBatch.objects.all().order_by("-created_at")[:20]
+    if branch_obj:
+        payroll_batches = PayrollBatch.objects.filter(branch=branch_obj).order_by("-created_at")[:20]
+
+    prof_qs = UserProfile.objects.select_related("user", "branch").filter(is_approved=True)
+    if branch_obj:
+        prof_qs = prof_qs.filter(branch=branch_obj)
+
+    type_filter = (request.GET.get("type") or "ALL").upper()
+    if type_filter in ("JO", "COS"):
+        prof_qs = prof_qs.filter(employment_type=type_filter)
+
+    employees = []
+    total_payroll = Decimal("0.00")
+    attendance_deductions = Decimal("0.00")
+    gov_contributions = Decimal("0.00")
+
+    if branch_obj and period_obj and payroll_rules:
+        for prof in prof_qs.order_by("user__username"):
+            result = _compute_payroll(prof, branch_obj, period_obj, payroll_rules)
+
+            total_payroll += result["computed_payroll"]["net"]
+            attendance_deductions += (
+                Decimal(payroll_rules.late_penalty_per_minute or 0) * Decimal(result["computed_payroll"]["late_minutes"])
+                + Decimal(payroll_rules.undertime_penalty_per_minute or 0) * Decimal(result["computed_payroll"]["undertime_minutes"])
+            )
+            gov_contributions += result["gov"]["gov_total"]
+
+            employees.append({
+                "id": prof.id,
+                "name": (prof.user.get_full_name() or prof.user.username),
+                "position": prof.position or "—",
+                "employment_type": prof.employment_type,
+                "branch_name": prof.branch.name if prof.branch else "—",
+                "attendance_summary": {
+                    "days_present": result["attendance_summary"]["days_present"],
+                    "days_absent": result["attendance_summary"]["days_absent"],
+                    "total_late_minutes": result["attendance_summary"]["total_late_minutes"],
+                    "total_undertime_minutes": result["attendance_summary"]["total_undertime_minutes"],
+                    "has_missing_logs": result["attendance_summary"]["has_missing_logs"],
+                },
+                "computed_payroll": {
+                    "net": f"{result['computed_payroll']['net']:.2f}",
+                },
+                "sss_amount": f"{result['gov']['sss']:.2f}",
+                "pagibig_amount": f"{result['gov']['pagibig']:.2f}",
+                "philhealth_value": f"{result['gov']['philhealth']:.2f}",
+                "philhealth_mode": "fixed",
+                "has_premium": prof.has_premium,
+            })
+
+    pending_approval = Decimal("0.00")
+    if branch_obj and period_obj:
+        draft = PayrollBatch.objects.filter(branch=branch_obj, period=period_obj, status=PayrollBatch.STATUS_DRAFT).first()
+        if draft:
+            pending_approval = draft.totals_net or 0
+
+    context = {
+        "current": "payroll",
+        "branches": branches,
+        "selected_branch": branch_obj.id if branch_obj else None,
+        "payroll_periods": payroll_periods,
+        "selected_period": period_obj.id if period_obj else None,
+        "payroll_rules": payroll_rules,
+
+        "employees": employees,
+
+        "holidays": holidays,
+        "payroll_batches": payroll_batches,
+
+        "total_payroll": total_payroll,
+        "pending_approval": pending_approval,
+        "attendance_deductions": attendance_deductions,
+        "gov_contributions": gov_contributions,
+    }
+    return render(request, "admin/payroll.html", context)
+
+
+# -------------------------
+# Payroll Preview API (JSON)
+# -------------------------
+@login_required
+def admin_payroll_preview_api(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
+
+    branch_id = request.GET.get("branch")
+    period_id = request.GET.get("period")
+    emp_type = (request.GET.get("type") or "ALL").upper()
+
+    branch_obj = _scoped_branch_for_admin_or_404(request, branch_id)
+    if not branch_obj:
+        return JsonResponse({"ok": False, "error": "Invalid/unauthorized branch"}, status=400)
+
+    period = PayrollPeriod.objects.filter(id=period_id).first() if str(period_id).isdigit() else PayrollPeriod.objects.first()
+    if not period:
+        return JsonResponse({"ok": False, "error": "No payroll period found"}, status=400)
+
+    rules = _get_or_create_rules(branch_obj)
+
+    prof_qs = UserProfile.objects.select_related("user", "branch").filter(is_approved=True, branch=branch_obj)
+    if emp_type in ("JO", "COS"):
+        prof_qs = prof_qs.filter(employment_type=emp_type)
+
+    rows = []
+    total_net = Decimal("0.00")
+
+    for prof in prof_qs.order_by("user__username"):
+        res = _compute_payroll(prof, branch_obj, period, rules)
+        p = res["computed_payroll"]
+
+        row = {
+            "name": prof.user.get_full_name() or prof.user.username,
+            "type": prof.employment_type,
+            "base": float(p["base"]),
+            "premium": float(p["premium"]),
+            "ot": float(p["ot"]),
+            "late": int(p["late_minutes"]),
+            "undertime": int(p["undertime_minutes"]),
+            "absences": int(p["absences"]),
+            "deductions": float(p["deductions"]),
+            "net": float(p["net"]),
+            "issues": res["issues"],
+        }
+        total_net += p["net"]
+        rows.append(row)
+
+    return JsonResponse({
+        "ok": True,
+        "period": {"id": period.id, "name": period.name},
+        "branch": {"id": branch_obj.id, "name": branch_obj.name},
+        "employees": rows,
+        "total_employees": len(rows),
+        "total_net": float(total_net),
+    })
+
+
+# -------------------------
+# DTR API (JSON)
+# -------------------------
+@login_required
+def admin_employee_dtr_api(request, profile_id: int):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
+
+    period_id = request.GET.get("period")
+    period = PayrollPeriod.objects.filter(id=period_id).first() if str(period_id).isdigit() else PayrollPeriod.objects.first()
+    if not period:
+        return JsonResponse({"ok": False, "error": "No payroll period found"}, status=400)
+
+    prof = UserProfile.objects.select_related("user", "branch").filter(id=profile_id).first()
+    if not prof or not prof.branch:
+        return JsonResponse({"ok": False, "error": "Profile not found"}, status=404)
+
+    branch_obj = _scoped_branch_for_admin_or_404(request, prof.branch_id)
+    if not branch_obj:
+        return JsonResponse({"ok": False, "error": "Unauthorized branch"}, status=403)
+
+    rules = _get_or_create_rules(branch_obj)
+
+    candidate_ids = [str(prof.user.username), str(prof.user.id)]
+    picked_id = candidate_ids[0]
+    if not AttendanceRecord.objects.filter(branch=branch_obj, employee_id=picked_id).exists():
+        picked_id = candidate_ids[1]
+
+    summ = _attendance_summary_for_period(picked_id, branch_obj, period, rules)
+    by_day = summ["by_day"]
+
+    tz = timezone.get_current_timezone() if settings.USE_TZ else None
+
+    out = []
+    for d in _daterange(period.start_date, period.end_date):
+        logs = by_day.get(d, {"ins": [], "outs": []})
+        time_in = min(logs["ins"]).strftime("%H:%M") if logs["ins"] else ""
+        time_out = max(logs["outs"]).strftime("%H:%M") if logs["outs"] else ""
+
+        late = 0
+        undertime = 0
+        status = "Absent"
+
+        if logs["ins"] or logs["outs"]:
+            status = "Present"
+        if logs["ins"] and not logs["outs"]:
+            status = "Missing Out"
+        if logs["outs"] and not logs["ins"]:
+            status = "Missing In"
+
+        grace = int(rules.grace_minutes_normal or 0)
+        cutoff_time = (datetime.combine(date.today(), rules.work_start_time) + timedelta(minutes=grace)).time()
+        cutoff_dt = datetime.combine(d, cutoff_time)
+        if settings.USE_TZ:
+            cutoff_dt = timezone.make_aware(cutoff_dt, tz) if timezone.is_naive(cutoff_dt) else cutoff_dt
+
+        if logs["ins"]:
+            first_in = _ensure_aware(min(logs["ins"]))
+            if first_in > cutoff_dt:
+                late = int((first_in - cutoff_dt).total_seconds() // 60)
+
+        end_dt = datetime.combine(d, rules.work_end_time)
+        if settings.USE_TZ:
+            end_dt = timezone.make_aware(end_dt, tz) if timezone.is_naive(end_dt) else end_dt
+
+        if logs["outs"]:
+            last_out = _ensure_aware(max(logs["outs"]))
+            if last_out < end_dt:
+                undertime = int((end_dt - last_out).total_seconds() // 60)
+
+        total_hours = ""
+        if logs["ins"] and logs["outs"]:
+            delta = (_ensure_aware(max(logs["outs"])) - _ensure_aware(min(logs["ins"])))
+            total_hours = round(delta.total_seconds() / 3600, 2)
+
+        out.append({
+            "date": d.strftime("%Y-%m-%d"),
+            "day": d.strftime("%a"),
+            "timeIn": time_in,
+            "timeOut": time_out,
+            "lunchIn": "",
+            "lunchOut": "",
+            "totalHours": total_hours,
+            "late": late,
+            "undertime": undertime,
+            "status": status,
+        })
+
+    return JsonResponse({
+        "ok": True,
+        "employee": {"id": prof.id, "name": prof.user.get_full_name() or prof.user.username},
+        "branch": {"id": branch_obj.id, "name": branch_obj.name},
+        "period": {"id": period.id, "name": period.name},
+        "rows": out,
+    })
+
+
+# -------------------------
+# Process / Create Payroll Batch (Approve & Process)
+# -------------------------
+@login_required
+@require_POST
+def admin_payroll_process_batch(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
+
+    branch_id = request.POST.get("branch")
+    period_id = request.POST.get("period")
+    emp_type = (request.POST.get("type") or "ALL").upper()
+
+    branch_obj = _scoped_branch_for_admin_or_404(request, branch_id)
+    if not branch_obj:
+        return JsonResponse({"ok": False, "error": "Invalid/unauthorized branch"}, status=400)
+
+    period = PayrollPeriod.objects.filter(id=period_id).first() if str(period_id).isdigit() else None
+    if not period:
+        return JsonResponse({"ok": False, "error": "Invalid payroll period"}, status=400)
+
+    rules = _get_or_create_rules(branch_obj)
+
+    prof_qs = UserProfile.objects.select_related("user", "branch").filter(is_approved=True, branch=branch_obj)
+    if emp_type in ("JO", "COS"):
+        prof_qs = prof_qs.filter(employment_type=emp_type)
+
+    batch, created = PayrollBatch.objects.get_or_create(
+        branch=branch_obj,
+        period=period,
+        defaults={
+            "name": f"Payroll {branch_obj.name} - {period.name}",
+            "status": PayrollBatch.STATUS_DRAFT,
+        }
+    )
+
+    PayrollItem.objects.filter(batch=batch).delete()
+
+    totals_net = Decimal("0.00")
+    totals_deductions = Decimal("0.00")
+
+    with transaction.atomic():
+        for prof in prof_qs.order_by("user__username"):
+            res = _compute_payroll(prof, branch_obj, period, rules)
+            p = res["computed_payroll"]
+            gov_total = res["gov"]["gov_total"]
+            tax_total = res["gov"]["tax"]
+
+            item = PayrollItem.objects.create(
+                batch=batch,
+                profile=prof,
+                base_pay=p["base"],
+                premium_pay=p["premium"],
+                overtime_pay=p["ot"],
+                late_minutes=p["late_minutes"],
+                undertime_minutes=p["undertime_minutes"],
+                absences=p["absences"],
+                deductions_total=p["deductions"],
+                gov_contributions_total=gov_total,
+                tax_total=tax_total,
+                net_pay=p["net"],
+                issues=res["issues"],
+                meta={
+                    "period": {"start": str(period.start_date), "end": str(period.end_date)},
+                    "employee_id_used": res["picked_employee_id"],
+                }
+            )
+
+            totals_net += item.net_pay
+            totals_deductions += item.deductions_total
+
+        batch.totals_net = totals_net
+        batch.totals_deductions = totals_deductions
+        batch.status = PayrollBatch.STATUS_COMPLETED
+        batch.processed_by = request.user
+        batch.processed_at = timezone.now()
+        batch.save()
+
+    return JsonResponse({
+        "ok": True,
+        "batch": {"id": batch.id, "name": batch.name, "status": batch.status},
+        "totals": {"net": float(totals_net), "deductions": float(totals_deductions)},
+    })

@@ -4,6 +4,7 @@
 {% block content %}
 <div class="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8" data-can-import="{{ can_import|yesno:'1,0' }}">
 
+  <!-- Header -->
   <div class="mb-8">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
@@ -57,7 +58,10 @@
     </div>
   </div>
 
+  <!-- Main Layout -->
   <div class="lg:grid lg:grid-cols-3 lg:gap-8">
+
+    <!-- LEFT (2 cols) -->
     <div class="lg:col-span-2">
 
       <!-- Import Panel -->
@@ -67,7 +71,11 @@
           <p class="mt-1 text-sm text-gray-600">Upload .csv, .xls, or .xlsx from your exporter.</p>
         </div>
 
-        <form id="importForm" method="post" enctype="multipart/form-data" action="{% url 'admin_biometrics_import' %}" class="px-6 py-5">
+        <form id="importForm"
+              method="post"
+              enctype="multipart/form-data"
+              action="{% url 'admin_biometrics_import' %}"
+              class="px-6 py-5">
           {% csrf_token %}
 
           <!-- Drop Zone -->
@@ -102,12 +110,14 @@
             <div>
               <label class="block text-sm font-medium text-gray-700">Branch</label>
               <select name="branch"
+                      id="branchSelect"
                       class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                {# ✅ branches must be list of (id,name) pairs from view: values_list("id","name") #}
+                <option value="">Select branch</option>
                 {% for val, label in branches %}
                   <option value="{{ val }}">{{ label }}</option>
                 {% endfor %}
               </select>
+              <p class="mt-1 text-xs text-gray-500">Branch must be selected (saved as Branch ID).</p>
             </div>
           </div>
 
@@ -246,9 +256,71 @@
 
     </div>
 
-    <!-- Sidebar -->
+    <!-- RIGHT Sidebar -->
     <div class="mt-8 lg:mt-0">
       <div class="space-y-6">
+
+        <!-- Holiday & Suspension Calendar (optional UI block; safe even if holidays not provided) -->
+        <div class="overflow-hidden rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Holiday & Suspension Calendar</h3>
+            <a href="{% url 'admin_payroll' %}#payroll-setup-tab"
+               class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+              <iconify-icon icon="ph:gear-duotone"></iconify-icon>
+              Manage
+            </a>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Branch Filter</label>
+            <select id="attendanceBranchFilter"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+              <option value="">All Branches</option>
+              {% for val, label in branches %}
+                <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mt-4 space-y-3">
+            {% if holidays %}
+              {% for holiday in holidays|slice:":3" %}
+              <div class="p-3 rounded-lg border {% if holiday.type == 'holiday' %}border-green-200 bg-green-50{% else %}border-red-200 bg-red-50{% endif %}">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h4 class="text-sm font-medium">{{ holiday.name }}</h4>
+                    <p class="text-xs text-gray-600">{{ holiday.date|date:"M d" }}</p>
+                  </div>
+                  <span class="text-xs px-2 py-1 rounded-full {% if holiday.type == 'holiday' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                    {{ holiday.get_type_display }}
+                  </span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">
+                  {% if holiday.scope == 'nationwide' %}Nationwide{% else %}{{ holiday.branch_name }}{% endif %}
+                </p>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="text-center py-4">
+                <iconify-icon icon="ph:calendar-blank-duotone" class="text-2xl text-gray-400"></iconify-icon>
+                <p class="text-sm text-gray-500 mt-2">No upcoming holidays</p>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-gray-200">
+            <a href="{% url 'admin_payroll' %}"
+               class="flex items-center justify-center gap-2 w-full px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg text-sm transition">
+              <iconify-icon icon="ph:calculator-duotone"></iconify-icon>
+              Go to Payroll Settings
+            </a>
+            <p class="text-xs text-gray-500 text-center mt-2">
+              Configure attendance rules for JO/COS payroll
+            </p>
+          </div>
+        </div>
+
+        <!-- Required Columns -->
         <div class="overflow-hidden rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
           <h3 class="text-lg font-semibold text-gray-900">Required Columns</h3>
           <div class="mt-4 rounded-md bg-gray-50 p-3">
@@ -257,9 +329,10 @@
             </code>
           </div>
           <p class="mt-2 text-sm text-gray-600">
-            Branch is selected from the dropdown (Option B).
+            Branch is selected from the dropdown (saved as Branch ID).
           </p>
         </div>
+
       </div>
     </div>
 
@@ -274,7 +347,7 @@
   const fileInput = document.getElementById('file');
   const fileName = document.getElementById('fileName');
   const importBtn = document.getElementById('importBtn');
-  const branchSelect = document.querySelector('select[name="branch"]');
+  const branchSelect = document.getElementById('branchSelect');
 
   function setImportEnabled(enabled) {
     if (!importBtn) return;
@@ -284,7 +357,7 @@
       importBtn.classList.remove('cursor-not-allowed', 'bg-gray-100', 'text-gray-400', 'border-gray-300');
       importBtn.classList.add('cursor-pointer', 'bg-blue-600', 'text-white', 'hover:bg-blue-700', 'border-transparent');
     } else {
-      importBtn.classList.add('cursor-not-allowed', 'bg-gray-100', 'text-gray-400');
+      importBtn.classList.add('cursor-not-allowed', 'bg-gray-100', 'text-gray-400', 'border-gray-300');
       importBtn.classList.remove('cursor-pointer', 'bg-blue-600', 'text-white', 'hover:bg-blue-700', 'border-transparent');
     }
   }
@@ -304,10 +377,8 @@
   function canImportNow() {
     const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
     const hasBranch = branchSelect && branchSelect.value && branchSelect.value.trim().length > 0;
-
-    // ✅ Allow import if:
-    //  - file is selected (fresh upload), OR
-    //  - server says validated rows are cached in session
+    // allow import if:
+    // - branch selected AND (file selected OR server has validated session cache)
     return hasBranch && (hasFile || serverCanImport);
   }
 
@@ -349,6 +420,19 @@
   document.addEventListener('DOMContentLoaded', () => {
     updateFileLabel();
     setImportEnabled(canImportNow());
+  });
+
+  // Persist branch filter across pages
+  const attendanceBranchFilter = document.getElementById('attendanceBranchFilter');
+  attendanceBranchFilter?.addEventListener('change', function() {
+    localStorage.setItem('payroll_selected_branch', this.value);
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const savedBranch = localStorage.getItem('payroll_selected_branch');
+    if (savedBranch && attendanceBranchFilter) {
+      attendanceBranchFilter.value = savedBranch;
+    }
   });
 </script>
 {% endblock %}
