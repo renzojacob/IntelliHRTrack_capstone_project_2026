@@ -1,9 +1,10 @@
+# core/models.py
 
 from django.conf import settings
 from django.db import models
-from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+
 
 class Branch(models.Model):
     name = models.CharField(max_length=100, unique=True, db_index=True)
@@ -27,12 +28,10 @@ class AttendanceRecord(models.Model):
         (STATUS_UNKNOWN, "Unknown"),
     ]
 
-    # Required fields you want to store
     employee_id = models.CharField(max_length=64, db_index=True)  # Person ID
     full_name = models.CharField(max_length=255, blank=True)
     department = models.CharField(max_length=255, blank=True)
 
-    # ✅ FK to Branch (creates branch_id)
     branch = models.ForeignKey(
         Branch,
         on_delete=models.PROTECT,
@@ -42,7 +41,7 @@ class AttendanceRecord(models.Model):
         db_index=True,
     )
 
-    timestamp = models.DateTimeField(db_index=True)  # Time
+    timestamp = models.DateTimeField(db_index=True)
     attendance_status = models.CharField(
         max_length=16,
         choices=ATTENDANCE_STATUS_CHOICES,
@@ -50,9 +49,7 @@ class AttendanceRecord(models.Model):
         db_index=True,
     )
 
-    # (Optional) keep raw row for debugging; remove if you truly don't want it
     raw_row = models.JSONField(default=dict, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -75,16 +72,22 @@ class AttendanceRecord(models.Model):
 
 
 # =========================
-# User Profile (Branch + Approval)
+# User Profile (Branch + Approval + Payroll fields)
 # =========================
 class UserProfile(models.Model):
+    EMP_COS = "COS"
+    EMP_JO = "JO"
+    EMPLOYMENT_TYPE_CHOICES = [
+        (EMP_COS, "Contract of Service (COS)"),
+        (EMP_JO, "Job Order (JO)"),
+    ]
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="profile",
     )
 
-    # ✅ FK to Branch (creates branch_id)
     branch = models.ForeignKey(
         Branch,
         on_delete=models.PROTECT,
@@ -94,6 +97,20 @@ class UserProfile(models.Model):
         db_index=True,
     )
 
+    # ✅ used by your UI
+    employment_type = models.CharField(
+        max_length=10, choices=EMPLOYMENT_TYPE_CHOICES, default=EMP_COS, db_index=True
+    )
+    department = models.CharField(max_length=255, blank=True, default="")
+    position = models.CharField(max_length=255, blank=True, default="")
+
+    # ✅ JO / COS base compensation
+    daily_rate = models.DecimalField(max_digits=12, decimal_places=2, default=0)   # JO
+    monthly_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # COS
+
+    # premium flag (20% default handled by PayrollRule)
+    has_premium = models.BooleanField(default=False)
+
     is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -101,6 +118,7 @@ class UserProfile(models.Model):
         db_table = "core_userprofile"
         indexes = [
             models.Index(fields=["branch", "is_approved"]),
+            models.Index(fields=["branch", "employment_type"]),
         ]
 
     def __str__(self):
@@ -109,8 +127,10 @@ class UserProfile(models.Model):
         return f"{self.user.username} ({b}) - {status}"
 
 
+# =========================
+# Leave
+# =========================
 class LeaveRequest(models.Model):
-    # Keep values stable (for filtering + UI)
     STATUS_DRAFT = "DRAFT"
     STATUS_PENDING = "PENDING"
     STATUS_APPROVED = "APPROVED"
@@ -178,3 +198,196 @@ class LeaveAttachment(models.Model):
     leave_request = models.ForeignKey(LeaveRequest, on_delete=models.CASCADE, related_name="attachments")
     file = models.FileField(upload_to="leave_attachments/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+
+# =========================
+# Payroll models
+# =========================
+class PayrollPeriod(models.Model):
+    """
+    Used by your filter: payroll_periods
+    """
+    PAY_MONTHLY = "MONTHLY"
+    PAY_FIRST_HALF = "FIRST_HALF"
+    PAY_SECOND_HALF = "SECOND_HALF"
+    PAY_MODE_CHOICES = [
+        (PAY_MONTHLY, "Monthly"),
+        (PAY_FIRST_HALF, "Kinsenas (1st Half)"),
+        (PAY_SECOND_HALF, "Katapusan (2nd Half)"),
+    ]
+
+    name = models.CharField(max_length=120)
+    start_date = models.DateField(db_index=True)
+    end_date = models.DateField(db_index=True)
+    pay_mode = models.CharField(max_length=20, choices=PAY_MODE_CHOICES, default=PAY_MONTHLY)
+
+    class Meta:
+        ordering = ["-start_date"]
+        db_table = "core_payrollperiod"
+
+    def __str__(self):
+        return f"{self.name} ({self.start_date} - {self.end_date})"
+
+
+class PayrollRule(models.Model):
+    """
+    Matches variables used by Payroll Setup form:
+    payroll_rules.tax_rate_percent, premium_rate_percent, etc.
+    """
+    branch = models.OneToOneField(Branch, on_delete=models.CASCADE, related_name="payroll_rules")
+
+    tax_rate_percent = models.DecimalField(max_digits=6, decimal_places=2, default=5)
+    premium_rate_percent = models.DecimalField(max_digits=6, decimal_places=2, default=20)
+
+    PHILHEALTH_PERCENT = "percent"
+    PHILHEALTH_FIXED = "fixed"
+    philhealth_default_mode = models.CharField(max_length=10, default=PHILHEALTH_PERCENT)
+    philhealth_default_value = models.DecimalField(max_digits=10, decimal_places=2, default=5)
+
+    late_penalty_per_minute = models.DecimalField(max_digits=10, decimal_places=2, default=1.50)
+    undertime_penalty_per_minute = models.DecimalField(max_digits=10, decimal_places=2, default=2.00)
+
+    grace_minutes_normal = models.PositiveIntegerField(default=15)
+
+    # “Flag ceremony cutoff” time (UI expects this)
+    flag_ceremony_cutoff_time = models.TimeField(default="08:00")
+
+    lunch_break_required = models.BooleanField(default=False)
+    daily_hours_required = models.DecimalField(max_digits=5, decimal_places=2, default=8)
+
+    # Needed for undertime calculation
+    work_start_time = models.TimeField(default="08:00")
+    work_end_time = models.TimeField(default="17:00")
+
+    class Meta:
+        db_table = "core_payrollrule"
+
+    def __str__(self):
+        return f"PayrollRule({self.branch.name})"
+
+
+class EmployeeContribution(models.Model):
+    """
+    Employee-specific Gov contributions table in UI.
+    """
+    profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE, related_name="contrib")
+
+    sss_amount = models.DecimalField(max_digits=10, decimal_places=2, default=760)
+    pagibig_amount = models.DecimalField(max_digits=10, decimal_places=2, default=400)
+
+    PHILHEALTH_PERCENT = "percent"
+    PHILHEALTH_FIXED = "fixed"
+    philhealth_mode = models.CharField(max_length=10, default=PHILHEALTH_PERCENT)
+    philhealth_value = models.DecimalField(max_digits=10, decimal_places=2, default=5)
+
+    class Meta:
+        db_table = "core_employeecontribution"
+
+    def __str__(self):
+        return f"Contrib({self.profile.user.username})"
+
+
+class HolidaySuspension(models.Model):
+    """
+    For Holiday & Suspension Manager list.
+    """
+    TYPE_HOLIDAY = "holiday"
+    TYPE_SUSPENSION = "suspension"
+    TYPE_SPECIAL = "special"
+
+    TYPE_CHOICES = [
+        (TYPE_HOLIDAY, "Regular Holiday"),
+        (TYPE_SUSPENSION, "Work Suspension"),
+        (TYPE_SPECIAL, "Special Non-Working Day"),
+    ]
+
+    SCOPE_NATIONWIDE = "nationwide"
+    SCOPE_REGION = "region"
+    SCOPE_BRANCH = "branch"
+
+    SCOPE_CHOICES = [
+        (SCOPE_NATIONWIDE, "Nationwide"),
+        (SCOPE_REGION, "MIMAROPA Region"),
+        (SCOPE_BRANCH, "Specific Branch"),
+    ]
+
+    date = models.DateField(db_index=True)
+    name = models.CharField(max_length=200)
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_HOLIDAY)
+    scope = models.CharField(max_length=20, choices=SCOPE_CHOICES, default=SCOPE_REGION)
+    branch = models.ForeignKey(Branch, null=True, blank=True, on_delete=models.CASCADE, related_name="holidays")
+
+    notes = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date"]
+        db_table = "core_holidaysuspension"
+        indexes = [
+            models.Index(fields=["date", "scope"]),
+        ]
+
+    def __str__(self):
+        return f"{self.date} {self.name} ({self.type}/{self.scope})"
+
+
+class PayrollBatch(models.Model):
+    STATUS_DRAFT = "draft"
+    STATUS_COMPLETED = "completed"
+
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_COMPLETED, "Completed"),
+    ]
+
+    name = models.CharField(max_length=200)
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, related_name="payroll_batches")
+    period = models.ForeignKey(PayrollPeriod, on_delete=models.PROTECT, related_name="payroll_batches")
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT)
+
+    processed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="processed_payroll_batches")
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    totals_net = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    totals_deductions = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        db_table = "core_payrollbatch"
+        unique_together = [("branch", "period")]
+
+    def __str__(self):
+        return f"{self.name} ({self.branch.name})"
+
+
+class PayrollItem(models.Model):
+    batch = models.ForeignKey(PayrollBatch, on_delete=models.CASCADE, related_name="items")
+    profile = models.ForeignKey(UserProfile, on_delete=models.PROTECT, related_name="payroll_items")
+
+    base_pay = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    premium_pay = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    overtime_pay = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+
+    late_minutes = models.PositiveIntegerField(default=0)
+    undertime_minutes = models.PositiveIntegerField(default=0)
+    absences = models.PositiveIntegerField(default=0)
+
+    deductions_total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    gov_contributions_total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    tax_total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+
+    net_pay = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    issues = models.TextField(blank=True, default="")
+
+    meta = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = "core_payrollitem"
+        ordering = ["profile__user__username"]
+
+    def __str__(self):
+        return f"{self.profile.user.username} - {self.net_pay}"

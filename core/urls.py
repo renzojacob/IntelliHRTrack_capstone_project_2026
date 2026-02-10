@@ -62,4 +62,15 @@ urlpatterns = [
     path("employee/analytics/", views.employee_analytics, name="employee_analytics"),
     path("employee/notifications/", views.employee_notifications, name="employee_notifications"),
     path("employee/profile/", views.employee_profile, name="employee_profile"),
+
+
+
+
+
+
+ # JSON APIs
+    path("admin-ui/payroll/preview/", views.admin_payroll_preview_api, name="admin_payroll_preview_api"),
+    path("admin-ui/payroll/dtr/<int:profile_id>/", views.admin_employee_dtr_api, name="admin_employee_dtr_api"),
+    path("admin-ui/payroll/process/", views.admin_payroll_process_batch, name="admin_payroll_process_batch"),
+
 ]
