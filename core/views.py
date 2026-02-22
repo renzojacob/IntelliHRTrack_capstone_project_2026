@@ -499,8 +499,8 @@ def admin_leave_approval(request):
         return redirect("login_ui")
 
     qs = LeaveRequest.objects.select_related(
-        "employee", "branch", "reviewed_by"
-    ).order_by("-created_at")
+    "employee", "branch", "reviewed_by"
+).prefetch_related("attachments").order_by("-created_at")
 
     if request.user.is_superuser:
         pass
@@ -727,9 +727,29 @@ def employee_attendance(request):
 def employee_schedule(request):
     return render(request, "employee/schedule.html", {"current": "schedule"})
 
+LEAVE_MAX_REQUESTS_PER_YEAR = 5
+
+def _request_counts_for_year(employee, year: int):
+    """
+    Request-based counting (NOT days):
+    - Counts: APPROVED + PENDING (slot is consumed once submitted)
+    - Ignores: DRAFT, REJECTED, CANCELLED
+    - Uses start_date.year as the year basis
+    """
+    qs = LeaveRequest.objects.filter(
+        employee=employee,
+        start_date__year=year,
+        status__in=[LeaveRequest.STATUS_APPROVED, LeaveRequest.STATUS_PENDING],
+    )
+    used = qs.count()
+    remaining = max(0, LEAVE_MAX_REQUESTS_PER_YEAR - used)
+    return used, remaining
 
 @login_required
 def employee_leave(request):
+    # -------------------------
+    # Approval gate (employee only)
+    # -------------------------
     try:
         if not (request.user.is_staff or request.user.is_superuser):
             if not request.user.profile.is_approved:
@@ -739,12 +759,24 @@ def employee_leave(request):
         messages.error(request, "Account profile missing. Contact admin.")
         return redirect("employee_dashboard")
 
+    # -------------------------
+    # Get employee branch
+    # -------------------------
     try:
         emp_branch = request.user.profile.branch
     except UserProfile.DoesNotExist:
         messages.error(request, "Profile/Branch missing. Contact admin.")
         return redirect("employee_dashboard")
 
+    # -------------------------
+    # Year + request-based remaining
+    # -------------------------
+    year = timezone.now().year
+    used_requests, remaining_leave = _request_counts_for_year(request.user, year)
+
+    # -------------------------
+    # Handle POST: Create leave request
+    # -------------------------
     if request.method == "POST":
         leave_type = (request.POST.get("leave_type") or "").strip()
         start_date = (request.POST.get("start_date") or "").strip()
@@ -777,6 +809,20 @@ def employee_leave(request):
             messages.error(request, "End date cannot be before start date.")
             return redirect("employee_leave")
 
+        # ✅ Year basis: request must belong to current year (based on start_date)
+        if s.year != year:
+            messages.error(request, f"You can only file leave for the current year ({year}).")
+            return redirect("employee_leave")
+
+        # ✅ Block submit if reached limit (but allow saving drafts)
+        if not is_draft and remaining_leave <= 0:
+            messages.error(
+                request,
+                f"You already reached the {LEAVE_MAX_REQUESTS_PER_YEAR}-request leave limit for {year}. "
+                f"You can request again next year."
+            )
+            return redirect("employee_leave")
+
         status = LeaveRequest.STATUS_DRAFT if is_draft else LeaveRequest.STATUS_PENDING
 
         lr = LeaveRequest.objects.create(
@@ -794,9 +840,21 @@ def employee_leave(request):
         for f in files:
             LeaveAttachment.objects.create(leave_request=lr, file=f)
 
-        messages.success(request, "Saved as draft." if is_draft else "Leave request submitted! Awaiting approval.")
+        if is_draft:
+            messages.success(request, "Saved as draft.")
+        else:
+            # slot is consumed immediately (PENDING counts)
+            new_remaining = max(0, remaining_leave - 1)
+            messages.success(
+                request,
+                f"Leave request submitted! Awaiting approval. Remaining leave requests for {year}: {new_remaining}"
+            )
+
         return redirect("employee_leave")
 
+    # -------------------------
+    # Fetch leave requests (display)
+    # -------------------------
     leave_requests = (
         LeaveRequest.objects
         .filter(employee=request.user)
@@ -805,7 +863,8 @@ def employee_leave(request):
         .order_by("-created_at")
     )
 
-    year = timezone.now().year
+    # Recompute counts for UI (safe even after POST redirect)
+    used_requests, remaining_leave = _request_counts_for_year(request.user, year)
 
     total_count = leave_requests.count()
     approved_count = leave_requests.filter(status=LeaveRequest.STATUS_APPROVED).count()
@@ -814,34 +873,9 @@ def employee_leave(request):
     draft_count = leave_requests.filter(status=LeaveRequest.STATUS_DRAFT).count()
     cancelled_count = leave_requests.filter(status=LeaveRequest.STATUS_CANCELLED).count()
 
-    def _days_within_year(start_date, end_date, year):
-        from datetime import date as _date
-        yr_start = _date(year, 1, 1)
-        yr_end = _date(year, 12, 31)
-        s = max(start_date, yr_start)
-        e = min(end_date, yr_end)
-        if e < s:
-            return 0
-        return (e - s).days + 1
-
-    total_leave_used = 0.0
-    for lr in leave_requests.filter(status=LeaveRequest.STATUS_APPROVED):
-        days = _days_within_year(lr.start_date, lr.end_date, year)
-        if lr.duration in (LeaveRequest.DURATION_HALF_AM, LeaveRequest.DURATION_HALF_PM):
-            total_leave_used += 0.5 * days
-        else:
-            total_leave_used += days
-
-    pending_days = 0.0
-    for lr in leave_requests.filter(status=LeaveRequest.STATUS_PENDING):
-        days = _days_within_year(lr.start_date, lr.end_date, year)
-        if lr.duration in (LeaveRequest.DURATION_HALF_AM, LeaveRequest.DURATION_HALF_PM):
-            pending_days += 0.5 * days
-        else:
-            pending_days += days
-
-    remaining_leave = max(0, 5 - int(total_leave_used + pending_days))
-
+    # -------------------------
+    # Notifications
+    # -------------------------
     leave_notifications = []
     for lr in leave_requests.order_by("-reviewed_at"):
         if lr.status == LeaveRequest.STATUS_APPROVED and lr.reviewed_at:
@@ -859,6 +893,7 @@ def employee_leave(request):
             )
     leave_notifications = leave_notifications[:5]
 
+    # Calendar
     calendar_events = []
     for lr in leave_requests.filter(status__in=[LeaveRequest.STATUS_APPROVED, LeaveRequest.STATUS_PENDING]):
         calendar_events.append({
@@ -867,20 +902,30 @@ def employee_leave(request):
             "status": lr.status,
         })
 
+    # -------------------------
+    # Render
+    # -------------------------
     return render(
         request,
         "employee/leave.html",
         {
             "current": "leave",
             "leave_requests": leave_requests,
-            "total_leave_used": int(total_leave_used),
-            "pending_leave_count": pending_count,
+
+            # ✅ Request-based leave tracking
+            "leave_year": year,
+            "used_requests": used_requests,
             "remaining_leave": remaining_leave,
+            "max_leave_requests": LEAVE_MAX_REQUESTS_PER_YEAR,
+
+            # counts
+            "pending_leave_count": pending_count,
             "total_requests_count": total_count,
             "approved_count": approved_count,
             "rejected_count": rejected_count,
             "draft_count": draft_count,
             "cancelled_count": cancelled_count,
+
             "leave_notifications": leave_notifications,
             "calendar_events": calendar_events,
         },
