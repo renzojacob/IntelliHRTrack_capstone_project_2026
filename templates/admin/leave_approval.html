@@ -35,6 +35,33 @@
   select, input, textarea { color: #111827; }
   .dark select, .dark input, .dark textarea { background-color: rgba(255,255,255,0.08); color: #e5e7eb; border-color: rgba(255,255,255,0.15); }
   .dark select option { background-color: #0f172a; color: #e5e7eb; }
+
+  /* attachments */
+  .att-pill { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .55rem; border-radius:9999px; font-size:.75rem; font-weight:600; }
+  .att-pill-blue { background: rgba(59,130,246,.12); color: rgb(37,99,235); border: 1px solid rgba(59,130,246,.25); }
+  .att-link { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.6rem .75rem; border-radius: 14px; background: rgba(255,255,255,.45); border:1px solid rgba(255,255,255,.35); }
+  .dark .att-link { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.12); }
+
+  /* ✅ actions: keep ONE clean row (no stacking) */
+  .act-btn { display:inline-flex; align-items:center; justify-content:center; gap:.45rem; padding:.45rem .7rem; border-radius:.75rem; font-size:.75rem; font-weight:700; line-height:1; white-space:nowrap; }
+  .act-btn iconify-icon { font-size: 1.05rem; }
+
+  /* IMPORTANT: no wrapping to prevent View + Docs from stacking */
+  .act-wrap { display:flex; align-items:center; justify-content:flex-end; gap:.45rem; flex-wrap:nowrap; }
+  .act-meta { margin-top:.35rem; display:flex; justify-content:flex-end; }
+
+  /* make table slightly tighter so actions fit in one line */
+  .th-tight { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .td-tight { padding-left: 1rem !important; padding-right: 1rem !important; }
+
+  /* attachments pill should never force wrap */
+  .att-pill { white-space: nowrap; }
+
+  /* if screen is too small, hide text labels (icons only) so it still stays one row */
+  @media (max-width: 1024px){
+    .act-label { display:none; }
+    .act-btn { padding: .45rem .6rem; }
+  }
 </style>
 {% endblock %}
 
@@ -42,6 +69,8 @@
 
 <div id="toastHost"></div>
 <div id="topProgress" class="fixed left-0 top-0 h-1 w-0 opacity-0 z-[100]"></div>
+
+<div class="w-full max-w-none !max-w-none px-2 sm:px-4 lg:px-6">
 
 <header class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow">
   <div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
@@ -85,8 +114,7 @@
       </div>
     </div>
 
-    <!-- Admin summary cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
       <div class="glass rounded-2xl p-4">
         <div class="text-xs text-gray-500">Total Requests</div>
         <div class="text-2xl font-extrabold mt-1">{{ total_count|default:0 }}</div>
@@ -113,26 +141,60 @@
       </div>
     </div>
 
-    <!-- Two-column layout: table + notifications/calendar -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Main table (wider) -->
-      <div class="lg:col-span-2">
-        <div class="glass rounded-xl border border-white/40 dark:border-white/10 overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-white/40 dark:divide-white/10">
-              <thead class="bg-white/60 dark:bg-slate-800/60">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="glass rounded-2xl p-5 shadow-md">
+        <h3 class="text-lg font-bold mb-4">Recent Activity</h3>
+        {% if notifications %}
+          <ul class="space-y-3">
+            {% for note in notifications %}
+              <li class="p-3 rounded-lg bg-white/50 dark:bg-gray-800 text-xs">{{ note }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-xs text-gray-500 dark:text-gray-400">No recent activity.</p>
+        {% endif %}
+      </div>
+
+      <div class="glass rounded-2xl p-5 shadow-md">
+        <h3 class="text-lg font-bold mb-4">Leave Schedule</h3>
+        <div class="grid grid-cols-7 gap-1 text-xs text-center">
+          {% for event in calendar_events %}
+            <div class="p-2 rounded-lg
+              {% if event.status == 'APPROVED' %}
+                bg-green-200 dark:bg-green-900 text-green-900 dark:text-green-100
+              {% elif event.status == 'PENDING' %}
+                bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100
+              {% else %}
+                bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100
+              {% endif %}
+            ">
+              <div class="font-semibold text-[10px]">{{ event.start }}</div>
+              <div class="truncate text-[9px]">{{ event.title }}</div>
+            </div>
+          {% empty %}
+            <p class="text-xs text-gray-500 col-span-7">No leave scheduled.</p>
+          {% endfor %}
+        </div>
+        <p class="text-xs text-gray-400 mt-3">Green = Approved, Amber = Pending</p>
+      </div>
+    </div>
+
+    <div class="glass rounded-xl border border-white/40 dark:border-white/10 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-white/40 dark:divide-white/10">
+          <thead class="bg-white/60 dark:bg-slate-800/60">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Leave Type</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Dates</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Duration</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Reviewed</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
+
+              <!-- ✅ header aligned w/ buttons -->
+              <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider th-tight">Actions</th>
             </tr>
           </thead>
 
-          {# ✅ THIS PART IS THE IMPORTANT FIX #}
           <tbody class="divide-y divide-white/40 dark:divide-white/10">
             {% if leave_requests %}
               {% for l in leave_requests %}
@@ -167,10 +229,6 @@
                     <div class="text-xs text-gray-500">Requested: {{ l.created_at|date:"M d, Y • h:i A" }}</div>
                   </td>
 
-                  <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    {{ l.get_duration_display|default:l.duration|default:"—" }}
-                  </td>
-
                   <td class="px-6 py-4 whitespace-nowrap">
                     {% if l.status == "PENDING" %}
                       <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Pending</span>
@@ -196,28 +254,32 @@
                     </div>
                   </td>
 
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div class="flex gap-2 flex-wrap">
+                  <!-- ✅ NO STACKING: Approve + Reject + View + Docs on ONE row -->
+                  <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-right td-tight">
+                    <div class="act-wrap">
+
                       {% if l.status == "PENDING" %}
-                        <form method="POST" action="{% url 'admin_leave_approve' l.id %}">
+                        <form method="POST" action="{% url 'admin_leave_approve' l.id %}" class="inline">
                           {% csrf_token %}
                           <button type="submit"
-                            class="text-emerald-600 hover:text-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1 rounded-lg">
-                            <iconify-icon icon="ph:check-fat" class="mr-1"></iconify-icon>Approve
+                            class="act-btn text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/45 transition">
+                            <iconify-icon icon="ph:check-fat"></iconify-icon>
+                            <span class="act-label">Approve</span>
                           </button>
                         </form>
 
-                        <form method="POST" action="{% url 'admin_leave_reject' l.id %}">
+                        <form method="POST" action="{% url 'admin_leave_reject' l.id %}" class="inline">
                           {% csrf_token %}
                           <button type="submit"
-                            class="text-rose-600 hover:text-rose-800 bg-rose-50 dark:bg-rose-900/30 px-3 py-1 rounded-lg">
-                            <iconify-icon icon="ph:x" class="mr-1"></iconify-icon>Deny
+                            class="act-btn text-rose-700 dark:text-rose-200 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/45 transition">
+                            <iconify-icon icon="ph:x"></iconify-icon>
+                            <span class="act-label">Reject</span>
                           </button>
                         </form>
                       {% endif %}
 
                       <button type="button"
-                        class="btn-view-leave text-blue-600 hover:text-blue-800 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg"
+                        class="btn-view-leave act-btn text-blue-700 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/45 transition"
                         data-id="{{ l.id }}"
                         data-employee="{{ l.employee.get_full_name|default:l.employee.username|escapejs }}"
                         data-type="{{ l.get_leave_type_display|default:l.leave_type|escapejs }}"
@@ -226,8 +288,54 @@
                         data-reason="{{ l.reason|default:''|escapejs }}"
                         data-branch="{{ l.branch.name|default:''|escapejs }}"
                         data-status="{{ l.status|escapejs }}">
-                        <iconify-icon icon="ph:eye" class="mr-1"></iconify-icon>View
+                        <iconify-icon icon="ph:eye"></iconify-icon>
+                        <span class="act-label">View</span>
                       </button>
+
+                      {% with att_count=l.attachments.count %}
+                        {% if att_count|default:0 %}
+                          <span class="att-pill att-pill-blue" title="Supporting documents attached">
+                            <iconify-icon icon="ph:paperclip-duotone"></iconify-icon>
+                            {{ att_count }} Doc{{ att_count|pluralize }}
+                          </span>
+                        {% else %}
+                          <span class="att-pill" style="background:rgba(148,163,184,.15);color:rgb(100,116,139);border:1px solid rgba(148,163,184,.25);" title="No supporting documents">
+                            <iconify-icon icon="ph:paperclip-duotone"></iconify-icon>
+                            No Docs
+                          </span>
+                        {% endif %}
+                      {% endwith %}
+
+                    </div>
+
+                    <div id="att-{{ l.id }}" class="hidden">
+                      {% if l.attachments.all %}
+                        <div class="grid grid-cols-1 gap-2 mt-2">
+                          {% for att in l.attachments.all %}
+                            {% if att.file and att.file.url %}
+                              <a class="att-link" href="{{ att.file.url }}" target="_blank" rel="noopener">
+                                <div class="min-w-0">
+                                  <div class="text-sm font-semibold truncate">
+                                    <iconify-icon icon="ph:file-duotone" class="text-accent"></iconify-icon>
+                                    {{ att.file.name|default:"Attachment" }}
+                                  </div>
+                                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Uploaded: {{ att.uploaded_at|date:"M d, Y • h:i A" }}
+                                  </div>
+                                </div>
+                                <div class="text-xs font-semibold text-blue-600 whitespace-nowrap">Open</div>
+                              </a>
+                            {% else %}
+                              <div class="att-link">
+                                <div class="text-sm">Attachment missing URL</div>
+                                <div class="text-xs text-gray-500">—</div>
+                              </div>
+                            {% endif %}
+                          {% endfor %}
+                        </div>
+                      {% else %}
+                        <div class="text-sm text-gray-500 dark:text-gray-400">No supporting documents uploaded.</div>
+                      {% endif %}
                     </div>
                   </td>
 
@@ -235,57 +343,13 @@
               {% endfor %}
             {% else %}
               <tr>
-                <td colspan="7" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                   ✅ No leave requests found.
                 </td>
               </tr>
             {% endif %}
           </tbody>
-
         </table>
-      </div>
-        </div>
-      </div>
-
-      <!-- Right sidebar: Notifications + Calendar -->
-      <div class="space-y-6">
-        <!-- Notifications -->
-        <div class="glass rounded-2xl p-5 shadow-md">
-          <h3 class="text-lg font-bold mb-4">Recent Activity</h3>
-          {% if notifications %}
-            <ul class="space-y-3">
-              {% for note in notifications %}
-                <li class="p-3 rounded-lg bg-white/50 dark:bg-gray-800 text-xs">{{ note }}</li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p class="text-xs text-gray-500 dark:text-gray-400">No recent activity.</p>
-          {% endif %}
-        </div>
-
-        <!-- Calendar -->
-        <div class="glass rounded-2xl p-5 shadow-md">
-          <h3 class="text-lg font-bold mb-4">Leave Schedule</h3>
-          <div class="grid grid-cols-7 gap-1 text-xs text-center">
-            {% for event in calendar_events %}
-              <div class="p-2 rounded-lg
-                {% if event.status == 'APPROVED' %}
-                  bg-green-200 dark:bg-green-900 text-green-900 dark:text-green-100
-                {% elif event.status == 'PENDING' %}
-                  bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100
-                {% else %}
-                  bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                {% endif %}
-              ">
-                <div class="font-semibold text-[10px]">{{ event.start }}</div>
-                <div class="truncate text-[9px]">{{ event.title }}</div>
-              </div>
-            {% empty %}
-              <p class="text-xs text-gray-500 col-span-7">No leave scheduled.</p>
-            {% endfor %}
-          </div>
-          <p class="text-xs text-gray-400 mt-3">Green = Approved, Amber = Pending</p>
-        </div>
       </div>
     </div>
 
@@ -295,7 +359,7 @@
 <!-- Leave Details Modal -->
 <div id="leaveModal" class="hidden fixed inset-0 z-[90] items-center justify-center">
   <div class="absolute inset-0 bg-black/40" onclick="closeLeaveModal()"></div>
-  <div class="relative glass rounded-2xl p-6 w-[min(720px,92vw)] shadow-xl border border-white/40 dark:border-white/10">
+  <div class="relative glass rounded-2xl p-6 w-[min(820px,92vw)] shadow-xl border border-white/40 dark:border-white/10">
     <div class="flex items-start justify-between gap-3">
       <div>
         <h3 class="text-lg font-bold">Leave Request Details</h3>
@@ -326,11 +390,23 @@
         <div class="text-xs text-gray-500">Reason</div>
         <div id="mReason" class="mt-1 whitespace-pre-wrap">—</div>
       </div>
+
       <div class="md:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
         <div class="text-xs text-gray-500">Status</div>
         <div id="mStatus" class="font-semibold mt-1">—</div>
       </div>
+
+      <div class="md:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-xs text-gray-500">Supporting Documents</div>
+          <div id="mDocsMeta" class="text-[11px] text-gray-500 dark:text-gray-400">—</div>
+        </div>
+        <div id="mAttachments" class="mt-3 space-y-2">
+          <div class="text-sm text-gray-500 dark:text-gray-400">No supporting documents.</div>
+        </div>
+      </div>
     </div>
+
   </div>
 </div>
 
@@ -338,72 +414,56 @@
   © IntelliHRTrack • Module 5 — Leave interactions are branch-safe.
 </footer>
 
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  const toastHost = document.getElementById('toastHost');
-  function showToast(msg, type='info', duration=2200){
-    if(!toastHost) return;
-    const t = document.createElement('div');
-    t.className = `toast ${type}`;
-    t.innerHTML = `<div class="text-sm">${msg}</div>`;
-    toastHost.appendChild(t);
-    setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(-6px)'; setTimeout(()=> t.remove(), 300); }, duration);
-  }
+document.addEventListener("DOMContentLoaded", function(){
+  const buttons = document.querySelectorAll(".btn-view-leave");
 
-  const topProgress = document.getElementById('topProgress');
-  function progressStart(){ if(!topProgress) return; topProgress.style.transition='none'; topProgress.style.width='0'; topProgress.style.opacity='1'; requestAnimationFrame(()=>{ topProgress.style.transition='width .8s ease'; topProgress.style.width='75%'; }); }
-  function progressDone(){ if(!topProgress) return; topProgress.style.width='100%'; setTimeout(()=>{ topProgress.style.opacity='0'; topProgress.style.width='0'; }, 350); }
+  buttons.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      const id      = this.getAttribute("data-id");
+      const employee= this.getAttribute("data-employee");
+      const type    = this.getAttribute("data-type");
+      const start   = this.getAttribute("data-start");
+      const end     = this.getAttribute("data-end");
+      const reason  = this.getAttribute("data-reason");
+      const branch  = this.getAttribute("data-branch");
+      const status  = this.getAttribute("data-status");
 
-  const hooks = [
-    ['btnAiAssistant','Launching assistant…','info',700],
-    ['btnNotify','Checking notifications…','info',600],
-  ];
-  hooks.forEach(([id,msg,type,dur])=>{
-    const el=document.getElementById(id);
-    if(!el) return;
-    el.addEventListener('click', ()=>{
-      progressStart();
-      showToast(msg,type);
-      setTimeout(progressDone, dur);
+      document.getElementById("mEmployee").innerText = employee || "—";
+      document.getElementById("mBranch").innerText   = branch || "—";
+      document.getElementById("mType").innerText     = type || "—";
+      document.getElementById("mDates").innerText    = (start || "—") + " → " + (end || "—");
+      document.getElementById("mReason").innerText   = reason || "—";
+      document.getElementById("mStatus").innerText   = status || "—";
+
+      const source = document.getElementById("att-" + id);
+      const target = document.getElementById("mAttachments");
+
+      if(source){
+        target.innerHTML = source.innerHTML;
+        const td = this.closest("td");
+        const pill = td ? td.querySelector(".att-pill") : null;
+        document.getElementById("mDocsMeta").innerText = pill ? pill.innerText.trim() : "—";
+      } else {
+        target.innerHTML = "<div class='text-sm text-gray-500'>No supporting documents.</div>";
+        document.getElementById("mDocsMeta").innerText = "No Docs";
+      }
+
+      const modal = document.getElementById("leaveModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
     });
   });
+});
 
-  function openLeaveModal(id, employee, type, start, end, reason, branch, status){
-    const modal = document.getElementById('leaveModal');
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-
-    document.getElementById('mEmployee').textContent = employee || '—';
-    document.getElementById('mBranch').textContent = branch || '—';
-    document.getElementById('mType').textContent = type || '—';
-    document.getElementById('mDates').textContent = `${start} → ${end}`;
-    document.getElementById('mReason').textContent = reason || '—';
-    document.getElementById('mStatus').textContent = status || '—';
-  }
-  function closeLeaveModal(){
-    const modal = document.getElementById('leaveModal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-  }
-  window.openLeaveModal = openLeaveModal;
-  window.closeLeaveModal = closeLeaveModal;
-
-  // Delegated click handler for View buttons (uses data-* attributes)
-  document.addEventListener('click', function(evt){
-    const btn = evt.target.closest && evt.target.closest('.btn-view-leave');
-    if(!btn) return;
-    openLeaveModal(
-      btn.dataset.id,
-      btn.dataset.employee,
-      btn.dataset.type,
-      btn.dataset.start,
-      btn.dataset.end,
-      btn.dataset.reason,
-      btn.dataset.branch,
-      btn.dataset.status
-    );
-  });
+function closeLeaveModal(){
+  const modal = document.getElementById("leaveModal");
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+}
 </script>
 {% endblock %}
