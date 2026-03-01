@@ -1,0 +1,640 @@
+{% extends 'admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Payroll & Finance • IntelliHRTrack - MIMAROPA{% endblock %}
+
+{% block extra_head %}
+<style>
+  .tab-btn.active { background: rgba(20,184,166,.12); color: rgb(15,118,110); }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+  .mono { font-variant-numeric: tabular-nums; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="glass rounded-2xl p-4 shadow">
+      <div class="text-xs text-slate-500">Total Payroll (Selected Period)</div>
+      <div class="text-2xl font-extrabold mono">₱ {% if total_payroll %}{{ total_payroll|floatformat:2 }}{% else %}0.00{% endif %}</div>
+      <div class="text-xs text-slate-500 mt-1">MIMAROPA Region</div>
+    </div>
+    <div class="glass rounded-2xl p-4 shadow">
+      <div class="text-xs text-slate-500">Pending Approval</div>
+      <div class="text-2xl font-extrabold mono">₱ {% if pending_approval %}{{ pending_approval|floatformat:2 }}{% else %}0.00{% endif %}</div>
+      <div class="text-xs text-slate-500 mt-1">Employees w/ issues</div>
+    </div>
+    <div class="glass rounded-2xl p-4 shadow">
+      <div class="text-xs text-slate-500">Attendance + Manual Deductions</div>
+      <div class="text-2xl font-extrabold mono">₱ {% if attendance_deductions %}{{ attendance_deductions|floatformat:2 }}{% else %}0.00{% endif %}</div>
+      <div class="text-xs text-slate-500 mt-1">Late/Undertime + Admin-set</div>
+    </div>
+    <div class="glass rounded-2xl p-4 shadow">
+      <div class="text-xs text-slate-500">Government Contributions</div>
+      <div class="text-2xl font-extrabold mono">₱ {% if gov_contributions %}{{ gov_contributions|floatformat:2 }}{% else %}0.00{% endif %}</div>
+      <div class="text-xs text-slate-500 mt-1">SSS/PhilHealth/Pag-IBIG</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="glass rounded-3xl p-4 md:p-6 shadow">
+    <div class="flex flex-wrap gap-2 mb-4">
+      <button class="tab-btn px-4 py-2 rounded-xl font-semibold text-sm active" data-tab="processing">Payroll Processing</button>
+      <button class="tab-btn px-4 py-2 rounded-xl font-semibold text-sm" data-tab="setup">Payroll Setup</button>
+      <button class="tab-btn px-4 py-2 rounded-xl font-semibold text-sm" data-tab="history">Payroll History</button>
+      <button class="tab-btn px-4 py-2 rounded-xl font-semibold text-sm" data-tab="finance">Financial Dashboard</button>
+    </div>
+
+    <!-- Payroll Processing -->
+    <section id="tab-processing" class="tab-panel active">
+      <div class="flex flex-col lg:flex-row lg:items-end gap-4 justify-between">
+        <div>
+          <h2 class="text-xl font-extrabold">Payroll Processing - MIMAROPA</h2>
+          <p class="text-sm text-slate-500">Process payroll for {{ employees|length|default:"0" }} employees | Government Payroll Rules Applied</p>
+        </div>
+
+        <form class="flex flex-col sm:flex-row gap-2 items-end" method="get">
+          <div>
+            <label class="text-xs text-slate-500">Branch</label>
+            <select name="branch" class="w-60 rounded-xl border px-3 py-2">
+              {% for branch in branches %}
+                <option value="{{ branch.id }}" {% if selected_branch and branch.id == selected_branch.id %}selected{% endif %}>{{ branch.name }}</option>
+              {% empty %}
+                <option value="">No branches</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="text-xs text-slate-500">Payroll Period</label>
+            <select name="period" class="w-72 rounded-xl border px-3 py-2">
+              {% for period in payroll_periods %}
+                <option value="{{ period.id }}" {% if selected_period and period.id == selected_period.id %}selected{% endif %}>
+                  {{ period.name }} • {{ period.get_pay_mode_display }} ({{ period.start_date }} - {{ period.end_date }})
+                </option>
+              {% empty %}
+                <option value="">No periods</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="text-xs text-slate-500">Employment Type</label>
+            <select name="type" class="w-52 rounded-xl border px-3 py-2">
+              <option value="ALL" {% if selected_type == "ALL" %}selected{% endif %}>All Types</option>
+              <option value="JO" {% if selected_type == "JO" %}selected{% endif %}>Job Order (JO)</option>
+              <option value="COS" {% if selected_type == "COS" %}selected{% endif %}>Contract of Service (COS)</option>
+            </select>
+          </div>
+
+          <button class="px-4 py-2 rounded-xl bg-teal-600 text-white font-semibold">Apply</button>
+        </form>
+      </div>
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button id="btnPreview" class="px-4 py-2 rounded-xl bg-slate-900 text-white font-semibold">Generate Payroll Preview</button>
+        <button id="btnProcess" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold">Approve & Process</button>
+        <a class="px-4 py-2 rounded-xl border font-semibold" href="#" onclick="alert('Connect your DTR print/export endpoints here.');return false;">DTR Print / Export</a>
+      </div>
+
+      <!-- Preview Table -->
+      <div class="mt-6 overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="text-left text-slate-500">
+              <th class="py-2">Employee</th>
+              <th>Type</th>
+              <th>Base</th>
+              <th>Premium</th>
+              <th>Late</th>
+              <th>Undertime</th>
+              <th>Manual Deduction</th>
+              <th>Gov+Tax</th>
+              <th>Net</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody">
+            {% if employees %}
+              {% for employee in employees %}
+              <tr class="border-t">
+                <td class="py-2">
+                  <div class="font-semibold">{{ employee.user.get_full_name|default:employee.user.username }}</div>
+                  <div class="text-xs text-slate-500">{{ employee.position }}</div>
+                </td>
+                <td>{{ employee.employment_type }}</td>
+                <td class="mono">₱ {{ employee.computed_payroll.base|default:"0.00" }}</td>
+                <td class="mono">₱ {{ employee.computed_payroll.premium|default:"0.00" }}</td>
+                <td class="mono">{{ employee.computed_payroll.late_minutes|default:"0" }} mins</td>
+                <td class="mono">{{ employee.computed_payroll.undertime_minutes|default:"0" }} mins</td>
+                <td class="mono">₱ {{ employee.computed_payroll.manual_deduction|default:"0.00" }}</td>
+                <td class="mono">₱ {{ employee.computed_payroll.deductions|default:"0.00" }}</td>
+                <td class="mono font-extrabold">₱ {{ employee.computed_payroll.net|default:"0.00" }}</td>
+                <td>
+                  {% if employee.attendance_summary.has_missing_logs %}
+                    <span class="px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Issues</span>
+                  {% else %}
+                    <span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">Ready</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="10" class="py-6 text-center text-slate-500">No employees found.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Payroll Setup -->
+    <section id="tab-setup" class="tab-panel">
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div class="glass rounded-2xl p-4 border">
+          <h3 class="text-lg font-extrabold mb-1">Payroll Rules Configuration</h3>
+          <p class="text-xs text-slate-500 mb-4">Configure government payroll rules for the selected branch.</p>
+
+          <form id="rulesForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {% csrf_token %}
+            <input type="hidden" name="branch" value="{% if selected_branch %}{{ selected_branch.id }}{% endif %}">
+
+            <div>
+              <label class="text-xs text-slate-500">Tax Rate %</label>
+              <input name="tax_rate_percent" class="w-full rounded-xl border px-3 py-2" value="{{ payroll_rules.tax_rate_percent|default:'5' }}">
+            </div>
+            <div>
+              <label class="text-xs text-slate-500">Premium Rate %</label>
+              <input name="premium_rate_percent" class="w-full rounded-xl border px-3 py-2" value="{{ payroll_rules.premium_rate_percent|default:'20' }}">
+            </div>
+
+            <div>
+              <label class="text-xs text-slate-500">PhilHealth Default Mode</label>
+              <select name="philhealth_default_mode" class="w-full rounded-xl border px-3 py-2">
+                <option value="percent" {% if payroll_rules.philhealth_default_mode == "percent" %}selected{% endif %}>Percentage (%)</option>
+                <option value="fixed" {% if payroll_rules.philhealth_default_mode == "fixed" %}selected{% endif %}>Fixed Amount</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-slate-500">PhilHealth Default Value</label>
+              <input name="philhealth_default_value" class="w-full rounded-xl border px-3 py-2" value="{{ payroll_rules.philhealth_default_value|default:'5' }}">
+            </div>
+
+            <div>
+              <label class="text-xs text-slate-500">Late Penalty per Minute (₱)</label>
+              <input name="late_penalty_per_minute" class="w-full rounded-xl border px-3 py-2" value="{{ payroll_rules.late_penalty_per_minute|default:'1.50' }}">
+            </div>
+            <div>
+              <label class="text-xs text-slate-500">Undertime Penalty per Minute (₱)</label>
+              <input name="undertime_penalty_per_minute" class="w-full rounded-xl border px-3 py-2" value="{{ payroll_rules.undertime_penalty_per_minute|default:'2.00' }}">
+            </div>
+
+            <div>
+              <label class="text-xs text-slate-500">Grace Minutes (Normal Days)</label>
+              <input name="grace_minutes_normal" class="w-full rounded-xl border px-3 py-2" value="{{ payroll_rules.grace_minutes_normal|default:'15' }}">
+            </div>
+            <div>
+              <label class="text-xs text-slate-500">Flag Ceremony Cutoff (HH:MM)</label>
+              <input name="flag_ceremony_cutoff_time" class="w-full rounded-xl border px-3 py-2" value="{{ payroll_rules.flag_ceremony_cutoff_time|default:'08:00' }}">
+            </div>
+
+            <div class="md:col-span-2 flex items-center gap-2">
+              <input id="lunch_break_required" type="checkbox" name="lunch_break_required" class="h-4 w-4" {% if payroll_rules.lunch_break_required %}checked{% endif %}>
+              <label for="lunch_break_required" class="text-sm">Require Lunch Break Logs</label>
+            </div>
+
+            <div>
+              <label class="text-xs text-slate-500">Daily Hours Required</label>
+              <input name="daily_hours_required" class="w-full rounded-xl border px-3 py-2" value="{{ payroll_rules.daily_hours_required|default:'8' }}">
+            </div>
+
+            <div class="md:col-span-2 flex gap-2">
+              <button type="button" id="btnSaveRules" class="px-4 py-2 rounded-xl bg-teal-600 text-white font-semibold">Save Payroll Rules</button>
+              <button type="reset" class="px-4 py-2 rounded-xl border font-semibold">Reset</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="glass rounded-2xl p-4 border">
+          <h3 class="text-lg font-extrabold mb-1">Employee-Specific Deductions & Gov Contributions</h3>
+          <p class="text-xs text-slate-500 mb-4">Set per-employee deductions (loan/advance/etc) and government contributions.</p>
+
+          <form id="contribForm" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="branch" value="{% if selected_branch %}{{ selected_branch.id }}{% endif %}">
+            <input type="hidden" name="rows" id="contribRows" value="">
+
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead>
+                  <tr class="text-left text-slate-500">
+                    <th class="py-2">Employee</th>
+                    <th>SSS</th>
+                    <th>Pag-IBIG</th>
+                    <th>PhilHealth Mode</th>
+                    <th>PhilHealth</th>
+                    <th>Manual Deduction</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for employee in employees|slice:":20" %}
+                  <tr class="border-t">
+                    <td class="py-2">
+                      <div class="font-semibold">{{ employee.user.get_full_name|default:employee.user.username }}</div>
+                      <div class="text-xs text-slate-500">{{ employee.employment_type }}</div>
+                      <input type="hidden" name="profile_id" value="{{ employee.id }}">
+                    </td>
+                    <td><input name="sss_{{ employee.id }}" class="w-28 rounded-xl border px-2 py-1" value="{{ employee.sss_amount|default:'760' }}"></td>
+                    <td><input name="pagibig_{{ employee.id }}" class="w-28 rounded-xl border px-2 py-1" value="{{ employee.pagibig_amount|default:'400' }}"></td>
+                    <td>
+                      <select name="ph_mode_{{ employee.id }}" class="w-32 rounded-xl border px-2 py-1">
+                        <option value="percent">%</option>
+                        <option value="fixed">Fixed</option>
+                      </select>
+                    </td>
+                    <td><input name="ph_val_{{ employee.id }}" class="w-28 rounded-xl border px-2 py-1" value="{{ employee.philhealth_value|default:'5' }}"></td>
+                    <td><input name="ded_{{ employee.id }}" class="w-32 rounded-xl border px-2 py-1" value="{{ employee.manual_deduction_amount|default:'0' }}"></td>
+                  </tr>
+                  {% empty %}
+                  <tr><td colspan="6" class="py-6 text-center text-slate-500">No employees found.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <button type="button" id="btnSaveContrib" class="px-4 py-2 rounded-xl bg-slate-900 text-white font-semibold">Save Gov Contributions</button>
+              <button type="button" id="btnSaveDeductions" class="px-4 py-2 rounded-xl bg-amber-600 text-white font-semibold">Save Manual Deductions</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="glass rounded-2xl p-4 border xl:col-span-2">
+          <h3 class="text-lg font-extrabold mb-1">Holiday & Suspension Manager</h3>
+          <p class="text-xs text-slate-500 mb-4">Add holidays and suspensions affecting payroll computations.</p>
+
+          <div class="flex flex-wrap gap-2 mb-4">
+            <button id="btnOpenHoliday" class="px-4 py-2 rounded-xl bg-teal-600 text-white font-semibold">Add Holiday / Suspension</button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="text-left text-slate-500">
+                  <th class="py-2">Date</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Scope</th>
+                  <th>Impact</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for holiday in holidays %}
+                <tr class="border-t">
+                  <td class="py-2 mono">{{ holiday.date|date:"Y-m-d" }}</td>
+                  <td class="font-semibold">{{ holiday.name }}</td>
+                  <td>{{ holiday.get_type_display }}</td>
+                  <td>{{ holiday.get_scope_display }}</td>
+                  <td class="text-xs text-slate-500">
+                    {% if holiday.type == 'holiday' %}JO - No Pay, COS - Paid{% else %}Both - No Work No Pay{% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="py-6 text-center text-slate-500">No holidays or suspensions configured</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Payroll History -->
+    <section id="tab-history" class="tab-panel">
+      <h3 class="text-lg font-extrabold mb-2">Payroll History</h3>
+      <p class="text-xs text-slate-500 mb-4">Completed payroll batches and itemized employee results.</p>
+
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div class="glass rounded-2xl p-4 border">
+          <div class="font-bold mb-2">Batches</div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="text-left text-slate-500">
+                  <th class="py-2">Batch</th>
+                  <th>Period</th>
+                  <th>Status</th>
+                  <th class="text-right">Net</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for b in payroll_batches %}
+                <tr class="border-t">
+                  <td class="py-2 font-semibold">{{ b.name }}</td>
+                  <td class="text-xs text-slate-500">{{ b.period.name }}</td>
+                  <td>{{ b.get_status_display }}</td>
+                  <td class="text-right mono">₱ {{ b.totals_net|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="py-6 text-center text-slate-500">No payroll batches processed yet</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-4 border">
+          <div class="font-bold mb-2">Recent Items</div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="text-left text-slate-500">
+                  <th class="py-2">Employee</th>
+                  <th>Batch</th>
+                  <th class="text-right">Net</th>
+                  <th>Issues</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for it in payroll_items %}
+                <tr class="border-t">
+                  <td class="py-2 font-semibold">{{ it.profile.user.username }}</td>
+                  <td class="text-xs text-slate-500">{{ it.batch.period.name }}</td>
+                  <td class="text-right mono font-extrabold">₱ {{ it.net_pay|floatformat:2 }}</td>
+                  <td class="text-xs text-slate-500">{{ it.issues|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="py-6 text-center text-slate-500">No items yet</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Financial Dashboard -->
+    <section id="tab-finance" class="tab-panel">
+      <h3 class="text-lg font-extrabold mb-2">Financial Dashboard</h3>
+      <p class="text-xs text-slate-500 mb-4">Monthly totals (completed payroll batches).</p>
+
+      <div class="glass rounded-2xl p-4 border overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="text-left text-slate-500">
+              <th class="py-2">Month</th>
+              <th class="text-right">Net Payroll</th>
+              <th class="text-right">Deductions</th>
+              <th class="text-right">Batches</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in dashboard_months %}
+            <tr class="border-t">
+              <td class="py-2 font-semibold">{{ m.label }}</td>
+              <td class="text-right mono font-extrabold">₱ {{ m.net|floatformat:2 }}</td>
+              <td class="text-right mono">₱ {{ m.deductions|floatformat:2 }}</td>
+              <td class="text-right mono">{{ m.batches }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="py-6 text-center text-slate-500">No data yet</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Holiday Modal -->
+  <div id="holidayModal" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-extrabold">Add Holiday / Suspension</div>
+        <button id="btnCloseHoliday" class="px-3 py-1 rounded-lg border">X</button>
+      </div>
+
+      <form id="holidayForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {% csrf_token %}
+        <input type="hidden" name="branch" value="{% if selected_branch %}{{ selected_branch.id }}{% endif %}">
+
+        <div>
+          <label class="text-xs text-slate-500">Date</label>
+          <input type="date" name="date" class="w-full rounded-xl border px-3 py-2">
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Type</label>
+          <select name="type" class="w-full rounded-xl border px-3 py-2">
+            <option value="holiday">Regular Holiday</option>
+            <option value="suspension">Work Suspension</option>
+            <option value="special">Special Non-Working Day</option>
+          </select>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="text-xs text-slate-500">Name</label>
+          <input name="name" class="w-full rounded-xl border px-3 py-2" placeholder="Holiday name">
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-500">Scope</label>
+          <select name="scope" class="w-full rounded-xl border px-3 py-2">
+            <option value="nationwide">Nationwide</option>
+            <option value="region" selected>MIMAROPA Region</option>
+            <option value="branch">Specific Branch</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-500">Notes</label>
+          <input name="notes" class="w-full rounded-xl border px-3 py-2" placeholder="Optional">
+        </div>
+
+        <div class="md:col-span-2 flex justify-end gap-2 mt-2">
+          <button type="button" id="btnHolidayCancel" class="px-4 py-2 rounded-xl border font-semibold">Cancel</button>
+          <button type="button" id="btnHolidaySave" class="px-4 py-2 rounded-xl bg-teal-600 text-white font-semibold">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  const csrftoken = (document.querySelector('input[name=csrfmiddlewaretoken]') || {}).value;
+
+  // Tabs
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panels = {
+    processing: document.getElementById('tab-processing'),
+    setup: document.getElementById('tab-setup'),
+    history: document.getElementById('tab-history'),
+    finance: document.getElementById('tab-finance'),
+  };
+  tabs.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      tabs.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      Object.values(panels).forEach(p=>p.classList.remove('active'));
+      const key = btn.getAttribute('data-tab');
+      (panels[key] || panels.processing).classList.add('active');
+    });
+  });
+
+  // URLs (adjust to your urls.py names)
+  const urls = {
+    preview: "{% url 'admin_payroll_preview_api' %}",
+    process: "{% url 'admin_payroll_process_batch' %}",
+    saveRules: "{% url 'admin_payroll_save_rules' %}",
+    saveContrib: "{% url 'admin_payroll_save_employee_contributions' %}",
+    saveDed: "{% url 'admin_payroll_save_employee_deductions' %}",
+    addHoliday: "{% url 'admin_payroll_add_holiday' %}",
+  };
+
+  // Branch/period/type values from current query or selected form
+  function getCurrentSelection(){
+    const params = new URLSearchParams(window.location.search);
+    const branch = params.get('branch') || "{{ selected_branch.id|default:'' }}";
+    const period = params.get('period') || "{{ selected_period.id|default:'' }}";
+    const type = params.get('type') || "{{ selected_type|default:'ALL' }}";
+    return {branch, period, type};
+  }
+
+  async function postForm(url, formEl){
+    const fd = new FormData(formEl);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrftoken},
+      body: fd
+    });
+    return await res.json();
+  }
+
+  // Preview (refresh table)
+  const btnPreview = document.getElementById('btnPreview');
+  if(btnPreview){
+    btnPreview.addEventListener('click', async ()=>{
+      const sel = getCurrentSelection();
+      const u = new URL(urls.preview, window.location.origin);
+      u.searchParams.set('branch', sel.branch);
+      u.searchParams.set('period', sel.period);
+      u.searchParams.set('type', sel.type);
+
+      const res = await fetch(u.toString(), {headers:{'Accept':'application/json'}});
+      const data = await res.json();
+      if(!data.ok){
+        alert(data.error || 'Preview failed');
+        return;
+      }
+      const body = document.getElementById('previewBody');
+      body.innerHTML = '';
+      if(!data.items || !data.items.length){
+        body.innerHTML = '<tr><td colspan="10" class="py-6 text-center text-slate-500">No preview data</td></tr>';
+        return;
+      }
+      for(const it of data.items){
+        const status = it.issues ? `<span class="px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Issues</span>`
+                                 : `<span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">Ready</span>`;
+        const tr = document.createElement('tr');
+        tr.className = 'border-t';
+        tr.innerHTML = `
+          <td class="py-2">
+            <div class="font-semibold">${it.name}</div>
+            <div class="text-xs text-slate-500">${it.position || ''}</div>
+          </td>
+          <td>${it.employment_type}</td>
+          <td class="mono">₱ ${Number(it.base||0).toFixed(2)}</td>
+          <td class="mono">₱ ${Number(it.premium||0).toFixed(2)}</td>
+          <td class="mono">${it.late_minutes||0} mins</td>
+          <td class="mono">${it.undertime_minutes||0} mins</td>
+          <td class="mono">₱ ${Number(it.manual_deduction||0).toFixed(2)}</td>
+          <td class="mono">₱ ${Number(it.deductions||0).toFixed(2)}</td>
+          <td class="mono font-extrabold">₱ ${Number(it.net||0).toFixed(2)}</td>
+          <td>${status}</td>
+        `;
+        body.appendChild(tr);
+      }
+    });
+  }
+
+  // Process payroll (create/complete batch)
+  const btnProcess = document.getElementById('btnProcess');
+  if(btnProcess){
+    btnProcess.addEventListener('click', async ()=>{
+      if(!confirm('Approve & process payroll for the selected period?')) return;
+      const sel = getCurrentSelection();
+      const fd = new FormData();
+      fd.append('branch', sel.branch);
+      fd.append('period', sel.period);
+      fd.append('type', sel.type);
+
+      const res = await fetch(urls.process, {method:'POST', headers:{'X-CSRFToken': csrftoken}, body: fd});
+      const data = await res.json();
+      if(!data.ok){
+        alert(data.error || 'Process failed');
+        return;
+      }
+      alert('Payroll processed: ' + (data.batch?.name || 'Batch'));
+      window.location.reload();
+    });
+  }
+
+  // Save rules
+  const btnSaveRules = document.getElementById('btnSaveRules');
+  if(btnSaveRules){
+    btnSaveRules.addEventListener('click', async ()=>{
+      const form = document.getElementById('rulesForm');
+      const data = await postForm(urls.saveRules, form);
+      if(!data.ok){ alert(data.error || 'Save failed'); return; }
+      alert('Payroll rules saved.');
+    });
+  }
+
+  // Save contributions
+  const btnSaveContrib = document.getElementById('btnSaveContrib');
+  if(btnSaveContrib){
+    btnSaveContrib.addEventListener('click', async ()=>{
+      const form = document.getElementById('contribForm');
+      const data = await postForm(urls.saveContrib, form);
+      if(!data.ok){ alert(data.error || 'Save failed'); return; }
+      alert('Gov contributions saved. Updated: ' + (data.updated||0));
+    });
+  }
+
+  // Save manual deductions
+  const btnSaveDeductions = document.getElementById('btnSaveDeductions');
+  if(btnSaveDeductions){
+    btnSaveDeductions.addEventListener('click', async ()=>{
+      const form = document.getElementById('contribForm');
+      const data = await postForm(urls.saveDed, form);
+      if(!data.ok){ alert(data.error || 'Save failed'); return; }
+      alert('Manual deductions saved. Updated: ' + (data.updated||0));
+    });
+  }
+
+  // Holiday modal
+  const modal = document.getElementById('holidayModal');
+  const openBtn = document.getElementById('btnOpenHoliday');
+  const closeBtns = [document.getElementById('btnCloseHoliday'), document.getElementById('btnHolidayCancel')].filter(Boolean);
+  if(openBtn){ openBtn.addEventListener('click', ()=>{ modal.classList.remove('hidden'); modal.classList.add('flex'); }); }
+  closeBtns.forEach(b=>b.addEventListener('click', ()=>{ modal.classList.add('hidden'); modal.classList.remove('flex'); }));
+
+  const btnHolidaySave = document.getElementById('btnHolidaySave');
+  if(btnHolidaySave){
+    btnHolidaySave.addEventListener('click', async ()=>{
+      const form = document.getElementById('holidayForm');
+      const data = await postForm(urls.addHoliday, form);
+      if(!data.ok){ alert(data.error || 'Save failed'); return; }
+      alert('Holiday saved.');
+      window.location.reload();
+    });
+  }
+})();
+</script>
+{% endblock %}

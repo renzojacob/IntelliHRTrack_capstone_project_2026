@@ -210,19 +210,25 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payroll Period</label>
                         <select id="periodFilter" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
+                            {# ✅ shows Monthly / Kinsenas / Katapusan in the dropdown #}
                             {% for period in payroll_periods %}
-                            <option value="{{ period.id }}" {% if period.id == selected_period %}selected{% endif %}>{{ period.name }}</option>
+                            <option value="{{ period.id }}" {% if period.id == selected_period %}selected{% endif %}>
+                                {{ period.name }}{% if period.pay_mode %} • {{ period.get_pay_mode_display }}{% endif %}
+                            </option>
                             {% empty %}
                             <option value="">No periods</option>
                             {% endfor %}
                         </select>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Tip: Monthly = full-month payout, Kinsenas = 1st half, Katapusan = 2nd half.
+                        </p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Employment Type</label>
                         <select id="typeFilter" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                            <option value="ALL">All Types</option>
-                            <option value="JO">Job Order (JO)</option>
-                            <option value="COS">Contract of Service (COS)</option>
+                            <option value="ALL" {% if selected_type == "ALL" %}selected{% endif %}>All Types</option>
+                            <option value="JO" {% if selected_type == "JO" %}selected{% endif %}>Job Order (JO)</option>
+                            <option value="COS" {% if selected_type == "COS" %}selected{% endif %}>Contract of Service (COS)</option>
                         </select>
                     </div>
                 </div>
@@ -399,13 +405,13 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tax Rate %</label>
-                                    <input type="number" step="0.01" min="0" max="100"
+                                    <input name="tax_rate_percent" type="number" step="0.01" min="0" max="100"
                                            value="{{ payroll_rules.tax_rate_percent|default:'5' }}"
                                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Premium Rate %</label>
-                                    <input type="number" step="0.01" min="0" max="100"
+                                    <input name="premium_rate_percent" type="number" step="0.01" min="0" max="100"
                                            value="{{ payroll_rules.premium_rate_percent|default:'20' }}"
                                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
                                 </div>
@@ -427,7 +433,7 @@
                                         <span class="ml-2 text-sm">Fixed Amount</span>
                                     </label>
                                 </div>
-                                <input type="number" step="0.01" min="0"
+                                <input name="philhealth_default_value" type="number" step="0.01" min="0"
                                        value="{{ payroll_rules.philhealth_default_value|default:'5' }}"
                                        class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
                             </div>
@@ -435,13 +441,13 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Late Penalty per Minute (₱)</label>
-                                    <input type="number" step="0.01" min="0"
+                                    <input name="late_penalty_per_minute" type="number" step="0.01" min="0"
                                            value="{{ payroll_rules.late_penalty_per_minute|default:'1.50' }}"
                                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Undertime Penalty per Minute (₱)</label>
-                                    <input type="number" step="0.01" min="0"
+                                    <input name="undertime_penalty_per_minute" type="number" step="0.01" min="0"
                                            value="{{ payroll_rules.undertime_penalty_per_minute|default:'2.00' }}"
                                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
                                 </div>
@@ -450,13 +456,13 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grace Minutes (Normal Days)</label>
-                                    <input type="number" min="0"
+                                    <input name="grace_minutes_normal" type="number" min="0"
                                            value="{{ payroll_rules.grace_minutes_normal|default:'15' }}"
                                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Flag Ceremony Cutoff</label>
-                                    <input type="time"
+                                    <input name="flag_ceremony_cutoff_time" type="time"
                                            value="{{ payroll_rules.flag_ceremony_cutoff_time|default:'08:00' }}"
                                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
                                 </div>
@@ -465,7 +471,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="flex items-center">
-                                        <input type="checkbox"
+                                        <input name="lunch_break_required" type="checkbox"
                                                {% if payroll_rules.lunch_break_required %}checked{% endif %}
                                                class="h-4 w-4 rounded border-gray-300 text-blue-600">
                                         <span class="ml-2 text-sm">Require Lunch Break Logs</span>
@@ -473,14 +479,14 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Daily Hours Required</label>
-                                    <input type="number" step="0.5" min="0"
+                                    <input name="daily_hours_required" type="number" step="0.5" min="0"
                                            value="{{ payroll_rules.daily_hours_required|default:'8' }}"
                                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
                                 </div>
                             </div>
 
                             <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-                                <button type="submit" class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-lg">
+                                <button id="savePayrollRulesBtn" type="submit" class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-lg">
                                     Save Payroll Rules
                                 </button>
                                 <button type="button" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg ml-2">
@@ -494,12 +500,12 @@
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-semibold">Government Contributions (Employee-Specific)</h3>
-                            <button class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">
+                            <button id="saveContribBtn" class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">
                                 Save Changes
                             </button>
                         </div>
                         <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" id="contribTable">
                                 <thead class="bg-gray-50 dark:bg-gray-700/60">
                                     <tr>
                                         <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
@@ -511,32 +517,32 @@
                                 </thead>
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     {% for employee in employees|slice:":5" %}
-                                    <tr>
+                                    <tr data-profile-id="{{ employee.id }}">
                                         <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">{{ employee.name }}</td>
                                         <td class="px-4 py-3 whitespace-nowrap">
-                                            <input type="number" min="760" step="0.01"
+                                            <input data-field="sss_amount" type="number" min="760" step="0.01"
                                                    value="{{ employee.sss_amount|default:'760' }}"
                                                    class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap">
-                                            <input type="number" min="400" step="0.01"
+                                            <input data-field="pagibig_amount" type="number" min="400" step="0.01"
                                                    value="{{ employee.pagibig_amount|default:'400' }}"
                                                    class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             <div class="space-y-1">
-                                                <select class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
+                                                <select data-field="philhealth_mode" class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
                                                     <option value="percent" {% if employee.philhealth_mode != 'fixed' %}selected{% endif %}>%</option>
                                                     <option value="fixed" {% if employee.philhealth_mode == 'fixed' %}selected{% endif %}>Fixed</option>
                                                 </select>
-                                                <input type="number" step="0.01" min="0"
+                                                <input data-field="philhealth_value" type="number" step="0.01" min="0"
                                                        value="{{ employee.philhealth_value|default:'5' }}"
                                                        class="w-full rounded border border-gray-300 px-2 py-1 text-sm mt-1">
                                             </div>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             <label class="inline-flex items-center">
-                                                <input type="checkbox" {% if employee.has_premium %}checked{% endif %}
+                                                <input data-field="has_premium" type="checkbox" {% if employee.has_premium %}checked{% endif %}
                                                        class="h-4 w-4 rounded border-gray-300 text-blue-600">
                                                 <span class="ml-2 text-sm">Apply Premium</span>
                                             </label>
@@ -546,6 +552,65 @@
                                 </tbody>
                             </table>
                         </div>
+                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                            These are employee-specific contribution values (not global defaults).
+                        </p>
+                    </div>
+
+                    <!-- ✅ NEW: Employee-Specific Deductions (Per Employee) -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Employee-Specific Deductions</h3>
+                            <button id="saveDeductionsBtn" class="px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm">
+                                Save Deductions
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" id="deductionsTable">
+                                <thead class="bg-gray-50 dark:bg-gray-700/60">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Employment Type</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Base (COS Monthly / JO Daily)</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Manual Deduction (₱)</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    {% for employee in employees|slice:":10" %}
+                                    <tr data-profile-id="{{ employee.id }}">
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">{{ employee.name }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                            <span class="px-2 py-1 text-xs rounded-full {% if employee.employment_type == 'JO' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% else %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200{% endif %}">
+                                                {{ employee.employment_type }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                            {% if employee.employment_type == 'JO' %}
+                                                <span class="peso">{{ employee.daily_rate|default:"0.00" }}</span>
+                                            {% else %}
+                                                <span class="peso">{{ employee.monthly_salary|default:"0.00" }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <input data-field="manual_deduction_amount" type="number" min="0" step="0.01"
+                                                   value="{{ employee.manual_deduction_amount|default:'0.00' }}"
+                                                   class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <input data-field="manual_deduction_note" type="text"
+                                                   value="{{ employee.manual_deduction_note|default:'' }}"
+                                                   class="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                                                   placeholder="e.g., cash advance / uniform / loan">
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                            Manual deductions are per employee (e.g., cash advance/loan) and will be added to payroll deductions.
+                        </p>
                     </div>
                 </div>
 
@@ -593,7 +658,7 @@
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
                         <h3 class="text-lg font-semibold mb-4">Audit Trail</h3>
                         <div class="space-y-3 max-h-64 overflow-y-auto">
-                            {% for batch in payroll_batches|slice:":5" %}
+                            {% for batch in payroll_batches|slice:":8" %}
                             <div class="border-l-2 border-blue-500 pl-3">
                                 <p class="text-sm font-medium">{{ batch.name }}</p>
                                 <p class="text-xs text-gray-500">{{ batch.processed_by }} • {{ batch.processed_at|date:"M d, Y H:i" }}</p>
@@ -617,23 +682,132 @@
             <div class="text-center py-12">
                 <iconify-icon icon="ph:chart-bar-duotone" class="text-4xl text-gray-400"></iconify-icon>
                 <h3 class="mt-4 text-lg font-medium">Government Salary Structure</h3>
-                <p class="text-sm text-gray-500 mt-2">Configured via Payroll Setup rules</p>
+                <p class="text-sm text-gray-500 mt-2">
+                    This module is now handled via Payroll Setup rules and employee base compensation (JO daily rate / COS monthly salary).
+                </p>
+                <div class="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-800 rounded-lg border border-amber-200">
+                    <iconify-icon icon="ph:info-duotone"></iconify-icon>
+                    <span class="text-sm">Salary Structure data is computed, not manually encoded here.</span>
+                </div>
             </div>
         </div>
 
         <div id="payroll-history-content" class="payroll-content hidden">
-            <div class="text-center py-12">
-                <iconify-icon icon="ph:clock-counter-clockwise-duotone" class="text-4xl text-gray-400"></iconify-icon>
-                <h3 class="mt-4 text-lg font-medium">Payroll History</h3>
-                <p class="text-sm text-gray-500 mt-2">View audit trail in Payroll Setup tab</p>
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold">Payroll History</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Shows processed payroll batches and totals.</p>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-white/30 dark:border-gray-700/60">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700/60">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Batch</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Branch</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Period</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Processed By</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Processed At</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Net Total</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Deductions Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {% for batch in payroll_batches %}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                <td class="px-6 py-4 text-sm font-medium">{{ batch.name }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">{{ batch.branch.name }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">{{ batch.period.name }}</td>
+                                <td class="px-6 py-4 text-sm">
+                                    <span class="px-2 py-1 rounded-full text-xs {% if batch.status == 'completed' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                        {{ batch.get_status_display }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">{{ batch.processed_by|default:"—" }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">{{ batch.processed_at|date:"M d, Y H:i"|default:"—" }}</td>
+                                <td class="px-6 py-4 text-sm font-semibold peso">{{ batch.totals_net|default:"0.00" }}</td>
+                                <td class="px-6 py-4 text-sm font-semibold peso text-red-600">{{ batch.totals_deductions|default:"0.00" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="px-6 py-12 text-center">
+                                    <iconify-icon icon="ph:clock-counter-clockwise-duotone" class="text-4xl text-gray-400"></iconify-icon>
+                                    <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">No payroll history yet</h3>
+                                    <p class="mt-2 text-sm text-gray-500">Process a payroll batch to generate history records.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
         <div id="financial-dashboard-content" class="payroll-content hidden">
-            <div class="text-center py-12">
-                <iconify-icon icon="ph:chart-line-up-duotone" class="text-4xl text-gray-400"></iconify-icon>
-                <h3 class="mt-4 text-lg font-medium">Financial Dashboard</h3>
-                <p class="text-sm text-gray-500 mt-2">Available in next update</p>
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold">Financial Dashboard</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Monthly totals (net pay and deductions) from processed payroll batches.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Net Pay (Selected Month)</p>
+                    <div class="mt-2 text-2xl font-extrabold peso">
+                        {{ dashboard_selected_net|default:"0.00" }}
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Deductions (Selected Month)</p>
+                    <div class="mt-2 text-2xl font-extrabold peso text-red-600">
+                        {{ dashboard_selected_deductions|default:"0.00" }}
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Batches Completed</p>
+                    <div class="mt-2 text-2xl font-extrabold">
+                        {{ dashboard_selected_batches|default:"0" }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-lg font-semibold">Monthly Breakdown</h4>
+                    <p class="text-xs text-gray-500">Uses processed batches only</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700/60">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Month</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Net Total</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Deductions Total</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Batches</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {% for row in dashboard_months %}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                <td class="px-6 py-4 text-sm font-medium">{{ row.month }}</td>
+                                <td class="px-6 py-4 text-sm font-semibold peso">{{ row.net|default:"0.00" }}</td>
+                                <td class="px-6 py-4 text-sm font-semibold peso text-red-600">{{ row.deductions|default:"0.00" }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">{{ row.batches|default:"0" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500">
+                                    No dashboard data yet. Process payroll batches to populate this chart/table.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -651,15 +825,15 @@
         <form id="holidayForm" class="space-y-4">
             <div>
                 <label class="block text-sm font-medium mb-1">Date</label>
-                <input type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                <input name="date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
             </div>
             <div>
                 <label class="block text-sm font-medium mb-1">Name</label>
-                <input type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="e.g., Independence Day">
+                <input name="name" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="e.g., Independence Day">
             </div>
             <div>
                 <label class="block text-sm font-medium mb-1">Type</label>
-                <select class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                <select name="type" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
                     <option value="holiday">Regular Holiday</option>
                     <option value="suspension">Work Suspension</option>
                     <option value="special">Special Non-Working Day</option>
@@ -667,7 +841,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium mb-1">Scope</label>
-                <select class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                <select name="scope" id="holidayScope" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
                     <option value="nationwide">Nationwide</option>
                     <option value="branch">Specific Branch</option>
                     <option value="region">MIMAROPA Region</option>
@@ -675,7 +849,7 @@
             </div>
             <div id="branchSelection" class="hidden">
                 <label class="block text-sm font-medium mb-1">Branch</label>
-                <select class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                <select name="branch" id="holidayBranch" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
                     {% for branch in branches %}
                     <option value="{{ branch.id }}">{{ branch.name }}</option>
                     {% endfor %}
@@ -683,7 +857,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium mb-1">Notes</label>
-                <textarea rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Impact on JO/COS payroll..."></textarea>
+                <textarea name="notes" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Impact on JO/COS payroll..."></textarea>
             </div>
             <div class="flex justify-end gap-2 pt-4">
                 <button type="button" id="cancelHoliday" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">Cancel</button>
@@ -846,13 +1020,13 @@
     }
 
     // ----------------------------
-    // Holiday Modal (unchanged)
+    // Holiday Modal
     // ----------------------------
     const holidayModal = document.getElementById('holidayModal');
     const addHolidayBtn = document.getElementById('addHolidayBtn');
     const closeHolidayModal = document.getElementById('closeHolidayModal');
     const cancelHoliday = document.getElementById('cancelHoliday');
-    const scopeSelect = holidayModal?.querySelector('select');
+    const scopeSelect = document.getElementById('holidayScope');
 
     addHolidayBtn?.addEventListener('click', () => holidayModal.classList.remove('hidden'));
     [closeHolidayModal, cancelHoliday].forEach(btn => {
@@ -863,6 +1037,27 @@
         const branchSelection = document.getElementById('branchSelection');
         if (e.target.value === 'branch') branchSelection.classList.remove('hidden');
         else branchSelection.classList.add('hidden');
+    });
+
+    // ✅ Submit holiday to backend
+    const holidayForm = document.getElementById('holidayForm');
+    holidayForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const fd = new FormData(holidayForm);
+
+            const res = await fetch("/admin-ui/payroll/add-holiday/", {
+                method: "POST",
+                headers: { "X-CSRFToken": getCsrfToken(), "Accept": "application/json" },
+                body: fd
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to add holiday");
+            showToast("Holiday saved!", "info");
+            window.location.reload();
+        } catch (err) {
+            showToast(err.message || "Failed to add holiday", "error");
+        }
     });
 
     // ----------------------------
@@ -1062,12 +1257,126 @@
             }
 
             showToast(`Payroll processed! Batch: ${data.batch?.name || ''}`, "info");
-            // Refresh the page to update top cards + audit trail
+            // Refresh the page to update top cards + audit trail + history/dashboard
             window.location.reload();
         } catch (err) {
             showToast(err.message || "Failed to process payroll", "error");
         } finally {
             setBusy(approveProcessBtn, false);
+        }
+    });
+
+    // ----------------------------
+    // ✅ Save Payroll Rules (POST)
+    // ----------------------------
+    const payrollRulesForm = document.getElementById('payrollRulesForm');
+    payrollRulesForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const saveBtn = document.getElementById('savePayrollRulesBtn');
+        try {
+            setBusy(saveBtn, true);
+
+            const fd = new FormData(payrollRulesForm);
+            // normalize checkbox
+            if (!fd.has("lunch_break_required")) fd.set("lunch_break_required", "off");
+
+            const res = await fetch("/admin-ui/payroll/save-rules/", {
+                method: "POST",
+                headers: { "X-CSRFToken": getCsrfToken(), "Accept": "application/json" },
+                body: fd
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to save payroll rules");
+            showToast("Payroll rules saved!", "info");
+        } catch (err) {
+            showToast(err.message || "Failed to save payroll rules", "error");
+        } finally {
+            setBusy(saveBtn, false);
+        }
+    });
+
+    // ----------------------------
+    // ✅ Save Contributions (POST)
+    // ----------------------------
+    const saveContribBtn = document.getElementById('saveContribBtn');
+    saveContribBtn?.addEventListener('click', async () => {
+        try {
+            setBusy(saveContribBtn, true);
+
+            const rows = [];
+            document.querySelectorAll('#contribTable tbody tr[data-profile-id]').forEach(tr => {
+                const profileId = tr.getAttribute('data-profile-id');
+                const get = (field) => tr.querySelector(`[data-field="${field}"]`);
+
+                const sss = get('sss_amount')?.value ?? "760";
+                const pagibig = get('pagibig_amount')?.value ?? "400";
+                const philMode = get('philhealth_mode')?.value ?? "percent";
+                const philValue = get('philhealth_value')?.value ?? "5";
+                const premium = get('has_premium')?.checked ? true : false;
+
+                rows.push({
+                    profile_id: profileId,
+                    sss_amount: sss,
+                    pagibig_amount: pagibig,
+                    philhealth_mode: philMode,
+                    philhealth_value: philValue,
+                    has_premium: premium
+                });
+            });
+
+            const res = await fetch("/admin-ui/payroll/save-contributions/", {
+                method: "POST",
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCsrfToken(),
+                },
+                body: JSON.stringify({ rows })
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to save contributions");
+            showToast("Contributions saved!", "info");
+        } catch (err) {
+            showToast(err.message || "Failed to save contributions", "error");
+        } finally {
+            setBusy(saveContribBtn, false);
+        }
+    });
+
+    // ----------------------------
+    // ✅ Save Employee Deductions (POST)
+    // ----------------------------
+    const saveDeductionsBtn = document.getElementById('saveDeductionsBtn');
+    saveDeductionsBtn?.addEventListener('click', async () => {
+        try {
+            setBusy(saveDeductionsBtn, true);
+
+            const rows = [];
+            document.querySelectorAll('#deductionsTable tbody tr[data-profile-id]').forEach(tr => {
+                const profileId = tr.getAttribute('data-profile-id');
+                const amount = tr.querySelector('[data-field="manual_deduction_amount"]')?.value ?? "0";
+                const note = tr.querySelector('[data-field="manual_deduction_note"]')?.value ?? "";
+                rows.push({ profile_id: profileId, manual_deduction_amount: amount, manual_deduction_note: note });
+            });
+
+            const res = await fetch("/admin-ui/payroll/save-deductions/", {
+                method: "POST",
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCsrfToken(),
+                },
+                body: JSON.stringify({ rows })
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to save deductions");
+            showToast("Deductions saved!", "info");
+        } catch (err) {
+            showToast(err.message || "Failed to save deductions", "error");
+        } finally {
+            setBusy(saveDeductionsBtn, false);
         }
     });
 
