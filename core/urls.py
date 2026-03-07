@@ -3,6 +3,9 @@ from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
+    # Landing Page
+    path("", views.index, name="index"),
+
     # auth
     path("auth/login/", views.login_ui, name="login_ui"),
     path("auth/signup/", views.signup_ui, name="signup_ui"),
