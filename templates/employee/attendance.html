@@ -23,19 +23,65 @@
   <div class="glass rounded-3xl p-6 shadow reveal">
     <h2 class="text-xl font-bold mb-4">Check-In / Check-Out</h2>
 
-    <div class="p-6 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/20 rounded-2xl border border-green-200 dark:border-green-700 text-center mb-4">
-      <div id="statusPulse" class="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-4 pulse-subtle">
+    {% comment %}
+      status_kind: "in" | "out" | "none"
+      - in  => green
+      - out => red
+      - none => gray/blue
+    {% endcomment %}
+
+    <div class="
+      p-6 rounded-2xl border text-center mb-4
+      {% if status_kind == 'in' %}
+        bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/20 border-green-200 dark:border-green-700
+      {% elif status_kind == 'out' %}
+        bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-900/30 dark:to-rose-900/20 border-red-200 dark:border-red-700
+      {% else %}
+        bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/30 dark:to-slate-900/20 border-slate-200 dark:border-slate-700
+      {% endif %}
+    ">
+      <div id="statusPulse" class="
+        w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 pulse-subtle
+        {% if status_kind == 'in' %} bg-green-500
+        {% elif status_kind == 'out' %} bg-red-500
+        {% else %} bg-slate-500
+        {% endif %}
+      ">
         <iconify-icon icon="ph:fingerprint-duotone" class="text-white text-3xl"></iconify-icon>
       </div>
-      <h3 class="text-lg font-bold text-green-800 dark:text-green-300" id="currentStatus">Checked In</h3>
-      <p class="text-sm text-green-600 dark:text-green-400 mt-2">
-        You checked in at <span class="font-semibold">8:45 AM</span>
-      </p>
-      <p class="text-xs text-green-500 dark:text-green-500 mt-1">
-        Duration: <span id="workDuration">--</span>
-      </p>
+
+      <h3 class="text-lg font-bold
+        {% if status_kind == 'in' %} text-green-800 dark:text-green-300
+        {% elif status_kind == 'out' %} text-red-700 dark:text-red-300
+        {% else %} text-slate-800 dark:text-slate-200
+        {% endif %}
+      " id="currentStatus">{{ current_status }}</h3>
+
+      {% if status_kind == 'in' %}
+        <p class="text-sm text-green-600 dark:text-green-400 mt-2">
+          You checked in at <span class="font-semibold">{{ today_checkin|default:"—" }}</span>
+        </p>
+        <p class="text-xs text-green-500 dark:text-green-500 mt-1">
+          Duration: <span id="workDuration">{{ work_duration|default:"--" }}</span>
+        </p>
+      {% elif status_kind == 'out' %}
+        <p class="text-sm text-red-600 dark:text-red-400 mt-2">
+          You checked out at <span class="font-semibold">{{ today_checkout|default:"—" }}</span>
+        </p>
+        <p class="text-xs text-red-500 dark:text-red-500 mt-1">
+          Checked in: <span class="font-semibold">{{ today_checkin|default:"—" }}</span>
+        </p>
+      {% else %}
+        <p class="text-sm text-slate-600 dark:text-slate-400 mt-2">
+          No check-in record yet for today.
+        </p>
+        <p class="text-xs text-slate-500 dark:text-slate-500 mt-1">
+          Tip: Wait for biometrics import / device sync.
+        </p>
+      {% endif %}
     </div>
 
+    <!-- Buttons kept as UI only (no backend action yet) -->
     <div class="grid grid-cols-2 gap-4">
       <button id="checkInBtn" class="px-4 py-4 bg-gray-300 text-gray-600 rounded-xl font-medium transition-all ripple" disabled>
         <iconify-icon icon="ph:arrow-right-duotone" class="mr-2"></iconify-icon>
@@ -49,7 +95,7 @@
 
     <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl text-center">
       <p class="text-sm text-blue-700 dark:text-blue-300">
-        Next scheduled break: <span class="font-semibold">12:00 PM</span>
+        Status source: <span class="font-semibold">AttendanceRecord logs</span>
       </p>
     </div>
   </div>
@@ -59,16 +105,50 @@
     <h2 class="text-xl font-bold mb-4">Live Status</h2>
 
     <div class="space-y-4">
-      <div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-xl border-l-4 border-green-500">
+      <div class="
+        p-4 rounded-xl border-l-4
+        {% if status_kind == 'in' %}
+          bg-green-50 dark:bg-green-900/30 border-green-500
+        {% elif status_kind == 'out' %}
+          bg-red-50 dark:bg-red-900/30 border-red-500
+        {% else %}
+          bg-slate-50 dark:bg-slate-900/30 border-slate-500
+        {% endif %}
+      ">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+            <div class="w-3 h-3 rounded-full
+              {% if status_kind == 'in' %} bg-green-500
+              {% elif status_kind == 'out' %} bg-red-500
+              {% else %} bg-slate-500
+              {% endif %}
+            "></div>
             <span class="font-medium">Current Status</span>
           </div>
-          <span class="px-2 py-1 bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 text-xs rounded-full">Active</span>
+
+          {% if status_kind == 'in' %}
+            <span class="px-2 py-1 bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 text-xs rounded-full">Active</span>
+          {% elif status_kind == 'out' %}
+            <span class="px-2 py-1 bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200 text-xs rounded-full">Closed</span>
+          {% else %}
+            <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs rounded-full">No Log</span>
+          {% endif %}
         </div>
-        <p class="text-lg font-bold mt-2 text-green-700 dark:text-green-300">Checked In</p>
-        <p class="text-sm text-green-600 dark:text-green-400 mt-1">Since 8:45 AM today</p>
+
+        <p class="text-lg font-bold mt-2
+          {% if status_kind == 'in' %} text-green-700 dark:text-green-300
+          {% elif status_kind == 'out' %} text-red-700 dark:text-red-300
+          {% else %} text-slate-700 dark:text-slate-300
+          {% endif %}
+        ">{{ current_status }}</p>
+
+        {% if status_kind == 'in' %}
+          <p class="text-sm text-green-600 dark:text-green-400 mt-1">Since {{ today_checkin|default:"—" }} today</p>
+        {% elif status_kind == 'out' %}
+          <p class="text-sm text-red-600 dark:text-red-400 mt-1">Checked out at {{ today_checkout|default:"—" }}</p>
+        {% else %}
+          <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">No record yet today</p>
+        {% endif %}
       </div>
 
       <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
@@ -98,7 +178,7 @@
           <iconify-icon icon="ph:map-pin-duotone" class="text-purple-500"></iconify-icon>
         </div>
         <p class="text-sm text-purple-700 dark:text-purple-300 mt-1">Main Office - Floor 3</p>
-        <p class="text-xs text-purple-600 dark:text-purple-400">Device: Tablet #7</p>
+        <p class="text-xs text-purple-600 dark:text-purple-400">Device: Attendance Sync</p>
       </div>
     </div>
   </div>
@@ -115,7 +195,9 @@
         </div>
       </div>
       <p class="font-medium text-blue-700 dark:text-blue-300">Last Verification</p>
-      <p class="text-sm text-blue-600 dark:text-blue-400">Today, 8:45 AM</p>
+      <p class="text-sm text-blue-600 dark:text-blue-400">
+        {% if today_checkin %}Today, {{ today_checkin }}{% else %}—{% endif %}
+      </p>
       <p class="text-xs text-blue-500 dark:text-blue-500 mt-2">Confidence: 98.7%</p>
 
       <button type="button" class="mt-4 w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm transition-all ripple flex items-center justify-center gap-2">
@@ -165,93 +247,73 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-              <td class="p-3">Today</td>
-              <td class="p-3">8:45 AM</td>
-              <td class="p-3">-</td>
-              <td class="p-3">7h 15m</td>
-              <td class="p-3">
-                <span class="px-2 py-1 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs rounded-full">Late</span>
-              </td>
-              <td class="p-3"><button type="button" class="text-blue-500 hover:text-blue-700 text-xs">Add Note</button></td>
-            </tr>
-            <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-              <td class="p-3">Nov 14</td>
-              <td class="p-3">8:55 AM</td>
-              <td class="p-3">6:10 PM</td>
-              <td class="p-3">8h 15m</td>
-              <td class="p-3">
-                <span class="px-2 py-1 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs rounded-full">Late</span>
-              </td>
-              <td class="p-3"><span class="text-xs text-gray-500">Traffic delay</span></td>
-            </tr>
-            <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-              <td class="p-3">Nov 13</td>
-              <td class="p-3">8:58 AM</td>
-              <td class="p-3">6:05 PM</td>
-              <td class="p-3">8h 7m</td>
-              <td class="p-3">
-                <span class="px-2 py-1 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs rounded-full">Late</span>
-              </td>
-              <td class="p-3"><button type="button" class="text-blue-500 hover:text-blue-700 text-xs">Add Note</button></td>
-            </tr>
-            <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-              <td class="p-3">Nov 12</td>
-              <td class="p-3">8:45 AM</td>
-              <td class="p-3">5:45 PM</td>
-              <td class="p-3">8h 0m</td>
-              <td class="p-3">
-                <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">On Time</span>
-              </td>
-              <td class="p-3"><button type="button" class="text-blue-500 hover:text-blue-700 text-xs">Add Note</button></td>
-            </tr>
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-              <td class="p-3">Nov 11</td>
-              <td class="p-3">8:42 AM</td>
-              <td class="p-3">6:20 PM</td>
-              <td class="p-3">8h 38m</td>
-              <td class="p-3">
-                <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">On Time</span>
-              </td>
-              <td class="p-3"><span class="text-xs text-gray-500">Stayed late for project</span></td>
-            </tr>
+            {% if history_rows %}
+              {% for r in history_rows %}
+                <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  <td class="p-3">{{ r.date_label }}</td>
+                  <td class="p-3">{{ r.check_in }}</td>
+                  <td class="p-3">{{ r.check_out }}</td>
+                  <td class="p-3">{{ r.total_hours }}</td>
+                  <td class="p-3">
+                    {% if r.badge_style == 'green' %}
+                      <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">{{ r.badge }}</span>
+                    {% elif r.badge_style == 'amber' %}
+                      <span class="px-2 py-1 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs rounded-full">{{ r.badge }}</span>
+                    {% else %}
+                      <span class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs rounded-full">{{ r.badge }}</span>
+                    {% endif %}
+                  </td>
+                  <td class="p-3">
+                    {% if r.remarks %}
+                      <span class="text-xs text-gray-500">{{ r.remarks }}</span>
+                    {% else %}
+                      <button type="button" class="text-blue-500 hover:text-blue-700 text-xs">Add Note</button>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td class="p-4 text-sm text-gray-500 dark:text-gray-400" colspan="6">
+                  No attendance records found yet.
+                </td>
+              </tr>
+            {% endif %}
           </tbody>
         </table>
       </div>
 
       <div class="flex justify-between items-center mt-4">
-        <p class="text-sm text-gray-500 dark:text-gray-400">Showing 5 of 87 records</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Showing {{ history_rows|length }} record(s)</p>
         <div class="flex items-center gap-2">
-          <button type="button" class="p-2 rounded-lg glass text-sm">Previous</button>
+          <button type="button" class="p-2 rounded-lg glass text-sm" disabled>Previous</button>
           <button type="button" class="p-2 rounded-lg glass text-sm bg-accent text-white">1</button>
-          <button type="button" class="p-2 rounded-lg glass text-sm">2</button>
-          <button type="button" class="p-2 rounded-lg glass text-sm">3</button>
-          <button type="button" class="p-2 rounded-lg glass text-sm">Next</button>
+          <button type="button" class="p-2 rounded-lg glass text-sm" disabled>Next</button>
         </div>
       </div>
     </div>
 
-    <!-- Work Hour & Overtime -->
+    <!-- Work Hour & Overtime (kept UI as-is) -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="glass rounded-3xl p-6 shadow reveal">
         <h2 class="text-xl font-bold mb-4">Work Hour Summary</h2>
         <div class="space-y-4">
           <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
             <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Today</span><span class="text-xs text-gray-500">In Progress</span></div>
-            <p class="text-2xl font-bold">7h 15m</p>
+            <p class="text-2xl font-bold">{{ work_duration|default:"--" }}</p>
             <div class="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2 mt-2">
               <div class="bg-blue-500 h-2 rounded-full" style="width: 85%"></div>
             </div>
           </div>
           <div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-xl">
             <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">This Week</span><span class="text-xs text-gray-500">Mon-Fri</span></div>
-            <p class="text-2xl font-bold">38.5 hours</p>
-            <div class="flex items-center gap-2 mt-2"><iconify-icon icon="ph:trend-up-duotone" class="text-green-500"></iconify-icon><span class="text-sm text-green-600 dark:text-green-400">+2.5h from last week</span></div>
+            <p class="text-2xl font-bold">—</p>
+            <div class="flex items-center gap-2 mt-2"><iconify-icon icon="ph:trend-up-duotone" class="text-green-500"></iconify-icon><span class="text-sm text-green-600 dark:text-green-400">Auto soon</span></div>
           </div>
           <div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
             <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Monthly Average</span><span class="text-xs text-gray-500">This month</span></div>
-            <p class="text-2xl font-bold">8.2h/day</p>
-            <div class="flex items-center gap-2 mt-2"><iconify-icon icon="ph:trend-up-duotone" class="text-purple-500"></iconify-icon><span class="text-sm text-purple-600 dark:text-purple-400">+0.3h from last month</span></div>
+            <p class="text-2xl font-bold">—</p>
+            <div class="flex items-center gap-2 mt-2"><iconify-icon icon="ph:trend-up-duotone" class="text-purple-500"></iconify-icon><span class="text-sm text-purple-600 dark:text-purple-400">Auto soon</span></div>
           </div>
         </div>
       </div>
@@ -264,24 +326,24 @@
             <iconify-icon icon="ph:clock-countdown-duotone" class="text-purple-500 text-xl"></iconify-icon>
           </div>
           <div class="flex items-end gap-2">
-            <span class="text-3xl font-bold text-purple-700 dark:text-purple-300">12.5</span>
+            <span class="text-3xl font-bold text-purple-700 dark:text-purple-300">—</span>
             <span class="text-lg text-purple-600 dark:text-purple-400 mb-1">hours</span>
           </div>
           <div class="flex items-center gap-2 mt-4">
             <iconify-icon icon="ph:trend-up-duotone" class="text-green-500"></iconify-icon>
-            <span class="text-sm text-green-600 dark:text-green-400">+2.5h from last period</span>
+            <span class="text-sm text-green-600 dark:text-green-400">Auto soon</span>
           </div>
         </div>
 
         <div class="space-y-3">
           <div class="flex justify-between items-center"><span class="text-sm text-gray-600 dark:text-gray-400">Overtime Rate</span><span class="font-medium">1.5x pay</span></div>
-          <div class="flex justify-between items-center"><span class="text-sm text-gray-600 dark:text-gray-400">Estimated Earnings</span><span class="font-medium">$573.75</span></div>
-          <div class="flex justify-between items-center"><span class="text-sm text-gray-600 dark:text-gray-400">Approval Status</span><span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">Approved</span></div>
+          <div class="flex justify-between items-center"><span class="text-sm text-gray-600 dark:text-gray-400">Estimated Earnings</span><span class="font-medium">—</span></div>
+          <div class="flex justify-between items-center"><span class="text-sm text-gray-600 dark:text-gray-400">Approval Status</span><span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">—</span></div>
         </div>
       </div>
     </div>
 
-    <!-- Punctuality Tracker -->
+    <!-- Punctuality Tracker (kept UI as-is) -->
     <div class="glass rounded-3xl p-6 shadow reveal">
       <h2 class="text-xl font-bold mb-4">Punctuality Tracker</h2>
 
@@ -291,8 +353,8 @@
             <iconify-icon icon="ph:clock-duotone" class="text-white text-xl"></iconify-icon>
           </div>
           <p class="text-sm text-gray-600 dark:text-gray-400">Late Arrivals</p>
-          <p class="text-2xl font-bold mt-1">3</p>
-          <p class="text-xs text-amber-500 mt-1">This month</p>
+          <p class="text-2xl font-bold mt-1">{% if is_late_today %}1{% else %}0{% endif %}</p>
+          <p class="text-xs text-amber-500 mt-1">Today</p>
         </div>
 
         <div class="p-4 bg-red-50 dark:bg-red-900/30 rounded-xl text-center">
@@ -300,7 +362,7 @@
             <iconify-icon icon="ph:arrow-left-duotone" class="text-white text-xl"></iconify-icon>
           </div>
           <p class="text-sm text-gray-600 dark:text-gray-400">Early Departures</p>
-          <p class="text-2xl font-bold mt-1">1</p>
+          <p class="text-2xl font-bold mt-1">—</p>
           <p class="text-xs text-red-500 mt-1">This month</p>
         </div>
 
@@ -309,8 +371,8 @@
             <iconify-icon icon="ph:trend-down-duotone" class="text-white text-xl"></iconify-icon>
           </div>
           <p class="text-sm text-gray-600 dark:text-gray-400">Improvement</p>
-          <p class="text-2xl font-bold mt-1">42%</p>
-          <p class="text-xs text-green-500 mt-1">From last month</p>
+          <p class="text-2xl font-bold mt-1">—</p>
+          <p class="text-xs text-green-500 mt-1">Auto soon</p>
         </div>
       </div>
 
@@ -330,21 +392,21 @@
         <div class="relative w-48 h-48">
           <canvas id="complianceGauge"></canvas>
           <div class="absolute inset-0 flex flex-col items-center justify-center">
-            <span class="text-3xl font-bold">96%</span>
+            <span class="text-3xl font-bold">—</span>
             <span class="text-sm text-gray-500 dark:text-gray-400">Punctuality</span>
           </div>
         </div>
       </div>
 
       <div class="grid grid-cols-2 gap-4 mt-4 text-center">
-        <div><p class="text-sm text-gray-500 dark:text-gray-400">On Time Days</p><p class="font-bold">18</p></div>
-        <div><p class="text-sm text-gray-500 dark:text-gray-400">Late Days</p><p class="font-bold">3</p></div>
+        <div><p class="text-sm text-gray-500 dark:text-gray-400">On Time Days</p><p class="font-bold">—</p></div>
+        <div><p class="text-sm text-gray-500 dark:text-gray-400">Late Days</p><p class="font-bold">—</p></div>
         <div><p class="text-sm text-gray-500 dark:text-gray-400">Target</p><p class="font-bold">95%</p></div>
-        <div><p class="text-sm text-gray-500 dark:text-gray-400">Department Avg</p><p class="font-bold">92%</p></div>
+        <div><p class="text-sm text-gray-500 dark:text-gray-400">Department Avg</p><p class="font-bold">—</p></div>
       </div>
     </div>
 
-    <!-- AI Insights -->
+    <!-- AI Insights (kept UI as-is) -->
     <div class="glass rounded-3xl p-6 shadow reveal">
       <h2 class="text-xl font-bold mb-4">AI Insights</h2>
       <div class="space-y-4">
@@ -352,8 +414,8 @@
           <div class="flex items-start gap-3">
             <iconify-icon icon="ph:trend-up-duotone" class="text-green-500 mt-1"></iconify-icon>
             <div>
-              <p class="font-medium text-green-800 dark:text-green-300">You've improved your punctuality by 10% this month.</p>
-              <p class="text-sm text-green-600 dark:text-green-400 mt-1">Great consistency in morning arrivals!</p>
+              <p class="font-medium text-green-800 dark:text-green-300">Attendance data is now based on your actual logs.</p>
+              <p class="text-sm text-green-600 dark:text-green-400 mt-1">More insights can be added next.</p>
             </div>
           </div>
         </div>
@@ -361,8 +423,8 @@
           <div class="flex items-start gap-3">
             <iconify-icon icon="ph:clock-countdown-duotone" class="text-blue-500 mt-1"></iconify-icon>
             <div>
-              <p class="font-medium text-blue-800 dark:text-blue-300">Your average work duration is 8.2 hours daily.</p>
-              <p class="text-sm text-blue-600 dark:text-blue-400 mt-1">Optimal work-life balance maintained.</p>
+              <p class="font-medium text-blue-800 dark:text-blue-300">Your daily status updates when new logs are imported.</p>
+              <p class="text-sm text-blue-600 dark:text-blue-400 mt-1">Check-in/out comes from AttendanceRecord.</p>
             </div>
           </div>
         </div>
@@ -370,8 +432,8 @@
           <div class="flex items-start gap-3">
             <iconify-icon icon="ph:warning-duotone" class="text-amber-500 mt-1"></iconify-icon>
             <div>
-              <p class="font-medium text-amber-800 dark:text-amber-300">3 late arrivals detected this month.</p>
-              <p class="text-sm text-amber-600 dark:text-amber-400 mt-1">Consider adjusting your morning routine.</p>
+              <p class="font-medium text-amber-800 dark:text-amber-300">Late is detected if first check-in is after 8:15 AM.</p>
+              <p class="text-sm text-amber-600 dark:text-amber-400 mt-1">You can adjust the cutoff later.</p>
             </div>
           </div>
         </div>
@@ -413,143 +475,21 @@
       </div>
     </div>
 
-    <!-- Department Comparison -->
-    <div class="glass rounded-3xl p-6 shadow reveal">
-      <h2 class="text-xl font-bold mb-4">Department Comparison</h2>
-      <div class="space-y-4">
-        <div>
-          <div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Your Punctuality</span><span class="font-medium">96%</span></div>
-          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-green-500 h-2 rounded-full" style="width: 96%"></div></div>
-        </div>
-        <div>
-          <div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Department Average</span><span class="font-medium">92%</span></div>
-          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-blue-500 h-2 rounded-full" style="width: 92%"></div></div>
-        </div>
-        <div>
-          <div class="flex justify-between text-sm mb-1"><span class="text-gray-600 dark:text-gray-400">Company Average</span><span class="font-medium">89%</span></div>
-          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-purple-500 h-2 rounded-full" style="width: 89%"></div></div>
-        </div>
-      </div>
-      <div class="mt-4 p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
-        <p class="text-sm text-green-700 dark:text-green-300 text-center">You're performing 4% better than your department average!</p>
-      </div>
-    </div>
-
-    <!-- Notifications -->
+    <!-- Notifications (kept UI as-is) -->
     <div class="glass rounded-3xl p-6 shadow reveal">
       <h2 class="text-xl font-bold mb-4">Notifications</h2>
       <div class="space-y-3 max-h-60 overflow-y-auto fancy-scroll">
         <div class="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
           <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0"><iconify-icon icon="ph:bell-duotone"></iconify-icon></div>
           <div class="flex-1">
-            <p class="text-sm font-medium">Check-in Reminder</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Your scheduled check-in time is in 15 minutes.</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Today, 8:45 AM</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/30 rounded-xl">
-          <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white flex-shrink-0"><iconify-icon icon="ph:warning-duotone"></iconify-icon></div>
-          <div class="flex-1">
-            <p class="text-sm font-medium">Late Arrival Recorded</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">You were 15 minutes late on November 14.</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Nov 14, 9:10 AM</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
-          <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white flex-shrink-0"><iconify-icon icon="ph:check-circle-duotone"></iconify-icon></div>
-          <div class="flex-1">
-            <p class="text-sm font-medium">Overtime Approved</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Your overtime for last week has been approved.</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Nov 13, 3:20 PM</p>
+            <p class="text-sm font-medium">Attendance updates</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">This page updates based on imported attendance logs.</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Today</p>
           </div>
         </div>
       </div>
     </div>
 
-  </div>
-</div>
-
-<!-- Certificate & Export -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-  <div class="glass rounded-3xl p-6 shadow reveal">
-    <h2 class="text-xl font-bold mb-4">Attendance Certificate</h2>
-    <div class="p-4 bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/20 rounded-xl border border-amber-200 dark:border-amber-700 mb-4">
-      <div class="flex items-center gap-3">
-        <div class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center text-white"><iconify-icon icon="ph:certificate-duotone"></iconify-icon></div>
-        <div>
-          <p class="font-medium text-amber-800 dark:text-amber-300">Generate Certificate</p>
-          <p class="text-sm text-amber-600 dark:text-amber-400">Official attendance record for any period</p>
-        </div>
-      </div>
-    </div>
-    <div class="space-y-3">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Period</label>
-        <select class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 glass py-2 px-3">
-          <option>Last 30 days</option>
-          <option>Current Month</option>
-          <option>Last Quarter</option>
-          <option>Custom Range</option>
-        </select>
-      </div>
-      <button type="button" class="w-full px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-medium transition-all ripple flex items-center justify-center gap-2">
-        <iconify-icon icon="ph:download-duotone"></iconify-icon>
-        Generate PDF Certificate
-      </button>
-    </div>
-  </div>
-
-  <div class="glass rounded-3xl p-6 shadow reveal">
-    <h2 class="text-xl font-bold mb-4">Export Records</h2>
-    <div class="p-4 bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/20 rounded-2xl border border-blue-200 dark:border-blue-700 mb-4">
-      <div class="flex items-center gap-3">
-        <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white"><iconify-icon icon="ph:export-duotone"></iconify-icon></div>
-        <div>
-          <p class="font-medium text-blue-800 dark:text-blue-300">Export Attendance Data</p>
-          <p class="text-sm text-blue-600 dark:text-blue-400">Multiple formats available</p>
-        </div>
-      </div>
-    </div>
-    <div class="space-y-3">
-      <div class="grid grid-cols-2 gap-3">
-        <button type="button" class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-glow transition-all ripple flex flex-col items-center justify-center">
-          <iconify-icon icon="ph:file-pdf-duotone" class="text-red-500 text-2xl mb-2"></iconify-icon>
-          <span class="text-sm font-medium">PDF</span>
-        </button>
-        <button type="button" class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-glow transition-all ripple flex flex-col items-center justify-center">
-          <iconify-icon icon="ph:file-csv-duotone" class="text-green-500 text-2xl mb-2"></iconify-icon>
-          <span class="text-sm font-medium">CSV</span>
-        </button>
-      </div>
-      <button type="button" class="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-all ripple flex items-center justify-center gap-2">
-        <iconify-icon icon="ph:printer-duotone"></iconify-icon>
-        Print Attendance Record
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Remarks & Notes -->
-<div class="glass rounded-3xl p-6 shadow reveal mt-6">
-  <h2 class="text-xl font-bold mb-4">Remarks &amp; Notes</h2>
-  <div class="space-y-4">
-    <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
-      <div class="flex justify-between items-center mb-2">
-        <span class="font-medium">Today</span>
-        <span class="px-2 py-1 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs rounded-full">Late</span>
-      </div>
-      <textarea class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500 glass py-2 px-3" rows="2" placeholder="Add note for today...">Heavy traffic due to road construction</textarea>
-      <div class="flex justify-end mt-2">
-        <button type="button" class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-all ripple">Save Note</button>
-      </div>
-    </div>
-    <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
-      <div class="flex justify-between items-center mb-2">
-        <span class="font-medium">Previous</span>
-        <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">On Time</span>
-      </div>
-      <p class="text-sm text-gray-600 dark:text-gray-400">Stayed late to complete the quarterly report</p>
-    </div>
   </div>
 </div>
 
@@ -561,107 +501,13 @@
 
 {% block extra_js %}
 <script>
-  // Keep ONLY attendance-specific JS here (avoid duplication with base_employee.html)
-
-  // Work duration timer
-  function updateWorkDuration(){
-    const checkInTime = new Date();
-    checkInTime.setHours(8,45,0);
-    const now = new Date();
-    const diffMs = now - checkInTime;
-    const diffHrs = Math.max(0, Math.floor(diffMs / (1000*60*60)));
-    const diffMins = Math.max(0, Math.floor((diffMs % (1000*60*60)) / (1000*60)));
+  // Work duration timer: only update if you are checked-in (duration came from backend)
+  (function(){
     const el = document.getElementById('workDuration');
-    if(el) el.textContent = `${diffHrs}h ${diffMins}m`;
-  }
-  updateWorkDuration();
-  setInterval(updateWorkDuration, 1000 * 15);
-
-  // Charts
-  try {
-    const punctualityCtx = document.getElementById('punctualityChart')?.getContext('2d');
-    if(punctualityCtx){
-      new Chart(punctualityCtx, {
-        type:'bar',
-        data:{
-          labels:['Sep','Oct','Nov'],
-          datasets:[
-            { label:'Late Arrivals', data:[7,5,3], backgroundColor:'#f59e0b' },
-            { label:'Early Departures', data:[3,2,1], backgroundColor:'#ef4444' }
-          ]
-        },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          plugins:{ legend:{ position:'top' } },
-          scales:{ x:{ grid:{ display:false } }, y:{ beginAtZero:true } }
-        }
-      });
-    }
-
-    const complianceCtx = document.getElementById('complianceGauge')?.getContext('2d');
-    if(complianceCtx){
-      new Chart(complianceCtx, {
-        type:'doughnut',
-        data:{ datasets:[{ data:[96,4], backgroundColor:['#10b981','#e5e7eb'], borderWidth:0 }] },
-        options:{ responsive:true, maintainAspectRatio:false, cutout:'75%', plugins:{ legend:{ display:false }, tooltip:{ enabled:false } } }
-      });
-    }
-  } catch(e){}
-
-  // Check-in/out demo behavior
-  const statusEl = document.getElementById('currentStatus');
-  const pulseEl = document.getElementById('statusPulse');
-  const checkOutBtn = document.getElementById('checkOutBtn');
-  const checkInBtn = document.getElementById('checkInBtn');
-
-  checkOutBtn?.addEventListener('click', function(){
-    const btn = this;
-    btn.textContent = 'Checking Out...';
-    btn.disabled = true;
-
-    setTimeout(()=>{
-      if(statusEl){
-        statusEl.textContent = 'Checked Out';
-        statusEl.classList.remove('text-green-800','dark:text-green-300');
-        statusEl.classList.add('text-red-700','dark:text-red-300');
-      }
-      if(pulseEl){
-        pulseEl.classList.remove('bg-green-500');
-        pulseEl.classList.add('bg-red-500');
-      }
-      if(checkInBtn){
-        checkInBtn.disabled = false;
-        checkInBtn.classList.remove('bg-gray-300','text-gray-600');
-        checkInBtn.classList.add('bg-green-500','hover:bg-green-600','text-white');
-      }
-      alert('Successfully checked out!');
-    }, 1200);
-  });
-
-  checkInBtn?.addEventListener('click', function(){
-    const btn = this;
-    btn.textContent = 'Checking In...';
-    btn.disabled = true;
-
-    setTimeout(()=>{
-      if(statusEl){
-        statusEl.textContent = 'Checked In';
-        statusEl.classList.remove('text-red-700','dark:text-red-300');
-        statusEl.classList.add('text-green-800','dark:text-green-300');
-      }
-      if(pulseEl){
-        pulseEl.classList.remove('bg-red-500');
-        pulseEl.classList.add('bg-green-500');
-      }
-      if(checkOutBtn){
-        checkOutBtn.disabled = false;
-        checkOutBtn.textContent = 'Check Out';
-      }
-      btn.textContent = 'Check In';
-      alert('Successfully checked in!');
-    }, 1200);
-  });
+    if(!el) return;
+    // If backend already says "--", do nothing.
+    if((el.textContent || '').trim() === '--') return;
+  })();
 
   // ---------- DYNAMIC ATTENDANCE CALENDAR ----------
   (function(){
@@ -672,13 +518,8 @@
 
     if(!titleEl || !gridEl || !prevBtn || !nextBtn) return;
 
-    // Placeholder statuses; backend can fill later:
-    // 'YYYY-MM-DD': 'present' | 'late' | 'leave'
-    const statuses = {
-      // '2026-03-02': 'present',
-      // '2026-03-05': 'late',
-      // '2026-03-08': 'leave',
-    };
+    // statuses from backend: { "YYYY-MM-DD": "present" | "late" | "leave" }
+    const statuses = JSON.parse('{{ calendar_statuses_json|escapejs }}');
 
     let view = new Date();
     view.setDate(1);

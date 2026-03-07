@@ -66,7 +66,6 @@
     .readonly-field { background-color: #f9fafb; cursor: not-allowed; }
 </style>
 
-<!-- ✅ CSRF helper for fetch POST -->
 <meta name="csrf-token" content="{{ csrf_token }}">
 {% endblock %}
 
@@ -106,7 +105,7 @@
                 </h3>
                 <p class="text-xs text-red-600 mt-2 flex items-center">
                     <iconify-icon icon="ph:warning-circle-duotone" class="mr-1"></iconify-icon>
-                    Late/Undertime
+                    Late/Undertime/Absence
                 </p>
             </div>
             <div class="p-3 bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:clock-afternoon-duotone" class="text-xl"></iconify-icon></div>
@@ -164,7 +163,7 @@
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                         <h3 class="text-xl font-bold">Payroll Processing - MIMAROPA</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Process payroll for {{ employees|length|default:"0" }} employees | Government Payroll Rules Applied</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Process payroll for {{ employees|length|default:"0" }} employees | Weekdays-only payroll computation</p>
                     </div>
                     <div class="flex flex-wrap gap-3">
                         <button id="generatePreviewBtn" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg flex items-center shadow-lg transition-all duration-300 hover:scale-105">
@@ -208,19 +207,23 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payroll Period</label>
+                        <div class="flex items-center justify-between">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payroll Period</label>
+                            <button id="openAddPeriodBtn" type="button" class="text-xs px-2 py-1 rounded-md bg-blue-500 hover:bg-blue-600 text-white">
+                                + Add Period
+                            </button>
+                        </div>
                         <select id="periodFilter" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                            {# ✅ shows Monthly / Kinsenas / Katapusan in the dropdown #}
                             {% for period in payroll_periods %}
                             <option value="{{ period.id }}" {% if period.id == selected_period %}selected{% endif %}>
-                                {{ period.name }}{% if period.pay_mode %} • {{ period.get_pay_mode_display }}{% endif %}
+                                {{ period.name }} • {{ period.start_date }} - {{ period.end_date }}{% if period.pay_mode %} • {{ period.get_pay_mode_display }}{% endif %}
                             </option>
                             {% empty %}
                             <option value="">No periods</option>
                             {% endfor %}
                         </select>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Tip: Monthly = full-month payout, Kinsenas = 1st half, Katapusan = 2nd half.
+                            Note: Payroll computation counts only Weekdays (Mon–Fri). Weekends and configured Holidays/Suspensions are excluded.
                         </p>
                     </div>
                     <div>
@@ -240,7 +243,6 @@
                     <h3 class="text-lg font-semibold">Payroll Preview</h3>
                     <div class="flex items-center gap-2">
                         <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">Preview Mode</span>
-                        <!-- ✅ added id -->
                         <button id="approveProcessBtn" class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm">
                             Approve & Process
                         </button>
@@ -468,6 +470,24 @@
                                 </div>
                             </div>
 
+                            <!-- ✅ Sliding Flexy times -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Work Start Time (Earliest IN)</label>
+                                    <input name="work_start_time" type="time"
+                                           value="{{ payroll_rules.work_start_time|default:'07:00' }}"
+                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
+                                    <p class="mt-1 text-xs text-gray-500">Sliding Flexy: arrival can be after start as long as 8 hours is completed.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Work End Time (Earliest OUT)</label>
+                                    <input name="work_end_time" type="time"
+                                           value="{{ payroll_rules.work_end_time|default:'16:00' }}"
+                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
+                                    <p class="mt-1 text-xs text-gray-500">Earliest OUT is used only for UI hints; undertime is computed from total work minutes.</p>
+                                </div>
+                            </div>
+
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="flex items-center">
@@ -476,6 +496,7 @@
                                                class="h-4 w-4 rounded border-gray-300 text-blue-600">
                                         <span class="ml-2 text-sm">Require Lunch Break Logs</span>
                                     </label>
+                                    <p class="mt-1 text-xs text-gray-500">If enabled, missing lunch logs will be marked as “Issues”.</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Daily Hours Required</label>
@@ -557,7 +578,7 @@
                         </p>
                     </div>
 
-                    <!-- ✅ NEW: Employee-Specific Deductions (Per Employee) -->
+                    <!-- Employee-Specific Deductions (Per Employee) -->
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-semibold">Employee-Specific Deductions</h3>
@@ -673,6 +694,20 @@
                             {% endfor %}
                         </div>
                     </div>
+
+                    <!-- ✅ Payroll Period Manager Card -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-lg font-semibold">Payroll Period Manager</h3>
+                            <button id="openAddPeriodBtn2" class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">
+                                + Add Period
+                            </button>
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                            Create flexible payroll periods (any dates). Computation uses weekdays only and excludes configured holidays/suspensions.
+                        </p>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -813,6 +848,47 @@
     </div>
 </div>
 
+<!-- Payroll Period Modal -->
+<div id="periodModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-xl bg-white dark:bg-gray-800">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Add Payroll Period</h3>
+            <button id="closePeriodModal" class="text-gray-400 hover:text-gray-600">
+                <iconify-icon icon="ph:x-duotone"></iconify-icon>
+            </button>
+        </div>
+        <form id="periodForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">Name</label>
+                <input name="name" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="e.g., March 2026 Kinsenas">
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Start Date</label>
+                    <input name="start_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">End Date</label>
+                    <input name="end_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Pay Mode</label>
+                <select name="pay_mode" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="FIRST_HALF">Kinsenas (1st Half)</option>
+                    <option value="SECOND_HALF">Katapusan (2nd Half)</option>
+                </select>
+                <p class="mt-1 text-xs text-gray-500">Note: Computation still uses weekdays only.</p>
+            </div>
+            <div class="flex justify-end gap-2 pt-4">
+                <button type="button" id="cancelPeriod" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">Save Period</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Holiday/Suspension Modal -->
 <div id="holidayModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-xl bg-white dark:bg-gray-800">
@@ -916,7 +992,7 @@
             <h3 class="text-lg font-semibold">Government Compliance</h3>
             <iconify-icon icon="ph:shield-check-duotone" class="text-2xl"></iconify-icon>
         </div>
-        <p class="text-amber-100 mb-4">SSS, PhilHealth, Pag-IBIG, Tax calculations compliant with Philippine government regulations.</p>
+        <p class="text-amber-100 mb-4">SSS, PhilHealth, Pag-IBIG, Tax calculations configurable in system rules.</p>
         <button class="text-sm bg-white text-amber-600 hover:bg-amber-50 px-3 py-2 rounded-lg font-medium inline-flex items-center shadow-md" onclick="switchTab('payroll-setup-tab')">
             <iconify-icon icon="ph:gear-duotone" class="mr-2"></iconify-icon>
             Configure Rules
@@ -927,7 +1003,7 @@
             <h3 class="text-lg font-semibold">Attendance Integration</h3>
             <iconify-icon icon="ph:fingerprint-duotone" class="text-2xl"></iconify-icon>
         </div>
-        <p class="text-blue-100 mb-4">Automatic payroll computation from biometrics attendance with JO/COS rules.</p>
+        <p class="text-blue-100 mb-4">Automatic payroll computation from attendance with weekdays-only period counting.</p>
         <a href="{% url 'admin_biometrics' %}" class="text-sm bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg font-medium inline-flex items-center shadow-md">
             <iconify-icon icon="ph:link-duotone" class="mr-2"></iconify-icon>
             View Attendance
@@ -1014,10 +1090,46 @@
     }
 
     function showToast(message, type = "info") {
-        // lightweight: alert for now (you can replace with a fancy toast later)
         if (type === "error") return alert("Error: " + message);
         alert(message);
     }
+
+    // ----------------------------
+    // ✅ Payroll Period Modal
+    // ----------------------------
+    const periodModal = document.getElementById('periodModal');
+    const openAddPeriodBtn = document.getElementById('openAddPeriodBtn');
+    const openAddPeriodBtn2 = document.getElementById('openAddPeriodBtn2');
+    const closePeriodModal = document.getElementById('closePeriodModal');
+    const cancelPeriod = document.getElementById('cancelPeriod');
+    const periodForm = document.getElementById('periodForm');
+
+    function openPeriodModal() { periodModal?.classList.remove('hidden'); }
+    function closePeriod() { periodModal?.classList.add('hidden'); }
+
+    openAddPeriodBtn?.addEventListener('click', openPeriodModal);
+    openAddPeriodBtn2?.addEventListener('click', openPeriodModal);
+    closePeriodModal?.addEventListener('click', closePeriod);
+    cancelPeriod?.addEventListener('click', closePeriod);
+
+    periodForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const fd = new FormData(periodForm);
+
+            const res = await fetch("/admin-ui/payroll/add-period/", {
+                method: "POST",
+                headers: { "X-CSRFToken": getCsrfToken(), "Accept": "application/json" },
+                body: fd
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to add payroll period");
+            showToast("Payroll period saved!", "info");
+            window.location.reload();
+        } catch (err) {
+            showToast(err.message || "Failed to add payroll period", "error");
+        }
+    });
 
     // ----------------------------
     // Holiday Modal
@@ -1039,7 +1151,6 @@
         else branchSelection.classList.add('hidden');
     });
 
-    // ✅ Submit holiday to backend
     const holidayForm = document.getElementById('holidayForm');
     holidayForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1091,12 +1202,13 @@
             const lateCls = Number(record.late || 0) > 0 ? 'text-red-600' : '';
             const underCls = Number(record.undertime || 0) > 0 ? 'text-amber-600' : '';
 
+            const statusLower = String(record.status || '').toLowerCase();
             const statusBadge =
-                (record.status === 'Present')
-                    ? 'bg-green-100 text-green-800'
-                    : (record.status || '').toLowerCase().includes('missing')
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800';
+                statusLower.includes('present') ? 'bg-green-100 text-green-800' :
+                statusLower.includes('holiday') ? 'bg-emerald-100 text-emerald-800' :
+                statusLower.includes('weekend') ? 'bg-slate-100 text-slate-700' :
+                statusLower.includes('missing') ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800';
 
             row.innerHTML = `
                 <td class="px-4 py-2 text-sm">${record.date || ''}</td>
@@ -1118,7 +1230,6 @@
         });
     }
 
-    // Bind View DTR buttons
     document.querySelectorAll('.view-dtr-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const profileId = this.getAttribute('data-employee-id');
@@ -1223,7 +1334,7 @@
 
     closePreviewBtn?.addEventListener('click', () => payrollPreview.classList.add('hidden'));
 
-    // ✅ Approve & Process (POST)
+    // Approve & Process (POST)
     approveProcessBtn?.addEventListener('click', async () => {
         const branchId = branchFilter?.value || '';
         const periodId = periodFilter?.value || '';
@@ -1257,7 +1368,6 @@
             }
 
             showToast(`Payroll processed! Batch: ${data.batch?.name || ''}`, "info");
-            // Refresh the page to update top cards + audit trail + history/dashboard
             window.location.reload();
         } catch (err) {
             showToast(err.message || "Failed to process payroll", "error");
@@ -1266,9 +1376,7 @@
         }
     });
 
-    // ----------------------------
-    // ✅ Save Payroll Rules (POST)
-    // ----------------------------
+    // Save Payroll Rules (POST)
     const payrollRulesForm = document.getElementById('payrollRulesForm');
     payrollRulesForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1277,7 +1385,6 @@
             setBusy(saveBtn, true);
 
             const fd = new FormData(payrollRulesForm);
-            // normalize checkbox
             if (!fd.has("lunch_break_required")) fd.set("lunch_break_required", "off");
 
             const res = await fetch("/admin-ui/payroll/save-rules/", {
@@ -1295,9 +1402,7 @@
         }
     });
 
-    // ----------------------------
-    // ✅ Save Contributions (POST)
-    // ----------------------------
+    // Save Contributions (POST)
     const saveContribBtn = document.getElementById('saveContribBtn');
     saveContribBtn?.addEventListener('click', async () => {
         try {
@@ -1344,9 +1449,7 @@
         }
     });
 
-    // ----------------------------
-    // ✅ Save Employee Deductions (POST)
-    // ----------------------------
+    // Save Employee Deductions (POST)
     const saveDeductionsBtn = document.getElementById('saveDeductionsBtn');
     saveDeductionsBtn?.addEventListener('click', async () => {
         try {
@@ -1380,9 +1483,7 @@
         }
     });
 
-    // ----------------------------
     // Filter persistence + reload page with query params
-    // ----------------------------
     function reloadWithFilters() {
         const params = new URLSearchParams(window.location.search);
         if (branchFilter?.value) params.set("branch", branchFilter.value);
@@ -1399,7 +1500,6 @@
     periodFilter?.addEventListener('change', () => reloadWithFilters());
     typeFilter?.addEventListener('change', () => reloadWithFilters());
 
-    // Init
     document.addEventListener('DOMContentLoaded', () => {
         const savedBranch = localStorage.getItem('payroll_selected_branch');
         if (savedBranch && branchFilter) branchFilter.value = savedBranch;

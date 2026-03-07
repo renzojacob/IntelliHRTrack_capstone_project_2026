@@ -713,7 +713,183 @@ def employee_dashboard(request):
 
 @login_required
 def employee_attendance(request):
-    return render(request, "employee/attendance.html", {"current": "attendance"})
+    # -------------------------
+    # Approval gate (employee only)
+    # -------------------------
+    try:
+        if not (request.user.is_staff or request.user.is_superuser):
+            if not request.user.profile.is_approved:
+                messages.error(request, "Your account is pending approval by your branch admin.")
+                return redirect("employee_dashboard")
+    except UserProfile.DoesNotExist:
+        messages.error(request, "Account profile missing. Contact admin.")
+        return redirect("employee_dashboard")
+
+    # -------------------------
+    # Branch required
+    # -------------------------
+    try:
+        prof = request.user.profile
+        emp_branch = prof.branch
+    except UserProfile.DoesNotExist:
+        messages.error(request, "Profile missing. Contact admin.")
+        return redirect("employee_dashboard")
+
+    if not emp_branch:
+        messages.error(request, "No branch assigned. Contact admin.")
+        return redirect("employee_dashboard")
+
+    # -------------------------
+    # Identify the employee_id used in AttendanceRecord
+    # -------------------------
+    employee_id_used = _pick_attendance_employee_id(request.user, emp_branch)
+
+    # -------------------------
+    # Today logs (check-in / check-out)
+    # -------------------------
+    now = timezone.localtime(timezone.now()) if settings.USE_TZ else datetime.now()
+    today = now.date()
+
+    todays_qs = AttendanceRecord.objects.filter(
+        branch=emp_branch,
+        employee_id=employee_id_used,
+        timestamp__date=today,
+    ).order_by("timestamp")
+
+    ins = [r.timestamp for r in todays_qs if r.attendance_status == AttendanceRecord.STATUS_CHECKIN]
+    outs = [r.timestamp for r in todays_qs if r.attendance_status == AttendanceRecord.STATUS_CHECKOUT]
+
+    first_in = min(ins) if ins else None
+    last_out = max(outs) if outs else None
+
+    # Status logic
+    if first_in and not last_out:
+        current_status = "Checked In"
+        status_kind = "in"
+    elif first_in and last_out:
+        current_status = "Checked Out"
+        status_kind = "out"
+    else:
+        current_status = "Not Checked In"
+        status_kind = "none"
+
+    # Work duration (only if checked in and not checked out)
+    work_duration_text = "--"
+    if first_in and not last_out:
+        diff = now - timezone.localtime(first_in) if settings.USE_TZ else (datetime.now() - first_in)
+        mins = max(0, int(diff.total_seconds() // 60))
+        work_duration_text = f"{mins // 60}h {mins % 60}m"
+
+    # Late (simple rule)
+    late_cutoff = time(8, 15, 0)
+    is_late_today = bool(first_in and first_in.time() > late_cutoff)
+
+    # -------------------------
+    # Attendance History (last 30 days)
+    # Build daily summary: earliest IN + latest OUT + total hours + status label
+    # -------------------------
+    days_back = 30
+    start_date = today - timedelta(days=days_back - 1)
+
+    period_qs = AttendanceRecord.objects.filter(
+        branch=emp_branch,
+        employee_id=employee_id_used,
+        timestamp__date__gte=start_date,
+        timestamp__date__lte=today,
+    ).order_by("timestamp")
+
+    by_day = {}
+    for rec in period_qs:
+        d = rec.timestamp.date()
+        by_day.setdefault(d, {"ins": [], "outs": []})
+        if rec.attendance_status == AttendanceRecord.STATUS_CHECKIN:
+            by_day[d]["ins"].append(rec.timestamp)
+        elif rec.attendance_status == AttendanceRecord.STATUS_CHECKOUT:
+            by_day[d]["outs"].append(rec.timestamp)
+
+    history_rows = []
+    for d in sorted(by_day.keys(), reverse=True):
+        logs = by_day[d]
+        din = min(logs["ins"]) if logs["ins"] else None
+        dout = max(logs["outs"]) if logs["outs"] else None
+
+        # total hours
+        total_hours_text = "-"
+        if din and dout and dout >= din:
+            delta = (timezone.localtime(dout) - timezone.localtime(din)) if settings.USE_TZ else (dout - din)
+            total_mins = int(delta.total_seconds() // 60)
+            total_hours_text = f"{total_mins // 60}h {total_mins % 60}m"
+
+        # status badge
+        badge = "Present" if din else "Absent"
+        badge_style = "green"
+        if din and din.time() > late_cutoff:
+            badge = "Late"
+            badge_style = "amber"
+        if din and not dout:
+            badge = "Missing Out"
+            badge_style = "red"
+        if dout and not din:
+            badge = "Missing In"
+            badge_style = "red"
+
+        history_rows.append({
+            "date": d,
+            "date_label": "Today" if d == today else d.strftime("%b %d"),
+            "check_in": _fmt_time_ampm(timezone.localtime(din) if (settings.USE_TZ and din) else din) if din else "-",
+            "check_out": _fmt_time_ampm(timezone.localtime(dout) if (settings.USE_TZ and dout) else dout) if dout else "-",
+            "total_hours": total_hours_text,
+            "badge": badge,
+            "badge_style": badge_style,
+            "remarks": "",
+        })
+
+    # show latest 20 in table
+    history_rows = history_rows[:20]
+
+    # -------------------------
+    # Calendar statuses for current month (present/late)
+    # -------------------------
+    first_of_month = today.replace(day=1)
+    next_month = (first_of_month.replace(day=28) + timedelta(days=4)).replace(day=1)
+    month_qs = AttendanceRecord.objects.filter(
+        branch=emp_branch,
+        employee_id=employee_id_used,
+        timestamp__date__gte=first_of_month,
+        timestamp__date__lt=next_month,
+    ).order_by("timestamp")
+
+    month_by_day_first_in = {}
+    for rec in month_qs:
+        if rec.attendance_status != AttendanceRecord.STATUS_CHECKIN:
+            continue
+        d = rec.timestamp.date()
+        if d not in month_by_day_first_in:
+            month_by_day_first_in[d] = rec.timestamp
+
+    calendar_statuses = {}
+    for d, din in month_by_day_first_in.items():
+        key = d.strftime("%Y-%m-%d")
+        calendar_statuses[key] = "late" if din.time() > late_cutoff else "present"
+
+    calendar_statuses_json = json.dumps(calendar_statuses, default=str)
+
+    context = {
+        "current": "attendance",
+
+        # header card (today)
+        "current_status": current_status,
+        "status_kind": status_kind,          # "in" | "out" | "none"
+        "today_checkin": _fmt_time_ampm(timezone.localtime(first_in) if (settings.USE_TZ and first_in) else first_in) if first_in else "",
+        "today_checkout": _fmt_time_ampm(timezone.localtime(last_out) if (settings.USE_TZ and last_out) else last_out) if last_out else "",
+        "work_duration": work_duration_text,
+        "is_late_today": is_late_today,
+
+        # table + calendar
+        "history_rows": history_rows,
+        "calendar_statuses_json": calendar_statuses_json,
+    }
+    return render(request, "employee/attendance.html", context)
 
 
 @login_required
@@ -2350,7 +2526,7 @@ def admin_payroll_process_batch(request):
             gov_total = res["gov"]["gov_total"]
             tax_total = res["gov"]["tax"]
 
-            item = PayrollItem.objects.create(
+            PayrollItem.objects.create(
                 batch=batch,
                 profile=prof,
                 base_pay=p["base"],
@@ -2370,8 +2546,8 @@ def admin_payroll_process_batch(request):
                 }
             )
 
-            totals_net += item.net_pay
-            totals_deductions += item.deductions_total
+            totals_net += p["net"]
+            totals_deductions += p["deductions"]
 
         batch.totals_net = totals_net
         batch.totals_deductions = totals_deductions
@@ -2593,3 +2769,29 @@ def admin_analytics(request):
             "chart_payload_json": json.dumps(chart_payload, default=str),
         },
     )
+
+
+
+
+
+#new added 3/3/2026 ======================================================================================
+
+def _pick_attendance_employee_id(user, branch: Branch):
+    """
+    AttendanceRecord.employee_id might be:
+    - username (common in demo)
+    - user.id (if you stored numeric ids)
+    Returns the first id that actually exists in AttendanceRecord for this branch.
+    """
+    candidates = [str(user.username), str(user.id)]
+    for cid in candidates:
+        if AttendanceRecord.objects.filter(branch=branch, employee_id=cid).exists():
+            return cid
+    # fallback (still return username so page won't crash)
+    return candidates[0]
+
+
+def _fmt_time_ampm(dt):
+    if not dt:
+        return ""
+    return dt.strftime("%-I:%M %p") if hasattr(dt, "strftime") else str(dt)
