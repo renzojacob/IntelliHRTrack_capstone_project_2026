@@ -106,6 +106,13 @@ def _get_branch_from_post(request, branches_qs):
 
 
 # =========================
+# Landing Page
+# =========================
+def index(request):
+    return render(request, "index.html")
+
+
+# =========================
 # Auth UI pages
 # =========================
 def login_ui(request):

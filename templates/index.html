@@ -1,0 +1,444 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IntelliHRTrack | Payroll & Employee Management System</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Iconify -->
+  <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+
+  <style>
+    :root{
+      --accent: #14b8a6;
+      --accent-dark: #0f766e;
+      --bg1: #e9fbf8;
+      --bg2: #f6fffe;
+      --card: rgba(255,255,255,.70);
+      --stroke: rgba(15, 23, 42, 0.08);
+      --text-main: #0f172a;
+      --text-soft: #475569;
+    }
+
+    body{
+      color: var(--text-main);
+    }
+
+    .mint-bg{
+      background:
+        radial-gradient(800px 500px at 12% 10%, rgba(20,184,166,.22), transparent 60%),
+        radial-gradient(900px 600px at 90% 20%, rgba(56,189,248,.18), transparent 60%),
+        radial-gradient(900px 700px at 50% 95%, rgba(20,184,166,.14), transparent 60%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+    }
+
+    .glass {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .shadow-soft{
+      box-shadow:
+        0 1px 2px rgba(15,23,42,.06),
+        0 18px 60px rgba(15,23,42,.10);
+    }
+
+    .btn-accent{
+      background: var(--accent);
+    }
+
+    .btn-accent:hover{
+      background: var(--accent-dark);
+    }
+
+    .text-accent{
+      color: var(--accent-dark);
+    }
+
+    .border-soft{
+      border-color: rgba(15, 23, 42, 0.08);
+    }
+
+    .hero-grid{
+      background-image:
+        linear-gradient(rgba(15,23,42,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15,23,42,.04) 1px, transparent 1px);
+      background-size: 34px 34px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.9), transparent);
+      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.9), transparent);
+    }
+  </style>
+</head>
+<body class="h-full mint-bg">
+
+  <!-- Navbar -->
+  <header class="sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+      <div class="glass rounded-3xl shadow-soft px-5 sm:px-6 py-4 flex items-center justify-between">
+        <a href="#" class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-extrabold">
+            IH
+          </div>
+          <div>
+            <h1 class="text-lg sm:text-xl font-bold tracking-tight">IntelliHRTrack</h1>
+            <p class="text-xs text-slate-500">Payroll & Employee Management</p>
+          </div>
+        </a>
+
+        <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-700">
+          <a href="#home" class="hover:text-teal-700 transition">Home</a>
+          <a href="#features" class="hover:text-teal-700 transition">Features</a>
+          <a href="#about" class="hover:text-teal-700 transition">About</a>
+          <a href="#contact" class="hover:text-teal-700 transition">Contact</a>
+        </nav>
+
+        <div class="flex items-center gap-3">
+          <a href="{% url 'login_ui' %}"
+             class="hidden sm:inline-flex px-4 py-2 rounded-2xl border border-soft bg-white/70 hover:bg-white text-sm font-semibold text-slate-700 transition">
+            Login
+          </a>
+          <a href="{% url 'signup_ui' %}"
+             class="inline-flex px-4 py-2 rounded-2xl btn-accent text-white text-sm font-semibold shadow-soft transition">
+            Get Started
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section id="home" class="relative overflow-hidden pt-10 sm:pt-14 pb-16 sm:pb-24">
+    <div class="absolute inset-0 hero-grid pointer-events-none"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <div class="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+
+        <!-- Left -->
+        <div>
+          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass shadow-soft text-sm text-slate-700 mb-6">
+            <iconify-icon icon="ph:shield-check-duotone" class="text-xl text-teal-700"></iconify-icon>
+            Secure • Smart • Efficient workforce management
+          </div>
+
+          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight text-slate-900">
+            Modern Payroll and Employee Management for
+            <span class="text-teal-700">Intelligent Organizations</span>
+          </h2>
+
+          <p class="mt-6 text-base sm:text-lg text-slate-600 leading-8 max-w-2xl">
+            IntelliHRTrack streamlines employee records, attendance tracking, payroll processing,
+            leave monitoring, and administrative workflows in one secure and easy-to-use platform.
+          </p>
+
+          <div class="mt-8 flex flex-wrap gap-4">
+            <a href="{% url 'login_ui' %}"
+               class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl btn-accent text-white font-semibold shadow-soft transition">
+              <iconify-icon icon="ph:sign-in-duotone" class="text-xl"></iconify-icon>
+              Launch System
+            </a>
+
+            <a href="#features"
+               class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl glass text-slate-700 font-semibold shadow-soft hover:bg-white/80 transition">
+              <iconify-icon icon="ph:arrow-down-duotone" class="text-xl"></iconify-icon>
+              Explore Features
+            </a>
+          </div>
+
+          <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="glass rounded-3xl p-4 shadow-soft">
+              <p class="text-2xl font-extrabold text-teal-700">24/7</p>
+              <p class="text-sm text-slate-600 mt-1">Accessible digital HR operations</p>
+            </div>
+            <div class="glass rounded-3xl p-4 shadow-soft">
+              <p class="text-2xl font-extrabold text-teal-700">Fast</p>
+              <p class="text-sm text-slate-600 mt-1">Payroll and attendance processing</p>
+            </div>
+            <div class="glass rounded-3xl p-4 shadow-soft">
+              <p class="text-2xl font-extrabold text-teal-700">Secure</p>
+              <p class="text-sm text-slate-600 mt-1">Protected employee records and access</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right -->
+        <div class="relative">
+          <div class="glass rounded-[2rem] p-5 sm:p-6 shadow-soft">
+            <div class="rounded-[1.5rem] bg-white/80 border border-soft overflow-hidden">
+              <div class="px-5 py-4 border-b border-soft flex items-center justify-between">
+                <div>
+                  <h3 class="font-bold text-slate-800">System Overview</h3>
+                  <p class="text-sm text-slate-500">Real-time workforce insights</p>
+                </div>
+                <div class="w-12 h-12 rounded-2xl bg-teal-500 text-white flex items-center justify-center">
+                  <iconify-icon icon="ph:chart-line-up-duotone" class="text-2xl"></iconify-icon>
+                </div>
+              </div>
+
+              <div class="p-5 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="rounded-2xl bg-teal-50 p-4 border border-teal-100">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-slate-600">Employees</span>
+                      <iconify-icon icon="ph:users-three-duotone" class="text-2xl text-teal-700"></iconify-icon>
+                    </div>
+                    <p class="mt-3 text-2xl font-extrabold text-slate-900">250+</p>
+                  </div>
+
+                  <div class="rounded-2xl bg-sky-50 p-4 border border-sky-100">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-slate-600">Attendance</span>
+                      <iconify-icon icon="ph:fingerprint-duotone" class="text-2xl text-sky-700"></iconify-icon>
+                    </div>
+                    <p class="mt-3 text-2xl font-extrabold text-slate-900">Live</p>
+                  </div>
+
+                  <div class="rounded-2xl bg-emerald-50 p-4 border border-emerald-100">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-slate-600">Payroll</span>
+                      <iconify-icon icon="ph:wallet-duotone" class="text-2xl text-emerald-700"></iconify-icon>
+                    </div>
+                    <p class="mt-3 text-2xl font-extrabold text-slate-900">Automated</p>
+                  </div>
+
+                  <div class="rounded-2xl bg-amber-50 p-4 border border-amber-100">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-slate-600">Leave Requests</span>
+                      <iconify-icon icon="ph:calendar-check-duotone" class="text-2xl text-amber-700"></iconify-icon>
+                    </div>
+                    <p class="mt-3 text-2xl font-extrabold text-slate-900">Managed</p>
+                  </div>
+                </div>
+
+                <div class="rounded-2xl border border-soft bg-slate-50 p-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <p class="font-semibold text-slate-800">Monthly Performance</p>
+                    <span class="text-xs px-3 py-1 rounded-full bg-teal-100 text-teal-700 font-semibold">
+                      Updated
+                    </span>
+                  </div>
+
+                  <div class="space-y-3">
+                    <div>
+                      <div class="flex justify-between text-sm mb-1 text-slate-600">
+                        <span>Attendance Accuracy</span>
+                        <span>94%</span>
+                      </div>
+                      <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                        <div class="h-3 bg-teal-500 rounded-full" style="width: 94%"></div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div class="flex justify-between text-sm mb-1 text-slate-600">
+                        <span>Payroll Completion</span>
+                        <span>89%</span>
+                      </div>
+                      <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                        <div class="h-3 bg-emerald-500 rounded-full" style="width: 89%"></div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div class="flex justify-between text-sm mb-1 text-slate-600">
+                        <span>Leave Processing</span>
+                        <span>91%</span>
+                      </div>
+                      <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                        <div class="h-3 bg-sky-500 rounded-full" style="width: 91%"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hidden sm:block absolute -bottom-6 -left-6 glass rounded-3xl px-5 py-4 shadow-soft">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center">
+                <iconify-icon icon="ph:buildings-duotone" class="text-2xl text-teal-700"></iconify-icon>
+              </div>
+              <div>
+                <p class="text-sm text-slate-500">Built for organizations</p>
+                <p class="font-bold text-slate-800">Department-ready solution</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="pb-16 sm:pb-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Core Features</p>
+        <h2 class="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+          Everything you need in one platform
+        </h2>
+        <p class="mt-4 text-slate-600 max-w-2xl mx-auto">
+          Manage workforce operations with a unified system built for efficiency, accuracy, and professional administration.
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div class="glass rounded-3xl p-6 shadow-soft">
+          <div class="w-14 h-14 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center mb-4">
+            <iconify-icon icon="ph:identification-card-duotone" class="text-3xl"></iconify-icon>
+          </div>
+          <h3 class="text-lg font-bold">Employee Records</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-7">
+            Store and manage complete employee information, departments, positions, and employment details in one place.
+          </p>
+        </div>
+
+        <div class="glass rounded-3xl p-6 shadow-soft">
+          <div class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-4">
+            <iconify-icon icon="ph:fingerprint-simple-duotone" class="text-3xl"></iconify-icon>
+          </div>
+          <h3 class="text-lg font-bold">Attendance Tracking</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-7">
+            Monitor daily attendance, time logs, biometrics integration, and employee presence with accurate tracking.
+          </p>
+        </div>
+
+        <div class="glass rounded-3xl p-6 shadow-soft">
+          <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+            <iconify-icon icon="ph:money-duotone" class="text-3xl"></iconify-icon>
+          </div>
+          <h3 class="text-lg font-bold">Payroll Automation</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-7">
+            Compute salaries, deductions, absences, and work hours efficiently to reduce manual payroll errors.
+          </p>
+        </div>
+
+        <div class="glass rounded-3xl p-6 shadow-soft">
+          <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
+            <iconify-icon icon="ph:calendar-plus-duotone" class="text-3xl"></iconify-icon>
+          </div>
+          <h3 class="text-lg font-bold">Leave Management</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-7">
+            Submit, review, and approve leave requests with a simple workflow for both employees and administrators.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section id="about" class="pb-16 sm:pb-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid lg:grid-cols-2 gap-8 items-center">
+        <div class="glass rounded-[2rem] p-8 shadow-soft">
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">About the System</p>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+            Built to simplify workforce operations
+          </h2>
+          <p class="mt-5 text-slate-600 leading-8">
+            IntelliHRTrack is a smart payroll and employee management platform designed to support modern organizations
+            in handling employee data, attendance monitoring, payroll processing, and administrative workflows.
+          </p>
+          <p class="mt-4 text-slate-600 leading-8">
+            It reduces manual work, improves record accuracy, and helps organizations manage their workforce through
+            a secure, organized, and user-friendly digital system.
+          </p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-6">
+          <div class="glass rounded-3xl p-6 shadow-soft">
+            <iconify-icon icon="ph:lock-key-open-duotone" class="text-4xl text-teal-700"></iconify-icon>
+            <h3 class="mt-4 font-bold text-lg">Secure Access</h3>
+            <p class="mt-2 text-sm text-slate-600 leading-7">
+              Role-based access for administrators and employees with protected sign-in and system control.
+            </p>
+          </div>
+
+          <div class="glass rounded-3xl p-6 shadow-soft">
+            <iconify-icon icon="ph:cpu-duotone" class="text-4xl text-sky-700"></iconify-icon>
+            <h3 class="mt-4 font-bold text-lg">Smart Workflow</h3>
+            <p class="mt-2 text-sm text-slate-600 leading-7">
+              Organized modules for faster navigation, cleaner records, and better day-to-day operations.
+            </p>
+          </div>
+
+          <div class="glass rounded-3xl p-6 shadow-soft">
+            <iconify-icon icon="ph:files-duotone" class="text-4xl text-emerald-700"></iconify-icon>
+            <h3 class="mt-4 font-bold text-lg">Centralized Data</h3>
+            <p class="mt-2 text-sm text-slate-600 leading-7">
+              Keep employee data, attendance, and payroll records in one connected and accessible system.
+            </p>
+          </div>
+
+          <div class="glass rounded-3xl p-6 shadow-soft">
+            <iconify-icon icon="ph:trend-up-duotone" class="text-4xl text-amber-700"></iconify-icon>
+            <h3 class="mt-4 font-bold text-lg">Operational Efficiency</h3>
+            <p class="mt-2 text-sm text-slate-600 leading-7">
+              Reduce delays, minimize manual errors, and improve overall HR and payroll performance.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="pb-16 sm:pb-24">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="glass rounded-[2rem] p-8 sm:p-10 shadow-soft text-center">
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Get Started</p>
+        <h2 class="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+          Experience a smarter way to manage your workforce
+        </h2>
+        <p class="mt-4 text-slate-600 max-w-2xl mx-auto leading-8">
+          Access a platform built to improve employee administration, attendance tracking, and payroll efficiency.
+        </p>
+
+        <div class="mt-8 flex flex-wrap justify-center gap-4">
+          <a href="{% url 'login_ui' %}"
+             class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl btn-accent text-white font-semibold shadow-soft transition">
+            <iconify-icon icon="ph:sign-in-duotone" class="text-xl"></iconify-icon>
+            Login Now
+          </a>
+
+          <a href="{% url 'signup_ui' %}"
+             class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl glass text-slate-700 font-semibold shadow-soft hover:bg-white/80 transition">
+            <iconify-icon icon="ph:user-plus-duotone" class="text-xl"></iconify-icon>
+            Create Account
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer id="contact" class="pb-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="glass rounded-3xl shadow-soft px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div>
+          <h3 class="font-bold text-slate-900">IntelliHRTrack</h3>
+          <p class="text-sm text-slate-500">Secure payroll and employee management solution</p>
+        </div>
+
+        <div class="flex items-center gap-5 text-slate-600">
+          <a href="#home" class="hover:text-teal-700 transition">Home</a>
+          <a href="#features" class="hover:text-teal-700 transition">Features</a>
+          <a href="#about" class="hover:text-teal-700 transition">About</a>
+        </div>
+      </div>
+
+      <p class="text-center text-xs text-slate-500 mt-5">
+        © IntelliHRTrack • All Rights Reserved
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>
