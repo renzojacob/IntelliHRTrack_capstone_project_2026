@@ -72,5 +72,8 @@ urlpatterns = [
     path("admin-ui/payroll/preview/", views.admin_payroll_preview_api, name="admin_payroll_preview_api"),
     path("admin-ui/payroll/dtr/<int:profile_id>/", views.admin_employee_dtr_api, name="admin_employee_dtr_api"),
     path("admin-ui/payroll/process/", views.admin_payroll_process_batch, name="admin_payroll_process_batch"),
+    path("admin-ui/payroll/set-rate/", views.admin_payroll_set_rate_api, name="admin_payroll_set_rate_api"),
+    path("admin-ui/payroll/export/", views.admin_payroll_export_csv, name="admin_payroll_export_csv"),
+    path("admin-ui/payroll/dtr/<int:profile_id>/export/", views.admin_employee_dtr_export_csv, name="admin_employee_dtr_export_csv"),
 
 ]
