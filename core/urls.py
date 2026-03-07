@@ -21,22 +21,10 @@ urlpatterns = [
     path("admin-ui/biometrics/template/", views.admin_biometrics_template, name="admin_biometrics_template"),
     path("admin-ui/biometrics/export/", views.admin_biometrics_export, name="admin_biometrics_export"),
 
-    # ✅ Employee Management (approve/reject + CRUD in same page)
+    # Employee Management
     path("admin-ui/employees/", views.admin_employee_management, name="admin_employees"),
-
-    # ✅ approve
-    path(
-        "admin-ui/employees/approve/<int:profile_id>/",
-        views.approve_user,
-        name="approve_user"
-    ),
-
-    # ✅ reject
-    path(
-        "admin-ui/employees/reject/<int:profile_id>/",
-        views.reject_user,
-        name="reject_user"
-    ),
+    path("admin-ui/employees/approve/<int:profile_id>/", views.approve_user, name="approve_user"),
+    path("admin-ui/employees/reject/<int:profile_id>/", views.reject_user, name="reject_user"),
 
     path("admin-ui/scheduling/", views.admin_shift_scheduling, name="admin_scheduling"),
     path("admin-ui/payroll/", views.admin_payroll, name="admin_payroll"),
@@ -63,17 +51,10 @@ urlpatterns = [
     path("employee/notifications/", views.employee_notifications, name="employee_notifications"),
     path("employee/profile/", views.employee_profile, name="employee_profile"),
 
-
-
-
-
-
- # JSON APIs
+    # -------------------------
+    # Payroll JSON APIs
+    # -------------------------
     path("admin-ui/payroll/preview/", views.admin_payroll_preview_api, name="admin_payroll_preview_api"),
     path("admin-ui/payroll/dtr/<int:profile_id>/", views.admin_employee_dtr_api, name="admin_employee_dtr_api"),
     path("admin-ui/payroll/process/", views.admin_payroll_process_batch, name="admin_payroll_process_batch"),
-    path("admin-ui/payroll/set-rate/", views.admin_payroll_set_rate_api, name="admin_payroll_set_rate_api"),
-    path("admin-ui/payroll/export/", views.admin_payroll_export_csv, name="admin_payroll_export_csv"),
-    path("admin-ui/payroll/dtr/<int:profile_id>/export/", views.admin_employee_dtr_export_csv, name="admin_employee_dtr_export_csv"),
-
 ]
