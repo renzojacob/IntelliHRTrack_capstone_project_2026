@@ -20,6 +20,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.cache import never_cache
 
 from .forms import AttendanceImportForm, AttendanceRecordForm
 from .models import (
@@ -157,9 +158,18 @@ def login_ui(request):
     return render(request, "auth/login.html")
 
 
+@never_cache
 def logout_ui(request):
     logout(request)
-    return redirect("login_ui")
+    request.session.flush()
+
+    response = redirect("login_ui")
+    response.delete_cookie("sessionid")
+    response.delete_cookie("csrftoken")
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    return response
 
 
 def signup_ui(request):
@@ -254,6 +264,7 @@ def signup_ui(request):
 # Admin Dashboard UI pages
 # =========================
 @login_required
+@never_cache
 def admin_dashboard(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
@@ -263,6 +274,7 @@ def admin_dashboard(request):
 # NOTE: This earlier stub is kept (as you requested not to remove other code),
 # but the REAL analytics view is defined later and will override this.
 @login_required
+@never_cache
 def admin_analytics(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
@@ -286,6 +298,7 @@ def _scoped_profiles_for_admin(request):
 
 
 @login_required
+@never_cache
 def admin_employee_management(request):
     """
     SAME PAGE:
@@ -501,6 +514,7 @@ def reject_user(request, profile_id):
 # Leave Approval (Admin)
 # =========================
 @login_required
+@never_cache
 def admin_leave_approval(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
@@ -690,6 +704,7 @@ def admin_leave_reject(request, leave_id):
 # Admin pages (simple renders)
 # =========================
 @login_required
+@never_cache
 def admin_reports(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
@@ -697,6 +712,7 @@ def admin_reports(request):
 
 
 @login_required
+@never_cache
 def admin_shift_scheduling(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
@@ -704,6 +720,7 @@ def admin_shift_scheduling(request):
 
 
 @login_required
+@never_cache
 def admin_system_administration(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
@@ -714,11 +731,13 @@ def admin_system_administration(request):
 # Employee pages (simple renders)
 # =========================
 @login_required
+@never_cache
 def employee_dashboard(request):
     return render(request, "employee/dashboard.html", {"current": "dashboard"})
 
 
 @login_required
+@never_cache
 def employee_attendance(request):
     # -------------------------
     # Approval gate (employee only)
@@ -900,6 +919,7 @@ def employee_attendance(request):
 
 
 @login_required
+@never_cache
 def employee_schedule(request):
     return render(request, "employee/schedule.html", {"current": "schedule"})
 
@@ -925,6 +945,7 @@ def _request_counts_for_year(employee, year: int):
 
 
 @login_required
+@never_cache
 def employee_leave(request):
     # -------------------------
     # Approval gate (employee only)
@@ -1134,21 +1155,25 @@ def employee_leave_cancel(request, leave_id):
 
 
 @login_required
+@never_cache
 def employee_payroll(request):
     return render(request, "employee/payroll.html", {"current": "payroll"})
 
 
 @login_required
+@never_cache
 def employee_analytics(request):
     return render(request, "employee/analytics.html", {"current": "analytics"})
 
 
 @login_required
+@never_cache
 def employee_notifications(request):
     return render(request, "employee/notification.html", {"current": "notification"})
 
 
 @login_required
+@never_cache
 def employee_profile(request):
     return render(request, "employee/setting_&_profile.html", {"current": "profile"})
 
@@ -1461,6 +1486,7 @@ def _clear_import_cache(request):
 # Biometrics page
 # =========================
 @login_required
+@never_cache
 def admin_biometrics_attendance(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
@@ -2580,6 +2606,7 @@ def admin_payroll_process_batch(request):
 # or delete it, otherwise this code will be ignored.
 
 @login_required
+@never_cache
 def admin_analytics(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")

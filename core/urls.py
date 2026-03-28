@@ -1,5 +1,4 @@
 from django.urls import path
-from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
@@ -9,7 +8,7 @@ urlpatterns = [
     # auth
     path("auth/login/", views.login_ui, name="login_ui"),
     path("auth/signup/", views.signup_ui, name="signup_ui"),
-    path("auth/logout/", auth_views.LogoutView.as_view(next_page="login_ui"), name="logout"),
+    path("auth/logout/", views.logout_ui, name="logout"),
 
     # -------------------------
     # Admin UI
