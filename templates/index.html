@@ -1,15 +1,12 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en" class="h-full scroll-smooth">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IntelliHRTrack | Payroll & Employee Management System</title>
 
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Iconify -->
   <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
 
   <style>
@@ -18,43 +15,74 @@
       --accent-dark: #0f766e;
       --bg1: #e9fbf8;
       --bg2: #f6fffe;
-      --card: rgba(255,255,255,.70);
+      --card: rgba(255,255,255,.72);
       --stroke: rgba(15, 23, 42, 0.08);
       --text-main: #0f172a;
       --text-soft: #475569;
     }
 
-    body{
+    html, body{
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
       color: var(--text-main);
+      font-family: Arial, sans-serif;
     }
 
-    .mint-bg{
+    body{
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Fixed background layer para hindi gumagalaw kasabay ng content */
+    body::before{
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
       background:
         radial-gradient(800px 500px at 12% 10%, rgba(20,184,166,.22), transparent 60%),
-        radial-gradient(900px 600px at 90% 20%, rgba(56,189,248,.18), transparent 60%),
-        radial-gradient(900px 700px at 50% 95%, rgba(20,184,166,.14), transparent 60%),
+        radial-gradient(900px 600px at 90% 20%, rgba(56,189,248,.16), transparent 60%),
+        radial-gradient(900px 700px at 50% 95%, rgba(20,184,166,.12), transparent 60%),
         linear-gradient(135deg, var(--bg1), var(--bg2));
+      background-attachment: fixed;
     }
 
-    .glass {
+    body::after{
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(15,23,42,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15,23,42,.03) 1px, transparent 1px);
+      background-size: 34px 34px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), transparent 70%);
+      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), transparent 70%);
+    }
+
+    .glass{
       background: var(--card);
       border: 1px solid var(--stroke);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
     }
 
     .shadow-soft{
       box-shadow:
-        0 1px 2px rgba(15,23,42,.06),
-        0 18px 60px rgba(15,23,42,.10);
+        0 1px 2px rgba(15,23,42,.05),
+        0 16px 50px rgba(15,23,42,.10);
     }
 
     .btn-accent{
-      background: var(--accent);
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
     }
 
     .btn-accent:hover{
-      background: var(--accent-dark);
+      filter: brightness(0.96);
+      transform: translateY(-1px);
     }
 
     .text-accent{
@@ -65,29 +93,74 @@
       border-color: rgba(15, 23, 42, 0.08);
     }
 
-    .hero-grid{
-      background-image:
-        linear-gradient(rgba(15,23,42,.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(15,23,42,.04) 1px, transparent 1px);
-      background-size: 34px 34px;
-      mask-image: linear-gradient(to bottom, rgba(0,0,0,.9), transparent);
-      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.9), transparent);
+    .section-space{
+      padding-top: 5rem;
+      padding-bottom: 5rem;
+    }
+
+    .hero-title{
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+
+    .fade-up{
+      opacity: 0;
+      transform: translateY(28px);
+      animation: fadeUp .8s ease forwards;
+    }
+
+    .fade-up.delay-1{ animation-delay: .1s; }
+    .fade-up.delay-2{ animation-delay: .2s; }
+    .fade-up.delay-3{ animation-delay: .3s; }
+    .fade-up.delay-4{ animation-delay: .4s; }
+
+    @keyframes fadeUp{
+      to{
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .feature-card,
+    .info-card,
+    .stat-card{
+      transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+    }
+
+    .feature-card:hover,
+    .info-card:hover,
+    .stat-card:hover{
+      transform: translateY(-6px);
+      box-shadow:
+        0 2px 8px rgba(15,23,42,.06),
+        0 22px 60px rgba(15,23,42,.12);
+    }
+
+    .progress-bar > div{
+      transition: width .6s ease;
+    }
+
+    @media (max-width: 768px){
+      .section-space{
+        padding-top: 4rem;
+        padding-bottom: 4rem;
+      }
     }
   </style>
 </head>
-<body class="h-full mint-bg">
+<body>
 
   <!-- Navbar -->
-  <header class="sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+  <header class="sticky top-0 z-50 pt-4">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="glass rounded-3xl shadow-soft px-5 sm:px-6 py-4 flex items-center justify-between">
-        <a href="#" class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-extrabold">
+        <a href="#home" class="flex items-center gap-3 min-w-0">
+          <div class="w-12 h-12 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-extrabold shadow-md shrink-0">
             IH
           </div>
-          <div>
-            <h1 class="text-lg sm:text-xl font-bold tracking-tight">IntelliHRTrack</h1>
-            <p class="text-xs text-slate-500">Payroll & Employee Management</p>
+          <div class="min-w-0">
+            <h1 class="text-lg sm:text-xl font-bold tracking-tight truncate">IntelliHRTrack</h1>
+            <p class="text-xs text-slate-500 truncate">Payroll & Employee Management</p>
           </div>
         </a>
 
@@ -100,7 +173,7 @@
 
         <div class="flex items-center gap-3">
           <a href="{% url 'login_ui' %}"
-             class="hidden sm:inline-flex px-4 py-2 rounded-2xl border border-soft bg-white/70 hover:bg-white text-sm font-semibold text-slate-700 transition">
+             class="hidden sm:inline-flex px-4 py-2 rounded-2xl border border-soft bg-white/80 hover:bg-white text-sm font-semibold text-slate-700 transition">
             Login
           </a>
           <a href="{% url 'signup_ui' %}"
@@ -113,22 +186,20 @@
   </header>
 
   <!-- Hero -->
-  <section id="home" class="relative overflow-hidden pt-10 sm:pt-14 pb-16 sm:pb-24">
-    <div class="absolute inset-0 hero-grid pointer-events-none"></div>
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-      <div class="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+  <section id="home" class="relative pt-12 sm:pt-16 pb-16 sm:pb-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
         <!-- Left -->
-        <div>
+        <div class="fade-up">
           <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass shadow-soft text-sm text-slate-700 mb-6">
             <iconify-icon icon="ph:shield-check-duotone" class="text-xl text-teal-700"></iconify-icon>
             Secure • Smart • Efficient workforce management
           </div>
 
-          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight text-slate-900">
+          <h2 class="hero-title text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900">
             Modern Payroll and Employee Management for
-            <span class="text-teal-700">Intelligent Organizations</span>
+            <span class="text-teal-700">Smarter Organizations</span>
           </h2>
 
           <p class="mt-6 text-base sm:text-lg text-slate-600 leading-8 max-w-2xl">
@@ -144,22 +215,22 @@
             </a>
 
             <a href="#features"
-               class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl glass text-slate-700 font-semibold shadow-soft hover:bg-white/80 transition">
+               class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl glass text-slate-700 font-semibold shadow-soft hover:bg-white/90 transition">
               <iconify-icon icon="ph:arrow-down-duotone" class="text-xl"></iconify-icon>
               Explore Features
             </a>
           </div>
 
           <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="glass rounded-3xl p-4 shadow-soft">
+            <div class="stat-card glass rounded-3xl p-5 shadow-soft">
               <p class="text-2xl font-extrabold text-teal-700">24/7</p>
               <p class="text-sm text-slate-600 mt-1">Accessible digital HR operations</p>
             </div>
-            <div class="glass rounded-3xl p-4 shadow-soft">
+            <div class="stat-card glass rounded-3xl p-5 shadow-soft">
               <p class="text-2xl font-extrabold text-teal-700">Fast</p>
               <p class="text-sm text-slate-600 mt-1">Payroll and attendance processing</p>
             </div>
-            <div class="glass rounded-3xl p-4 shadow-soft">
+            <div class="stat-card glass rounded-3xl p-5 shadow-soft">
               <p class="text-2xl font-extrabold text-teal-700">Secure</p>
               <p class="text-sm text-slate-600 mt-1">Protected employee records and access</p>
             </div>
@@ -167,15 +238,15 @@
         </div>
 
         <!-- Right -->
-        <div class="relative">
+        <div class="relative fade-up delay-2">
           <div class="glass rounded-[2rem] p-5 sm:p-6 shadow-soft">
-            <div class="rounded-[1.5rem] bg-white/80 border border-soft overflow-hidden">
+            <div class="rounded-[1.5rem] bg-white/85 border border-soft overflow-hidden">
               <div class="px-5 py-4 border-b border-soft flex items-center justify-between">
                 <div>
                   <h3 class="font-bold text-slate-800">System Overview</h3>
                   <p class="text-sm text-slate-500">Real-time workforce insights</p>
                 </div>
-                <div class="w-12 h-12 rounded-2xl bg-teal-500 text-white flex items-center justify-center">
+                <div class="w-12 h-12 rounded-2xl bg-teal-500 text-white flex items-center justify-center shadow-md">
                   <iconify-icon icon="ph:chart-line-up-duotone" class="text-2xl"></iconify-icon>
                 </div>
               </div>
@@ -216,20 +287,20 @@
                 </div>
 
                 <div class="rounded-2xl border border-soft bg-slate-50 p-4">
-                  <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center justify-between mb-4">
                     <p class="font-semibold text-slate-800">Monthly Performance</p>
                     <span class="text-xs px-3 py-1 rounded-full bg-teal-100 text-teal-700 font-semibold">
                       Updated
                     </span>
                   </div>
 
-                  <div class="space-y-3">
+                  <div class="space-y-4">
                     <div>
                       <div class="flex justify-between text-sm mb-1 text-slate-600">
                         <span>Attendance Accuracy</span>
                         <span>94%</span>
                       </div>
-                      <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                      <div class="progress-bar w-full h-3 bg-slate-200 rounded-full overflow-hidden">
                         <div class="h-3 bg-teal-500 rounded-full" style="width: 94%"></div>
                       </div>
                     </div>
@@ -239,7 +310,7 @@
                         <span>Payroll Completion</span>
                         <span>89%</span>
                       </div>
-                      <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                      <div class="progress-bar w-full h-3 bg-slate-200 rounded-full overflow-hidden">
                         <div class="h-3 bg-emerald-500 rounded-full" style="width: 89%"></div>
                       </div>
                     </div>
@@ -249,7 +320,7 @@
                         <span>Leave Processing</span>
                         <span>91%</span>
                       </div>
-                      <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                      <div class="progress-bar w-full h-3 bg-slate-200 rounded-full overflow-hidden">
                         <div class="h-3 bg-sky-500 rounded-full" style="width: 91%"></div>
                       </div>
                     </div>
@@ -277,20 +348,20 @@
   </section>
 
   <!-- Features -->
-  <section id="features" class="pb-16 sm:pb-24">
+  <section id="features" class="section-space">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
+      <div class="text-center mb-12 fade-up">
         <p class="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Core Features</p>
         <h2 class="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
           Everything you need in one platform
         </h2>
-        <p class="mt-4 text-slate-600 max-w-2xl mx-auto">
+        <p class="mt-4 text-slate-600 max-w-2xl mx-auto leading-8">
           Manage workforce operations with a unified system built for efficiency, accuracy, and professional administration.
         </p>
       </div>
 
       <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <div class="glass rounded-3xl p-6 shadow-soft">
+        <div class="feature-card glass rounded-3xl p-6 shadow-soft">
           <div class="w-14 h-14 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center mb-4">
             <iconify-icon icon="ph:identification-card-duotone" class="text-3xl"></iconify-icon>
           </div>
@@ -300,7 +371,7 @@
           </p>
         </div>
 
-        <div class="glass rounded-3xl p-6 shadow-soft">
+        <div class="feature-card glass rounded-3xl p-6 shadow-soft">
           <div class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-4">
             <iconify-icon icon="ph:fingerprint-simple-duotone" class="text-3xl"></iconify-icon>
           </div>
@@ -310,7 +381,7 @@
           </p>
         </div>
 
-        <div class="glass rounded-3xl p-6 shadow-soft">
+        <div class="feature-card glass rounded-3xl p-6 shadow-soft">
           <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
             <iconify-icon icon="ph:money-duotone" class="text-3xl"></iconify-icon>
           </div>
@@ -320,7 +391,7 @@
           </p>
         </div>
 
-        <div class="glass rounded-3xl p-6 shadow-soft">
+        <div class="feature-card glass rounded-3xl p-6 shadow-soft">
           <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
             <iconify-icon icon="ph:calendar-plus-duotone" class="text-3xl"></iconify-icon>
           </div>
@@ -334,10 +405,10 @@
   </section>
 
   <!-- About -->
-  <section id="about" class="pb-16 sm:pb-24">
+  <section id="about" class="section-space pt-0">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid lg:grid-cols-2 gap-8 items-center">
-        <div class="glass rounded-[2rem] p-8 shadow-soft">
+        <div class="glass rounded-[2rem] p-8 shadow-soft fade-up">
           <p class="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">About the System</p>
           <h2 class="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
             Built to simplify workforce operations
@@ -352,8 +423,8 @@
           </p>
         </div>
 
-        <div class="grid sm:grid-cols-2 gap-6">
-          <div class="glass rounded-3xl p-6 shadow-soft">
+        <div class="grid sm:grid-cols-2 gap-6 fade-up delay-2">
+          <div class="info-card glass rounded-3xl p-6 shadow-soft">
             <iconify-icon icon="ph:lock-key-open-duotone" class="text-4xl text-teal-700"></iconify-icon>
             <h3 class="mt-4 font-bold text-lg">Secure Access</h3>
             <p class="mt-2 text-sm text-slate-600 leading-7">
@@ -361,7 +432,7 @@
             </p>
           </div>
 
-          <div class="glass rounded-3xl p-6 shadow-soft">
+          <div class="info-card glass rounded-3xl p-6 shadow-soft">
             <iconify-icon icon="ph:cpu-duotone" class="text-4xl text-sky-700"></iconify-icon>
             <h3 class="mt-4 font-bold text-lg">Smart Workflow</h3>
             <p class="mt-2 text-sm text-slate-600 leading-7">
@@ -369,7 +440,7 @@
             </p>
           </div>
 
-          <div class="glass rounded-3xl p-6 shadow-soft">
+          <div class="info-card glass rounded-3xl p-6 shadow-soft">
             <iconify-icon icon="ph:files-duotone" class="text-4xl text-emerald-700"></iconify-icon>
             <h3 class="mt-4 font-bold text-lg">Centralized Data</h3>
             <p class="mt-2 text-sm text-slate-600 leading-7">
@@ -377,7 +448,7 @@
             </p>
           </div>
 
-          <div class="glass rounded-3xl p-6 shadow-soft">
+          <div class="info-card glass rounded-3xl p-6 shadow-soft">
             <iconify-icon icon="ph:trend-up-duotone" class="text-4xl text-amber-700"></iconify-icon>
             <h3 class="mt-4 font-bold text-lg">Operational Efficiency</h3>
             <p class="mt-2 text-sm text-slate-600 leading-7">
@@ -390,9 +461,9 @@
   </section>
 
   <!-- CTA -->
-  <section class="pb-16 sm:pb-24">
+  <section class="section-space pt-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="glass rounded-[2rem] p-8 sm:p-10 shadow-soft text-center">
+      <div class="glass rounded-[2rem] p-8 sm:p-10 shadow-soft text-center fade-up">
         <p class="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Get Started</p>
         <h2 class="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
           Experience a smarter way to manage your workforce
@@ -409,7 +480,7 @@
           </a>
 
           <a href="{% url 'signup_ui' %}"
-             class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl glass text-slate-700 font-semibold shadow-soft hover:bg-white/80 transition">
+             class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl glass text-slate-700 font-semibold shadow-soft hover:bg-white/90 transition">
             <iconify-icon icon="ph:user-plus-duotone" class="text-xl"></iconify-icon>
             Create Account
           </a>
@@ -427,7 +498,7 @@
           <p class="text-sm text-slate-500">Secure payroll and employee management solution</p>
         </div>
 
-        <div class="flex items-center gap-5 text-slate-600">
+        <div class="flex items-center gap-5 text-slate-600 text-sm">
           <a href="#home" class="hover:text-teal-700 transition">Home</a>
           <a href="#features" class="hover:text-teal-700 transition">Features</a>
           <a href="#about" class="hover:text-teal-700 transition">About</a>
