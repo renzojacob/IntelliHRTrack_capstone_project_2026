@@ -9,10 +9,18 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold text-gray-900">Biometrics & Attendance</h1>
-        <p class="mt-2 text-gray-600">Import, validate, review, and manage attendance logs.</p>
+        <p class="mt-2 text-gray-600">Import, validate, review, sync, and manage attendance logs.</p>
       </div>
 
       <div class="flex flex-wrap gap-3">
+        <!-- NEW: Sync Device Button -->
+        <a href="{% url 'admin_biometrics_sync' %}"
+           id="syncDeviceBtn"
+           class="inline-flex items-center rounded-lg border border-transparent bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+          <iconify-icon icon="ph:arrows-clockwise-duotone" class="mr-2"></iconify-icon>
+          <span id="syncDeviceBtnText">Sync Device</span>
+        </a>
+
         <a href="{% url 'admin_attendance_create' %}"
            class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
           Add Record
@@ -27,6 +35,26 @@
            class="inline-flex items-center rounded-lg border border-transparent bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
           Export Records
         </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW: Sync Info Banner -->
+  <div class="mb-8 rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h2 class="text-sm font-semibold text-emerald-900">Direct Device Sync</h2>
+        <p class="mt-1 text-sm text-emerald-700">
+          Use <span class="font-semibold">Sync Device</span> to fetch attendance logs directly from your Hikvision device into the database.
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2 text-xs">
+        <span class="inline-flex items-center rounded-full bg-white px-3 py-1 font-medium text-emerald-700 ring-1 ring-emerald-200">
+          Device → Django
+        </span>
+        <span class="inline-flex items-center rounded-full bg-white px-3 py-1 font-medium text-emerald-700 ring-1 ring-emerald-200">
+          No manual export needed
+        </span>
       </div>
     </div>
   </div>
@@ -207,8 +235,17 @@
 
       <!-- Records -->
       <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
-        <div class="border-b border-gray-200 px-6 py-5">
-          <h2 class="text-lg font-semibold text-gray-900">Attendance Records</h2>
+        <div class="border-b border-gray-200 px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Attendance Records</h2>
+            <p class="mt-1 text-sm text-gray-600">Imported and synced records from your device or files.</p>
+          </div>
+
+          <a href="{% url 'admin_biometrics_sync' %}"
+             class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-sm transition hover:bg-emerald-100">
+            <iconify-icon icon="ph:arrows-clockwise-duotone" class="mr-2"></iconify-icon>
+            Sync Now
+          </a>
         </div>
 
         <div class="overflow-x-auto">
@@ -248,7 +285,7 @@
           {% else %}
           <div class="px-6 py-12 text-center">
             <h3 class="mt-2 text-sm font-medium text-gray-900">No records found</h3>
-            <p class="mt-1 text-sm text-gray-500">Import attendance data to get started.</p>
+            <p class="mt-1 text-sm text-gray-500">Import attendance data or sync the device to get started.</p>
           </div>
           {% endif %}
         </div>
@@ -259,6 +296,24 @@
     <!-- RIGHT Sidebar -->
     <div class="mt-8 lg:mt-0">
       <div class="space-y-6">
+
+        <!-- Device Sync Help -->
+        <div class="overflow-hidden rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Device Sync Guide</h3>
+          <div class="mt-4 space-y-3">
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <p class="text-sm font-medium text-emerald-800">Recommended Setup</p>
+              <p class="mt-1 text-xs text-emerald-700">
+                Connect the Hikvision device directly to the same laptop running Django using Ethernet.
+              </p>
+            </div>
+            <ol class="space-y-2 text-sm text-gray-600 list-decimal pl-5">
+              <li>Make sure the device opens on this same laptop.</li>
+              <li>Click <span class="font-medium text-gray-900">Sync Device</span>.</li>
+              <li>Refresh this page to see new attendance logs.</li>
+            </ol>
+          </div>
+        </div>
 
         <!-- Holiday & Suspension Calendar (optional UI block; safe even if holidays not provided) -->
         <div class="overflow-hidden rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
@@ -296,7 +351,13 @@
                   </span>
                 </div>
                 <p class="text-xs text-gray-500 mt-1">
-                  {% if holiday.scope == 'nationwide' %}Nationwide{% else %}{{ holiday.branch_name }}{% endif %}
+                  {% if holiday.scope == 'nationwide' %}
+                    Nationwide
+                  {% elif holiday.branch %}
+                    {{ holiday.branch.name }}
+                  {% else %}
+                    MIMAROPA Region
+                  {% endif %}
                 </p>
               </div>
               {% endfor %}
@@ -348,6 +409,8 @@
   const fileName = document.getElementById('fileName');
   const importBtn = document.getElementById('importBtn');
   const branchSelect = document.getElementById('branchSelect');
+  const syncDeviceBtn = document.getElementById('syncDeviceBtn');
+  const syncDeviceBtnText = document.getElementById('syncDeviceBtnText');
 
   function setImportEnabled(enabled) {
     if (!importBtn) return;
@@ -377,8 +440,6 @@
   function canImportNow() {
     const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
     const hasBranch = branchSelect && branchSelect.value && branchSelect.value.trim().length > 0;
-    // allow import if:
-    // - branch selected AND (file selected OR server has validated session cache)
     return hasBranch && (hasFile || serverCanImport);
   }
 
@@ -415,6 +476,15 @@
 
   if (branchSelect) {
     branchSelect.addEventListener('change', () => setImportEnabled(canImportNow()));
+  }
+
+  if (syncDeviceBtn) {
+    syncDeviceBtn.addEventListener('click', function () {
+      syncDeviceBtn.classList.add('pointer-events-none', 'opacity-70');
+      if (syncDeviceBtnText) {
+        syncDeviceBtnText.textContent = 'Syncing...';
+      }
+    });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
