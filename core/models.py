@@ -416,3 +416,15 @@ class PayrollItem(models.Model):
 
     def __str__(self):
         return f"{self.profile.user.username} - {self.net_pay}"
+    
+class BiometricDevice(models.Model):
+    name = models.CharField(max_length=100)
+    ip_address = models.GenericIPAddressField()
+    port = models.IntegerField(default=80)
+    username = models.CharField(max_length=100)
+    password = models.CharField(max_length=100)
+    branch = models.ForeignKey("Branch", on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.ip_address})"

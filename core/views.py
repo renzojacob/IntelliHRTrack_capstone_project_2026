@@ -21,7 +21,8 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.cache import never_cache
-
+from .models import BiometricDevice
+from .hikvision_sync import fetch_hikvision_attendance
 from .forms import AttendanceImportForm, AttendanceRecordForm
 from .models import (
     Branch,
@@ -295,6 +296,39 @@ def _scoped_profiles_for_admin(request):
         return qs.filter(branch=admin_branch)
     except UserProfile.DoesNotExist:
         return qs.none()
+
+#button sync for realtime data for attendance== renzo
+@login_required
+def admin_biometrics_sync_now(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return redirect("login_ui")
+
+   
+
+    devices = BiometricDevice.objects.filter(is_active=True)
+
+    if not devices.exists():
+        messages.error(request, "No active biometric device found.")
+        return redirect("admin_biometrics")
+
+    success_count = 0
+    fail_count = 0
+
+    for device in devices:
+        try:
+            fetch_hikvision_attendance(device)
+            success_count += 1
+        except Exception as e:
+            fail_count += 1
+            messages.error(request, f"Sync failed for {device.name}: {e}")
+
+    if success_count:
+        messages.success(request, f"Device sync completed. Successful device syncs: {success_count}")
+    elif fail_count and not success_count:
+        messages.error(request, "All device sync attempts failed.")
+
+    return redirect("admin_biometrics")
+#====================
 
 
 @login_required
@@ -2828,4 +2862,6 @@ def _pick_attendance_employee_id(user, branch: Branch):
 def _fmt_time_ampm(dt):
     if not dt:
         return ""
-    return dt.strftime("%-I:%M %p") if hasattr(dt, "strftime") else str(dt)
+    if not hasattr(dt, "strftime"):
+        return str(dt)
+    return dt.strftime("%I:%M %p").lstrip("0")
