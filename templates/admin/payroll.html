@@ -70,6 +70,8 @@
 {% endblock %}
 
 {% block content %}
+<div id="topbarProgress" class="topbar-progress"></div>
+
 <!-- Top Stats Cards -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
@@ -84,6 +86,7 @@
             <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:currency-dollar-duotone" class="text-xl"></iconify-icon></div>
         </div>
     </div>
+
     <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
         <div class="flex justify-between items-start">
             <div>
@@ -96,6 +99,7 @@
             <div class="p-3 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:hourglass-duotone" class="text-xl"></iconify-icon></div>
         </div>
     </div>
+
     <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
         <div class="flex justify-between items-start">
             <div>
@@ -111,6 +115,7 @@
             <div class="p-3 bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:clock-afternoon-duotone" class="text-xl"></iconify-icon></div>
         </div>
     </div>
+
     <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
         <div class="flex justify-between items-start">
             <div>
@@ -158,7 +163,6 @@
     <div class="p-6">
         <!-- Payroll Processing Content (Default) -->
         <div id="payroll-processing-content" class="payroll-content">
-            <!-- Sticky Action Bar -->
             <div class="sticky-action-bar bg-white/90 dark:bg-gray-800/90 backdrop-blur rounded-xl p-4 mb-6 shadow-lg border border-white/30 dark:border-gray-700/60">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
@@ -194,7 +198,6 @@
                     </div>
                 </div>
 
-                <!-- Filters -->
                 <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Branch</label>
@@ -223,7 +226,7 @@
                             {% endfor %}
                         </select>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Note: Payroll computation counts only Weekdays (Mon–Fri). Weekends and configured Holidays/Suspensions are excluded.
+                            Note: Payroll computation counts only Weekdays (Mon–Fri). Weekends are excluded.
                         </p>
                     </div>
                     <div>
@@ -237,7 +240,6 @@
                 </div>
             </div>
 
-            <!-- Preview Table (Initially Hidden) -->
             <div id="payrollPreview" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-white/30 dark:border-gray-700/60 mb-6">
                 <div class="px-6 py-4 border-b border-white/30 dark:border-gray-700/60 flex justify-between items-center">
                     <h3 class="text-lg font-semibold">Payroll Preview</h3>
@@ -281,7 +283,6 @@
                 </div>
             </div>
 
-            <!-- Employee Payroll Details -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-white/30 dark:border-gray-700/60">
                 <div class="px-6 py-4 border-b border-white/30 dark:border-gray-700/60 flex justify-between items-center">
                     <h3 class="text-lg font-semibold">Employee Payroll Details</h3>
@@ -394,12 +395,11 @@
             <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
                 <div>
                     <h3 class="text-xl font-bold">Payroll Setup & Configuration</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure MIMAROPA government payroll rules, contributions, and holiday management</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure MIMAROPA government payroll rules, contributions, and payroll administration</p>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Payroll Rules Configuration -->
                 <div class="lg:col-span-2 space-y-6">
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
                         <h3 class="text-lg font-semibold mb-4">Payroll Rules Configuration</h3>
@@ -470,7 +470,6 @@
                                 </div>
                             </div>
 
-                            <!-- ✅ Sliding Flexy times -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Work Start Time (Earliest IN)</label>
@@ -517,7 +516,6 @@
                         </form>
                     </div>
 
-                    <!-- Government Contributions -->
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-semibold">Government Contributions (Employee-Specific)</h3>
@@ -578,7 +576,6 @@
                         </p>
                     </div>
 
-                    <!-- Employee-Specific Deductions (Per Employee) -->
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-semibold">Employee-Specific Deductions</h3>
@@ -635,47 +632,8 @@
                     </div>
                 </div>
 
-                <!-- Holiday & Suspension Manager -->
+                <!-- Right column, holiday manager removed -->
                 <div class="space-y-6">
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold">Holiday & Suspension Manager</h3>
-                            <button class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm" id="addHolidayBtn">
-                                Add Holiday
-                            </button>
-                        </div>
-                        <div class="space-y-3 max-h-96 overflow-y-auto">
-                            {% for holiday in holidays %}
-                            <div class="p-3 rounded-lg border {% if holiday.type == 'holiday' %}border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/30{% else %}border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/30{% endif %}">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <h4 class="font-medium">{{ holiday.name }}</h4>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ holiday.date|date:"F d, Y" }}</p>
-                                        <p class="text-xs mt-1">
-                                            <span class="px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700">
-                                                {{ holiday.get_type_display }}
-                                            </span>
-                                            <span class="ml-2">{{ holiday.get_scope_display }}</span>
-                                        </p>
-                                    </div>
-                                    <button class="text-gray-400 hover:text-gray-600">
-                                        <iconify-icon icon="ph:trash-duotone"></iconify-icon>
-                                    </button>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-2">
-                                    Impact: {% if holiday.type == 'holiday' %}JO - No Pay, COS - Paid{% else %}Both - No Work No Pay{% endif %}
-                                </p>
-                            </div>
-                            {% empty %}
-                            <div class="text-center py-8">
-                                <iconify-icon icon="ph:calendar-blank-duotone" class="text-3xl text-gray-400"></iconify-icon>
-                                <p class="mt-2 text-sm text-gray-500">No holidays or suspensions configured</p>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <!-- Audit Trail -->
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
                         <h3 class="text-lg font-semibold mb-4">Audit Trail</h3>
                         <div class="space-y-3 max-h-64 overflow-y-auto">
@@ -695,7 +653,6 @@
                         </div>
                     </div>
 
-                    <!-- ✅ Payroll Period Manager Card -->
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-lg font-semibold">Payroll Period Manager</h3>
@@ -704,15 +661,25 @@
                             </button>
                         </div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">
-                            Create flexible payroll periods (any dates). Computation uses weekdays only and excludes configured holidays/suspensions.
+                            Create flexible payroll periods (any dates). Computation uses weekdays only.
                         </p>
                     </div>
 
+                    <div class="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-xl p-6 text-white">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-lg font-bold">DTR Security</h3>
+                            <iconify-icon icon="ph:file-text-duotone" class="text-2xl"></iconify-icon>
+                        </div>
+                        <p class="text-green-100 mb-4">Tamper-resistant DTRs with system-generated watermarks and complete audit logs.</p>
+                        <button class="text-sm bg-white text-green-700 hover:bg-green-50 px-3 py-2 rounded-lg font-medium inline-flex items-center shadow-md" onclick="switchTab('payroll-setup-tab')">
+                            <iconify-icon icon="ph:eye-duotone" class="mr-2"></iconify-icon>
+                            View Audit Trail
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Remaining tabs -->
         <div id="salary-structure-content" class="payroll-content hidden">
             <div class="text-center py-12">
                 <iconify-icon icon="ph:chart-bar-duotone" class="text-4xl text-gray-400"></iconify-icon>
@@ -845,189 +812,99 @@
                 </div>
             </div>
         </div>
+
     </div>
 </div>
 
-<!-- Payroll Period Modal -->
-<div id="periodModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-xl bg-white dark:bg-gray-800">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold">Add Payroll Period</h3>
-            <button id="closePeriodModal" class="text-gray-400 hover:text-gray-600">
+<!-- DTR Modal -->
+<div id="dtrModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="relative mx-auto mt-10 w-[95%] max-w-6xl rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-white/20 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold">Daily Time Record</h3>
+                <p class="text-sm text-gray-500">System-generated attendance view</p>
+            </div>
+            <button id="closeDtrModalBtn" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700">
                 <iconify-icon icon="ph:x-duotone"></iconify-icon>
             </button>
         </div>
-        <form id="periodForm" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium mb-1">Name</label>
-                <input name="name" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="e.g., March 2026 Kinsenas">
+
+        <div class="p-6">
+            <div class="relative">
+                <div class="dtr-watermark inset-0 flex items-center justify-center absolute">INTELLIHRTRACK</div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-800/60">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Day</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Time In</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Time Out</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Lunch In</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Lunch Out</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Total Hours</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Late</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Undertime</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dtrTableBody" class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+                    </table>
+                </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        </div>
+    </div>
+</div>
+
+<!-- Add Payroll Period Modal -->
+<div id="periodModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="relative mx-auto mt-16 w-[95%] max-w-xl rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-white/20 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold">Add Payroll Period</h3>
+                <p class="text-sm text-gray-500">Create flexible payroll period dates</p>
+            </div>
+            <button id="closePeriodModalBtn" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700">
+                <iconify-icon icon="ph:x-duotone"></iconify-icon>
+            </button>
+        </div>
+
+        <form id="periodForm" class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">Period Name</label>
+                <input type="text" name="name" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm" placeholder="e.g. April 1–15, 2026">
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Start Date</label>
-                    <input name="start_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                    <input type="date" name="start_date" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">End Date</label>
-                    <input name="end_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                    <input type="date" name="end_date" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
                 </div>
             </div>
             <div>
                 <label class="block text-sm font-medium mb-1">Pay Mode</label>
-                <select name="pay_mode" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                <select name="pay_mode" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
                     <option value="MONTHLY">Monthly</option>
                     <option value="FIRST_HALF">Kinsenas (1st Half)</option>
                     <option value="SECOND_HALF">Katapusan (2nd Half)</option>
                 </select>
-                <p class="mt-1 text-xs text-gray-500">Note: Computation still uses weekdays only.</p>
             </div>
-            <div class="flex justify-end gap-2 pt-4">
-                <button type="button" id="cancelPeriod" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">Save Period</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Holiday/Suspension Modal -->
-<div id="holidayModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-xl bg-white dark:bg-gray-800">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold">Add Holiday/Suspension</h3>
-            <button id="closeHolidayModal" class="text-gray-400 hover:text-gray-600">
-                <iconify-icon icon="ph:x-duotone"></iconify-icon>
-            </button>
-        </div>
-        <form id="holidayForm" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium mb-1">Date</label>
-                <input name="date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-1">Name</label>
-                <input name="name" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="e.g., Independence Day">
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-1">Type</label>
-                <select name="type" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-                    <option value="holiday">Regular Holiday</option>
-                    <option value="suspension">Work Suspension</option>
-                    <option value="special">Special Non-Working Day</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-1">Scope</label>
-                <select name="scope" id="holidayScope" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-                    <option value="nationwide">Nationwide</option>
-                    <option value="branch">Specific Branch</option>
-                    <option value="region">MIMAROPA Region</option>
-                </select>
-            </div>
-            <div id="branchSelection" class="hidden">
-                <label class="block text-sm font-medium mb-1">Branch</label>
-                <select name="branch" id="holidayBranch" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-                    {% for branch in branches %}
-                    <option value="{{ branch.id }}">{{ branch.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-1">Notes</label>
-                <textarea name="notes" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Impact on JO/COS payroll..."></textarea>
-            </div>
-            <div class="flex justify-end gap-2 pt-4">
-                <button type="button" id="cancelHoliday" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">Save Holiday</button>
+            <div class="pt-2 flex items-center justify-end gap-2">
+                <button type="button" id="cancelPeriodBtn" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
+                <button type="submit" id="savePeriodBtn" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Save Period</button>
             </div>
         </form>
-    </div>
-</div>
-
-<!-- DTR View Modal -->
-<div id="dtrModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-xl bg-white dark:bg-gray-800">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold">Daily Time Record (DTR)</h3>
-            <div class="flex items-center gap-2">
-                <iconify-icon icon="ph:lock-duotone" class="text-amber-500"></iconify-icon>
-                <span class="text-sm text-gray-500">SYSTEM GENERATED - NOT EDITABLE</span>
-                <button id="closeDtrModal" class="ml-4 text-gray-400 hover:text-gray-600">
-                    <iconify-icon icon="ph:x-duotone"></iconify-icon>
-                </button>
-            </div>
-        </div>
-        <div class="relative border rounded-lg p-4">
-            <div class="dtr-watermark">SYSTEM GENERATED</div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Date</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Day</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Time In</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Time Out</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Lunch In</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Lunch Out</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Total Hours</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Late (mins)</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Undertime (mins)</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200" id="dtrTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-        <div class="mt-4 flex justify-end">
-            <button class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg mr-2">Print</button>
-            <button class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">Export PDF</button>
-        </div>
-    </div>
-</div>
-
-<!-- Feature Highlights -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-    <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition duration-300">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">Government Compliance</h3>
-            <iconify-icon icon="ph:shield-check-duotone" class="text-2xl"></iconify-icon>
-        </div>
-        <p class="text-amber-100 mb-4">SSS, PhilHealth, Pag-IBIG, Tax calculations configurable in system rules.</p>
-        <button class="text-sm bg-white text-amber-600 hover:bg-amber-50 px-3 py-2 rounded-lg font-medium inline-flex items-center shadow-md" onclick="switchTab('payroll-setup-tab')">
-            <iconify-icon icon="ph:gear-duotone" class="mr-2"></iconify-icon>
-            Configure Rules
-        </button>
-    </div>
-    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition duration-300">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">Attendance Integration</h3>
-            <iconify-icon icon="ph:fingerprint-duotone" class="text-2xl"></iconify-icon>
-        </div>
-        <p class="text-blue-100 mb-4">Automatic payroll computation from attendance with weekdays-only period counting.</p>
-        <a href="{% url 'admin_biometrics' %}" class="text-sm bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg font-medium inline-flex items-center shadow-md">
-            <iconify-icon icon="ph:link-duotone" class="mr-2"></iconify-icon>
-            View Attendance
-        </a>
-    </div>
-    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition duration-300">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">Audit Trail</h3>
-            <iconify-icon icon="ph:file-text-duotone" class="text-2xl"></iconify-icon>
-        </div>
-        <p class="text-green-100 mb-4">Tamper-resistant DTRs with system-generated watermarks and complete audit logs.</p>
-        <button class="text-sm bg-white text-green-700 hover:bg-green-50 px-3 py-2 rounded-lg font-medium inline-flex items-center shadow-md" onclick="switchTab('payroll-setup-tab')">
-            <iconify-icon icon="ph:eye-duotone" class="mr-2"></iconify-icon>
-            View Audit Trail
-        </button>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // ----------------------------
-    // Tabs
-    // ----------------------------
     const tabMap = [
         { tabId: 'payroll-processing-tab', contentId: 'payroll-processing-content' },
         { tabId: 'payroll-setup-tab', contentId: 'payroll-setup-content' },
@@ -1061,9 +938,6 @@
         btn && btn.addEventListener('click', () => switchTab(tabId));
     });
 
-    // ----------------------------
-    // Small helpers
-    // ----------------------------
     function getCsrfToken() {
         const meta = document.querySelector('meta[name="csrf-token"]');
         return meta ? meta.getAttribute('content') : '';
@@ -1085,110 +959,47 @@
             btn.innerHTML = `<span class="inline-flex items-center gap-2"><span class="animate-spin h-4 w-4 border-2 border-white/70 border-t-transparent rounded-full"></span>Loading…</span>`;
         } else if (btn.dataset.labelWas) {
             btn.innerHTML = btn.dataset.labelWas;
-            delete btn.dataset.labelWas;
         }
     }
 
-    function showToast(message, type = "info") {
-        if (type === "error") return alert("Error: " + message);
-        alert(message);
+    function showToast(message, kind = "info") {
+        const root = document.createElement('div');
+        root.className = `fixed right-4 top-4 z-[70] rounded-xl px-4 py-3 shadow-xl text-white ${
+            kind === "error" ? "bg-red-600" :
+            kind === "success" ? "bg-green-600" :
+            "bg-slate-800"
+        }`;
+        root.textContent = message;
+        document.body.appendChild(root);
+        setTimeout(() => root.remove(), 2600);
     }
 
-    // ----------------------------
-    // ✅ Payroll Period Modal
-    // ----------------------------
-    const periodModal = document.getElementById('periodModal');
-    const openAddPeriodBtn = document.getElementById('openAddPeriodBtn');
-    const openAddPeriodBtn2 = document.getElementById('openAddPeriodBtn2');
-    const closePeriodModal = document.getElementById('closePeriodModal');
-    const cancelPeriod = document.getElementById('cancelPeriod');
-    const periodForm = document.getElementById('periodForm');
-
-    function openPeriodModal() { periodModal?.classList.remove('hidden'); }
-    function closePeriod() { periodModal?.classList.add('hidden'); }
-
-    openAddPeriodBtn?.addEventListener('click', openPeriodModal);
-    openAddPeriodBtn2?.addEventListener('click', openPeriodModal);
-    closePeriodModal?.addEventListener('click', closePeriod);
-    cancelPeriod?.addEventListener('click', closePeriod);
-
-    periodForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        try {
-            const fd = new FormData(periodForm);
-
-            const res = await fetch("/admin-ui/payroll/add-period/", {
-                method: "POST",
-                headers: { "X-CSRFToken": getCsrfToken(), "Accept": "application/json" },
-                body: fd
-            });
-            const data = await res.json();
-            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to add payroll period");
-            showToast("Payroll period saved!", "info");
-            window.location.reload();
-        } catch (err) {
-            showToast(err.message || "Failed to add payroll period", "error");
+    function setProgress(percent) {
+        const bar = document.getElementById('topbarProgress');
+        if (!bar) return;
+        bar.style.width = `${percent}%`;
+        if (percent >= 100) {
+            setTimeout(() => { bar.style.width = '0%'; }, 500);
         }
-    });
+    }
 
-    // ----------------------------
-    // Holiday Modal
-    // ----------------------------
-    const holidayModal = document.getElementById('holidayModal');
-    const addHolidayBtn = document.getElementById('addHolidayBtn');
-    const closeHolidayModal = document.getElementById('closeHolidayModal');
-    const cancelHoliday = document.getElementById('cancelHoliday');
-    const scopeSelect = document.getElementById('holidayScope');
-
-    addHolidayBtn?.addEventListener('click', () => holidayModal.classList.remove('hidden'));
-    [closeHolidayModal, cancelHoliday].forEach(btn => {
-        btn?.addEventListener('click', () => holidayModal.classList.add('hidden'));
-    });
-
-    scopeSelect?.addEventListener('change', (e) => {
-        const branchSelection = document.getElementById('branchSelection');
-        if (e.target.value === 'branch') branchSelection.classList.remove('hidden');
-        else branchSelection.classList.add('hidden');
-    });
-
-    const holidayForm = document.getElementById('holidayForm');
-    holidayForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        try {
-            const fd = new FormData(holidayForm);
-
-            const res = await fetch("/admin-ui/payroll/add-holiday/", {
-                method: "POST",
-                headers: { "X-CSRFToken": getCsrfToken(), "Accept": "application/json" },
-                body: fd
-            });
-            const data = await res.json();
-            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to add holiday");
-            showToast("Holiday saved!", "info");
-            window.location.reload();
-        } catch (err) {
-            showToast(err.message || "Failed to add holiday", "error");
-        }
-    });
-
-    // ----------------------------
-    // DTR Modal + Fetch real DTR
-    // ----------------------------
     const dtrModal = document.getElementById('dtrModal');
-    const closeDtrModal = document.getElementById('closeDtrModal');
-    closeDtrModal?.addEventListener('click', () => dtrModal.classList.add('hidden'));
-
-    const periodFilter = document.getElementById('periodFilter');
+    const closeDtrModalBtn = document.getElementById('closeDtrModalBtn');
+    closeDtrModalBtn?.addEventListener('click', () => dtrModal.classList.add('hidden'));
+    dtrModal?.addEventListener('click', (e) => {
+        if (e.target === dtrModal || e.target.classList.contains('bg-black/50')) {
+            dtrModal.classList.add('hidden');
+        }
+    });
 
     async function loadDTR(profileId) {
+        const periodFilter = document.getElementById('periodFilter');
         const periodId = periodFilter?.value || '';
-        const url = `/admin-ui/payroll/dtr/${profileId}/?period=${encodeURIComponent(periodId)}`;
-
-        const res = await fetch(url, { headers: { "Accept": "application/json" } });
+        const res = await fetch(`/admin-ui/payroll/dtr/${profileId}/?period=${encodeURIComponent(periodId)}`, {
+            headers: { "Accept": "application/json" }
+        });
         const data = await res.json();
-        if (!res.ok || !data.ok) {
-            throw new Error(data.error || "Failed to load DTR");
-        }
+        if (!res.ok || !data.ok) throw new Error(data.error || "Failed to load DTR");
         return data;
     }
 
@@ -1197,20 +1008,30 @@
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        rows.forEach(record => {
-            const row = document.createElement('tr');
-            const lateCls = Number(record.late || 0) > 0 ? 'text-red-600' : '';
-            const underCls = Number(record.undertime || 0) > 0 ? 'text-amber-600' : '';
+        if (!rows || !rows.length) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="px-4 py-8 text-center text-sm text-gray-500">
+                        No DTR records found for this employee and period.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
 
+        rows.forEach(record => {
+            const tr = document.createElement('tr');
             const statusLower = String(record.status || '').toLowerCase();
+            const lateCls = Number(record.late || 0) > 0 ? 'text-amber-600 font-medium' : '';
+            const underCls = Number(record.undertime || 0) > 0 ? 'text-red-600 font-medium' : '';
             const statusBadge =
                 statusLower.includes('present') ? 'bg-green-100 text-green-800' :
-                statusLower.includes('holiday') ? 'bg-emerald-100 text-emerald-800' :
+                statusLower.includes('late') ? 'bg-amber-100 text-amber-800' :
                 statusLower.includes('weekend') ? 'bg-slate-100 text-slate-700' :
                 statusLower.includes('missing') ? 'bg-yellow-100 text-yellow-800' :
                 'bg-red-100 text-red-800';
 
-            row.innerHTML = `
+            tr.innerHTML = `
                 <td class="px-4 py-2 text-sm">${record.date || ''}</td>
                 <td class="px-4 py-2 text-sm">${record.day || ''}</td>
                 <td class="px-4 py-2 text-sm">${record.timeIn || ''}</td>
@@ -1226,7 +1047,7 @@
                     </span>
                 </td>
             `;
-            tbody.appendChild(row);
+            tbody.appendChild(tr);
         });
     }
 
@@ -1234,7 +1055,6 @@
         btn.addEventListener('click', async function() {
             const profileId = this.getAttribute('data-employee-id');
             if (!profileId) return;
-
             try {
                 setBusy(this, true);
                 const data = await loadDTR(profileId);
@@ -1248,15 +1068,13 @@
         });
     });
 
-    // ----------------------------
-    // Preview + Fetch real Preview
-    // ----------------------------
     const generatePreviewBtn = document.getElementById('generatePreviewBtn');
     const payrollPreview = document.getElementById('payrollPreview');
     const closePreviewBtn = document.getElementById('closePreviewBtn');
     const approveProcessBtn = document.getElementById('approveProcessBtn');
 
     const branchFilter = document.getElementById('branchFilter');
+    const periodFilter = document.getElementById('periodFilter');
     const typeFilter = document.getElementById('typeFilter');
 
     async function loadPreview() {
@@ -1280,152 +1098,110 @@
         tbody.innerHTML = '';
         let totalNet = 0;
 
-        employees.forEach(emp => {
-            const net = Number(emp.net || 0);
-            totalNet += net;
-
-            const typeBadge = (emp.type === 'JO')
-                ? 'bg-yellow-100 text-yellow-800'
-                : 'bg-blue-100 text-blue-800';
-
-            const issuesHtml = emp.issues
-                ? `<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">${emp.issues}</span>`
-                : '<span class="text-green-600">✓</span>';
-
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="px-6 py-4 text-sm font-medium">${emp.name || ''}</td>
-                <td class="px-6 py-4 text-sm">
-                    <span class="px-2 py-1 text-xs rounded-full ${typeBadge}">
-                        ${emp.type || ''}
-                    </span>
-                </td>
-                <td class="px-6 py-4 text-sm peso">${peso(emp.base)}</td>
-                <td class="px-6 py-4 text-sm peso">${peso(emp.premium)}</td>
-                <td class="px-6 py-4 text-sm peso">${peso(emp.ot)}</td>
-                <td class="px-6 py-4 text-sm ${Number(emp.late||0) > 0 ? 'text-red-600' : ''}">${emp.late ?? 0} mins</td>
-                <td class="px-6 py-4 text-sm ${Number(emp.undertime||0) > 0 ? 'text-amber-600' : ''}">${emp.undertime ?? 0} mins</td>
-                <td class="px-6 py-4 text-sm">${emp.absences ?? 0}</td>
-                <td class="px-6 py-4 text-sm peso text-red-600">${peso(emp.deductions)}</td>
-                <td class="px-6 py-4 text-sm font-semibold peso">${peso(emp.net)}</td>
-                <td class="px-6 py-4 text-sm">${issuesHtml}</td>
+        if (!employees || !employees.length) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="11" class="px-6 py-10 text-center text-sm text-gray-500">
+                        No preview data found for the selected filters.
+                    </td>
+                </tr>
             `;
-            tbody.appendChild(row);
+            document.getElementById('previewTotalEmployees').textContent = '0';
+            document.getElementById('previewTotalNet').textContent = '0.00';
+            return;
+        }
+
+        employees.forEach(emp => {
+            totalNet += Number(emp.net || 0);
+            const issues = Array.isArray(emp.issues) ? emp.issues.join(', ') : (emp.issues || '');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="px-6 py-4 text-sm font-medium">${emp.name || ''}</td>
+                <td class="px-6 py-4 text-sm">${emp.employment_type || ''}</td>
+                <td class="px-6 py-4 text-sm">${peso(emp.base)}</td>
+                <td class="px-6 py-4 text-sm">${peso(emp.premium)}</td>
+                <td class="px-6 py-4 text-sm">${peso(emp.ot)}</td>
+                <td class="px-6 py-4 text-sm">${emp.late_minutes ?? 0} min</td>
+                <td class="px-6 py-4 text-sm">${emp.undertime_minutes ?? 0} min</td>
+                <td class="px-6 py-4 text-sm">${emp.absences ?? 0}</td>
+                <td class="px-6 py-4 text-sm text-red-600">${peso(emp.deductions)}</td>
+                <td class="px-6 py-4 text-sm font-semibold">${peso(emp.net)}</td>
+                <td class="px-6 py-4 text-sm">${issues || '—'}</td>
+            `;
+            tbody.appendChild(tr);
         });
 
-        document.getElementById('previewTotalEmployees').textContent = employees.length;
+        document.getElementById('previewTotalEmployees').textContent = String(employees.length);
         document.getElementById('previewTotalNet').textContent = peso(totalNet);
-
-        payrollPreview.classList.remove('hidden');
-        payrollPreview.scrollIntoView({ behavior: 'smooth' });
     }
 
-    generatePreviewBtn?.addEventListener('click', async () => {
+    generatePreviewBtn?.addEventListener('click', async function() {
         try {
-            setBusy(generatePreviewBtn, true);
+            setBusy(this, true);
+            setProgress(20);
             const data = await loadPreview();
+            setProgress(70);
             renderPreview(data.employees || []);
+            payrollPreview?.classList.remove('hidden');
+            setProgress(100);
         } catch (err) {
             showToast(err.message || "Failed to generate preview", "error");
+            setProgress(100);
         } finally {
-            setBusy(generatePreviewBtn, false);
+            setBusy(this, false);
         }
     });
 
-    closePreviewBtn?.addEventListener('click', () => payrollPreview.classList.add('hidden'));
+    closePreviewBtn?.addEventListener('click', () => payrollPreview?.classList.add('hidden'));
 
-    // Approve & Process (POST)
-    approveProcessBtn?.addEventListener('click', async () => {
-        const branchId = branchFilter?.value || '';
-        const periodId = periodFilter?.value || '';
-        const type = typeFilter?.value || 'ALL';
-
-        if (!branchId || !periodId) {
-            return showToast("Please select Branch and Payroll Period first.", "error");
-        }
-
+    approveProcessBtn?.addEventListener('click', async function() {
         try {
-            setBusy(approveProcessBtn, true);
+            setBusy(this, true);
+            setProgress(20);
 
-            const body = new URLSearchParams();
-            body.set("branch", branchId);
-            body.set("period", periodId);
-            body.set("type", type);
+            const branchId = branchFilter?.value || '';
+            const periodId = periodFilter?.value || '';
+            const type = typeFilter?.value || 'ALL';
 
-            const res = await fetch("/admin-ui/payroll/process/", {
-                method: "POST",
+            const res = await fetch(`/admin-ui/payroll/process/?branch=${encodeURIComponent(branchId)}&period=${encodeURIComponent(periodId)}&type=${encodeURIComponent(type)}`, {
+                method: 'POST',
                 headers: {
                     "Accept": "application/json",
-                    "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
                     "X-CSRFToken": getCsrfToken(),
-                },
-                body: body.toString(),
+                }
             });
 
             const data = await res.json();
-            if (!res.ok || !data.ok) {
-                throw new Error(data.error || "Failed to process payroll");
-            }
+            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to process payroll");
 
-            showToast(`Payroll processed! Batch: ${data.batch?.name || ''}`, "info");
+            setProgress(100);
+            showToast("Payroll batch processed successfully!", "success");
             window.location.reload();
         } catch (err) {
             showToast(err.message || "Failed to process payroll", "error");
+            setProgress(100);
         } finally {
-            setBusy(approveProcessBtn, false);
+            setBusy(this, false);
         }
     });
 
-    // Save Payroll Rules (POST)
-    const payrollRulesForm = document.getElementById('payrollRulesForm');
-    payrollRulesForm?.addEventListener('submit', async (e) => {
+    document.getElementById('payrollRulesForm')?.addEventListener('submit', async function(e) {
         e.preventDefault();
-        const saveBtn = document.getElementById('savePayrollRulesBtn');
-        try {
-            setBusy(saveBtn, true);
-
-            const fd = new FormData(payrollRulesForm);
-            if (!fd.has("lunch_break_required")) fd.set("lunch_break_required", "off");
-
-            const res = await fetch("/admin-ui/payroll/save-rules/", {
-                method: "POST",
-                headers: { "X-CSRFToken": getCsrfToken(), "Accept": "application/json" },
-                body: fd
-            });
-            const data = await res.json();
-            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to save payroll rules");
-            showToast("Payroll rules saved!", "info");
-        } catch (err) {
-            showToast(err.message || "Failed to save payroll rules", "error");
-        } finally {
-            setBusy(saveBtn, false);
-        }
+        showToast("Payroll rules form is ready. Connect this to your save endpoint.", "info");
     });
 
-    // Save Contributions (POST)
-    const saveContribBtn = document.getElementById('saveContribBtn');
-    saveContribBtn?.addEventListener('click', async () => {
+    document.getElementById('saveContribBtn')?.addEventListener('click', async function() {
         try {
-            setBusy(saveContribBtn, true);
-
+            setBusy(this, true);
             const rows = [];
             document.querySelectorAll('#contribTable tbody tr[data-profile-id]').forEach(tr => {
-                const profileId = tr.getAttribute('data-profile-id');
-                const get = (field) => tr.querySelector(`[data-field="${field}"]`);
-
-                const sss = get('sss_amount')?.value ?? "760";
-                const pagibig = get('pagibig_amount')?.value ?? "400";
-                const philMode = get('philhealth_mode')?.value ?? "percent";
-                const philValue = get('philhealth_value')?.value ?? "5";
-                const premium = get('has_premium')?.checked ? true : false;
-
                 rows.push({
-                    profile_id: profileId,
-                    sss_amount: sss,
-                    pagibig_amount: pagibig,
-                    philhealth_mode: philMode,
-                    philhealth_value: philValue,
-                    has_premium: premium
+                    profile_id: tr.getAttribute('data-profile-id'),
+                    sss_amount: tr.querySelector('[data-field="sss_amount"]')?.value ?? "760",
+                    pagibig_amount: tr.querySelector('[data-field="pagibig_amount"]')?.value ?? "400",
+                    philhealth_mode: tr.querySelector('[data-field="philhealth_mode"]')?.value ?? "percent",
+                    philhealth_value: tr.querySelector('[data-field="philhealth_value"]')?.value ?? "5",
+                    has_premium: tr.querySelector('[data-field="has_premium"]')?.checked ?? false,
                 });
             });
 
@@ -1441,20 +1217,17 @@
 
             const data = await res.json();
             if (!res.ok || !data.ok) throw new Error(data.error || "Failed to save contributions");
-            showToast("Contributions saved!", "info");
+            showToast("Contributions saved!", "success");
         } catch (err) {
             showToast(err.message || "Failed to save contributions", "error");
         } finally {
-            setBusy(saveContribBtn, false);
+            setBusy(this, false);
         }
     });
 
-    // Save Employee Deductions (POST)
-    const saveDeductionsBtn = document.getElementById('saveDeductionsBtn');
-    saveDeductionsBtn?.addEventListener('click', async () => {
+    document.getElementById('saveDeductionsBtn')?.addEventListener('click', async function() {
         try {
-            setBusy(saveDeductionsBtn, true);
-
+            setBusy(this, true);
             const rows = [];
             document.querySelectorAll('#deductionsTable tbody tr[data-profile-id]').forEach(tr => {
                 const profileId = tr.getAttribute('data-profile-id');
@@ -1475,15 +1248,44 @@
 
             const data = await res.json();
             if (!res.ok || !data.ok) throw new Error(data.error || "Failed to save deductions");
-            showToast("Deductions saved!", "info");
+            showToast("Deductions saved!", "success");
         } catch (err) {
             showToast(err.message || "Failed to save deductions", "error");
         } finally {
-            setBusy(saveDeductionsBtn, false);
+            setBusy(this, false);
         }
     });
 
-    // Filter persistence + reload page with query params
+    const periodModal = document.getElementById('periodModal');
+    const openAddPeriodBtn = document.getElementById('openAddPeriodBtn');
+    const openAddPeriodBtn2 = document.getElementById('openAddPeriodBtn2');
+    const closePeriodModalBtn = document.getElementById('closePeriodModalBtn');
+    const cancelPeriodBtn = document.getElementById('cancelPeriodBtn');
+
+    function openPeriodModal() {
+        periodModal?.classList.remove('hidden');
+    }
+    function closePeriodModal() {
+        periodModal?.classList.add('hidden');
+    }
+
+    openAddPeriodBtn?.addEventListener('click', openPeriodModal);
+    openAddPeriodBtn2?.addEventListener('click', openPeriodModal);
+    closePeriodModalBtn?.addEventListener('click', closePeriodModal);
+    cancelPeriodBtn?.addEventListener('click', closePeriodModal);
+
+    periodModal?.addEventListener('click', (e) => {
+        if (e.target === periodModal || e.target.classList.contains('bg-black/50')) {
+            closePeriodModal();
+        }
+    });
+
+    document.getElementById('periodForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        showToast("Payroll period form is ready. Connect this to your create-period endpoint.", "info");
+        closePeriodModal();
+    });
+
     function reloadWithFilters() {
         const params = new URLSearchParams(window.location.search);
         if (branchFilter?.value) params.set("branch", branchFilter.value);
