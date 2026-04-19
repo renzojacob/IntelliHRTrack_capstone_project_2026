@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 import requests
 from requests.auth import HTTPDigestAuth
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from .models import AttendanceRecord
@@ -38,21 +39,23 @@ def _normalize_attendance_status(event):
         str(event.get("attendanceStatus") or "")
         or str(event.get("minorEventType") or "")
         or str(event.get("eventType") or "")
+        or str(event.get("label") or "")
     ).strip().upper()
 
-    if any(word in raw for word in ["CHECKIN", "CHECK-IN", "IN", "ENTRY", "AUTHENTICATED VIA FACE"]):
+    if any(word in raw for word in ["CHECKIN", "CHECK-IN", "CHECK IN", "IN", "ENTRY"]):
         return AttendanceRecord.STATUS_CHECKIN
 
-    if any(word in raw for word in ["CHECKOUT", "CHECK-OUT", "OUT", "EXIT"]):
+    if any(word in raw for word in ["CHECKOUT", "CHECK-OUT", "CHECK OUT", "OUT", "EXIT"]):
         return AttendanceRecord.STATUS_CHECKOUT
 
-    # fallback: if this is clearly a person-auth event but no text label exists
     if (
         event.get("employeeNoString")
         or event.get("employeeID")
         or event.get("employeeNo")
+        or event.get("employeeId")
         or event.get("name")
         or event.get("employeeName")
+        or event.get("cardNo")
     ):
         return AttendanceRecord.STATUS_CHECKIN
 
@@ -62,23 +65,23 @@ def _normalize_attendance_status(event):
 def _search_events(device, payload):
     url = f"http://{device.ip_address}:{device.port}/ISAPI/AccessControl/AcsEvent?format=json"
 
-    r = requests.post(
+    response = requests.post(
         url,
         json=payload,
         auth=HTTPDigestAuth(device.username, device.password),
-        timeout=15,
+        timeout=20,
     )
 
-    print("STATUS:", r.status_code)
+    print("STATUS:", response.status_code)
 
-    if r.status_code != 200:
-        print("RAW TEXT:", r.text)
+    if response.status_code != 200:
+        print("RAW TEXT:", response.text)
         return {}
 
     try:
-        data = r.json()
+        data = response.json()
     except Exception:
-        print("RAW TEXT:", r.text)
+        print("RAW TEXT:", response.text)
         return {}
 
     print("RAW RESPONSE:")
@@ -109,56 +112,88 @@ def _pick_person_events(events):
     return person_events
 
 
-def fetch_hikvision_attendance(device):
-    now = datetime.now()
-    start = now - timedelta(hours=24)
+def _make_start_time():
+    last_record = AttendanceRecord.objects.order_by("-timestamp").first()
 
-    # Strategy:
-    # 1) Query broad access events for last 24 hours
-    # 2) Try major=5 (common access/auth events)
-    # 3) Fallback to major=0 (all events)
-    queries = [
-        {
-            "AcsEventCond": {
-                "searchID": "1",
-                "searchResultPosition": 0,
-                "maxResults": 200,
-                "major": 5,
-                "minor": 0,
-                "startTime": start.strftime("%Y-%m-%dT%H:%M:%S"),
-                "endTime": now.strftime("%Y-%m-%dT%H:%M:%S"),
-            }
-        },
-        {
-            "AcsEventCond": {
-                "searchID": "2",
-                "searchResultPosition": 0,
-                "maxResults": 200,
-                "major": 0,
-                "minor": 0,
-                "startTime": start.strftime("%Y-%m-%dT%H:%M:%S"),
-                "endTime": now.strftime("%Y-%m-%dT%H:%M:%S"),
-            }
-        },
-    ]
+    if last_record and last_record.timestamp:
+        start = last_record.timestamp
 
+        if timezone.is_aware(start):
+            start = timezone.localtime(start)
+
+        start = start - timedelta(minutes=2)
+        print("📌 Using last record timestamp with overlap:", start)
+        return start
+
+    fallback = timezone.localtime(timezone.now()) - timedelta(days=3)
+    print("📌 No previous data, fallback to:", fallback)
+    return fallback
+
+
+def _fetch_all_pages(device, start, end, major):
     all_events = []
+    position = 0
+    page_size = 30
+
+    while True:
+        payload = {
+            "AcsEventCond": {
+                "searchID": f"{major}-{position}",
+                "searchResultPosition": position,
+                "maxResults": page_size,
+                "major": major,
+                "minor": 0,
+                "startTime": start.strftime("%Y-%m-%dT%H:%M:%S"),
+                "endTime": end.strftime("%Y-%m-%dT%H:%M:%S"),
+            }
+        }
+
+        data = _search_events(device, payload)
+        events = _extract_events(data)
+        if events:
+            all_events.extend(events)
+
+        acs = data.get("AcsEvent", {}) if data else {}
+        status = acs.get("responseStatusStrg")
+        count = int(acs.get("numOfMatches") or 0)
+
+        print(f"PAGE major={major} position={position} count={count} status={status}")
+
+        if count == 0:
+            break
+        if status != "MORE":
+            break
+        if count < page_size:
+            break
+
+        position += count
+
+    return all_events
+
+
+def fetch_hikvision_attendance(device):
+    end = timezone.localtime(timezone.now())
+    start = _make_start_time()
 
     try:
-        for payload in queries:
-            data = _search_events(device, payload)
-            events = _extract_events(data)
-            if events:
-                all_events.extend(events)
+        events_major_5 = _fetch_all_pages(device, start, end, major=5)
+        events_major_0 = _fetch_all_pages(device, start, end, major=0)
 
-        # remove exact duplicates by serialNo + time if possible
+        all_events = events_major_5 + events_major_0
+
         unique = []
         seen = set()
         for event in all_events:
             key = (
                 str(event.get("serialNo") or ""),
                 str(event.get("time") or ""),
-                str(event.get("employeeNoString") or event.get("employeeID") or event.get("employeeNo") or ""),
+                str(
+                    event.get("employeeNoString")
+                    or event.get("employeeID")
+                    or event.get("employeeNo")
+                    or event.get("employeeId")
+                    or ""
+                ),
             )
             if key not in seen:
                 seen.add(key)
@@ -169,9 +204,8 @@ def fetch_hikvision_attendance(device):
         person_events = _pick_person_events(unique)
         print(f"PERSON EVENTS FOUND: {len(person_events)}")
 
-        # Debug print so you can see what the device really returns
         for idx, event in enumerate(person_events[:10], start=1):
-            print(f"PERSON EVENT #{idx}: {json.dumps(event, indent=2)}")
+            print(f"EVENT {idx}: {json.dumps(event, indent=2)}")
 
         created_count = 0
         skipped_count = 0
@@ -196,6 +230,7 @@ def fetch_hikvision_attendance(device):
             attendance_status = _normalize_attendance_status(event)
 
             if not employee_id or not timestamp:
+                print("⚠️ Skipped invalid record:", event)
                 skipped_count += 1
                 continue
 
@@ -212,11 +247,12 @@ def fetch_hikvision_attendance(device):
             )
 
             if created:
+                print(f"✅ SAVED: {employee_id} @ {timestamp}")
                 created_count += 1
             else:
                 skipped_count += 1
 
-        print(f"✅ Sync success | created={created_count} skipped={skipped_count}")
+        print(f"✅ FINAL RESULT | created={created_count} skipped={skipped_count}")
         return created_count
 
     except Exception as e:
