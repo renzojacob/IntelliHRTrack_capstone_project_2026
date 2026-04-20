@@ -4,118 +4,246 @@
 
 {% block content %}
 
-<!-- Quick Actions -->
-<div class="glass rounded-3xl p-4 shadow reveal mt-6">
-  <div class="flex flex-wrap justify-center gap-3">
+<div class="space-y-6">
+  <!-- HERO -->
+  <header class="glass rounded-3xl p-6 shadow reveal mt-6">
+    <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <div class="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+          <span class="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
+          Employee Workspace
+        </div>
 
-    <button type="button" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
-      <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
-        <iconify-icon icon="ph:airplane-takeoff-duotone"></iconify-icon>
+        <h1 class="mt-3 text-2xl md:text-3xl font-black">
+          Welcome, {{ employee_name }}
+        </h1>
+
+        <p class="mt-2 text-sm text-slate-500 dark:text-slate-300">
+          Branch: <span class="font-semibold">{{ employee_branch }}</span>
+          • Department: <span class="font-semibold">{{ employee_department }}</span>
+          • Position: <span class="font-semibold">{{ employee_position }}</span>
+        </p>
       </div>
-      <span class="text-xs font-medium">Apply Leave</span>
-    </button>
 
-    <button type="button" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
-      <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
-        <iconify-icon icon="ph:file-text-duotone"></iconify-icon>
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div class="rounded-2xl glass p-4 text-center">
+          <div class="text-[11px] uppercase tracking-wide text-slate-400">Status</div>
+          <div class="mt-2 text-sm font-bold
+            {% if status_kind == 'in' %}text-green-600 dark:text-green-300
+            {% elif status_kind == 'out' %}text-red-600 dark:text-red-300
+            {% else %}text-slate-600 dark:text-slate-300{% endif %}">
+            {{ current_status }}
+          </div>
+        </div>
+
+        <div class="rounded-2xl glass p-4 text-center">
+          <div class="text-[11px] uppercase tracking-wide text-slate-400">Check In</div>
+          <div class="mt-2 text-sm font-bold">{{ today_checkin }}</div>
+        </div>
+
+        <div class="rounded-2xl glass p-4 text-center">
+          <div class="text-[11px] uppercase tracking-wide text-slate-400">Check Out</div>
+          <div class="mt-2 text-sm font-bold">{{ today_checkout }}</div>
+        </div>
+
+        <div class="rounded-2xl glass p-4 text-center">
+          <div class="text-[11px] uppercase tracking-wide text-slate-400">This Week</div>
+          <div class="mt-2 text-sm font-bold">{{ total_week_hours }}</div>
+        </div>
       </div>
-      <span class="text-xs font-medium">View Payslip</span>
-    </button>
+    </div>
+  </header>
 
-    <button type="button" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
-      <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
-        <iconify-icon icon="ph:calendar-blank-duotone"></iconify-icon>
-      </div>
-      <span class="text-xs font-medium">View Schedule</span>
-    </button>
+  <!-- Quick Actions -->
+  <div class="glass rounded-3xl p-4 shadow reveal">
+    <div class="flex flex-wrap justify-center gap-3">
 
-    <button type="button" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
-      <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
-        <iconify-icon icon="ph:clock-counter-clockwise-duotone"></iconify-icon>
-      </div>
-      <span class="text-xs font-medium">Time Logs</span>
-    </button>
+      <a href="{% url 'employee_leave' %}" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
+        <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+          <iconify-icon icon="ph:airplane-takeoff-duotone"></iconify-icon>
+        </div>
+        <span class="text-xs font-medium">Apply Leave</span>
+      </a>
 
-    <button type="button" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
-      <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
-        <iconify-icon icon="ph:certificate-duotone"></iconify-icon>
-      </div>
-      <span class="text-xs font-medium">Certificate</span>
-    </button>
+      <a href="{% url 'employee_payroll' %}" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
+        <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+          <iconify-icon icon="ph:file-text-duotone"></iconify-icon>
+        </div>
+        <span class="text-xs font-medium">Payslip</span>
+      </a>
 
-    <button type="button" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
-      <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
-        <iconify-icon icon="ph:user-circle-duotone"></iconify-icon>
-      </div>
-      <span class="text-xs font-medium">Profile</span>
-    </button>
+      <a href="{% url 'employee_schedule' %}" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
+        <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+          <iconify-icon icon="ph:calendar-blank-duotone"></iconify-icon>
+        </div>
+        <span class="text-xs font-medium">Schedule</span>
+      </a>
 
+      <a href="{% url 'employee_attendance' %}" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
+        <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+          <iconify-icon icon="ph:clock-counter-clockwise-duotone"></iconify-icon>
+        </div>
+        <span class="text-xs font-medium">Time Logs</span>
+      </a>
+
+      <a href="{% url 'employee_notifications' %}" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
+        <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+          <iconify-icon icon="ph:bell-duotone"></iconify-icon>
+        </div>
+        <span class="text-xs font-medium">Alerts</span>
+      </a>
+
+      <a href="{% url 'employee_profile' %}" class="flex flex-col items-center gap-2 p-3 rounded-xl glass hover:shadow-glow transition w-24">
+        <div class="w-12 h-12 rounded-full gradient-accent flex items-center justify-center text-white">
+          <iconify-icon icon="ph:user-circle-duotone"></iconify-icon>
+        </div>
+        <span class="text-xs font-medium">Profile</span>
+      </a>
+
+    </div>
   </div>
+
+  <!-- MAIN CONTENT -->
+  <section class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+
+    <!-- Attendance Status -->
+    <div class="xl:col-span-2 glass rounded-3xl p-6 shadow reveal">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">Attendance Status</h2>
+
+        <div class="flex gap-3 text-sm">
+          <span class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-green-500"></span> Checked In
+          </span>
+          <span class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-red-500"></span> Checked Out
+          </span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <div class="p-6 rounded-2xl text-center
+          {% if status_kind == 'in' %}
+            bg-green-50 dark:bg-green-900/30
+          {% elif status_kind == 'out' %}
+            bg-red-50 dark:bg-red-900/30
+          {% else %}
+            bg-slate-100 dark:bg-slate-800/40
+          {% endif %}">
+
+          <iconify-icon
+            icon="{% if status_kind == 'in' %}ph:check-circle-duotone{% elif status_kind == 'out' %}ph:sign-out-duotone{% else %}ph:clock-duotone{% endif %}"
+            class="text-4xl {% if status_kind == 'in' %}text-green-600{% elif status_kind == 'out' %}text-red-600{% else %}text-slate-500{% endif %}">
+          </iconify-icon>
+
+          <h3 class="mt-4 font-bold
+            {% if status_kind == 'in' %}text-green-700 dark:text-green-300
+            {% elif status_kind == 'out' %}text-red-700 dark:text-red-300
+            {% else %}text-slate-700 dark:text-slate-300{% endif %}">
+            {{ current_status }}
+          </h3>
+
+          <p class="text-sm mt-2">
+            You checked in at <span class="font-semibold">{{ today_checkin }}</span>
+          </p>
+
+          <p class="text-xs mt-1">
+            Duration: <span id="workDuration">{{ work_duration }}</span>
+          </p>
+
+          {% if is_late_today %}
+            <p class="mt-3 inline-flex rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-600 dark:text-amber-300">
+              Late today
+            </p>
+          {% endif %}
+        </div>
+
+        <div class="space-y-4">
+          <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+            <p class="text-sm">Today's Check-In</p>
+            <p class="font-bold text-lg">{{ today_checkin }}</p>
+          </div>
+
+          <div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
+            <p class="text-sm">Today's Check-Out</p>
+            <p class="font-bold text-lg">{{ today_checkout }}</p>
+          </div>
+
+          <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-xl">
+            <p class="text-sm">Total Hours This Week</p>
+            <p class="font-bold text-lg">{{ total_week_hours }}</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Right Summary -->
+    <div class="space-y-6">
+      <div class="glass rounded-3xl p-5 shadow reveal">
+        <h3 class="text-lg font-bold">Leave Summary</h3>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="rounded-2xl bg-cyan-50 dark:bg-cyan-900/30 p-4">
+            <div class="text-xs text-slate-500">Used Requests</div>
+            <div class="mt-2 text-2xl font-black">{{ used_requests }}</div>
+          </div>
+          <div class="rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 p-4">
+            <div class="text-xs text-slate-500">Remaining</div>
+            <div class="mt-2 text-2xl font-black">{{ remaining_leave }}</div>
+          </div>
+          <div class="rounded-2xl bg-amber-50 dark:bg-amber-900/30 p-4">
+            <div class="text-xs text-slate-500">Pending</div>
+            <div class="mt-2 text-2xl font-black">{{ pending_leave_count }}</div>
+          </div>
+          <div class="rounded-2xl bg-blue-50 dark:bg-blue-900/30 p-4">
+            <div class="text-xs text-slate-500">Approved</div>
+            <div class="mt-2 text-2xl font-black">{{ approved_leave_count }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass rounded-3xl p-5 shadow reveal">
+        <h3 class="text-lg font-bold">Latest Payroll</h3>
+        <div class="mt-4 rounded-2xl bg-violet-50 dark:bg-violet-900/30 p-4">
+          <div class="text-xs text-slate-500">Latest Period</div>
+          <div class="mt-1 font-semibold">{{ latest_payroll_period }}</div>
+        </div>
+        <div class="mt-3 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 p-4">
+          <div class="text-xs text-slate-500">Net Pay</div>
+          <div class="mt-1 text-2xl font-black">₱{{ latest_net_pay }}</div>
+        </div>
+      </div>
+
+      <div class="glass rounded-3xl p-5 shadow reveal">
+        <h3 class="text-lg font-bold">Recent Logs</h3>
+        <div class="mt-4 space-y-3">
+          {% if recent_logs %}
+            {% for log in recent_logs %}
+              <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <div class="text-sm font-semibold">{{ log.label }}</div>
+                    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ log.department }}</div>
+                  </div>
+                  <div class="text-sm font-bold">{{ log.time }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="rounded-2xl border border-dashed border-white/10 bg-white/5 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+              No attendance logs found today.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <footer class="text-center text-xs text-gray-500 mt-10 mb-6">
+    © IntelliHRTrack • Employee Dashboard
+  </footer>
 </div>
-
-
-<!-- MAIN CONTENT -->
-<section class="mt-6">
-
-  <!-- Attendance Status -->
-  <div class="glass rounded-3xl p-6 shadow reveal">
-
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-bold">Attendance Status</h2>
-
-      <div class="flex gap-3 text-sm">
-        <span class="flex items-center gap-1">
-          <span class="w-2 h-2 rounded-full bg-green-500"></span> Checked In
-        </span>
-        <span class="flex items-center gap-1">
-          <span class="w-2 h-2 rounded-full bg-red-500"></span> Checked Out
-        </span>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-      <div class="p-6 bg-green-50 dark:bg-green-900/30 rounded-2xl text-center">
-        <iconify-icon icon="ph:check-circle-duotone" class="text-4xl text-green-600"></iconify-icon>
-        <h3 class="mt-4 font-bold text-green-700 dark:text-green-300">Currently Checked In</h3>
-        <p class="text-sm mt-2">
-          You checked in at <span class="font-semibold">8:45 AM</span>
-        </p>
-        <p class="text-xs mt-1">
-          Duration: <span id="workDuration">--</span>
-        </p>
-
-        <button id="checkOutBtn"
-                class="mt-4 px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl w-full">
-          Check Out Now
-        </button>
-      </div>
-
-      <div class="space-y-4">
-        <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
-          <p class="text-sm">Last Check-In</p>
-          <p class="font-bold text-lg">8:45 AM</p>
-        </div>
-
-        <div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
-          <p class="text-sm">Last Check-Out</p>
-          <p class="font-bold text-lg">6:12 PM</p>
-        </div>
-
-        <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-xl">
-          <p class="text-sm">Total Hours This Week</p>
-          <p class="font-bold text-lg">38.5 hours</p>
-        </div>
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-
-<footer class="text-center text-xs text-gray-500 mt-10 mb-6">
-  © IntelliHRTrack • Employee Dashboard
-</footer>
 
 {% endblock %}
