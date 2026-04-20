@@ -264,12 +264,282 @@ def signup_ui(request):
 # =========================
 # Admin Dashboard UI pages
 # =========================
+from collections import defaultdict
+from datetime import time
+from decimal import Decimal
+from django.utils import timezone
+
 @login_required
 @never_cache
 def admin_dashboard(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
-    return render(request, "admin/dashboard.html", {"current": "dashboard"})
+
+    today = timezone.localdate()
+    branch = _get_admin_branch(request)
+
+    # =========================
+    # EMPLOYEES
+    # =========================
+    profiles = UserProfile.objects.filter(is_approved=True)
+    if branch:
+        profiles = profiles.filter(branch=branch)
+
+    total_employees = profiles.count()
+
+    # =========================
+    # ATTENDANCE
+    # =========================
+    attendance_qs = AttendanceRecord.objects.all()
+    if branch:
+        attendance_qs = attendance_qs.filter(branch=branch)
+
+    def _normalize_status(status_value):
+        return str(status_value or "").strip().upper().replace("-", "_").replace(" ", "_")
+
+    def _is_checkin(status_value):
+        s = _normalize_status(status_value)
+        return s in {"CHECK_IN", "CHECKIN", "TIME_IN", "IN"}
+
+    def _is_checkout(status_value):
+        s = _normalize_status(status_value)
+        return s in {"CHECK_OUT", "CHECKOUT", "TIME_OUT", "OUT"}
+
+    first_checkins = {}
+    for rec in attendance_qs.order_by("employee_id", "timestamp"):
+        if _is_checkin(rec.attendance_status) and rec.employee_id not in first_checkins:
+            first_checkins[rec.employee_id] = rec
+
+    last_checkouts = {}
+    for rec in attendance_qs.order_by("employee_id", "-timestamp"):
+        if _is_checkout(rec.attendance_status) and rec.employee_id not in last_checkouts:
+            last_checkouts[rec.employee_id] = rec
+
+    present = len(first_checkins)
+
+    late_cutoff = time(8, 15)
+    late = 0
+    for rec in first_checkins.values():
+        rec_time = (
+            timezone.localtime(rec.timestamp).time()
+            if timezone.is_aware(rec.timestamp)
+            else rec.timestamp.time()
+        )
+        if rec_time > late_cutoff:
+            late += 1
+
+    absent = max(0, total_employees - present)
+
+    incomplete_dtr_count = sum(
+        1 for emp_id in first_checkins if emp_id not in last_checkouts
+    )
+
+    # =========================
+    # LEAVES
+    # =========================
+    leave_qs = LeaveRequest.objects.all()
+    if branch:
+        leave_qs = leave_qs.filter(branch=branch)
+
+    pending_leaves = leave_qs.filter(status=LeaveRequest.STATUS_PENDING).count()
+    on_leave = leave_qs.filter(status=LeaveRequest.STATUS_APPROVED).count()
+
+    # =========================
+    # DEVICES
+    # =========================
+    devices_qs = BiometricDevice.objects.all()
+    if branch:
+        devices_qs = devices_qs.filter(branch=branch)
+
+    devices = [
+        {
+            "name": d.name,
+            "status": "online" if d.is_active else "offline",
+            "last": "Active" if d.is_active else "Inactive",
+            "battery": "N/A",
+        }
+        for d in devices_qs
+    ]
+
+    devices_online = devices_qs.filter(is_active=True).count()
+    devices_total = devices_qs.count()
+    offline_devices = max(0, devices_total - devices_online)
+
+    # =========================
+    # ALERTS / NOTIFICATIONS
+    # =========================
+    alerts = []
+
+    if absent > 0:
+        alerts.append({
+            "lvl": "High",
+            "text": f"{absent} employee(s) absent today."
+        })
+
+    if late > 0:
+        alerts.append({
+            "lvl": "Medium",
+            "text": f"{late} employee(s) arrived late."
+        })
+
+    if pending_leaves > 0:
+        alerts.append({
+            "lvl": "Medium",
+            "text": f"{pending_leaves} leave request(s) pending approval."
+        })
+
+    if incomplete_dtr_count > 0:
+        alerts.append({
+            "lvl": "Medium",
+            "text": f"{incomplete_dtr_count} employee(s) have incomplete DTR today."
+        })
+
+    if offline_devices > 0:
+        alerts.append({
+            "lvl": "High",
+            "text": f"{offline_devices} biometric device(s) offline."
+        })
+
+    recent_leave_notifications = leave_qs.order_by("-created_at")[:3]
+    for leave in recent_leave_notifications:
+        employee_name = leave.employee.get_full_name() or leave.employee.username
+        alerts.append({
+            "lvl": "Low",
+            "text": f"{employee_name} filed {leave.get_leave_type_display()} ({leave.get_status_display()})."
+        })
+
+    if not alerts:
+        alerts.append({
+            "lvl": "Low",
+            "text": "No new notifications for today."
+        })
+
+    alerts = alerts[:6]
+
+    anomalies = []
+    if incomplete_dtr_count > 0:
+        anomalies.append(f"{incomplete_dtr_count} employee(s) have missing time logs.")
+    if late > 3:
+        anomalies.append(f"Late arrivals are unusually high today ({late}).")
+    if offline_devices > 0:
+        anomalies.append(f"{offline_devices} device(s) need attention.")
+    if not anomalies:
+        anomalies = ["No anomaly detected today."]
+
+    # =========================
+    # LEAVE OVERVIEW
+    # =========================
+    leave_overview = [
+        {
+            "employee": leave.employee.username,
+            "type": leave.get_leave_type_display(),
+            "dates": f"{leave.start_date} - {leave.end_date}",
+            "status": leave.get_status_display(),
+        }
+        for leave in leave_qs.order_by("-created_at")[:5]
+    ]
+
+    # =========================
+    # ATTENDANCE BY DEPARTMENT
+    # =========================
+    dept_map = defaultdict(lambda: {"present": 0, "late": 0})
+
+    for rec in first_checkins.values():
+        dept = (rec.department or "").strip() or "Unassigned"
+        dept_map[dept]["present"] += 1
+
+        rec_time = (
+            timezone.localtime(rec.timestamp).time()
+            if timezone.is_aware(rec.timestamp)
+            else rec.timestamp.time()
+        )
+        if rec_time > late_cutoff:
+            dept_map[dept]["late"] += 1
+
+    dept_labels = list(dept_map.keys())
+    dept_present_data = [dept_map[d]["present"] for d in dept_labels]
+    dept_late_data = [dept_map[d]["late"] for d in dept_labels]
+
+    department_attendance = []
+    if dept_labels:
+        for dept in dept_labels:
+            department_attendance.append({
+                "department": dept,
+                "present": dept_map[dept]["present"],
+                "late": dept_map[dept]["late"],
+            })
+
+    # =========================
+    # PAYROLL SNAPSHOT
+    # =========================
+    estimated_gross = Decimal("0.00")
+    estimated_deductions = Decimal("0.00")
+
+    latest_batch = PayrollBatch.objects.all()
+    if branch:
+        latest_batch = latest_batch.filter(branch=branch)
+
+    latest_batch = latest_batch.order_by("-created_at").first()
+
+    if latest_batch:
+        estimated_gross = latest_batch.totals_net or Decimal("0.00")
+        estimated_deductions = latest_batch.totals_deductions or Decimal("0.00")
+
+    payroll_ready = max(0, total_employees - incomplete_dtr_count)
+
+    # =========================
+    # AI SUMMARY
+    # =========================
+    ai_summary = (
+        f"{present} present, {late} late, {absent} absent. "
+        f"{pending_leaves} pending leaves. "
+        f"{incomplete_dtr_count} incomplete DTR."
+    )
+
+    print("========== ADMIN DASHBOARD DEBUG ==========")
+    print("TODAY:", today)
+    print("BRANCH:", branch.name if branch else "All Branches")
+    print("TOTAL EMPLOYEES:", total_employees)
+    print("ATTENDANCE RECORDS:", attendance_qs.count())
+    print("FIRST CHECKINS:", len(first_checkins))
+    print("LAST CHECKOUTS:", len(last_checkouts))
+    print("DEPARTMENT ATTENDANCE:", department_attendance)
+    print("ADMIN ALERTS:", alerts)
+    print("ADMIN ANOMALIES:", anomalies)
+    print("===========================================")
+
+    dashboard_data = {
+        "branch": branch.name if branch else "All Branches",
+        "total_employees": total_employees,
+        "present": present,
+        "late": late,
+        "leave": on_leave,
+        "absent": absent,
+        "pending_leaves": pending_leaves,
+        "payroll_ready": payroll_ready,
+        "devices_online": devices_online,
+        "devices_total": devices_total,
+        "estimated_gross": f"{estimated_gross:.2f}",
+        "estimated_deductions": f"{estimated_deductions:.2f}",
+        "incomplete_dtr_count": incomplete_dtr_count,
+        "devices": devices,
+        "alerts": alerts,
+        "anomalies": anomalies,
+        "leave_overview": leave_overview,
+        "dept_labels": dept_labels,
+        "dept_present_data": dept_present_data,
+        "dept_late_data": dept_late_data,
+        "department_attendance": department_attendance,
+        "ai_summary": ai_summary,
+    }
+
+    context = {
+        "current": "dashboard",
+        "today": today,
+        "dashboard_data": dashboard_data,
+    }
+
+    return render(request, "admin/dashboard.html", context)
 
 
 # NOTE: This earlier stub is kept (as you requested not to remove other code),
@@ -767,7 +1037,188 @@ def admin_system_administration(request):
 @login_required
 @never_cache
 def employee_dashboard(request):
-    return render(request, "employee/dashboard.html", {"current": "dashboard"})
+    # -------------------------
+    # Approval gate (employee only)
+    # -------------------------
+    try:
+        if not (request.user.is_staff or request.user.is_superuser):
+            if not request.user.profile.is_approved:
+                messages.error(request, "Your account is pending approval by your branch admin.")
+                return redirect("login_ui")
+    except UserProfile.DoesNotExist:
+        messages.error(request, "Account profile missing. Contact admin.")
+        return redirect("login_ui")
+
+    # -------------------------
+    # Profile + branch
+    # -------------------------
+    try:
+        profile = request.user.profile
+        emp_branch = profile.branch
+    except UserProfile.DoesNotExist:
+        messages.error(request, "Profile missing. Contact admin.")
+        return redirect("login_ui")
+
+    if not emp_branch:
+        messages.error(request, "No branch assigned. Contact admin.")
+        return redirect("login_ui")
+
+    # -------------------------
+    # Attendance identity
+    # -------------------------
+    employee_id_used = _pick_attendance_employee_id(request.user, emp_branch)
+
+    now = timezone.localtime(timezone.now()) if settings.USE_TZ else datetime.now()
+    today = now.date()
+
+    # -------------------------
+    # Today's logs
+    # -------------------------
+    today_qs = AttendanceRecord.objects.filter(
+        branch=emp_branch,
+        employee_id=employee_id_used,
+        timestamp__date=today,
+    ).order_by("timestamp")
+
+    ins = [r.timestamp for r in today_qs if r.attendance_status == AttendanceRecord.STATUS_CHECKIN]
+    outs = [r.timestamp for r in today_qs if r.attendance_status == AttendanceRecord.STATUS_CHECKOUT]
+
+    first_in = min(ins) if ins else None
+    last_out = max(outs) if outs else None
+
+    if first_in and not last_out:
+        current_status = "Currently Checked In"
+        status_kind = "in"
+    elif first_in and last_out:
+        current_status = "Checked Out"
+        status_kind = "out"
+    else:
+        current_status = "Not Checked In"
+        status_kind = "none"
+
+    work_duration_text = "--"
+    if first_in and not last_out:
+        diff = now - (timezone.localtime(first_in) if settings.USE_TZ else first_in)
+        mins = max(0, int(diff.total_seconds() // 60))
+        work_duration_text = f"{mins // 60}h {mins % 60}m"
+
+    late_cutoff = time(8, 15, 0)
+    is_late_today = False
+    if first_in:
+        first_in_time = timezone.localtime(first_in).time() if settings.USE_TZ else first_in.time()
+        is_late_today = first_in_time > late_cutoff
+
+    # -------------------------
+    # Weekly total hours
+    # -------------------------
+    week_start = today - timedelta(days=today.weekday())  # Monday
+    week_qs = AttendanceRecord.objects.filter(
+        branch=emp_branch,
+        employee_id=employee_id_used,
+        timestamp__date__gte=week_start,
+        timestamp__date__lte=today,
+    ).order_by("timestamp")
+
+    week_by_day = {}
+    for rec in week_qs:
+        d = rec.timestamp.date()
+        week_by_day.setdefault(d, {"ins": [], "outs": []})
+        if rec.attendance_status == AttendanceRecord.STATUS_CHECKIN:
+            week_by_day[d]["ins"].append(rec.timestamp)
+        elif rec.attendance_status == AttendanceRecord.STATUS_CHECKOUT:
+            week_by_day[d]["outs"].append(rec.timestamp)
+
+    total_week_minutes = 0
+    for d, logs in week_by_day.items():
+        if logs["ins"] and logs["outs"]:
+            din = min(logs["ins"])
+            dout = max(logs["outs"])
+            if dout >= din:
+                delta = (
+                    timezone.localtime(dout) - timezone.localtime(din)
+                    if settings.USE_TZ else
+                    dout - din
+                )
+                total_week_minutes += int(delta.total_seconds() // 60)
+
+    total_week_hours_text = f"{total_week_minutes / 60:.1f} hours"
+
+    # -------------------------
+    # Leave summary
+    # -------------------------
+    current_year = today.year
+    used_requests, remaining_leave = _request_counts_for_year(request.user, current_year)
+
+    pending_leave_count = LeaveRequest.objects.filter(
+        employee=request.user,
+        status=LeaveRequest.STATUS_PENDING,
+    ).count()
+
+    approved_leave_count = LeaveRequest.objects.filter(
+        employee=request.user,
+        status=LeaveRequest.STATUS_APPROVED,
+    ).count()
+
+    # -------------------------
+    # Latest payroll item
+    # -------------------------
+    latest_payroll_item = (
+        PayrollItem.objects
+        .select_related("batch", "batch__period")
+        .filter(profile=profile)
+        .order_by("-batch__created_at")
+        .first()
+    )
+
+    latest_net_pay = f"{latest_payroll_item.net_pay:.2f}" if latest_payroll_item else "0.00"
+    latest_payroll_period = latest_payroll_item.batch.period.name if latest_payroll_item else "No payroll yet"
+
+    # -------------------------
+    # Recent attendance logs
+    # -------------------------
+    recent_logs = []
+    for rec in today_qs.order_by("-timestamp")[:5]:
+        recent_logs.append({
+            "label": "Check In" if rec.attendance_status == AttendanceRecord.STATUS_CHECKIN else
+                     "Check Out" if rec.attendance_status == AttendanceRecord.STATUS_CHECKOUT else
+                     "Unknown",
+            "time": _fmt_time_ampm(timezone.localtime(rec.timestamp) if settings.USE_TZ else rec.timestamp),
+            "department": rec.department or "Unassigned",
+        })
+
+    # -------------------------
+    # Dashboard context
+    # -------------------------
+    context = {
+        "current": "dashboard",
+
+        "employee_name": request.user.get_full_name() or request.user.username,
+        "employee_branch": emp_branch.name,
+        "employee_department": profile.department or "Unassigned",
+        "employee_position": profile.position or "Not set",
+
+        "current_status": current_status,
+        "status_kind": status_kind,
+        "today_checkin": _fmt_time_ampm(timezone.localtime(first_in) if (settings.USE_TZ and first_in) else first_in) if first_in else "--",
+        "today_checkout": _fmt_time_ampm(timezone.localtime(last_out) if (settings.USE_TZ and last_out) else last_out) if last_out else "--",
+        "work_duration": work_duration_text,
+        "is_late_today": is_late_today,
+
+        "total_week_hours": total_week_hours_text,
+
+        "leave_year": current_year,
+        "used_requests": used_requests,
+        "remaining_leave": remaining_leave,
+        "pending_leave_count": pending_leave_count,
+        "approved_leave_count": approved_leave_count,
+
+        "latest_net_pay": latest_net_pay,
+        "latest_payroll_period": latest_payroll_period,
+
+        "recent_logs": recent_logs,
+    }
+
+    return render(request, "employee/dashboard.html", context)
 
 
 @login_required
