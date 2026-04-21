@@ -23,13 +23,19 @@ urlpatterns = [
     path("admin-ui/biometrics/template/", views.admin_biometrics_template, name="admin_biometrics_template"),
     path("admin-ui/biometrics/export/", views.admin_biometrics_export, name="admin_biometrics_export"),
 
-    # 🔥 ADD THIS
+    #hikvision_sync
     path("admin-ui/biometrics/sync/", views.admin_biometrics_sync_now, name="admin_biometrics_sync"),
+
+    #admin holidays
+    path("admin-ui/biometrics/holidays/add/", views.admin_biometrics_add_holiday, name="admin_biometrics_add_holiday"),
+    path("admin-ui/biometrics/holidays/<int:holiday_id>/delete/", views.admin_biometrics_delete_holiday, name="admin_biometrics_delete_holiday"),
 
     # Employee Management
     path("admin-ui/employees/", views.admin_employee_management, name="admin_employees"),
     path("admin-ui/employees/approve/<int:profile_id>/", views.approve_user, name="approve_user"),
     path("admin-ui/employees/reject/<int:profile_id>/", views.reject_user, name="reject_user"),
+
+
 
     path("admin-ui/scheduling/", views.admin_shift_scheduling, name="admin_scheduling"),
     path("admin-ui/payroll/", views.admin_payroll, name="admin_payroll"),
