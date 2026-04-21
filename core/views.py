@@ -1985,6 +1985,16 @@ def admin_biometrics_attendance(request):
 
     records = records_qs.order_by("-timestamp")[:100]
 
+    holidays_qs = HolidaySuspension.objects.select_related("branch").all()
+    if admin_branch:
+        holidays_qs = holidays_qs.filter(
+            Q(scope=HolidaySuspension.SCOPE_NATIONWIDE) |
+            Q(scope=HolidaySuspension.SCOPE_REGION) |
+            Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=admin_branch)
+        )
+
+    holidays_qs = holidays_qs.order_by("-date", "-created_at")
+
     kpi = {
         "present": records_qs.filter(attendance_status=AttendanceRecord.STATUS_CHECKIN).count(),
         "late": 0,
@@ -2005,11 +2015,11 @@ def admin_biometrics_attendance(request):
         "import_errors": [],
         "import_summary": "",
         "branches": branches_qs.values_list("id", "name"),
+        "holidays": holidays_qs,
         "can_import": bool(cache and cache.get("rows")),
         "form": form,
     }
     return render(request, "admin/biometrics_attendance.html", context)
-
 
 # =========================
 # Biometrics import (Validate + Import)
@@ -2030,6 +2040,16 @@ def admin_biometrics_import(request):
     if admin_branch:
         records_qs = records_qs.filter(branch=admin_branch)
 
+    holidays_qs = HolidaySuspension.objects.select_related("branch").all()
+    if admin_branch:
+        holidays_qs = holidays_qs.filter(
+            Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
+            | Q(scope=HolidaySuspension.SCOPE_REGION)
+            | Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=admin_branch)
+        )
+    holidays_qs = holidays_qs.order_by("-date", "-created_at")
+        
+
     records = records_qs.order_by("-timestamp")[:100]
     kpi = {
         "present": records_qs.filter(attendance_status=AttendanceRecord.STATUS_CHECKIN).count(),
@@ -2048,6 +2068,7 @@ def admin_biometrics_import(request):
         "branches": branches_qs.values_list("id", "name"),
         "can_import": False,
         "form": form,
+        "holidays": holidays_qs,
     }
 
     action = (request.POST.get("action") or "validate").strip().lower()
@@ -2295,6 +2316,104 @@ def admin_biometrics_import(request):
 
     return render(request, "admin/biometrics_attendance.html", context)
 
+#Holliday and work suspenssion
+@login_required
+@require_POST
+def admin_biometrics_add_holiday(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
+
+    branches_qs = _scoped_branch_queryset_for_admin(request)
+
+    name = (request.POST.get("holiday_name") or "").strip()
+    raw_date = (request.POST.get("holiday_date") or "").strip()
+    holiday_type = (request.POST.get("holiday_type") or HolidaySuspension.TYPE_HOLIDAY).strip()
+    scope = (request.POST.get("holiday_scope") or HolidaySuspension.SCOPE_REGION).strip()
+    notes = (request.POST.get("holiday_notes") or "").strip()
+    branch_raw = (request.POST.get("holiday_branch") or "").strip()
+
+    if not name:
+        return JsonResponse({"ok": False, "error": "Holiday name is required."}, status=400)
+
+    try:
+        holiday_date = datetime.strptime(raw_date, "%Y-%m-%d").date()
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Valid holiday date is required."}, status=400)
+
+    valid_types = {
+        HolidaySuspension.TYPE_HOLIDAY,
+        HolidaySuspension.TYPE_SUSPENSION,
+        HolidaySuspension.TYPE_SPECIAL,
+    }
+    if holiday_type not in valid_types:
+        return JsonResponse({"ok": False, "error": "Invalid holiday type."}, status=400)
+
+    valid_scopes = {
+        HolidaySuspension.SCOPE_NATIONWIDE,
+        HolidaySuspension.SCOPE_REGION,
+        HolidaySuspension.SCOPE_BRANCH,
+    }
+    if scope not in valid_scopes:
+        return JsonResponse({"ok": False, "error": "Invalid holiday scope."}, status=400)
+
+    branch_obj = None
+    if scope == HolidaySuspension.SCOPE_BRANCH:
+        if not branch_raw:
+            return JsonResponse({"ok": False, "error": "Branch is required for branch scope."}, status=400)
+
+        if branch_raw.isdigit():
+            branch_obj = branches_qs.filter(id=int(branch_raw)).first()
+        else:
+            branch_obj = branches_qs.filter(name__iexact=branch_raw).first()
+
+        if not branch_obj:
+            return JsonResponse({"ok": False, "error": "Invalid or unauthorized branch."}, status=400)
+
+    # Prevent exact duplicates
+    existing = HolidaySuspension.objects.filter(
+        date=holiday_date,
+        name__iexact=name,
+        type=holiday_type,
+        scope=scope,
+        branch=branch_obj,
+    ).first()
+    if existing:
+        return JsonResponse({"ok": False, "error": "This holiday/suspension already exists."}, status=400)
+
+    holiday = HolidaySuspension.objects.create(
+        date=holiday_date,
+        name=name,
+        type=holiday_type,
+        scope=scope,
+        branch=branch_obj,
+        notes=notes,
+    )
+
+    return JsonResponse({
+        "ok": True,
+        "id": holiday.id,
+        "message": "Holiday / suspension saved successfully.",
+    })
+
+
+@login_required
+@require_POST
+def admin_biometrics_delete_holiday(request, holiday_id: int):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
+
+    obj = HolidaySuspension.objects.select_related("branch").filter(id=holiday_id).first()
+    if not obj:
+        return JsonResponse({"ok": False, "error": "Holiday not found."}, status=404)
+
+    admin_branch = _get_admin_branch(request)
+    if admin_branch and obj.scope == HolidaySuspension.SCOPE_BRANCH:
+        if not obj.branch_id or obj.branch_id != admin_branch.id:
+            return JsonResponse({"ok": False, "error": "You can only delete holidays in your branch."}, status=403)
+
+    obj.delete()
+    return JsonResponse({"ok": True, "message": "Holiday deleted successfully."})
+
 
 # =========================
 # Export endpoints
@@ -2513,6 +2632,17 @@ def _daterange(d1: date, d2: date):
         cur += timedelta(days=1)
 
 
+def _ensure_aware(dt_value):
+    """
+    Make datetime timezone-aware if USE_TZ is enabled and value is naive.
+    """
+    if not dt_value:
+        return dt_value
+    if settings.USE_TZ and timezone.is_naive(dt_value):
+        return timezone.make_aware(dt_value, timezone.get_current_timezone())
+    return dt_value
+
+
 def _get_or_create_rules(branch: Branch) -> PayrollRule:
     rules, _ = PayrollRule.objects.get_or_create(branch=branch)
     return rules
@@ -2543,9 +2673,23 @@ def _scoped_branch_for_admin_or_404(request, branch_id):
     return b
 
 
+def _is_holiday_for(branch: Branch, d: date):
+    """
+    Return matching holiday/suspension for a given branch/date.
+    """
+    qs = HolidaySuspension.objects.filter(date=d).filter(
+        Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
+        | Q(scope=HolidaySuspension.SCOPE_REGION)
+        | Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=branch)
+    )
+    return qs.first()
+
+
 def _attendance_summary_for_period(employee_id: str, branch: Branch, period: PayrollPeriod, rules: PayrollRule):
     """
-    ✅ FIXED: avoids naive vs aware datetime comparisons.
+    Attendance summary for payroll + DTR.
+    Holidays/suspensions are treated as remarks, not absences.
+    Weekends are excluded from absence counting.
     """
     start, end = period.start_date, period.end_date
 
@@ -2559,7 +2703,14 @@ def _attendance_summary_for_period(employee_id: str, branch: Branch, period: Pay
     by_day = {}
     for rec in qs:
         d = rec.timestamp.date()
-        by_day.setdefault(d, {"ins": [], "outs": []})
+        by_day.setdefault(d, {
+            "ins": [],
+            "outs": [],
+            "status": "",
+            "remark": "",
+            "is_holiday": False,
+            "holiday_name": "",
+        })
         if rec.attendance_status == AttendanceRecord.STATUS_CHECKIN:
             by_day[d]["ins"].append(rec.timestamp)
         elif rec.attendance_status == AttendanceRecord.STATUS_CHECKOUT:
@@ -2572,16 +2723,51 @@ def _attendance_summary_for_period(employee_id: str, branch: Branch, period: Pay
     has_missing_logs = False
 
     grace = int(rules.grace_minutes_normal or 0)
-
     start_limit_time = (datetime.combine(date.today(), rules.work_start_time) + timedelta(minutes=grace)).time()
     tz = timezone.get_current_timezone() if settings.USE_TZ else None
 
     for d in _daterange(start, end):
-        logs = by_day.get(d)
-        if not logs or (not logs["ins"] and not logs["outs"]):
-            days_absent += 1
+        by_day.setdefault(d, {
+            "ins": [],
+            "outs": [],
+            "status": "",
+            "remark": "",
+            "is_holiday": False,
+            "holiday_name": "",
+        })
+
+        logs = by_day[d]
+        holiday_obj = _is_holiday_for(branch, d)
+
+        # 1) Holiday / Suspension remark
+        if holiday_obj:
+            logs["is_holiday"] = True
+            logs["holiday_name"] = holiday_obj.name
+
+            if holiday_obj.type == HolidaySuspension.TYPE_HOLIDAY:
+                logs["status"] = f"Holiday - {holiday_obj.name}"
+            elif holiday_obj.type == HolidaySuspension.TYPE_SUSPENSION:
+                logs["status"] = f"Suspension - {holiday_obj.name}"
+            else:
+                logs["status"] = f"Special Day - {holiday_obj.name}"
+
+            logs["remark"] = logs["status"]
             continue
 
+        # 2) Weekend = not absent
+        if d.weekday() >= 5:
+            logs["status"] = "Weekend"
+            logs["remark"] = "Weekend"
+            continue
+
+        # 3) No logs on working day = absent
+        if not logs["ins"] and not logs["outs"]:
+            days_absent += 1
+            logs["status"] = "Absent"
+            logs["remark"] = "Absent"
+            continue
+
+        # 4) Present / missing logs
         if logs["ins"]:
             days_present += 1
         else:
@@ -2589,28 +2775,44 @@ def _attendance_summary_for_period(employee_id: str, branch: Branch, period: Pay
 
         if logs["ins"] and not logs["outs"]:
             has_missing_logs = True
-        if logs["outs"] and not logs["ins"]:
+            logs["status"] = "Missing Time Out"
+        elif logs["outs"] and not logs["ins"]:
             has_missing_logs = True
+            logs["status"] = "Missing Time In"
+        else:
+            logs["status"] = "Present"
 
+        # 5) Late computation
         if logs["ins"]:
             first_in = min(logs["ins"])
             cutoff_dt = datetime.combine(d, start_limit_time)
+
             if settings.USE_TZ:
                 cutoff_dt = timezone.make_aware(cutoff_dt, tz) if timezone.is_naive(cutoff_dt) else cutoff_dt
                 first_in = _ensure_aware(first_in)
 
             if first_in > cutoff_dt:
-                late_minutes_total += int((first_in - cutoff_dt).total_seconds() // 60)
+                late_mins = int((first_in - cutoff_dt).total_seconds() // 60)
+                late_minutes_total += late_mins
+                if "Missing" not in logs["status"]:
+                    logs["status"] = f"Present - Late ({late_mins} min)"
 
+        # 6) Undertime computation
         if logs["outs"]:
             last_out = max(logs["outs"])
             end_dt = datetime.combine(d, rules.work_end_time)
+
             if settings.USE_TZ:
                 end_dt = timezone.make_aware(end_dt, tz) if timezone.is_naive(end_dt) else end_dt
                 last_out = _ensure_aware(last_out)
 
             if last_out < end_dt:
-                undertime_minutes_total += int((end_dt - last_out).total_seconds() // 60)
+                undertime_mins = int((end_dt - last_out).total_seconds() // 60)
+                undertime_minutes_total += undertime_mins
+                if logs["status"] == "Present":
+                    logs["status"] = f"Present - Undertime ({undertime_mins} min)"
+
+        logs["remark"] = logs["status"]
 
     return {
         "days_present": days_present,
@@ -2620,18 +2822,6 @@ def _attendance_summary_for_period(employee_id: str, branch: Branch, period: Pay
         "has_missing_logs": has_missing_logs,
         "by_day": by_day,
     }
-
-
-def _is_holiday_for(branch: Branch, d: date):
-    """
-    ✅ FIXED: uses Q() not models.Q()
-    """
-    qs = HolidaySuspension.objects.filter(date=d).filter(
-        Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
-        | Q(scope=HolidaySuspension.SCOPE_REGION)
-        | Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=branch)
-    )
-    return qs.first()
 
 
 def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod, rules: PayrollRule):
@@ -2653,30 +2843,34 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     base = Decimal("0.00")
     absences = days_absent
 
+    # JO = daily rate x actual working days present
     if profile.employment_type == UserProfile.EMP_JO:
-        base = (Decimal(profile.daily_rate or 0) * Decimal(days_present))
+        base = Decimal(profile.daily_rate or 0) * Decimal(days_present)
+
+    # COS = monthly or half-monthly fixed base
     else:
         ms = Decimal(profile.monthly_salary or 0)
         if period.pay_mode == PayrollPeriod.PAY_MONTHLY:
             base = ms
         else:
-            base = (ms / Decimal("2.0"))
+            base = ms / Decimal("2.0")
 
     premium = Decimal("0.00")
     if profile.has_premium and base > 0:
-        premium = (base * (Decimal(rules.premium_rate_percent or 0) / Decimal("100")))
+        premium = base * (Decimal(rules.premium_rate_percent or 0) / Decimal("100"))
 
     overtime_pay = Decimal("0.00")
 
-    late_pen = (Decimal(rules.late_penalty_per_minute or 0) * Decimal(late_minutes))
-    under_pen = (Decimal(rules.undertime_penalty_per_minute or 0) * Decimal(undertime_minutes))
+    late_pen = Decimal(rules.late_penalty_per_minute or 0) * Decimal(late_minutes)
+    under_pen = Decimal(rules.undertime_penalty_per_minute or 0) * Decimal(undertime_minutes)
 
     sss = Decimal(contrib.sss_amount or 0)
     pagibig = Decimal(contrib.pagibig_amount or 0)
+
     if contrib.philhealth_mode == EmployeeContribution.PHILHEALTH_FIXED:
         philhealth = Decimal(contrib.philhealth_value or 0)
     else:
-        philhealth = (base * (Decimal(contrib.philhealth_value or 0) / Decimal("100")))
+        philhealth = base * (Decimal(contrib.philhealth_value or 0) / Decimal("100"))
 
     gov_total = sss + pagibig + philhealth
 
@@ -2686,7 +2880,9 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     if gross > 0:
         tax = gross * (Decimal(rules.tax_rate_percent or 0) / Decimal("100"))
 
-    deductions_total = late_pen + under_pen + gov_total + tax
+    manual_deduction = Decimal(profile.manual_deduction_amount or 0)
+
+    deductions_total = late_pen + under_pen + gov_total + tax + manual_deduction
 
     net = gross - deductions_total
     if net < 0:
@@ -2720,8 +2916,6 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
         "issues": ", ".join([x for x in issues if x]),
         "picked_employee_id": picked_id,
     }
-
-
 # -------------------------
 # Admin payroll page (REAL context)
 # -------------------------
@@ -2732,6 +2926,7 @@ def admin_payroll(request):
 
     selected_branch = request.GET.get("branch")
     branch_obj = _scoped_branch_for_admin_or_404(request, selected_branch)
+
     if not request.user.is_superuser and not branch_obj:
         messages.error(request, "Admin has no branch assigned.")
         return redirect("admin_dashboard")
@@ -2742,6 +2937,7 @@ def admin_payroll(request):
         branches = Branch.objects.filter(id=branch_obj.id).order_by("name")
 
     payroll_periods = PayrollPeriod.objects.all().order_by("-start_date")[:24]
+
     selected_period = request.GET.get("period")
     period_obj = None
     if selected_period and str(selected_period).isdigit():
@@ -2766,7 +2962,13 @@ def admin_payroll(request):
     if branch_obj:
         payroll_batches = PayrollBatch.objects.filter(branch=branch_obj).order_by("-created_at")[:20]
 
-    prof_qs = UserProfile.objects.select_related("user", "branch").filter(is_approved=True)
+    # 🔥 FIX HERE (REMOVE ADMINS)
+    prof_qs = UserProfile.objects.select_related("user", "branch").filter(
+        is_approved=True,
+        user__is_staff=False,
+        user__is_superuser=False
+    )
+
     if branch_obj:
         prof_qs = prof_qs.filter(branch=branch_obj)
 
@@ -2784,10 +2986,14 @@ def admin_payroll(request):
             result = _compute_payroll(prof, branch_obj, period_obj, payroll_rules)
 
             total_payroll += result["computed_payroll"]["net"]
+
             attendance_deductions += (
-                Decimal(payroll_rules.late_penalty_per_minute or 0) * Decimal(result["computed_payroll"]["late_minutes"])
-                + Decimal(payroll_rules.undertime_penalty_per_minute or 0) * Decimal(result["computed_payroll"]["undertime_minutes"])
+                Decimal(payroll_rules.late_penalty_per_minute or 0)
+                * Decimal(result["computed_payroll"]["late_minutes"])
+                + Decimal(payroll_rules.undertime_penalty_per_minute or 0)
+                * Decimal(result["computed_payroll"]["undertime_minutes"])
             )
+
             gov_contributions += result["gov"]["gov_total"]
 
             employees.append({
@@ -2796,13 +3002,7 @@ def admin_payroll(request):
                 "position": prof.position or "—",
                 "employment_type": prof.employment_type,
                 "branch_name": prof.branch.name if prof.branch else "—",
-                "attendance_summary": {
-                    "days_present": result["attendance_summary"]["days_present"],
-                    "days_absent": result["attendance_summary"]["days_absent"],
-                    "total_late_minutes": result["attendance_summary"]["total_late_minutes"],
-                    "total_undertime_minutes": result["attendance_summary"]["total_undertime_minutes"],
-                    "has_missing_logs": result["attendance_summary"]["has_missing_logs"],
-                },
+                "attendance_summary": result["attendance_summary"],
                 "computed_payroll": {
                     "net": f"{result['computed_payroll']['net']:.2f}",
                 },
@@ -2815,7 +3015,12 @@ def admin_payroll(request):
 
     pending_approval = Decimal("0.00")
     if branch_obj and period_obj:
-        draft = PayrollBatch.objects.filter(branch=branch_obj, period=period_obj, status=PayrollBatch.STATUS_DRAFT).first()
+        draft = PayrollBatch.objects.filter(
+            branch=branch_obj,
+            period=period_obj,
+            status=PayrollBatch.STATUS_DRAFT
+        ).first()
+
         if draft:
             pending_approval = draft.totals_net or 0
 
@@ -2826,19 +3031,16 @@ def admin_payroll(request):
         "payroll_periods": payroll_periods,
         "selected_period": period_obj.id if period_obj else None,
         "payroll_rules": payroll_rules,
-
         "employees": employees,
-
         "holidays": holidays,
         "payroll_batches": payroll_batches,
-
         "total_payroll": total_payroll,
         "pending_approval": pending_approval,
         "attendance_deductions": attendance_deductions,
         "gov_contributions": gov_contributions,
     }
-    return render(request, "admin/payroll.html", context)
 
+    return render(request, "admin/payroll.html", context)
 
 # -------------------------
 # Payroll Preview API (JSON)
@@ -2862,7 +3064,14 @@ def admin_payroll_preview_api(request):
 
     rules = _get_or_create_rules(branch_obj)
 
-    prof_qs = UserProfile.objects.select_related("user", "branch").filter(is_approved=True, branch=branch_obj)
+    # 🔥 FIX HERE
+    prof_qs = UserProfile.objects.select_related("user", "branch").filter(
+        is_approved=True,
+        branch=branch_obj,
+        user__is_staff=False,
+        user__is_superuser=False
+    )
+
     if emp_type in ("JO", "COS"):
         prof_qs = prof_qs.filter(employment_type=emp_type)
 
@@ -2873,7 +3082,7 @@ def admin_payroll_preview_api(request):
         res = _compute_payroll(prof, branch_obj, period, rules)
         p = res["computed_payroll"]
 
-        row = {
+        rows.append({
             "name": prof.user.get_full_name() or prof.user.username,
             "type": prof.employment_type,
             "base": float(p["base"]),
@@ -2885,9 +3094,9 @@ def admin_payroll_preview_api(request):
             "deductions": float(p["deductions"]),
             "net": float(p["net"]),
             "issues": res["issues"],
-        }
+        })
+
         total_net += p["net"]
-        rows.append(row)
 
     return JsonResponse({
         "ok": True,
@@ -2897,7 +3106,6 @@ def admin_payroll_preview_api(request):
         "total_employees": len(rows),
         "total_net": float(total_net),
     })
-
 
 # -------------------------
 # DTR API (JSON)
@@ -2930,71 +3138,68 @@ def admin_employee_dtr_api(request, profile_id: int):
     summ = _attendance_summary_for_period(picked_id, branch_obj, period, rules)
     by_day = summ["by_day"]
 
-    tz = timezone.get_current_timezone() if settings.USE_TZ else None
-
     out = []
     for d in _daterange(period.start_date, period.end_date):
-        logs = by_day.get(d, {"ins": [], "outs": []})
-        time_in = min(logs["ins"]).strftime("%H:%M") if logs["ins"] else ""
-        time_out = max(logs["outs"]).strftime("%H:%M") if logs["outs"] else ""
+        logs = by_day.get(d, {
+            "ins": [],
+            "outs": [],
+            "status": "Absent",
+            "remark": "Absent",
+            "is_holiday": False,
+            "holiday_name": "",
+        })
 
-        late = 0
-        undertime = 0
-        status = "Absent"
+        ins = logs.get("ins", [])
+        outs = logs.get("outs", [])
 
-        if logs["ins"] or logs["outs"]:
-            status = "Present"
-        if logs["ins"] and not logs["outs"]:
-            status = "Missing Out"
-        if logs["outs"] and not logs["ins"]:
-            status = "Missing In"
+        time_in = min(ins).strftime("%H:%M") if ins else ""
+        time_out = max(outs).strftime("%H:%M") if outs else ""
 
-        grace = int(rules.grace_minutes_normal or 0)
-        cutoff_time = (datetime.combine(date.today(), rules.work_start_time) + timedelta(minutes=grace)).time()
-        cutoff_dt = datetime.combine(d, cutoff_time)
-        if settings.USE_TZ:
-            cutoff_dt = timezone.make_aware(cutoff_dt, tz) if timezone.is_naive(cutoff_dt) else cutoff_dt
+        late_val = 0
+        undertime_val = 0
 
-        if logs["ins"]:
-            first_in = _ensure_aware(min(logs["ins"]))
+        if ins:
+            grace = int(rules.grace_minutes_normal or 0)
+            cutoff_dt = datetime.combine(d, rules.work_start_time) + timedelta(minutes=grace)
+            first_in = min(ins)
+            if settings.USE_TZ:
+                tz = timezone.get_current_timezone()
+                cutoff_dt = timezone.make_aware(cutoff_dt, tz) if timezone.is_naive(cutoff_dt) else cutoff_dt
+                first_in = _ensure_aware(first_in)
             if first_in > cutoff_dt:
-                late = int((first_in - cutoff_dt).total_seconds() // 60)
+                late_val = int((first_in - cutoff_dt).total_seconds() // 60)
 
-        end_dt = datetime.combine(d, rules.work_end_time)
-        if settings.USE_TZ:
-            end_dt = timezone.make_aware(end_dt, tz) if timezone.is_naive(end_dt) else end_dt
-
-        if logs["outs"]:
-            last_out = _ensure_aware(max(logs["outs"]))
+        if outs:
+            end_dt = datetime.combine(d, rules.work_end_time)
+            last_out = max(outs)
+            if settings.USE_TZ:
+                tz = timezone.get_current_timezone()
+                end_dt = timezone.make_aware(end_dt, tz) if timezone.is_naive(end_dt) else end_dt
+                last_out = _ensure_aware(last_out)
             if last_out < end_dt:
-                undertime = int((end_dt - last_out).total_seconds() // 60)
+                undertime_val = int((end_dt - last_out).total_seconds() // 60)
 
         total_hours = ""
-        if logs["ins"] and logs["outs"]:
-            delta = (_ensure_aware(max(logs["outs"])) - _ensure_aware(min(logs["ins"])))
-            total_hours = round(delta.total_seconds() / 3600, 2)
+        if ins and outs:
+            first_in = min(ins)
+            last_out = max(outs)
+            diff = last_out - first_in
+            total_hours = round(diff.total_seconds() / 3600, 2)
 
         out.append({
             "date": d.strftime("%Y-%m-%d"),
-            "day": d.strftime("%a"),
+            "day": d.strftime("%A"),
             "timeIn": time_in,
             "timeOut": time_out,
             "lunchIn": "",
             "lunchOut": "",
             "totalHours": total_hours,
-            "late": late,
-            "undertime": undertime,
-            "status": status,
+            "late": late_val,
+            "undertime": undertime_val,
+            "status": logs.get("status", "Absent"),
         })
 
-    return JsonResponse({
-        "ok": True,
-        "employee": {"id": prof.id, "name": prof.user.get_full_name() or prof.user.username},
-        "branch": {"id": branch_obj.id, "name": branch_obj.name},
-        "period": {"id": period.id, "name": period.name},
-        "rows": out,
-    })
-
+    return JsonResponse({"ok": True, "rows": out})
 
 # -------------------------
 # Process / Create Payroll Batch (Approve & Process)
@@ -3019,7 +3224,14 @@ def admin_payroll_process_batch(request):
 
     rules = _get_or_create_rules(branch_obj)
 
-    prof_qs = UserProfile.objects.select_related("user", "branch").filter(is_approved=True, branch=branch_obj)
+    # 🔥 FIX HERE
+    prof_qs = UserProfile.objects.select_related("user", "branch").filter(
+        is_approved=True,
+        branch=branch_obj,
+        user__is_staff=False,
+        user__is_superuser=False
+    )
+
     if emp_type in ("JO", "COS"):
         prof_qs = prof_qs.filter(employment_type=emp_type)
 
@@ -3079,7 +3291,6 @@ def admin_payroll_process_batch(request):
         "batch": {"id": batch.id, "name": batch.name, "status": batch.status},
         "totals": {"net": float(totals_net), "deductions": float(totals_deductions)},
     })
-
 
 
 

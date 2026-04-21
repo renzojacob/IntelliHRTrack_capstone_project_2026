@@ -436,7 +436,8 @@
                         Edit
                       </button>
                       <button type="button"
-                              class="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50">
+                              class="delete-holiday-btn inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                              data-holiday-id="{{ holiday.id }}">
                         <iconify-icon icon="ph:trash-duotone" class="mr-1"></iconify-icon>
                         Delete
                       </button>
@@ -713,25 +714,45 @@
   holidayScope?.addEventListener('change', toggleHolidayBranch);
   toggleHolidayBranch();
 
-  holidayForm?.addEventListener('submit', function (e) {
+  holidayForm?.addEventListener('submit', async function (e) {
     e.preventDefault();
+
     const saveBtn = document.getElementById('saveHolidayBtn');
     if (saveBtn) {
       saveBtn.classList.add('pointer-events-none', 'opacity-70');
       saveBtn.innerHTML = '<iconify-icon icon="ph:spinner-gap-duotone" class="mr-2 animate-spin"></iconify-icon>Saving...';
     }
 
-    // Frontend-only safe behavior until backend holiday create endpoint is connected
-    setTimeout(() => {
+    try {
+      const formData = new FormData(holidayForm);
+
+      const res = await fetch("{% url 'admin_biometrics_add_holiday' %}", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
+          "Accept": "application/json",
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to save holiday.");
+      }
+
       closeHolidayModal();
+      holidayForm.reset();
+      toggleHolidayBranch();
+      window.location.reload();
+    } catch (err) {
+      alert(err.message || "Failed to save holiday.");
+    } finally {
       if (saveBtn) {
         saveBtn.classList.remove('pointer-events-none', 'opacity-70');
         saveBtn.innerHTML = '<iconify-icon icon="ph:floppy-disk-duotone" class="mr-2"></iconify-icon>Save Holiday';
       }
-      holidayForm.reset();
-      toggleHolidayBranch();
-      alert('Holiday form UI is ready. Connect this modal to your backend create/update endpoint.');
-    }, 600);
+    }
   });
 
   // ------------------------------
@@ -771,6 +792,38 @@
       attendanceBranchFilter.value = savedBranch;
     }
     filterHolidayCards();
+  });
+
+  // ------------------------------
+  // Holiday delete
+  // ------------------------------
+  document.querySelectorAll('.delete-holiday-btn').forEach(btn => {
+    btn.addEventListener('click', async function () {
+      const holidayId = this.getAttribute('data-holiday-id');
+      if (!holidayId) return;
+
+      if (!confirm("Delete this holiday/suspension?")) return;
+
+      try {
+        const res = await fetch(`/admin-ui/biometrics/holidays/${holidayId}/delete/`, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
+            "Accept": "application/json",
+          }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "Failed to delete holiday.");
+        }
+
+        window.location.reload();
+      } catch (err) {
+        alert(err.message || "Failed to delete holiday.");
+      }
+    });
   });
 </script>
 {% endblock %}
