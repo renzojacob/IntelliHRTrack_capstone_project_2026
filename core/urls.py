@@ -30,6 +30,9 @@ urlpatterns = [
     path("admin-ui/biometrics/holidays/add/", views.admin_biometrics_add_holiday, name="admin_biometrics_add_holiday"),
     path("admin-ui/biometrics/holidays/<int:holiday_id>/delete/", views.admin_biometrics_delete_holiday, name="admin_biometrics_delete_holiday"),
 
+    #travell
+    path("admin-ui/travel/add/", views.admin_add_travel, name="admin_add_travel"),
+
     # Employee Management
     path("admin-ui/employees/", views.admin_employee_management, name="admin_employees"),
     path("admin-ui/employees/approve/<int:profile_id>/", views.approve_user, name="approve_user"),
