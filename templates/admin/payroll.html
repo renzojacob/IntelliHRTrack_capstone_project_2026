@@ -262,6 +262,16 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Late</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Undertime</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Absences</th>
+                                <!-- New columns for extended preview -->
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Pay Basis</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Weekdays</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Worked Days</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Holiday Days</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Travel Order Days</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Gross Pay</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Gov. Contributions</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Tax</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Manual Deductions</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Deductions</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Net</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Issues</th>
@@ -300,8 +310,18 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Type</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Branch</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Attendance</th>
+                                <!-- New columns -->
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Pay Basis</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Base Rate</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Weekdays in Period</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Worked Days</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Holiday Days</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Late Minutes</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Undertime Minutes</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Authorized OT Hours</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Gross Pay</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Government Contributions</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Total Deductions</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Net Pay</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
@@ -329,20 +349,59 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ employee.branch_name }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-green-600">✓ {{ employee.attendance_summary.days_present|default:"0" }} days</span>
-                                            <span class="text-red-600">✗ {{ employee.attendance_summary.days_absent|default:"0" }}</span>
-                                        </div>
-                                        {% if employee.attendance_summary.total_late_minutes > 0 %}
-                                        <div class="text-xs text-amber-600">Late: {{ employee.attendance_summary.total_late_minutes }} mins</div>
+                                <!-- Pay Basis -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {% if employee.employment_type == 'JO' %}
+                                        JO Daily (No Work No Pay)
+                                    {% else %}
+                                        {% if selected_period and selected_period.pay_mode == 'MONTHLY' %}
+                                            COS Monthly
+                                        {% elif selected_period and selected_period.pay_mode == 'FIRST_HALF' %}
+                                            COS First Half
+                                        {% elif selected_period and selected_period.pay_mode == 'SECOND_HALF' %}
+                                            COS Second Half
+                                        {% else %}
+                                            COS Monthly
                                         {% endif %}
-                                        {% if employee.attendance_summary.has_missing_logs %}
-                                        <div class="text-xs text-red-600">Missing logs</div>
-                                        {% endif %}
-                                    </div>
+                                    {% endif %}
                                 </td>
+                                <!-- Base Rate -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm peso">
+                                    {% if employee.employment_type == 'JO' %}
+                                        {{ employee.daily_rate|default:"0.00" }}
+                                    {% else %}
+                                        {{ employee.monthly_salary|default:"0.00" }}
+                                    {% endif %}
+                                </td>
+                                <!-- Weekdays in Period -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {{ employee.computed_payroll.weekdays_in_period|default:"0" }}
+                                </td>
+                                <!-- Worked Days -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {{ employee.computed_payroll.worked_days|default:"0" }}
+                                </td>
+                                <!-- Holiday Days -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {{ employee.computed_payroll.holiday_days|default:"0" }}
+                                </td>
+                                <!-- Late Minutes -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {{ employee.computed_payroll.late_minutes|default:"0" }}
+                                </td>
+                                <!-- Undertime Minutes -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {{ employee.computed_payroll.undertime_minutes|default:"0" }}
+                                </td>
+                                <!-- Authorized OT Hours -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {{ employee.computed_payroll.authorized_ot_hours|default:"0" }}
+                                </td>
+                                <!-- Gross Pay -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm peso">
+                                    {{ employee.computed_payroll.gross|default:"0.00" }}
+                                </td>
+                                <!-- Government Contributions (existing) -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <div class="space-y-1">
                                         <div>SSS: ₱{{ employee.sss_amount|default:"760" }}</div>
@@ -353,6 +412,11 @@
                                         {% endif %}
                                     </div>
                                 </td>
+                                <!-- Total Deductions -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 peso">
+                                    {{ employee.computed_payroll.total_deductions|default:"0.00" }}
+                                </td>
+                                <!-- Net Pay -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-semibold peso">{{ employee.computed_payroll.net|default:"0.00" }}</div>
                                 </td>
@@ -377,7 +441,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="8" class="px-6 py-12 text-center">
+                                <td colspan="18" class="px-6 py-12 text-center">
                                     <iconify-icon icon="ph:users-duotone" class="text-4xl text-gray-400"></iconify-icon>
                                     <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">No employees found</h3>
                                     <p class="mt-2 text-sm text-gray-500">Add employees or adjust your filters.</p>
@@ -501,6 +565,68 @@
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Daily Hours Required</label>
                                     <input name="daily_hours_required" type="number" step="0.5" min="0"
                                            value="{{ payroll_rules.daily_hours_required|default:'8' }}"
+                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
+                                </div>
+                            </div>
+
+                            <!-- New Payroll Rules Fields -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Flag Ceremony Grace Minutes</label>
+                                    <input name="flag_ceremony_grace_minutes" type="number" min="0" step="1"
+                                           value="{{ payroll_rules.flag_ceremony_grace_minutes|default:'5' }}"
+                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
+                                </div>
+                                <div>
+                                    <label class="flex items-center">
+                                        <input name="move_flag_ceremony_if_holiday" type="checkbox"
+                                               {% if payroll_rules.move_flag_ceremony_if_holiday %}checked{% endif %}
+                                               class="h-4 w-4 rounded border-gray-300 text-blue-600">
+                                        <span class="ml-2 text-sm">Move flag ceremony if Monday is holiday/suspension</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="flex items-center">
+                                        <input name="ot_requires_approval" type="checkbox"
+                                               {% if payroll_rules.ot_requires_approval %}checked{% endif %}
+                                               class="h-4 w-4 rounded border-gray-300 text-blue-600">
+                                        <span class="ml-2 text-sm">OT requires approval</span>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="flex items-center">
+                                        <input name="disallow_ot_when_late" type="checkbox"
+                                               {% if payroll_rules.disallow_ot_when_late %}checked{% endif %}
+                                               class="h-4 w-4 rounded border-gray-300 text-blue-600">
+                                        <span class="ml-2 text-sm">Disallow OT when late</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="flex items-center">
+                                        <input name="disallow_ot_if_absent_previous_day" type="checkbox"
+                                               {% if payroll_rules.disallow_ot_if_absent_previous_day %}checked{% endif %}
+                                               class="h-4 w-4 rounded border-gray-300 text-blue-600">
+                                        <span class="ml-2 text-sm">Disallow OT if absent previous day</span>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="flex items-center">
+                                        <input name="disallow_ot_after_travel_order" type="checkbox"
+                                               {% if payroll_rules.disallow_ot_after_travel_order %}checked{% endif %}
+                                               class="h-4 w-4 rounded border-gray-300 text-blue-600">
+                                        <span class="ml-2 text-sm">Disallow OT after Travel Order</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">OT Multiplier</label>
+                                    <input name="ot_multiplier" type="number" step="0.01" min="1.0"
+                                           value="{{ payroll_rules.ot_multiplier|default:'1.25' }}"
                                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
                                 </div>
                             </div>
@@ -680,16 +806,55 @@
             </div>
         </div>
 
+        <!-- Salary Structure Tab - Enhanced Compensation Structure -->
         <div id="salary-structure-content" class="payroll-content hidden">
-            <div class="text-center py-12">
-                <iconify-icon icon="ph:chart-bar-duotone" class="text-4xl text-gray-400"></iconify-icon>
-                <h3 class="mt-4 text-lg font-medium">Government Salary Structure</h3>
-                <p class="text-sm text-gray-500 mt-2">
-                    This module is now handled via Payroll Setup rules and employee base compensation (JO daily rate / COS monthly salary).
-                </p>
-                <div class="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-800 rounded-lg border border-amber-200">
-                    <iconify-icon icon="ph:info-duotone"></iconify-icon>
-                    <span class="text-sm">Salary Structure data is computed, not manually encoded here.</span>
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-white/30 dark:border-gray-700/60">
+                    <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-700 dark:to-gray-800">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white">Compensation Structure - DA MIMAROPA</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Standardized pay rules for Job Order (JO) and Contract of Service (COS) personnel</p>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- JO Daily Rate -->
+                            <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-5 border border-yellow-200 dark:border-yellow-800">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <span class="px-3 py-1 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded-full text-xs font-bold">JO</span>
+                                    <h4 class="text-lg font-semibold text-gray-800 dark:text-white">Job Order (Daily Rate)</h4>
+                                </div>
+                                <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">No Work, No Pay. Compensation is based on actual days worked within the payroll period.</p>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between"><span class="font-medium">Daily Rate:</span> <span class="peso">{{ jo_daily_rate|default:"537.00" }}</span> <span class="text-xs text-gray-500">(Minimum wage MIMAROPA)</span></div>
+                                    <div class="flex justify-between"><span class="font-medium">Computation:</span> <span>Daily Rate × Worked Days</span></div>
+                                    <div class="flex justify-between"><span class="font-medium">Premium Eligibility:</span> <span class="text-green-600">✓ 20% on rest days/special holidays</span></div>
+                                </div>
+                            </div>
+                            <!-- COS Monthly Salary -->
+                            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 border border-blue-200 dark:border-blue-800">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <span class="px-3 py-1 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full text-xs font-bold">COS</span>
+                                    <h4 class="text-lg font-semibold text-gray-800 dark:text-white">Contract of Service (Monthly)</h4>
+                                </div>
+                                <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">Fixed monthly salary, prorated for incomplete months or half-periods.</p>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between"><span class="font-medium">Monthly Salary:</span> <span class="peso">{{ cos_monthly_salary|default:"25000.00" }}</span> <span class="text-xs text-gray-500">(Based on contract)</span></div>
+                                    <div class="flex justify-between"><span class="font-medium">Pay Modes:</span> <span>Monthly / First Half / Second Half</span></div>
+                                    <div class="flex justify-between"><span class="font-medium">Proration:</span> <span>Worked weekdays / Total weekdays in period</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+                            <h4 class="font-semibold text-gray-800 dark:text-white mb-3 flex items-center gap-2"><iconify-icon icon="ph:info-duotone"></iconify-icon> Contract Type Labels & Premium Eligibility</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div><span class="font-medium">JO:</span> Daily wage earner, no work no pay, entitled to premium pay for work during rest days/special holidays if present.</div>
+                                <div><span class="font-medium">COS:</span> Monthly compensated, entitled to full month salary if all weekdays worked, prorated otherwise. Premium pay applicable for holiday work.</div>
+                                <div class="md:col-span-2 mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-800 dark:text-amber-200 text-xs">
+                                    <iconify-icon icon="ph:calculator-duotone" class="inline mr-1"></iconify-icon> Note: All payroll computations exclude weekends (Saturday & Sunday). Only weekdays (Monday–Friday) are considered payable days.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -857,7 +1022,7 @@
     </div>
 </div>
 
-<!-- Add Payroll Period Modal -->
+<!-- Add Payroll Period Modal with weekday helper -->
 <div id="periodModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-black/50"></div>
     <div class="relative mx-auto mt-16 w-[95%] max-w-xl rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-white/20 dark:border-gray-700 overflow-hidden">
@@ -879,11 +1044,11 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Start Date</label>
-                    <input type="date" name="start_date" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
+                    <input type="date" name="start_date" id="periodStartDate" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">End Date</label>
-                    <input type="date" name="end_date" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
+                    <input type="date" name="end_date" id="periodEndDate" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
                 </div>
             </div>
             <div>
@@ -893,6 +1058,11 @@
                     <option value="FIRST_HALF">Kinsenas (1st Half)</option>
                     <option value="SECOND_HALF">Katapusan (2nd Half)</option>
                 </select>
+            </div>
+            <!-- Helper text for weekdays -->
+            <div id="weekdayHelper" class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <iconify-icon icon="ph:calendar-check-duotone" class="inline mr-1"></iconify-icon>
+                Weekdays in selected range: <span id="weekdayCount">—</span> (Mon–Fri only). Weekends are excluded from payroll.
             </div>
             <div class="pt-2 flex items-center justify-end gap-2">
                 <button type="button" id="cancelPeriodBtn" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
@@ -1021,14 +1191,24 @@
 
         rows.forEach(record => {
             const tr = document.createElement('tr');
-            const statusLower = String(record.status || '').toLowerCase();
             const lateCls = Number(record.late || 0) > 0 ? 'text-amber-600 font-medium' : '';
             const underCls = Number(record.undertime || 0) > 0 ? 'text-red-600 font-medium' : '';
-            const statusBadge =
-                statusLower.includes('present') ? 'bg-green-100 text-green-800' :
-                statusLower.includes('late') ? 'bg-amber-100 text-amber-800' :
-                statusLower.includes('weekend') ? 'bg-slate-100 text-slate-700' :
-                statusLower.includes('missing') ? 'bg-yellow-100 text-yellow-800' :
+            
+            // Enhanced status display: combine holiday name, suspension, travel order, missing lunch, flag ceremony
+            let statusText = record.status || '';
+            const extras = [];
+            if (record.holiday_name) extras.push(`Holiday: ${record.holiday_name}`);
+            if (record.suspension_label) extras.push(`Suspension: ${record.suspension_label}`);
+            if (record.travel_order) extras.push(`TO: ${record.travel_order}`);
+            if (record.missing_lunch_logs) extras.push(`Missing lunch`);
+            if (record.flag_ceremony_day) extras.push(`Flag ceremony day`);
+            if (extras.length) statusText += ` (${extras.join(', ')})`;
+            
+            const statusBadgeClass = 
+                (record.status || '').toLowerCase().includes('present') ? 'bg-green-100 text-green-800' :
+                (record.status || '').toLowerCase().includes('late') ? 'bg-amber-100 text-amber-800' :
+                (record.status || '').toLowerCase().includes('weekend') ? 'bg-slate-100 text-slate-700' :
+                (record.status || '').toLowerCase().includes('missing') ? 'bg-yellow-100 text-yellow-800' :
                 'bg-red-100 text-red-800';
 
             tr.innerHTML = `
@@ -1042,8 +1222,8 @@
                 <td class="px-4 py-2 text-sm ${lateCls}">${record.late ?? 0}</td>
                 <td class="px-4 py-2 text-sm ${underCls}">${record.undertime ?? 0}</td>
                 <td class="px-4 py-2 text-sm">
-                    <span class="px-2 py-1 rounded-full text-xs ${statusBadge}">
-                        ${record.status || ''}
+                    <span class="px-2 py-1 rounded-full text-xs ${statusBadgeClass}" title="${extras.join(', ')}">
+                        ${statusText}
                     </span>
                 </td>
             `;
@@ -1101,7 +1281,7 @@
         if (!employees || !employees.length) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="11" class="px-6 py-10 text-center text-sm text-gray-500">
+                    <td colspan="20" class="px-6 py-10 text-center text-sm text-gray-500">
                         No preview data found for the selected filters.
                     </td>
                 </tr>
@@ -1124,8 +1304,17 @@
                 <td class="px-6 py-4 text-sm">${emp.late_minutes ?? 0} min</td>
                 <td class="px-6 py-4 text-sm">${emp.undertime_minutes ?? 0} min</td>
                 <td class="px-6 py-4 text-sm">${emp.absences ?? 0}</td>
-                <td class="px-6 py-4 text-sm text-red-600">${peso(emp.deductions)}</td>
-                <td class="px-6 py-4 text-sm font-semibold">${peso(emp.net)}</td>
+                <td class="px-6 py-4 text-sm">${emp.pay_basis || ''}</td>
+                <td class="px-6 py-4 text-sm">${emp.weekdays_in_period ?? 0}</td>
+                <td class="px-6 py-4 text-sm">${emp.worked_days ?? 0}</td>
+                <td class="px-6 py-4 text-sm">${emp.holiday_days ?? 0}</td>
+                <td class="px-6 py-4 text-sm">${emp.travel_order_days ?? 0}</td>
+                <td class="px-6 py-4 text-sm peso">${peso(emp.gross_pay)}</td>
+                <td class="px-6 py-4 text-sm peso">${peso(emp.gov_contributions)}</td>
+                <td class="px-6 py-4 text-sm peso">${peso(emp.tax)}</td>
+                <td class="px-6 py-4 text-sm peso">${peso(emp.manual_deductions)}</td>
+                <td class="px-6 py-4 text-sm text-red-600 peso">${peso(emp.deductions)}</td>
+                <td class="px-6 py-4 text-sm font-semibold peso">${peso(emp.net)}</td>
                 <td class="px-6 py-4 text-sm">${issues || '—'}</td>
             `;
             tbody.appendChild(tr);
@@ -1280,6 +1469,31 @@
         }
     });
 
+    // Weekday calculation helper for period modal
+    function updateWeekdayCount() {
+        const startDateInput = document.getElementById('periodStartDate');
+        const endDateInput = document.getElementById('periodEndDate');
+        const weekdaySpan = document.getElementById('weekdayCount');
+        if (!startDateInput || !endDateInput || !weekdaySpan) return;
+        const start = new Date(startDateInput.value);
+        const end = new Date(endDateInput.value);
+        if (isNaN(start) || isNaN(end) || start > end) {
+            weekdaySpan.textContent = '—';
+            return;
+        }
+        let count = 0;
+        const current = new Date(start);
+        while (current <= end) {
+            const dayOfWeek = current.getDay();
+            // Monday = 1, Tuesday = 2, Wednesday = 3, Thursday = 4, Friday = 5
+            if (dayOfWeek >= 1 && dayOfWeek <= 5) count++;
+            current.setDate(current.getDate() + 1);
+        }
+        weekdaySpan.textContent = count;
+    }
+    document.getElementById('periodStartDate')?.addEventListener('change', updateWeekdayCount);
+    document.getElementById('periodEndDate')?.addEventListener('change', updateWeekdayCount);
+
     document.getElementById('periodForm')?.addEventListener('submit', async function(e) {
         e.preventDefault();
         showToast("Payroll period form is ready. Connect this to your create-period endpoint.", "info");
@@ -1306,6 +1520,7 @@
         const savedBranch = localStorage.getItem('payroll_selected_branch');
         if (savedBranch && branchFilter) branchFilter.value = savedBranch;
         switchTab('payroll-processing-tab');
+        updateWeekdayCount();
     });
 </script>
 {% endblock %}
