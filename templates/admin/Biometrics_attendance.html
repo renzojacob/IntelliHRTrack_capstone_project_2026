@@ -268,12 +268,29 @@
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.branch }}</td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.get_attendance_status_display }}</td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm">
-                  <div class="flex gap-3">
-                    <a href="{% url 'admin_attendance_detail' row.id %}" class="text-accent hover:text-accent/80">View</a>
-                    <a href="{% url 'admin_attendance_update' row.id %}" class="text-accent hover:text-accent/80">Edit</a>
-                    <a href="{% url 'admin_attendance_delete' row.id %}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Delete</a>
-                  </div>
-                </td>
+  <div class="flex gap-3 flex-wrap">
+
+    <a href="{% url 'admin_attendance_detail' row.id %}" class="text-accent hover:text-accent/80">
+      View
+    </a>
+
+    <a href="{% url 'admin_attendance_update' row.id %}" class="text-accent hover:text-accent/80">
+      Edit
+    </a>
+
+    <a href="{% url 'admin_attendance_delete' row.id %}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+      Delete
+    </a>
+
+    <!-- ✅ NEW: Travel Button -->
+<button 
+  onclick="assignTravel('{{ row.id }}')"
+  class="text-blue-500 hover:text-blue-700 font-medium">
+  Travel
+</button>
+
+  </div>
+</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -825,5 +842,53 @@
       }
     });
   });
+
+  // ------------------------------
+  // Employee Travel Assignment
+  // ------------------------------
+window.assignTravel = async function(recordId) {
+  console.log("TRAVEL RECORD ID:", recordId);
+
+  if (!recordId) {
+    alert("❌ Missing attendance record ID.");
+    return;
+  }
+
+  const startDate = prompt("Enter START date (YYYY-MM-DD):");
+  if (!startDate) return;
+
+  const endDate = prompt("Enter END date (YYYY-MM-DD):");
+  if (!endDate) return;
+
+  try {
+    const res = await fetch("/admin-ui/travel/add/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
+        "Accept": "application/json",
+      },
+      body: new URLSearchParams({
+        record_id: recordId,
+        start_date: startDate,
+        end_date: endDate
+      })
+    });
+
+    const data = await res.json();
+    console.log("TRAVEL RESPONSE:", data);
+
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || "Failed to assign travel.");
+    }
+
+    alert("✅ " + data.message);
+    window.location.reload();
+
+  } catch (err) {
+    alert("❌ " + err.message);
+    console.error(err);
+  }
+};
 </script>
 {% endblock %}

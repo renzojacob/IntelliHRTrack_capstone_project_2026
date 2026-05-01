@@ -428,3 +428,20 @@ class BiometricDevice(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.ip_address})"
+
+
+#employees on travel feature
+class TravelOrder(models.Model):
+    employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    reason = models.CharField(max_length=255, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "core_travelorder"
+
+    def __str__(self):
+        return f"{self.employee.user.username} ({self.start_date} - {self.end_date})"
+
