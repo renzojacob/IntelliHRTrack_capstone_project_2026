@@ -32,7 +32,9 @@ urlpatterns = [
 
     #travell
     path("admin-ui/travel/add/", views.admin_add_travel, name="admin_add_travel"),
+    path("admin-ui/travel/<int:travel_id>/delete/", views.admin_delete_travel, name="admin_delete_travel"),
 
+    
     # Employee Management
     path("admin-ui/employees/", views.admin_employee_management, name="admin_employees"),
     path("admin-ui/employees/approve/<int:profile_id>/", views.approve_user, name="approve_user"),
