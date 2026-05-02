@@ -27,7 +27,8 @@ urlpatterns = [
     path("admin-ui/biometrics/sync/", views.admin_biometrics_sync_now, name="admin_biometrics_sync"),
 
     #admin holidays
-    path("admin-ui/biometrics/holidays/add/", views.admin_biometrics_add_holiday, name="admin_biometrics_add_holiday"),
+    path("admin-ui/biometrics/holidays/create/", views.admin_biometrics_create_holiday, name="admin_biometrics_create_holiday"),
+    path("admin-ui/biometrics/holidays/<int:holiday_id>/update/", views.admin_biometrics_update_holiday, name="admin_biometrics_update_holiday"),
     path("admin-ui/biometrics/holidays/<int:holiday_id>/delete/", views.admin_biometrics_delete_holiday, name="admin_biometrics_delete_holiday"),
 
     #travell

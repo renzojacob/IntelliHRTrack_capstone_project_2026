@@ -2452,103 +2452,96 @@ def admin_biometrics_import(request):
 #Holliday and work suspenssion
 @login_required
 @require_POST
-def admin_biometrics_add_holiday(request):
+def admin_biometrics_create_holiday(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
 
-    branches_qs = _scoped_branch_queryset_for_admin(request)
+    name = (request.POST.get("name") or "").strip()
+    date_value = (request.POST.get("date") or "").strip()
+    type_value = (request.POST.get("type") or HolidaySuspension.TYPE_HOLIDAY).strip()
+    scope = (request.POST.get("scope") or HolidaySuspension.SCOPE_REGION).strip()
+    branch_id = (request.POST.get("branch") or "").strip()
+    notes = (request.POST.get("notes") or "").strip()
 
-    name = (request.POST.get("holiday_name") or "").strip()
-    raw_date = (request.POST.get("holiday_date") or "").strip()
-    holiday_type = (request.POST.get("holiday_type") or HolidaySuspension.TYPE_HOLIDAY).strip()
-    scope = (request.POST.get("holiday_scope") or HolidaySuspension.SCOPE_REGION).strip()
-    notes = (request.POST.get("holiday_notes") or "").strip()
-    branch_raw = (request.POST.get("holiday_branch") or "").strip()
-
-    if not name:
-        return JsonResponse({"ok": False, "error": "Holiday name is required."}, status=400)
+    if not name or not date_value:
+        return JsonResponse({"ok": False, "error": "Name and date are required."}, status=400)
 
     try:
-        holiday_date = datetime.strptime(raw_date, "%Y-%m-%d").date()
-    except Exception:
-        return JsonResponse({"ok": False, "error": "Valid holiday date is required."}, status=400)
+        holiday_date = datetime.strptime(date_value, "%Y-%m-%d").date()
+    except ValueError:
+        return JsonResponse({"ok": False, "error": "Invalid date format."}, status=400)
 
-    valid_types = {
-        HolidaySuspension.TYPE_HOLIDAY,
-        HolidaySuspension.TYPE_SUSPENSION,
-        HolidaySuspension.TYPE_SPECIAL,
-    }
-    if holiday_type not in valid_types:
-        return JsonResponse({"ok": False, "error": "Invalid holiday type."}, status=400)
-
-    valid_scopes = {
-        HolidaySuspension.SCOPE_NATIONWIDE,
-        HolidaySuspension.SCOPE_REGION,
-        HolidaySuspension.SCOPE_BRANCH,
-    }
-    if scope not in valid_scopes:
-        return JsonResponse({"ok": False, "error": "Invalid holiday scope."}, status=400)
-
-    branch_obj = None
+    branch = None
     if scope == HolidaySuspension.SCOPE_BRANCH:
-        if not branch_raw:
+        if not branch_id:
             return JsonResponse({"ok": False, "error": "Branch is required for branch scope."}, status=400)
+        branch = Branch.objects.filter(id=branch_id).first()
+        if not branch:
+            return JsonResponse({"ok": False, "error": "Invalid branch."}, status=400)
 
-        if branch_raw.isdigit():
-            branch_obj = branches_qs.filter(id=int(branch_raw)).first()
-        else:
-            branch_obj = branches_qs.filter(name__iexact=branch_raw).first()
-
-        if not branch_obj:
-            return JsonResponse({"ok": False, "error": "Invalid or unauthorized branch."}, status=400)
-
-    # Prevent exact duplicates
-    existing = HolidaySuspension.objects.filter(
-        date=holiday_date,
-        name__iexact=name,
-        type=holiday_type,
-        scope=scope,
-        branch=branch_obj,
-    ).first()
-    if existing:
-        return JsonResponse({"ok": False, "error": "This holiday/suspension already exists."}, status=400)
-
-    holiday = HolidaySuspension.objects.create(
-        date=holiday_date,
+    HolidaySuspension.objects.create(
         name=name,
-        type=holiday_type,
+        date=holiday_date,
+        type=type_value,
         scope=scope,
-        branch=branch_obj,
+        branch=branch,
         notes=notes,
     )
 
-    return JsonResponse({
-        "ok": True,
-        "id": holiday.id,
-        "message": "Holiday / suspension saved successfully.",
-    })
-
-
+    return JsonResponse({"ok": True})
 
 
 @login_required
 @require_POST
-def admin_biometrics_delete_holiday(request, holiday_id: int):
+def admin_biometrics_update_holiday(request, holiday_id):
     if not (request.user.is_staff or request.user.is_superuser):
         return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
 
-    obj = HolidaySuspension.objects.select_related("branch").filter(id=holiday_id).first()
-    if not obj:
-        return JsonResponse({"ok": False, "error": "Holiday not found."}, status=404)
+    holiday = get_object_or_404(HolidaySuspension, id=holiday_id)
 
-    admin_branch = _get_admin_branch(request)
-    if admin_branch and obj.scope == HolidaySuspension.SCOPE_BRANCH:
-        if not obj.branch_id or obj.branch_id != admin_branch.id:
-            return JsonResponse({"ok": False, "error": "You can only delete holidays in your branch."}, status=403)
+    name = (request.POST.get("name") or "").strip()
+    date_value = (request.POST.get("date") or "").strip()
+    type_value = (request.POST.get("type") or HolidaySuspension.TYPE_HOLIDAY).strip()
+    scope = (request.POST.get("scope") or HolidaySuspension.SCOPE_REGION).strip()
+    branch_id = (request.POST.get("branch") or "").strip()
+    notes = (request.POST.get("notes") or "").strip()
 
-    obj.delete()
-    return JsonResponse({"ok": True, "message": "Holiday deleted successfully."})
+    if not name or not date_value:
+        return JsonResponse({"ok": False, "error": "Name and date are required."}, status=400)
 
+    try:
+        holiday.date = datetime.strptime(date_value, "%Y-%m-%d").date()
+    except ValueError:
+        return JsonResponse({"ok": False, "error": "Invalid date format."}, status=400)
+
+    branch = None
+    if scope == HolidaySuspension.SCOPE_BRANCH:
+        if not branch_id:
+            return JsonResponse({"ok": False, "error": "Branch is required for branch scope."}, status=400)
+        branch = Branch.objects.filter(id=branch_id).first()
+        if not branch:
+            return JsonResponse({"ok": False, "error": "Invalid branch."}, status=400)
+
+    holiday.name = name
+    holiday.type = type_value
+    holiday.scope = scope
+    holiday.branch = branch
+    holiday.notes = notes
+    holiday.save()
+
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_POST
+def admin_biometrics_delete_holiday(request, holiday_id):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
+
+    holiday = get_object_or_404(HolidaySuspension, id=holiday_id)
+    holiday.delete()
+
+    return JsonResponse({"ok": True})
 
 # =========================
 # Export endpoints

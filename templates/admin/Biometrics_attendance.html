@@ -455,9 +455,9 @@
               {% endfor %}
             </select>
           </div>
-
-          <div class="mt-5 space-y-3">
-            {% if holidays %}
+          
+          
+          <div class="mt-5 max-h-[420px] space-y-3 overflow-y-auto pr-2">            {% if holidays %}
               {% for holiday in holidays %}
               <div class="rounded-xl border p-4
                 {% if holiday.type == 'holiday' %}border-green-400/30 bg-green-500/10
