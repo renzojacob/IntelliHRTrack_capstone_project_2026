@@ -605,22 +605,20 @@ def admin_biometrics_sync_now(request):
 
     return redirect("admin_biometrics")
 #===================
-#Add employee travel feature
+#Add and delete employee travel feature
 @login_required
 @require_POST
 def admin_add_travel(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
 
-    record_id = (request.POST.get("record_id") or "").strip()
+    profile_id = (request.POST.get("profile_id") or "").strip()
     start_date = (request.POST.get("start_date") or "").strip()
     end_date = (request.POST.get("end_date") or "").strip()
+    reason = (request.POST.get("reason") or "Official Travel").strip()
 
-    if not record_id or not start_date or not end_date:
-        return JsonResponse({
-            "ok": False,
-            "error": f"Missing data. record_id='{record_id}', start_date='{start_date}', end_date='{end_date}'"
-        }, status=400)
+    if not profile_id or not start_date or not end_date:
+        return JsonResponse({"ok": False, "error": "Missing employee, start date, or end date."}, status=400)
 
     try:
         s = datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -631,52 +629,54 @@ def admin_add_travel(request):
     if e < s:
         return JsonResponse({"ok": False, "error": "End date cannot be before start date."}, status=400)
 
-    record = get_object_or_404(AttendanceRecord.objects.select_related("branch"), id=record_id)
-
     admin_branch = _get_admin_branch(request)
-    if admin_branch and record.branch_id != admin_branch.id:
-        return JsonResponse({"ok": False, "error": "You can only assign travel for your branch."}, status=403)
 
-    profile_qs = UserProfile.objects.select_related("user", "branch").filter(
+    profiles = UserProfile.objects.select_related("user", "branch").filter(
+        id=profile_id,
         is_approved=True,
         user__is_staff=False,
         user__is_superuser=False,
     )
 
-    if record.branch_id:
-        profile_qs = profile_qs.filter(branch_id=record.branch_id)
+    if admin_branch:
+        profiles = profiles.filter(branch=admin_branch)
 
-    profile = None
-
-    if record.employee_id:
-        lookup = Q(user__username=str(record.employee_id))
-        if str(record.employee_id).isdigit():
-            lookup |= Q(user__id=int(record.employee_id))
-        profile = profile_qs.filter(lookup).first()
-
-    if not profile and record.full_name:
-        profile = profile_qs.filter(user__username__iexact=record.full_name.strip()).first()
+    profile = profiles.first()
 
     if not profile:
-        return JsonResponse({
-            "ok": False,
-            "error": (
-                f"Employee not found. Attendance record uses Person ID '{record.employee_id}' "
-                f"and name '{record.full_name}'. The employee account must have username or user ID matching this."
-            )
-        }, status=404)
+        return JsonResponse({"ok": False, "error": "Employee not found or not allowed for your branch."}, status=404)
 
     TravelOrder.objects.update_or_create(
         employee=profile,
         start_date=s,
         end_date=e,
-        defaults={"reason": "Official Travel"},
+        defaults={
+            "reason": reason,
+        }
     )
 
     return JsonResponse({
         "ok": True,
-        "message": f"{profile.user.username} marked as on travel from {s} to {e}."
+        "message": f"{profile.user.username} is now on travel from {s} to {e}."
     })
+
+
+@login_required
+@require_POST
+def admin_delete_travel(request, travel_id):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
+
+    admin_branch = _get_admin_branch(request)
+
+    qs = TravelOrder.objects.select_related("employee", "employee__user", "employee__branch")
+    if admin_branch:
+        qs = qs.filter(employee__branch=admin_branch)
+
+    travel = get_object_or_404(qs, id=travel_id)
+    travel.delete()
+
+    return JsonResponse({"ok": True})
 
 #=========================
 @login_required
@@ -2051,85 +2051,109 @@ def _clear_import_cache(request):
 from django.core.paginator import Paginator
 
 @login_required
+@never_cache
 def admin_biometrics_attendance(request):
-    branch = _get_admin_branch(request)
+    if not (request.user.is_staff or request.user.is_superuser):
+        return redirect("login_ui")
 
-    records_qs = AttendanceRecord.objects.all()
+    branches_qs = _scoped_branch_queryset_for_admin(request)
+    admin_branch = _get_admin_branch(request)
 
-    if branch:
-        records_qs = records_qs.filter(branch=branch)
+    records_qs = AttendanceRecord.objects.select_related("branch").all()
 
-    # ---------------------------
-    # PAGINATION
-    # ---------------------------
-    paginator = Paginator(records_qs.order_by("-timestamp"), 20)
+    if admin_branch:
+        records_qs = records_qs.filter(branch=admin_branch)
+
+    records_qs = records_qs.order_by("-timestamp")
+
+    paginator = Paginator(records_qs, 20)
     page_number = request.GET.get("page")
     records = paginator.get_page(page_number)
 
-    # ---------------------------
-    # KPI LOGIC
-    # ---------------------------
     today = timezone.localdate()
-
     today_records = records_qs.filter(timestamp__date=today)
 
-    # All employees
-    profiles = UserProfile.objects.filter(is_approved=True)
-    if branch:
-        profiles = profiles.filter(branch=branch)
+    employees_qs = UserProfile.objects.select_related("user", "branch").filter(
+        is_approved=True,
+        user__is_staff=False,
+        user__is_superuser=False,
+    )
 
-    total_employees = profiles.count()
+    if admin_branch:
+        employees_qs = employees_qs.filter(branch=admin_branch)
 
-    # Present = those who checked in today
     present_ids = set(
-        today_records.filter(attendance_status="CHECK_IN")
+        today_records.filter(attendance_status=AttendanceRecord.STATUS_CHECKIN)
         .values_list("employee_id", flat=True)
     )
 
-    # ---------------------------
-    # TRAVEL LOGIC
-    # ---------------------------
-    from .models import TravelOrder
-
-    travel_ids = set(
-        TravelOrder.objects.filter(
-            start_date__lte=today,
-            end_date__gte=today
-        ).values_list("employee__user__username", flat=True)
+    travel_today_qs = TravelOrder.objects.select_related(
+        "employee", "employee__user", "employee__branch"
+    ).filter(
+        start_date__lte=today,
+        end_date__gte=today,
     )
 
-    # ---------------------------
-    # ABSENT
-    # ---------------------------
-    absent_count = total_employees - len(present_ids)
+    if admin_branch:
+        travel_today_qs = travel_today_qs.filter(employee__branch=admin_branch)
 
-    # Remove travel employees from absent
-    absent_count = max(absent_count - len(travel_ids), 0)
+    travel_count = travel_today_qs.count()
 
-    # ---------------------------
-    # LATE LOGIC
-    # ---------------------------
     late_count = today_records.filter(
-        attendance_status="CHECK_IN",
-        timestamp__time__gt=time(8, 15)  # grace rule
+        attendance_status=AttendanceRecord.STATUS_CHECKIN,
+        timestamp__time__gt=time(8, 15),
     ).count()
 
+    total_employees = employees_qs.count()
+    present_count = len(present_ids)
+    absent_count = max(total_employees - present_count - travel_count, 0)
+
     kpi = {
-        "present": len(present_ids),
+        "present": present_count,
         "late": late_count,
         "absent": absent_count,
-        "last_sync": timezone.now().strftime("%Y-%m-%d %H:%M"),
+        "on_travel": travel_count,
+        "last_sync": records_qs.order_by("-created_at").values_list("created_at", flat=True).first(),
     }
 
-    # Holidays (for your sidebar)
-    holidays = HolidaySuspension.objects.all()
+    # ✅ FIXED: filter first, slice last
+    holidays_qs = HolidaySuspension.objects.all().order_by("-date")
 
-    return render(request, "admin/Biometrics_attendance.html", {
+    if admin_branch:
+        holidays_qs = holidays_qs.filter(
+            Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
+            | Q(scope=HolidaySuspension.SCOPE_REGION)
+            | Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=admin_branch)
+        )
+
+    holidays = holidays_qs[:20]
+
+    # ✅ FIXED: filter first, slice last
+    travel_orders_qs = TravelOrder.objects.select_related(
+        "employee", "employee__user", "employee__branch"
+    ).order_by("-start_date")
+
+    if admin_branch:
+        travel_orders_qs = travel_orders_qs.filter(employee__branch=admin_branch)
+
+    travel_orders = travel_orders_qs[:20]
+
+    context = {
+        "current": "biometrics",
         "records": records,
         "kpi": kpi,
+        "preview_rows": [],
+        "import_errors": [],
+        "import_summary": "",
+        "branches": branches_qs.values_list("id", "name"),
+        "can_import": bool(_load_import_cache(request)),
+        "employees": employees_qs.order_by("user__username"),
+        "travel_orders": travel_orders,
+        "travel_today": travel_today_qs,
         "holidays": holidays,
-    })
+    }
 
+    return render(request, "admin/Biometrics_attendance.html", context)
 # =========================
 # Biometrics import (Validate + Import)
 # =========================

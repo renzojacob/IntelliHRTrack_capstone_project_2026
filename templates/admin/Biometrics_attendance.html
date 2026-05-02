@@ -4,7 +4,6 @@
 {% block content %}
 <div class="min-h-screen px-4 py-6 sm:px-6 lg:px-8" data-can-import="{{ can_import|yesno:'1,0' }}">
 
-  <!-- Header -->
   <div class="mb-8">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
@@ -14,31 +13,29 @@
 
       <div class="flex flex-wrap gap-3">
         <a href="{% url 'admin_biometrics_sync' %}"
-           id="syncDeviceBtn"
-           class="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
+           class="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90">
           <iconify-icon icon="ph:arrows-clockwise-duotone" class="mr-2"></iconify-icon>
-          <span id="syncDeviceBtnText">Sync Device</span>
+          Sync Device
         </a>
 
         <a href="{% url 'admin_attendance_create' %}"
-           class="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
+           class="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90">
           Add Record
         </a>
 
         <a href="{% url 'admin_biometrics_template' %}"
-           class="inline-flex items-center rounded-lg border border-white/30 bg-white/60 px-4 py-2.5 text-sm font-medium text-accent shadow-sm transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-accent dark:bg-slate-800/60 dark:text-accent dark:hover:bg-slate-800/80">
+           class="inline-flex items-center rounded-lg border border-white/30 bg-white/60 px-4 py-2.5 text-sm font-medium text-accent shadow-sm transition hover:bg-white/80 dark:bg-slate-800/60">
           Download Template
         </a>
 
         <a href="{% url 'admin_biometrics_export' %}"
-           class="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
+           class="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90">
           Export Records
         </a>
       </div>
     </div>
   </div>
 
-  <!-- Sync Info Banner -->
   <div class="mb-8 rounded-xl border border-white/20 bg-white/40 p-4 shadow-sm backdrop-blur-sm dark:bg-slate-800/40">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
@@ -48,18 +45,17 @@
         </p>
       </div>
       <div class="flex flex-wrap gap-2 text-xs">
-        <span class="inline-flex items-center rounded-full bg-white/60 px-3 py-1 font-medium text-gray-700 ring-1 ring-white/30 backdrop-blur-sm dark:bg-slate-700/60 dark:text-gray-300">
+        <span class="inline-flex items-center rounded-full bg-white/60 px-3 py-1 font-medium text-gray-700 ring-1 ring-white/30 dark:bg-slate-700/60 dark:text-gray-300">
           Device → Django
         </span>
-        <span class="inline-flex items-center rounded-full bg-white/60 px-3 py-1 font-medium text-gray-700 ring-1 ring-white/30 backdrop-blur-sm dark:bg-slate-700/60 dark:text-gray-300">
+        <span class="inline-flex items-center rounded-full bg-white/60 px-3 py-1 font-medium text-gray-700 ring-1 ring-white/30 dark:bg-slate-700/60 dark:text-gray-300">
           No manual export needed
         </span>
       </div>
     </div>
   </div>
 
-  <!-- KPI Cards -->
-  <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
     <div class="overflow-hidden rounded-xl glass p-5 shadow-sm">
       <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Today Present</p>
       <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{{ kpi.present|default:"—" }}</p>
@@ -69,13 +65,19 @@
     <div class="overflow-hidden rounded-xl glass p-5 shadow-sm">
       <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Late</p>
       <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{{ kpi.late|default:"—" }}</p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Configure rules later</p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">After grace period</p>
     </div>
 
     <div class="overflow-hidden rounded-xl glass p-5 shadow-sm">
       <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Absent</p>
       <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{{ kpi.absent|default:"—" }}</p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Derived from scheduling</p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Excludes official travel</p>
+    </div>
+
+    <div class="overflow-hidden rounded-xl glass p-5 shadow-sm">
+      <p class="text-sm font-medium text-gray-600 dark:text-gray-400">On Travel</p>
+      <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{{ kpi.on_travel|default:"0" }}</p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Official travel today</p>
     </div>
 
     <div class="overflow-hidden rounded-xl glass p-5 shadow-sm">
@@ -85,24 +87,17 @@
     </div>
   </div>
 
-  <!-- Main Layout -->
   <div class="lg:grid lg:grid-cols-3 lg:gap-8">
 
-    <!-- LEFT -->
     <div class="lg:col-span-2">
 
-      <!-- Import Panel -->
       <div class="mb-8 overflow-hidden rounded-xl glass shadow-sm">
         <div class="border-b border-white/20 px-6 py-5">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Import (CSV / Excel)</h2>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Upload .csv, .xls, or .xlsx from your exporter.</p>
         </div>
 
-        <form id="importForm"
-              method="post"
-              enctype="multipart/form-data"
-              action="{% url 'admin_biometrics_import' %}"
-              class="px-6 py-5">
+        <form id="importForm" method="post" enctype="multipart/form-data" action="{% url 'admin_biometrics_import' %}" class="px-6 py-5">
           {% csrf_token %}
 
           <div class="mb-6">
@@ -115,7 +110,6 @@
                   </label>
                   <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">or drag and drop</p>
                 </div>
-
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">CSV/Excel up to 10MB</p>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" id="fileName">No file selected</p>
               </div>
@@ -125,8 +119,7 @@
           <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
               <label class="flex items-center">
-                <input type="checkbox" name="skip_duplicates" checked
-                       class="h-4 w-4 rounded border-white/30 bg-white/20 text-accent focus:ring-accent">
+                <input type="checkbox" name="skip_duplicates" checked class="h-4 w-4 rounded border-white/30 bg-white/20 text-accent focus:ring-accent">
                 <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Skip duplicates</span>
               </label>
               <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Duplicate key: Person ID + Time + Status + Branch</p>
@@ -134,21 +127,20 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Branch</label>
-              <select name="branch"
-                      id="branchSelect"
+              <select name="branch" id="branchSelect"
                       class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
                 <option value="">Select branch</option>
                 {% for val, label in branches %}
                   <option value="{{ val }}">{{ label }}</option>
                 {% endfor %}
               </select>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Branch must be selected (saved as Branch ID).</p>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Branch must be selected.</p>
             </div>
           </div>
 
           <div class="mt-8 flex gap-3">
             <button type="submit" name="action" value="validate"
-                    class="flex-1 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
+                    class="flex-1 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90">
               Validate & Preview
             </button>
 
@@ -161,7 +153,6 @@
         </form>
       </div>
 
-      <!-- Messages -->
       {% if import_errors %}
       <div id="importErrorsBox" class="mb-4 rounded-lg border border-red-400/30 bg-red-500/10 p-4 backdrop-blur-sm">
         <h3 class="text-sm font-medium text-red-800 dark:text-red-400">Validation / Import Error</h3>
@@ -178,7 +169,6 @@
       </div>
       {% endif %}
 
-      <!-- Preview -->
       <div class="mb-8 overflow-hidden rounded-xl glass shadow-sm">
         <div class="border-b border-white/20 px-6 py-5">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Preview (First 20 Rows)</h2>
@@ -186,16 +176,16 @@
 
         <div class="overflow-x-auto">
           {% if preview_rows %}
-          <table id="previewTable" class="min-w-full divide-y divide-white/20">
+          <table class="min-w-full divide-y divide-white/20">
             <thead class="bg-white/30 dark:bg-slate-800/30">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Person ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Department</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Branch</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Time</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Attendance Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Person ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Department</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Branch</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Time</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Attendance Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Status</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-white/20 bg-white/40 dark:bg-slate-800/40">
@@ -208,8 +198,7 @@
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.timestamp }}</td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.attendance_status }}</td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm">
-                  <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold
-                    {% if row.status == 'valid' %}bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300{% else %}bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300{% endif %}">
+                  <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {% if row.status == 'valid' %}bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300{% else %}bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300{% endif %}">
                     {{ row.status }}
                   </span>
                   {% if row.errors %}
@@ -229,7 +218,105 @@
         </div>
       </div>
 
-      <!-- Records -->
+      <div class="mb-8 overflow-hidden rounded-xl glass shadow-sm">
+        <div class="border-b border-white/20 px-6 py-5">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Travel Order Manager</h2>
+          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Assign official travel without editing attendance logs.
+          </p>
+        </div>
+
+        <form id="travelForm" class="px-6 py-5">
+          {% csrf_token %}
+
+          <div class="grid grid-cols-1 gap-5 md:grid-cols-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Employee</label>
+              <select name="profile_id" id="travelEmployee"
+                      class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+                <option value="">Select employee</option>
+                {% for emp in employees %}
+                  <option value="{{ emp.id }}">
+                    {{ emp.user.get_full_name|default:emp.user.username }} — {{ emp.branch.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Date</label>
+              <input type="date" name="start_date" id="travelStart"
+                     class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">End Date</label>
+              <input type="date" name="end_date" id="travelEnd"
+                     class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reason</label>
+              <input type="text" name="reason" id="travelReason" placeholder="Official Travel"
+                     class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+            </div>
+          </div>
+
+          <div class="mt-5">
+            <button type="submit"
+                    class="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90">
+              <iconify-icon icon="ph:airplane-takeoff-duotone" class="mr-2"></iconify-icon>
+              Assign Travel
+            </button>
+          </div>
+        </form>
+
+        <div class="border-t border-white/20 px-6 py-5">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Current / Recent Travel Orders</h3>
+
+          <div class="mt-4 overflow-x-auto">
+            {% if travel_orders %}
+            <table class="min-w-full divide-y divide-white/20">
+              <thead class="bg-white/30 dark:bg-slate-800/30">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Employee</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Branch</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Date Range</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Reason</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/20 bg-white/40 dark:bg-slate-800/40">
+                {% for travel in travel_orders %}
+                <tr>
+                  <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                    {{ travel.employee.user.get_full_name|default:travel.employee.user.username }}
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                    {{ travel.employee.branch.name }}
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                    {{ travel.start_date }} to {{ travel.end_date }}
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                    {{ travel.reason|default:"Official Travel" }}
+                  </td>
+                  <td class="px-4 py-3 text-sm">
+                    <button type="button" onclick="deleteTravel('{{ travel.id }}')" class="text-red-500 hover:text-red-700">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <p class="text-sm text-gray-600 dark:text-gray-400">No travel orders yet.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
       <div class="overflow-hidden rounded-xl glass shadow-sm">
         <div class="border-b border-white/20 px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
@@ -249,13 +336,13 @@
           <table class="min-w-full divide-y divide-white/20">
             <thead class="bg-white/30 dark:bg-slate-800/30">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Time</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Person ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Department</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Branch</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Attendance Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Time</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Person ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Department</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Branch</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Attendance Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-white/20 bg-white/40 dark:bg-slate-800/40">
@@ -268,33 +355,31 @@
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.branch }}</td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.get_attendance_status_display }}</td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm">
-  <div class="flex gap-3 flex-wrap">
-
-    <a href="{% url 'admin_attendance_detail' row.id %}" class="text-accent hover:text-accent/80">
-      View
-    </a>
-
-    <a href="{% url 'admin_attendance_update' row.id %}" class="text-accent hover:text-accent/80">
-      Edit
-    </a>
-
-    <a href="{% url 'admin_attendance_delete' row.id %}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-      Delete
-    </a>
-
-    <!-- ✅ NEW: Travel Button -->
-<button 
-  onclick="assignTravel('{{ row.id }}')"
-  class="text-blue-500 hover:text-blue-700 font-medium">
-  Travel
-</button>
-
-  </div>
-</td>
+                  <div class="flex gap-3 flex-wrap">
+                    <a href="{% url 'admin_attendance_detail' row.id %}" class="text-accent hover:text-accent/80">View</a>
+                    <a href="{% url 'admin_attendance_update' row.id %}" class="text-accent hover:text-accent/80">Edit</a>
+                    <a href="{% url 'admin_attendance_delete' row.id %}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Delete</a>
+                  </div>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
           </table>
+
+          {% if records.has_other_pages %}
+          <div class="flex items-center justify-between border-t border-white/20 px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+            <div>Page {{ records.number }} of {{ records.paginator.num_pages }}</div>
+            <div class="flex gap-2">
+              {% if records.has_previous %}
+                <a href="?page={{ records.previous_page_number }}" class="rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-accent hover:bg-white/80 dark:bg-slate-800/60">Previous</a>
+              {% endif %}
+              {% if records.has_next %}
+                <a href="?page={{ records.next_page_number }}" class="rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-accent hover:bg-white/80 dark:bg-slate-800/60">Next</a>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
           {% else %}
           <div class="px-6 py-12 text-center">
             <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No records found</h3>
@@ -306,294 +391,240 @@
 
     </div>
 
-    <!-- RIGHT Sidebar -->
     <div class="mt-8 lg:mt-0">
       <div class="space-y-6">
 
-        <!-- Device Sync Help -->
         <div class="overflow-hidden rounded-xl glass p-6 shadow-sm">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Device Sync Guide</h3>
-          <div class="mt-4 space-y-3">
-            <div class="rounded-lg border border-accent/30 bg-accent/10 p-3">
-              <p class="text-sm font-medium text-accent">Recommended Setup</p>
-              <p class="mt-1 text-xs text-gray-700 dark:text-gray-300">
-                Connect the Hikvision device directly to the same laptop running Django using Ethernet.
-              </p>
-            </div>
-            <ol class="space-y-2 text-sm text-gray-600 dark:text-gray-400 list-decimal pl-5">
-              <li>Make sure the device opens on this same laptop.</li>
-              <li>Click <span class="font-medium text-accent">Sync Device</span>.</li>
-              <li>Refresh this page to see new attendance logs.</li>
-            </ol>
+
+          <div class="mt-4 rounded-lg border border-accent/20 bg-accent/5 p-4">
+            <p class="text-xs font-semibold uppercase text-accent">Recommended Setup</p>
+            <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">
+              Connect the Hikvision device directly to the same LAN running Django using Ethernet.
+            </p>
           </div>
+
+          <ol class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            <li>1. Make sure the device opens on this same laptop.</li>
+            <li>2. Click <span class="font-semibold text-accent">Sync Device</span>.</li>
+            <li>3. Refresh this page to see new attendance logs.</li>
+          </ol>
         </div>
 
-        <!-- Holiday & Suspension Manager -->
-        <div class="overflow-hidden rounded-2xl glass shadow-sm">
-          <div class="border-b border-white/20 px-6 py-5">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Holiday & Suspension Manager</h3>
-                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                  Manage non-working dates that affect attendance interpretation and payroll computation.
-                </p>
-              </div>
-
-              <div class="flex flex-wrap gap-2">
-                <button id="openHolidayModalBtn"
-                        type="button"
-                        class="inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
-                  <iconify-icon icon="ph:calendar-plus-duotone" class="mr-2"></iconify-icon>
-                  Add Holiday
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="px-6 py-5">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div class="rounded-xl border border-green-400/30 bg-green-500/10 p-4 backdrop-blur-sm">
-                <p class="text-xs font-medium uppercase tracking-wide text-green-800 dark:text-green-400">Upcoming</p>
-                <p class="mt-2 text-2xl font-semibold text-green-900 dark:text-green-300">{{ holidays|length|default:"0" }}</p>
-                <p class="mt-1 text-xs text-green-700 dark:text-green-400">Configured holidays and suspensions</p>
-              </div>
-
-              <div class="rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 backdrop-blur-sm">
-                <p class="text-xs font-medium uppercase tracking-wide text-amber-800 dark:text-amber-400">Attendance Impact</p>
-                <p class="mt-2 text-sm font-semibold text-amber-900 dark:text-amber-300">Integrated with attendance review</p>
-                <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">Use this to explain non-working dates in logs.</p>
-              </div>
-
-              <div class="rounded-xl border border-blue-400/30 bg-blue-500/10 p-4 backdrop-blur-sm">
-                <p class="text-xs font-medium uppercase tracking-wide text-blue-800 dark:text-blue-400">Payroll Impact</p>
-                <p class="mt-2 text-sm font-semibold text-blue-900 dark:text-blue-300">Source of truth for payroll exclusions</p>
-                <p class="mt-1 text-xs text-blue-700 dark:text-blue-400">This feature now belongs here, not in payroll setup.</p>
-              </div>
-            </div>
-
-            <div class="mt-5">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Branch Filter</label>
-              <select id="attendanceBranchFilter"
-                      class="w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
-                <option value="">All Branches</option>
-                {% for val, label in branches %}
-                  <option value="{{ val }}">{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
-
-            <div class="mt-5 space-y-3" id="holidayCardsContainer">
-              {% if holidays %}
-                {% for holiday in holidays %}
-                <div class="holiday-card rounded-xl border p-4 shadow-sm transition hover:shadow-md backdrop-blur-sm {% if holiday.type == 'holiday' %}border-green-400/30 bg-green-500/10{% elif holiday.type == 'suspension' %}border-red-400/30 bg-red-500/10{% else %}border-amber-400/30 bg-amber-500/10{% endif %}"
-                     data-branch-id="{% if holiday.branch %}{{ holiday.branch.id }}{% else %}{% endif %}"
-                     data-scope="{{ holiday.scope }}">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                      <div class="flex flex-wrap items-center gap-2">
-                        <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ holiday.name }}</h4>
-                        <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold
-                          {% if holiday.type == 'holiday' %}bg-green-200 text-green-800 dark:bg-green-900/60 dark:text-green-300
-                          {% elif holiday.type == 'suspension' %}bg-red-200 text-red-800 dark:bg-red-900/60 dark:text-red-300
-                          {% else %}bg-amber-200 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300{% endif %}">
-                          {{ holiday.get_type_display }}
-                        </span>
-                        <span class="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 text-[11px] font-medium text-gray-700 ring-1 ring-white/30 backdrop-blur-sm dark:bg-slate-700/60 dark:text-gray-300">
-                          {{ holiday.date|date:"F d, Y" }}
-                        </span>
-                      </div>
-
-                      <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                        {% if holiday.scope == 'nationwide' %}
-                          <span class="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 ring-1 ring-white/30 backdrop-blur-sm dark:bg-slate-700/60">
-                            Nationwide
-                          </span>
-                        {% elif holiday.scope == 'region' %}
-                          <span class="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 ring-1 ring-white/30 backdrop-blur-sm dark:bg-slate-700/60">
-                            MIMAROPA Region
-                          </span>
-                        {% elif holiday.branch %}
-                          <span class="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 ring-1 ring-white/30 backdrop-blur-sm dark:bg-slate-700/60">
-                            {{ holiday.branch.name }}
-                          </span>
-                        {% else %}
-                          <span class="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 ring-1 ring-white/30 backdrop-blur-sm dark:bg-slate-700/60">
-                            Branch-specific
-                          </span>
-                        {% endif %}
-
-                        <span class="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 ring-1 ring-white/30 backdrop-blur-sm dark:bg-slate-700/60">
-                          {{ holiday.get_scope_display }}
-                        </span>
-                      </div>
-
-                      {% if holiday.notes %}
-                      <p class="mt-3 text-xs text-gray-700 dark:text-gray-300 leading-5">{{ holiday.notes }}</p>
-                      {% endif %}
-
-                      <p class="mt-3 text-xs font-medium
-                        {% if holiday.type == 'holiday' %}text-green-700 dark:text-green-400
-                        {% elif holiday.type == 'suspension' %}text-red-700 dark:text-red-400
-                        {% else %}text-amber-700 dark:text-amber-400{% endif %}">
-                        Impact:
-                        {% if holiday.type == 'holiday' %}
-                          JO - No Pay, COS - Paid
-                        {% elif holiday.type == 'suspension' %}
-                          Attendance exception / work suspension handling
-                        {% else %}
-                          Special non-working day behavior
-                        {% endif %}
-                      </p>
-                    </div>
-
-                    <div class="flex shrink-0 items-center gap-2">
-                      <button type="button"
-                              class="inline-flex items-center rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-xs font-medium text-accent transition hover:bg-white/80 dark:bg-slate-800/60">
-                        <iconify-icon icon="ph:pencil-simple-duotone" class="mr-1"></iconify-icon>
-                        Edit
-                      </button>
-                      <button type="button"
-                              class="delete-holiday-btn inline-flex items-center rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-500/20 dark:text-red-400"
-                              data-holiday-id="{{ holiday.id }}">
-                        <iconify-icon icon="ph:trash-duotone" class="mr-1"></iconify-icon>
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                {% endfor %}
-              {% else %}
-                <div class="rounded-xl border border-dashed border-white/30 bg-white/30 px-6 py-10 text-center backdrop-blur-sm">
-                  <iconify-icon icon="ph:calendar-blank-duotone" class="text-3xl text-gray-400"></iconify-icon>
-                  <h4 class="mt-3 text-sm font-medium text-gray-900 dark:text-white">No holidays or suspensions configured</h4>
-                  <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Add one now to support attendance review and payroll logic.</p>
-                  <button id="emptyStateOpenHolidayModalBtn"
-                          type="button"
-                          class="mt-4 inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90">
-                    <iconify-icon icon="ph:calendar-plus-duotone" class="mr-2"></iconify-icon>
-                    Add Holiday
-                  </button>
-                </div>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-
-        <!-- Required Columns -->
         <div class="overflow-hidden rounded-xl glass p-6 shadow-sm">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Required Columns</h3>
-          <div class="mt-4 rounded-md bg-white/30 p-3 backdrop-blur-sm">
-            <code class="text-sm text-gray-700 dark:text-gray-300">
-              Person ID, Name, Department, Time, Attendance Status
-            </code>
-          </div>
-          <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Branch is selected from the dropdown (saved as Branch ID).
-          </p>
-        </div>
-
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- Holiday Modal -->
-<div id="holidayModal" class="fixed inset-0 z-50 hidden">
-  <div id="holidayModalBackdrop" class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm"></div>
-
-  <div class="relative flex min-h-full items-center justify-center p-4">
-    <div class="w-full max-w-2xl overflow-hidden rounded-2xl glass shadow-2xl">
-      <div class="flex items-center justify-between border-b border-white/20 px-6 py-5">
-        <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Add Holiday / Suspension</h3>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Create a non-working date rule for attendance and payroll interpretation.</p>
-        </div>
-        <button id="closeHolidayModalBtn"
-                type="button"
-                class="inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/60 p-2 text-gray-500 transition hover:bg-white/80 dark:bg-slate-800/60 dark:text-gray-400">
-          <iconify-icon icon="ph:x-duotone" class="text-xl"></iconify-icon>
-        </button>
-      </div>
-
-      <form id="holidayForm" class="px-6 py-5">
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-            <input type="text"
-                   id="holidayName"
-                   name="holiday_name"
-                   placeholder="e.g. Labor Day, Work Suspension"
-                   class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2.5 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Holiday & Suspension Manager</h3>
+              <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Manage non-working dates that affect attendance interpretation and payroll computation.</p>
+            </div>
+            <button id="openHolidayModal"
+                    type="button"
+                    class="inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-opacity-90">
+              <iconify-icon icon="ph:calendar-plus-duotone" class="mr-2"></iconify-icon>
+              Add Holiday
+            </button>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
-            <input type="date"
-                   id="holidayDate"
-                   name="holiday_date"
-                   class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2.5 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="rounded-xl border border-green-400/30 bg-green-500/10 p-4">
+              <p class="text-xs font-semibold uppercase text-green-700 dark:text-green-300">Upcoming</p>
+              <p class="mt-2 text-2xl font-bold text-green-800 dark:text-green-200">{{ holidays|length|default:"0" }}</p>
+              <p class="mt-1 text-xs text-green-700/80 dark:text-green-300/80">Configured holidays and suspensions</p>
+            </div>
+
+            <div class="rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
+              <p class="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">Attendance Impact</p>
+              <p class="mt-2 text-sm font-semibold text-amber-800 dark:text-amber-200">Integrated with attendance review</p>
+              <p class="mt-1 text-xs text-amber-700/80 dark:text-amber-300/80">Use this to explain non-working dates in logs.</p>
+            </div>
+
+            <div class="rounded-xl border border-blue-400/30 bg-blue-500/10 p-4">
+              <p class="text-xs font-semibold uppercase text-blue-700 dark:text-blue-300">Payroll Impact</p>
+              <p class="mt-2 text-sm font-semibold text-blue-800 dark:text-blue-200">Source of truth for payroll exclusions</p>
+              <p class="mt-1 text-xs text-blue-700/80 dark:text-blue-300/80">This feature now belongs here, not in payroll setup.</p>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
-            <select id="holidayType"
-                    name="holiday_type"
-                    class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2.5 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
-              <option value="holiday">Regular Holiday</option>
-              <option value="suspension">Work Suspension</option>
-              <option value="special">Special Non-Working Day</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Scope</label>
-            <select id="holidayScope"
-                    name="holiday_scope"
-                    class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2.5 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
-              <option value="nationwide">Nationwide</option>
-              <option value="region">MIMAROPA Region</option>
-              <option value="branch">Specific Branch</option>
-            </select>
-          </div>
-
-          <div id="holidayBranchWrap" class="hidden">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Branch</label>
-            <select id="holidayBranch"
-                    name="holiday_branch"
-                    class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2.5 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
-              <option value="">Select branch</option>
+          <div class="mt-5">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Branch Filter</label>
+            <select id="attendanceBranchFilter"
+                    class="w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+              <option value="">All Branches</option>
               {% for val, label in branches %}
                 <option value="{{ val }}">{{ label }}</option>
               {% endfor %}
             </select>
           </div>
 
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
-            <textarea id="holidayNotes"
-                      name="holiday_notes"
-                      rows="4"
-                      placeholder="Optional notes for admins, attendance review, or payroll interpretation"
-                      class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2.5 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white"></textarea>
+          <div class="mt-5 space-y-3">
+            {% if holidays %}
+              {% for holiday in holidays %}
+              <div class="rounded-xl border p-4
+                {% if holiday.type == 'holiday' %}border-green-400/30 bg-green-500/10
+                {% elif holiday.type == 'suspension' %}border-red-400/30 bg-red-500/10
+                {% else %}border-amber-400/30 bg-amber-500/10{% endif %}">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ holiday.name }}</h4>
+                      <span class="rounded-full px-2 py-1 text-xs font-semibold
+                        {% if holiday.type == 'holiday' %}bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300
+                        {% elif holiday.type == 'suspension' %}bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300
+                        {% else %}bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300{% endif %}">
+                        {{ holiday.get_type_display }}
+                      </span>
+                      <span class="text-xs text-gray-500 dark:text-gray-400">{{ holiday.date|date:"M d, Y" }}</span>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                      {% if holiday.scope == 'branch' and holiday.branch %}
+                        {{ holiday.branch.name }}
+                      {% else %}
+                        {{ holiday.get_scope_display }}
+                      {% endif %}
+                    </p>
+                    {% if holiday.notes %}
+                      <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">{{ holiday.notes }}</p>
+                    {% endif %}
+                  </div>
+
+                  <div class="flex gap-2">
+                    <button type="button"
+                            class="edit-holiday-btn rounded-lg bg-white/60 px-3 py-2 text-xs font-medium text-accent hover:bg-white/80 dark:bg-slate-800/60"
+                            data-holiday-id="{{ holiday.id }}"
+                            data-name="{{ holiday.name }}"
+                            data-date="{{ holiday.date|date:'Y-m-d' }}"
+                            data-type="{{ holiday.type }}"
+                            data-scope="{{ holiday.scope }}"
+                            data-branch="{{ holiday.branch_id|default:'' }}"
+                            data-notes="{{ holiday.notes|default:'' }}">
+                      Edit
+                    </button>
+
+                    <button type="button"
+                            class="delete-holiday-btn rounded-lg bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-500/20"
+                            data-holiday-id="{{ holiday.id }}">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                <p class="mt-3 text-xs font-semibold
+                  {% if holiday.type == 'holiday' %}text-green-700 dark:text-green-300
+                  {% elif holiday.type == 'suspension' %}text-red-700 dark:text-red-300
+                  {% else %}text-amber-700 dark:text-amber-300{% endif %}">
+                  Impact:
+                  {% if holiday.type == 'holiday' %}
+                    JO - No Pay, COS - Paid
+                  {% elif holiday.type == 'suspension' %}
+                    Work suspension affects expected attendance
+                  {% else %}
+                    Special non-working day behavior
+                  {% endif %}
+                </p>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="rounded-xl border border-white/20 bg-white/30 p-6 text-center dark:bg-slate-800/30">
+                <iconify-icon icon="ph:calendar-blank-duotone" class="text-3xl text-gray-400"></iconify-icon>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">No holidays or suspensions configured yet.</p>
+              </div>
+            {% endif %}
           </div>
         </div>
 
-        <div class="mt-6 flex flex-col-reverse gap-3 border-t border-white/20 pt-5 sm:flex-row sm:justify-end">
-          <button id="cancelHolidayModalBtn"
-                  type="button"
-                  class="inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/60 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-white/80 dark:bg-slate-800/60 dark:text-gray-300">
-            Cancel
-          </button>
-          <button id="saveHolidayBtn"
-                  type="submit"
-                  class="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
-            <iconify-icon icon="ph:floppy-disk-duotone" class="mr-2"></iconify-icon>
-            Save Holiday
-          </button>
+        <div class="overflow-hidden rounded-xl glass p-6 shadow-sm">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Required Columns</h3>
+          <div class="mt-4 rounded-md bg-white/50 p-3 dark:bg-slate-800/50">
+            <code class="text-sm text-gray-700 dark:text-gray-300">
+              Person ID, Name, Department, Time, Attendance Status
+            </code>
+          </div>
+          <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Branch is selected from the dropdown.
+          </p>
         </div>
-      </form>
+
+      </div>
     </div>
+  </div>
+</div>
+
+<!-- Holiday Modal -->
+<div id="holidayModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
+  <div class="w-full max-w-lg rounded-2xl glass p-6 shadow-2xl">
+    <div class="flex items-center justify-between">
+      <h3 id="holidayModalTitle" class="text-lg font-semibold text-gray-900 dark:text-white">Add Holiday / Suspension</h3>
+      <button type="button" id="closeHolidayModal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400">
+        <iconify-icon icon="ph:x-bold"></iconify-icon>
+      </button>
+    </div>
+
+    <form id="holidayForm" class="mt-5 space-y-4">
+      {% csrf_token %}
+      <input type="hidden" id="holidayId" name="holiday_id">
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+        <input id="holidayName" name="name" type="text" required
+               class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
+        <input id="holidayDate" name="date" type="date" required
+               class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
+          <select id="holidayType" name="type"
+                  class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+            <option value="holiday">Regular Holiday</option>
+            <option value="suspension">Work Suspension</option>
+            <option value="special">Special Non-Working Day</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Scope</label>
+          <select id="holidayScope" name="scope"
+                  class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+            <option value="nationwide">Nationwide</option>
+            <option value="region">MIMAROPA Region</option>
+            <option value="branch">Specific Branch</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="holidayBranchWrap">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Branch</label>
+        <select id="holidayBranch" name="branch"
+                class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+          <option value="">Select branch</option>
+          {% for val, label in branches %}
+            <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
+        <textarea id="holidayNotes" name="notes" rows="3"
+                  class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white"></textarea>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" id="cancelHolidayModal"
+                class="rounded-lg border border-white/30 bg-white/60 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white/80 dark:bg-slate-800/60 dark:text-gray-300">
+          Cancel
+        </button>
+        <button type="submit"
+                class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-opacity-90">
+          Save
+        </button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -606,19 +637,17 @@
   const fileName = document.getElementById('fileName');
   const importBtn = document.getElementById('importBtn');
   const branchSelect = document.getElementById('branchSelect');
-  const syncDeviceBtn = document.getElementById('syncDeviceBtn');
-  const syncDeviceBtnText = document.getElementById('syncDeviceBtnText');
 
   function setImportEnabled(enabled) {
     if (!importBtn) return;
     importBtn.disabled = !enabled;
 
     if (enabled) {
-      importBtn.classList.remove('cursor-not-allowed', 'bg-white/30', 'text-gray-400', 'border-white/30');
-      importBtn.classList.add('cursor-pointer', 'bg-accent', 'text-white', 'hover:bg-opacity-90', 'border-transparent');
+      importBtn.classList.remove('cursor-not-allowed', 'bg-white/30', 'text-gray-400');
+      importBtn.classList.add('cursor-pointer', 'bg-accent', 'text-white', 'hover:bg-opacity-90');
     } else {
-      importBtn.classList.add('cursor-not-allowed', 'bg-white/30', 'text-gray-400', 'border-white/30');
-      importBtn.classList.remove('cursor-pointer', 'bg-accent', 'text-white', 'hover:bg-opacity-90', 'border-transparent');
+      importBtn.classList.add('cursor-not-allowed', 'bg-white/30', 'text-gray-400');
+      importBtn.classList.remove('cursor-pointer', 'bg-accent', 'text-white', 'hover:bg-opacity-90');
     }
   }
 
@@ -675,75 +704,152 @@
     branchSelect.addEventListener('change', () => setImportEnabled(canImportNow()));
   }
 
-  if (syncDeviceBtn) {
-    syncDeviceBtn.addEventListener('click', function () {
-      syncDeviceBtn.classList.add('pointer-events-none', 'opacity-70');
-      if (syncDeviceBtnText) {
-        syncDeviceBtnText.textContent = 'Syncing...';
-      }
-    });
-  }
-
   document.addEventListener('DOMContentLoaded', () => {
     updateFileLabel();
     setImportEnabled(canImportNow());
   });
 
-  // ------------------------------
-  // Holiday Modal
-  // ------------------------------
-  const holidayModal = document.getElementById('holidayModal');
-  const holidayModalBackdrop = document.getElementById('holidayModalBackdrop');
-  const openHolidayModalBtn = document.getElementById('openHolidayModalBtn');
-  const emptyStateOpenHolidayModalBtn = document.getElementById('emptyStateOpenHolidayModalBtn');
-  const closeHolidayModalBtn = document.getElementById('closeHolidayModalBtn');
-  const cancelHolidayModalBtn = document.getElementById('cancelHolidayModalBtn');
-  const holidayForm = document.getElementById('holidayForm');
-  const holidayScope = document.getElementById('holidayScope');
-  const holidayBranchWrap = document.getElementById('holidayBranchWrap');
+  const attendanceBranchFilter = document.getElementById('attendanceBranchFilter');
 
-  function openHolidayModal() {
-    if (!holidayModal) return;
-    holidayModal.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
+  attendanceBranchFilter?.addEventListener('change', function() {
+    localStorage.setItem('payroll_selected_branch', this.value);
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const savedBranch = localStorage.getItem('payroll_selected_branch');
+    if (savedBranch && attendanceBranchFilter) {
+      attendanceBranchFilter.value = savedBranch;
+    }
+  });
+
+  const travelForm = document.getElementById("travelForm");
+
+  travelForm?.addEventListener("submit", async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(travelForm);
+
+    try {
+      const res = await fetch("{% url 'admin_add_travel' %}", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
+          "Accept": "application/json",
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to assign travel.");
+      }
+
+      alert("✅ " + data.message);
+      window.location.reload();
+    } catch (err) {
+      alert("❌ " + err.message);
+    }
+  });
+
+  window.deleteTravel = async function(travelId) {
+    if (!confirm("Delete this travel order?")) return;
+
+    try {
+      const res = await fetch(`/admin-ui/travel/${travelId}/delete/`, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
+          "Accept": "application/json",
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to delete travel order.");
+      }
+
+      window.location.reload();
+    } catch (err) {
+      alert("❌ " + err.message);
+    }
+  };
+
+  const holidayModal = document.getElementById("holidayModal");
+  const openHolidayModal = document.getElementById("openHolidayModal");
+  const closeHolidayModal = document.getElementById("closeHolidayModal");
+  const cancelHolidayModal = document.getElementById("cancelHolidayModal");
+  const holidayForm = document.getElementById("holidayForm");
+  const holidayModalTitle = document.getElementById("holidayModalTitle");
+
+  const holidayId = document.getElementById("holidayId");
+  const holidayName = document.getElementById("holidayName");
+  const holidayDate = document.getElementById("holidayDate");
+  const holidayType = document.getElementById("holidayType");
+  const holidayScope = document.getElementById("holidayScope");
+  const holidayBranch = document.getElementById("holidayBranch");
+  const holidayNotes = document.getElementById("holidayNotes");
+  const holidayBranchWrap = document.getElementById("holidayBranchWrap");
+
+  function openModal() {
+    holidayModal.classList.remove("hidden");
+    holidayModal.classList.add("flex");
   }
 
-  function closeHolidayModal() {
-    if (!holidayModal) return;
-    holidayModal.classList.add('hidden');
-    document.body.classList.remove('overflow-hidden');
+  function closeModal() {
+    holidayModal.classList.add("hidden");
+    holidayModal.classList.remove("flex");
+  }
+
+  function resetHolidayForm() {
+    holidayForm?.reset();
+    holidayId.value = "";
+    holidayModalTitle.textContent = "Add Holiday / Suspension";
   }
 
   function toggleHolidayBranch() {
     if (!holidayScope || !holidayBranchWrap) return;
-    if (holidayScope.value === 'branch') {
-      holidayBranchWrap.classList.remove('hidden');
-    } else {
-      holidayBranchWrap.classList.add('hidden');
-    }
+    holidayBranchWrap.style.display = holidayScope.value === "branch" ? "block" : "none";
   }
 
-  openHolidayModalBtn?.addEventListener('click', openHolidayModal);
-  emptyStateOpenHolidayModalBtn?.addEventListener('click', openHolidayModal);
-  closeHolidayModalBtn?.addEventListener('click', closeHolidayModal);
-  cancelHolidayModalBtn?.addEventListener('click', closeHolidayModal);
-  holidayModalBackdrop?.addEventListener('click', closeHolidayModal);
-  holidayScope?.addEventListener('change', toggleHolidayBranch);
+  openHolidayModal?.addEventListener("click", () => {
+    resetHolidayForm();
+    toggleHolidayBranch();
+    openModal();
+  });
+
+  closeHolidayModal?.addEventListener("click", closeModal);
+  cancelHolidayModal?.addEventListener("click", closeModal);
+  holidayScope?.addEventListener("change", toggleHolidayBranch);
   toggleHolidayBranch();
 
-  holidayForm?.addEventListener('submit', async function (e) {
+  document.querySelectorAll(".edit-holiday-btn").forEach(btn => {
+    btn.addEventListener("click", function() {
+      holidayModalTitle.textContent = "Edit Holiday / Suspension";
+      holidayId.value = this.dataset.holidayId || "";
+      holidayName.value = this.dataset.name || "";
+      holidayDate.value = this.dataset.date || "";
+      holidayType.value = this.dataset.type || "holiday";
+      holidayScope.value = this.dataset.scope || "region";
+      holidayBranch.value = this.dataset.branch || "";
+      holidayNotes.value = this.dataset.notes || "";
+      toggleHolidayBranch();
+      openModal();
+    });
+  });
+
+  holidayForm?.addEventListener("submit", async function(e) {
     e.preventDefault();
 
-    const saveBtn = document.getElementById('saveHolidayBtn');
-    if (saveBtn) {
-      saveBtn.classList.add('pointer-events-none', 'opacity-70');
-      saveBtn.innerHTML = '<iconify-icon icon="ph:spinner-gap-duotone" class="mr-2 animate-spin"></iconify-icon>Saving...';
-    }
+    const formData = new FormData(holidayForm);
+    const id = holidayId.value;
+    const url = id
+      ? `/admin-ui/biometrics/holidays/${id}/update/`
+      : `/admin-ui/biometrics/holidays/create/`;
 
     try {
-      const formData = new FormData(holidayForm);
-
-      const res = await fetch("{% url 'admin_biometrics_add_holiday' %}", {
+      const res = await fetch(url, {
         method: "POST",
         headers: {
           "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
@@ -758,67 +864,16 @@
         throw new Error(data.error || "Failed to save holiday.");
       }
 
-      closeHolidayModal();
-      holidayForm.reset();
-      toggleHolidayBranch();
       window.location.reload();
     } catch (err) {
-      alert(err.message || "Failed to save holiday.");
-    } finally {
-      if (saveBtn) {
-        saveBtn.classList.remove('pointer-events-none', 'opacity-70');
-        saveBtn.innerHTML = '<iconify-icon icon="ph:floppy-disk-duotone" class="mr-2"></iconify-icon>Save Holiday';
-      }
+      alert("❌ " + err.message);
     }
   });
 
-  // ------------------------------
-  // Holiday branch filtering
-  // ------------------------------
-  const attendanceBranchFilter = document.getElementById('attendanceBranchFilter');
-  const holidayCards = document.querySelectorAll('.holiday-card');
-
-  function filterHolidayCards() {
-    const selected = attendanceBranchFilter?.value || '';
-
-    holidayCards.forEach(card => {
-      const branchId = card.getAttribute('data-branch-id') || '';
-      const scope = card.getAttribute('data-scope') || '';
-
-      if (!selected) {
-        card.classList.remove('hidden');
-        return;
-      }
-
-      if (scope === 'nationwide' || scope === 'region' || branchId === selected) {
-        card.classList.remove('hidden');
-      } else {
-        card.classList.add('hidden');
-      }
-    });
-  }
-
-  attendanceBranchFilter?.addEventListener('change', function() {
-    localStorage.setItem('attendance_selected_branch', this.value);
-    filterHolidayCards();
-  });
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const savedBranch = localStorage.getItem('attendance_selected_branch');
-    if (savedBranch && attendanceBranchFilter) {
-      attendanceBranchFilter.value = savedBranch;
-    }
-    filterHolidayCards();
-  });
-
-  // ------------------------------
-  // Holiday delete
-  // ------------------------------
-  document.querySelectorAll('.delete-holiday-btn').forEach(btn => {
-    btn.addEventListener('click', async function () {
-      const holidayId = this.getAttribute('data-holiday-id');
+  document.querySelectorAll(".delete-holiday-btn").forEach(btn => {
+    btn.addEventListener("click", async function() {
+      const holidayId = this.dataset.holidayId;
       if (!holidayId) return;
-
       if (!confirm("Delete this holiday/suspension?")) return;
 
       try {
@@ -827,7 +882,7 @@
           headers: {
             "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
             "Accept": "application/json",
-          }
+          },
         });
 
         const data = await res.json();
@@ -838,57 +893,9 @@
 
         window.location.reload();
       } catch (err) {
-        alert(err.message || "Failed to delete holiday.");
+        alert("❌ " + err.message);
       }
     });
   });
-
-  // ------------------------------
-  // Employee Travel Assignment
-  // ------------------------------
-window.assignTravel = async function(recordId) {
-  console.log("TRAVEL RECORD ID:", recordId);
-
-  if (!recordId) {
-    alert("❌ Missing attendance record ID.");
-    return;
-  }
-
-  const startDate = prompt("Enter START date (YYYY-MM-DD):");
-  if (!startDate) return;
-
-  const endDate = prompt("Enter END date (YYYY-MM-DD):");
-  if (!endDate) return;
-
-  try {
-    const res = await fetch("/admin-ui/travel/add/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
-        "Accept": "application/json",
-      },
-      body: new URLSearchParams({
-        record_id: recordId,
-        start_date: startDate,
-        end_date: endDate
-      })
-    });
-
-    const data = await res.json();
-    console.log("TRAVEL RESPONSE:", data);
-
-    if (!res.ok || !data.ok) {
-      throw new Error(data.error || "Failed to assign travel.");
-    }
-
-    alert("✅ " + data.message);
-    window.location.reload();
-
-  } catch (err) {
-    alert("❌ " + err.message);
-    console.error(err);
-  }
-};
 </script>
 {% endblock %}
