@@ -110,6 +110,15 @@ class UserProfile(models.Model):
     department = models.CharField(max_length=255, blank=True, default="")
     position = models.CharField(max_length=255, blank=True, default="")
 
+
+    biometric_employee_id = models.CharField(
+    max_length=64,
+    blank=True,
+    default="",
+    db_index=True,
+    help_text="Employee ID used by the Hikvision biometric device."
+)
+
     # Base Compensation
     daily_rate = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     monthly_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0)

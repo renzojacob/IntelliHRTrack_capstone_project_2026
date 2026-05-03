@@ -41,10 +41,13 @@ urlpatterns = [
     path("admin-ui/employees/approve/<int:profile_id>/", views.approve_user, name="approve_user"),
     path("admin-ui/employees/reject/<int:profile_id>/", views.reject_user, name="reject_user"),
 
-
+    #Payroll Management
+    path("admin-ui/payroll/", views.admin_payroll, name="admin_payroll"),
+    path("admin-ui/payroll/preview/", views.admin_payroll_preview_api, name="admin_payroll_preview_api"),
+    path("admin-ui/payroll/dtr/<int:profile_id>/", views.admin_employee_dtr_api, name="admin_employee_dtr_api"),
+    path("admin-ui/payroll/process/", views.admin_payroll_process_batch, name="admin_payroll_process_batch"),
 
     path("admin-ui/scheduling/", views.admin_shift_scheduling, name="admin_scheduling"),
-    path("admin-ui/payroll/", views.admin_payroll, name="admin_payroll"),
     path("admin-ui/reports/", views.admin_reports, name="admin_reports"),
     path("admin-ui/analytics/", views.admin_analytics, name="admin_analytics"),
     path("admin-ui/system/", views.admin_system_administration, name="admin_system"),
