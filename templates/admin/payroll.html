@@ -1,1526 +1,1171 @@
-{% extends 'admin/base_admin.html' %}
+{% extends "admin/base_admin.html" %}
+{% load static %}
 
-{% block title %}Payroll & Finance • IntelliHRTrack - MIMAROPA{% endblock %}
+{% block title %}Payroll Management | IntelliHRTrack{% endblock %}
 
 {% block extra_head %}
+{{ block.super }}
 <style>
-    html, body { height: 100%; }
-    .glass { background: linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.76)); backdrop-filter: blur(10px); }
-    .glass-dark { background: linear-gradient(180deg, rgba(31,41,55,0.72), rgba(31,41,55,0.64)); }
-    .neon-divider { height: 1px; background: linear-gradient(90deg, rgba(245,158,11,0), rgba(245,158,11,.6), rgba(245,158,11,0)); }
-    .topbar-progress { position: fixed; left: 0; top: 0; height: 3px; width: 0; z-index: 100; background: linear-gradient(90deg, #f59e0b, #fb923c, #f59e0b); box-shadow: 0 0 12px rgba(251,146,60,.65); transition: width .45s ease; }
-    .fancy-scroll::-webkit-scrollbar { height:10px; width:10px; }
-    .fancy-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #f59e0b, #fb923c); border-radius:9999px; }
-    .fancy-scroll::-webkit-scrollbar-track { background: transparent; }
-    :root { --accent:#14b8a6; --accent-to:#0ea5a0; --card-bg: rgba(255,255,255,0.6); --card-border: rgba(255,255,255,0.35); }
-    html[data-accent="teal"] { --accent:#14b8a6; --accent-to:#0ea5a0; }
-    html[data-accent="purple"] { --accent:#8b5cf6; --accent-to:#7c3aed; }
-    html[data-accent="rose"] { --accent:#f43f5e; --accent-to:#e11d48; }
-    html[data-accent="amber"] { --accent:#f59e0b; --accent-to:#d97706; }
-    .gradient-accent { background-image: linear-gradient(135deg, var(--accent), var(--accent-to)); }
-    .text-accent { color: var(--accent); }
-    .bg-accent { background-color: var(--accent); }
-    .shadow-glow { box-shadow: 0 10px 30px -5px rgba(245,158,11,0.35), 0 8px 16px -8px rgba(59,130,246,0.25); }
-    .big-scroll { scrollbar-width:auto; scrollbar-color: var(--accent) transparent; }
-    .big-scroll::-webkit-scrollbar { width:16px; height:16px; }
-    .big-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), var(--accent-to)); border-radius:12px; border:3px solid transparent; background-clip: content-box; }
-    .dark aside[data-resizable] .glass { background: linear-gradient(180deg, rgba(31,41,55,0.72), rgba(31,41,55,0.64)); }
-    aside[data-resizable] .glass { border: 1px solid rgba(255,255,255,0.35); }
-    .dark aside[data-resizable] .glass { border-color: rgba(71,85,105,0.6); }
-    #sideNavList a { font-size: 0.95rem; line-height: 1.6; }
-    #sideNavList a iconify-icon { font-size: 1.05rem; }
-    aside[data-resizable] nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 0.75rem; }
-    aside[data-resizable] nav a[aria-current="page"] {
-        background-image: linear-gradient(135deg, var(--accent), var(--accent-to));
-        color: #fff !important;
-        box-shadow: 0 10px 25px -8px rgba(20,184,166,.45);
-    }
-    aside[data-resizable] nav a[aria-current="page"] iconify-icon { color: #fff !important; }
-    #section-top.glass { border: 1px solid rgba(255,255,255,0.35); }
-    .dark #section-top.glass { border-color: rgba(71,85,105,0.6); background: linear-gradient(180deg, rgba(31,41,55,0.72), rgba(31,41,55,0.64)); }
-    #section-top .text-xs.glass { font-size: 0.85rem; line-height: 1.5; }
-    #section-top button, #section-top a { font-size: 0.95rem; }
-    #section-top button:focus-visible, #section-top a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 0.75rem; }
-    .dark #section-top .rounded-xl.glass { border-color: rgba(71,85,105,0.6); }
-</style>
-<style>
-    body {
-        background-color: #ffffff;
-        background-image:
-            radial-gradient(1200px 600px at -10% -20%, rgba(245, 158, 11, 0.18), transparent),
-            radial-gradient(900px 500px at 110% 10%, rgba(251, 146, 60, 0.14), transparent);
-    }
-    .dark body {
-        background-color: #0f172a;
-        background-image:
-            radial-gradient(1200px 600px at -10% -20%, rgba(245, 158, 11, 0.12), transparent),
-            radial-gradient(900px 500px at 110% 10%, rgba(251, 146, 60, 0.10), transparent);
-    }
-</style>
-<style>
-    .js-only{ display:none !important }
-    .payroll-tab { outline: none }
-    .peso:before { content: "₱"; }
-    .sticky-action-bar { position: sticky; top: 1rem; z-index: 40; }
-    .dtr-watermark { position: absolute; opacity: 0.1; font-size: 4rem; font-weight: bold; transform: rotate(-45deg); pointer-events: none; user-select: none; }
-    .readonly-field { background-color: #f9fafb; cursor: not-allowed; }
-</style>
+  .kpi-value,
+  .counter-number {
+    font-feature-settings: "tnum";
+    font-variant-numeric: tabular-nums;
+  }
 
-<meta name="csrf-token" content="{{ csrf_token }}">
+  .glass-premium {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark .glass-premium {
+    background: rgba(15, 23, 42, 0.65);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+
+  .card-hover-effect {
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease;
+  }
+
+  .card-hover-effect:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.2);
+  }
+
+  .animate-in-up {
+    animation: slideUpFade 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards;
+    opacity: 0;
+  }
+
+  @keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .expand-detail-row {
+    background: rgba(16, 185, 129, 0.03);
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    backdrop-filter: blur(4px);
+    white-space: nowrap;
+  }
+
+  .status-chip.green { background: rgba(16,185,129,0.2); color: #10b981; }
+  .status-chip.amber { background: rgba(245,158,11,0.2); color: #f59e0b; }
+  .status-chip.red { background: rgba(244,63,94,0.2); color: #f43f5e; }
+  .status-chip.blue { background: rgba(59,130,246,0.2); color: #3b82f6; }
+  .status-chip.purple { background: rgba(139,92,246,0.2); color: #8b5cf6; }
+  .status-chip.gray { background: rgba(100,116,139,0.2); color: #64748b; }
+
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: rgba(255,255,255,0.4);
+    border: 1px solid rgba(255,255,255,0.3);
+    backdrop-filter: blur(8px);
+  }
+
+  .dark .filter-chip {
+    background: rgba(30,41,59,0.6);
+  }
+
+  .filter-chip.active {
+    background: rgba(16,185,129,0.16);
+    color: var(--accent);
+    border-color: rgba(16,185,129,0.45);
+  }
+
+  .btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.75;
+  }
+
+  .btn-loading::after {
+    content: "";
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    top: 50%;
+    left: 1rem;
+    border: 2px solid white;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 0.6s linear infinite;
+    transform: translateY(-50%);
+  }
+
+  @keyframes spin {
+    to { transform: translateY(-50%) rotate(360deg); }
+  }
+
+  .modal-entrance {
+    animation: modalPop 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+
+  @keyframes modalPop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .gradient-border-bottom {
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    height: 2px;
+    width: 100%;
+  }
+
+  .payroll-scroll {
+    scrollbar-width: thin;
+  }
+
+  .payroll-scroll::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  .payroll-scroll::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.55);
+    border-radius: 9999px;
+  }
+
+  .expand-btn[aria-expanded="true"] iconify-icon {
+    transform: rotate(180deg);
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<div id="topbarProgress" class="topbar-progress"></div>
+<div class="space-y-7 animate-in-up">
 
-<!-- Top Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex justify-between items-start">
-            <div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Total Payroll This Month</p>
-                <h3 class="text-2xl font-extrabold mt-1 peso">
-                    {% if total_payroll %}{{ total_payroll|floatformat:2 }}{% else %}0.00{% endif %}
-                </h3>
-                <p class="text-xs text-green-600 mt-2 flex items-center"><iconify-icon icon="ph:arrow-up-right-duotone" class="mr-1"></iconify-icon>MIMAROPA Region</p>
-            </div>
-            <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:currency-dollar-duotone" class="text-xl"></iconify-icon></div>
+  <form id="csrfOnlyForm" class="hidden">
+    {% csrf_token %}
+  </form>
+
+  <!-- Header -->
+  <div class="relative overflow-hidden glass-premium rounded-2xl p-6 border border-white/30 shadow-xl">
+    <div class="absolute inset-0 bg-gradient-to-r from-accent/5 via-transparent to-accent/5 pointer-events-none"></div>
+
+    <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="p-3 rounded-2xl gradient-accent text-white shadow-lg ring-1 ring-white/30">
+          <iconify-icon icon="ph:currency-dollar-duotone" class="text-3xl"></iconify-icon>
         </div>
+
+        <div>
+          <div class="flex items-center gap-3 flex-wrap">
+            <h1 class="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+              Payroll Management
+            </h1>
+
+            <span class="px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 shadow-sm flex items-center gap-1">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              {{ payroll_status|default:"Draft Mode" }}
+            </span>
+          </div>
+
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            JO & COS Employees · Automatic deductions · Branch-scoped computation
+          </p>
+
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="filter-chip active">
+              <iconify-icon icon="ph:buildings-duotone"></iconify-icon>
+              {% if is_superadmin %}
+                {% if selected_branch_name %}{{ selected_branch_name }}{% else %}Superadmin View{% endif %}
+              {% else %}
+                {{ request.user.profile.branch.name|default:"Assigned Branch" }}
+              {% endif %}
+            </span>
+
+            <span class="filter-chip active">
+              <iconify-icon icon="ph:calendar-duotone"></iconify-icon>
+              {{ selected_period.name|default:"No selected period" }}
+            </span>
+
+            <span class="filter-chip">
+              <iconify-icon icon="ph:lock-simple-duotone"></iconify-icon>
+              Late/undertime auto-computed
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button id="previewPayrollBtn"
+                type="button"
+                class="px-5 py-2.5 rounded-xl glass-premium border border-white/40 hover:shadow-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium hover:translate-y-[-1px] active:scale-[0.98]">
+          <iconify-icon icon="ph:eye-duotone" class="text-accent text-lg"></iconify-icon>
+          Preview Payroll
+        </button>
+
+        <button id="processPayrollBtn"
+                type="button"
+                class="px-5 py-2.5 rounded-xl gradient-accent text-white shadow-md hover:shadow-glow transition-all duration-200 flex items-center gap-2 text-sm font-medium hover:translate-y-[-1px] active:scale-[0.98]">
+          <iconify-icon icon="ph:play-circle-duotone" class="text-lg"></iconify-icon>
+          Process Payroll
+        </button>
+
+        <button id="exportPayrollBtn"
+                type="button"
+                class="px-5 py-2.5 rounded-xl glass-premium border border-white/40 hover:shadow-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium hover:translate-y-[-1px] active:scale-[0.98]">
+          <iconify-icon icon="ph:printer-duotone" class="text-accent text-lg"></iconify-icon>
+          Export / Print
+        </button>
+      </div>
     </div>
 
-    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex justify-between items-start">
-            <div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Pending Approval</p>
-                <h3 class="text-2xl font-extrabold mt-1 peso">
-                    {% if pending_approval %}{{ pending_approval|floatformat:2 }}{% else %}0.00{% endif %}
-                </h3>
-                <p class="text-xs text-yellow-600 mt-2 flex items-center"><iconify-icon icon="ph:clock-duotone" class="mr-1"></iconify-icon>Awaiting review</p>
+    <div class="gradient-border-bottom mt-4 opacity-60"></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="glass-premium rounded-2xl p-5 border border-white/30">
+    <form method="get" id="payrollFilterForm" class="space-y-5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1">
+            <iconify-icon icon="ph:buildings-duotone" class="text-accent"></iconify-icon>
+            Branch
+          </label>
+
+          {% if is_superadmin %}
+            <select name="branch" id="branchSelect"
+                    class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60 transition">
+              <option value="">Select Branch</option>
+              {% for branch in branches %}
+                <option value="{{ branch.id }}" {% if selected_branch == branch.id or selected_branch|stringformat:"s" == branch.id|stringformat:"s" %}selected{% endif %}>
+                  {{ branch.name }}
+                </option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <div class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm bg-white/30 dark:bg-slate-800/40 flex items-center gap-2">
+              <iconify-icon icon="ph:lock-simple-duotone" class="text-accent"></iconify-icon>
+              <span>{{ request.user.profile.branch.name|default:"Assigned Branch" }}</span>
             </div>
-            <div class="p-3 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:hourglass-duotone" class="text-xl"></iconify-icon></div>
+            <input type="hidden" name="branch" value="{{ request.user.profile.branch.id }}">
+          {% endif %}
         </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1">
+            <iconify-icon icon="ph:calendar-duotone" class="text-accent"></iconify-icon>
+            Payroll Period
+          </label>
+
+          <select name="period"
+                  class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60">
+            {% for period in payroll_periods %}
+              <option value="{{ period.id }}" {% if selected_period == period.id or selected_period.id == period.id or selected_period|stringformat:"s" == period.id|stringformat:"s" %}selected{% endif %}>
+                {{ period.name }} ({{ period.start_date|date:"M d" }} - {{ period.end_date|date:"M d, Y" }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+            Employee Type
+          </label>
+
+          <select name="type"
+                  class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60">
+            <option value="ALL" {% if request.GET.type == "ALL" or not request.GET.type %}selected{% endif %}>All (JO + COS)</option>
+            <option value="JO" {% if request.GET.type == "JO" %}selected{% endif %}>Job Order (JO)</option>
+            <option value="COS" {% if request.GET.type == "COS" %}selected{% endif %}>Contract of Service (COS)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+            Pay Mode
+          </label>
+
+          <select name="pay_mode"
+                  class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60">
+            <option value="">All Modes</option>
+            <option value="MONTHLY" {% if request.GET.pay_mode == "MONTHLY" %}selected{% endif %}>Monthly</option>
+            <option value="FIRST_HALF" {% if request.GET.pay_mode == "FIRST_HALF" %}selected{% endif %}>Kinsenas</option>
+            <option value="SECOND_HALF" {% if request.GET.pay_mode == "SECOND_HALF" %}selected{% endif %}>Katapusan</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+            Search Employee
+          </label>
+
+          <input type="text"
+                 name="search"
+                 value="{{ request.GET.search }}"
+                 placeholder="Name or ID..."
+                 class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60">
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div id="activeFilterChips" class="flex flex-wrap gap-2 text-xs">
+          {% if request.GET.type and request.GET.type != "ALL" %}
+            <span class="filter-chip active">
+              <iconify-icon icon="ph:users-duotone"></iconify-icon>
+              {{ request.GET.type }}
+              <button type="button" class="remove-chip ml-1" data-filter="type">✕</button>
+            </span>
+          {% endif %}
+
+          {% if request.GET.pay_mode %}
+            <span class="filter-chip active">
+              <iconify-icon icon="ph:bank-duotone"></iconify-icon>
+              {{ request.GET.pay_mode }}
+              <button type="button" class="remove-chip ml-1" data-filter="pay_mode">✕</button>
+            </span>
+          {% endif %}
+
+          {% if request.GET.search %}
+            <span class="filter-chip active">
+              <iconify-icon icon="ph:magnifying-glass-duotone"></iconify-icon>
+              {{ request.GET.search }}
+              <button type="button" class="remove-chip ml-1" data-filter="search">✕</button>
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button type="submit"
+                  class="px-5 py-2 rounded-xl gradient-accent text-white shadow-md hover:shadow-glow text-sm transition">
+            Apply
+          </button>
+
+          <button type="button"
+                  id="resetFilters"
+                  class="px-5 py-2 rounded-xl glass-premium border border-white/30 hover:shadow-md text-sm transition">
+            Reset
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
+
+    <div class="glass-premium rounded-2xl p-5 border border-white/30 card-hover-effect">
+      <div class="flex justify-between items-start">
+        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Net Payroll</span>
+        <div class="p-2 rounded-xl bg-accent/10 text-accent">
+          <iconify-icon icon="ph:currency-circle-dollar-duotone" class="text-xl"></iconify-icon>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <span class="text-2xl font-bold kpi-value counter-number"
+              data-prefix="₱"
+              data-decimals="2"
+              data-target="{{ total_payroll|default:'0' }}">₱0.00</span>
+      </div>
+
+      <div class="text-xs text-gray-400 mt-2">
+        {% if payroll_trend_percent %}
+          Trend: {{ payroll_trend_percent }}%
+        {% else %}
+          Current selected period
+        {% endif %}
+      </div>
     </div>
 
-    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex justify-between items-start">
-            <div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Attendance Deductions</p>
-                <h3 class="text-2xl font-extrabold mt-1 peso">
-                    {% if attendance_deductions %}{{ attendance_deductions|floatformat:2 }}{% else %}0.00{% endif %}
-                </h3>
-                <p class="text-xs text-red-600 mt-2 flex items-center">
-                    <iconify-icon icon="ph:warning-circle-duotone" class="mr-1"></iconify-icon>
-                    Late/Undertime/Absence
-                </p>
-            </div>
-            <div class="p-3 bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:clock-afternoon-duotone" class="text-xl"></iconify-icon></div>
-        </div>
+    <div class="glass-premium rounded-2xl p-5 card-hover-effect">
+      <div class="flex justify-between">
+        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Employees Included</span>
+        <iconify-icon icon="ph:users-three-duotone" class="text-accent text-xl"></iconify-icon>
+      </div>
+
+      <div class="mt-3">
+        <span class="text-2xl font-bold counter-number"
+              data-prefix=""
+              data-decimals="0"
+              data-target="{{ employees|length|default:'0' }}">0</span>
+      </div>
+
+      <div class="text-xs text-gray-400 mt-2">JO/COS only</div>
     </div>
 
-    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl p-6 border border-white/30 dark:border-gray-700/60 hover:shadow-2xl transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex justify-between items-start">
-            <div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Government Contributions</p>
-                <h3 class="text-2xl font-extrabold mt-1 peso">
-                    {% if gov_contributions %}{{ gov_contributions|floatformat:2 }}{% else %}0.00{% endif %}
-                </h3>
-                <p class="text-xs text-blue-600 mt-2 flex items-center">
-                    <iconify-icon icon="ph:percent-duotone" class="mr-1"></iconify-icon>
-                    SSS/PhilHealth/Pag-IBIG
-                </p>
-            </div>
-            <div class="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg text-white"><iconify-icon icon="ph:receipt-duotone" class="text-xl"></iconify-icon></div>
-        </div>
+    <div class="glass-premium rounded-2xl p-5 card-hover-effect">
+      <div class="flex justify-between">
+        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Attendance Deductions</span>
+        <iconify-icon icon="ph:clock-duotone" class="text-rose-400 text-xl"></iconify-icon>
+      </div>
+
+      <div class="mt-3">
+        <span class="text-2xl font-bold counter-number"
+              data-prefix="₱"
+              data-decimals="2"
+              data-target="{{ attendance_deductions|default:'0' }}">₱0.00</span>
+      </div>
+
+      <div class="text-xs text-rose-400 flex items-center gap-1 mt-2">
+        <iconify-icon icon="ph:warning-duotone"></iconify-icon>
+        Late + undertime
+      </div>
     </div>
+
+    <div class="glass-premium rounded-2xl p-5 card-hover-effect">
+      <div class="flex justify-between">
+        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Gov Contributions</span>
+        <iconify-icon icon="ph:shield-duotone" class="text-blue-400 text-xl"></iconify-icon>
+      </div>
+
+      <div class="mt-3">
+        <span class="text-2xl font-bold counter-number"
+              data-prefix="₱"
+              data-decimals="2"
+              data-target="{{ gov_contributions|default:'0' }}">₱0.00</span>
+      </div>
+
+      <div class="text-xs text-gray-400 mt-2">SSS / PhilHealth / Pag-IBIG</div>
+    </div>
+
+    <div class="glass-premium rounded-2xl p-5 card-hover-effect">
+      <div class="flex justify-between">
+        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">On Travel Count</span>
+        <iconify-icon icon="ph:airplane-tilt-duotone" class="text-amber-400 text-xl"></iconify-icon>
+      </div>
+
+      <div class="mt-3">
+        <span class="text-2xl font-bold counter-number"
+              data-prefix=""
+              data-decimals="0"
+              data-target="{{ travel_count|default:'0' }}">0</span>
+      </div>
+
+      <div class="text-xs text-gray-400 mt-2">Official travel days</div>
+    </div>
+
+    <div class="glass-premium rounded-2xl p-5 card-hover-effect">
+      <div class="flex justify-between">
+        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Payroll Status</span>
+        <iconify-icon icon="ph:circle-wavy-check-duotone" class="text-emerald-400 text-xl"></iconify-icon>
+      </div>
+
+      <div class="mt-3">
+        <span class="text-xl font-bold">{{ payroll_status|default:"Draft" }}</span>
+      </div>
+
+      <div class="text-xs text-gray-400 mt-2">{{ selected_period.name|default:"No period" }}</div>
+    </div>
+  </div>
+
+  <!-- Payroll Rules -->
+  <div class="glass-premium rounded-2xl p-5 border border-white/30">
+    <div class="flex items-center justify-between flex-wrap gap-2 border-b border-white/20 pb-3 mb-4">
+      <h2 class="text-lg font-semibold flex items-center gap-2">
+        <iconify-icon icon="ph:gear-duotone" class="text-accent"></iconify-icon>
+        Payroll Rules & Configuration
+      </h2>
+
+      <div class="text-xs bg-accent/10 px-3 py-1.5 rounded-full backdrop-blur-sm">
+        Auto-computed deductions
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
+      <div class="glass-premium p-3 rounded-xl text-center group relative">
+        <iconify-icon icon="ph:calculator-duotone" class="text-accent text-lg mx-auto"></iconify-icon>
+        <div class="text-xs text-gray-500 mt-1">Salary Divisor</div>
+        <div class="font-bold">{{ salary_divisor|default:"22" }} days</div>
+      </div>
+
+      <div class="glass-premium p-3 rounded-xl text-center">
+        <iconify-icon icon="ph:percent-duotone" class="text-accent text-lg"></iconify-icon>
+        <div class="text-xs">Premium Rate</div>
+        <div class="font-bold">{{ payroll_rules.premium_rate_percent|default:"20" }}%</div>
+      </div>
+
+      <div class="glass-premium p-3 rounded-xl text-center">
+        <iconify-icon icon="ph:heartbeat-duotone" class="text-accent text-lg"></iconify-icon>
+        <div class="text-xs">PhilHealth</div>
+        <div class="font-bold">
+          {{ payroll_rules.philhealth_default_value|default:"5" }}%
+        </div>
+      </div>
+
+      <div class="glass-premium p-3 rounded-xl text-center">
+        <iconify-icon icon="ph:receipt-duotone" class="text-accent text-lg"></iconify-icon>
+        <div class="text-xs">Tax Rate</div>
+        <div class="font-bold">{{ payroll_rules.tax_rate_percent|default:"5" }}%</div>
+      </div>
+
+      <div class="glass-premium p-3 rounded-xl text-center">
+        <iconify-icon icon="ph:building-office-duotone" class="text-accent text-lg"></iconify-icon>
+        <div class="text-xs">SSS Min</div>
+        <div class="font-bold">₱{{ sss_minimum|default:"760.00" }}</div>
+      </div>
+
+      <div class="glass-premium p-3 rounded-xl text-center">
+        <iconify-icon icon="ph:house-duotone" class="text-accent text-lg"></iconify-icon>
+        <div class="text-xs">Pag-IBIG Min</div>
+        <div class="font-bold">₱{{ pagibig_minimum|default:"400.00" }}</div>
+      </div>
+
+      <div class="glass-premium p-3 rounded-xl text-center">
+        <iconify-icon icon="ph:clock-duotone" class="text-accent text-lg"></iconify-icon>
+        <div class="text-xs">OT Multiplier</div>
+        <div class="font-bold">{{ ot_multiplier|default:"1.25" }}x</div>
+      </div>
+    </div>
+
+    <div class="mt-5 p-3 rounded-xl bg-accent/5 border border-accent/20 text-sm flex items-start gap-3">
+      <iconify-icon icon="ph:info-duotone" class="text-accent text-xl shrink-0"></iconify-icon>
+      <div>
+        <strong class="text-accent">Late & undertime deductions are automatic.</strong>
+        Daily Rate = Monthly Rate / {{ salary_divisor|default:"22" }} → Hourly Rate = Daily Rate / 8 → Per-Minute Rate = Hourly Rate / 60.
+        No manual deduction-per-minute override is allowed.
+      </div>
+    </div>
+  </div>
+
+  <!-- Employee Payroll Table -->
+  <div class="glass-premium rounded-2xl p-5 border border-white/30 overflow-hidden">
+    <div class="flex justify-between items-center flex-wrap gap-3 mb-4">
+      <h2 class="text-lg font-semibold flex items-center gap-2">
+        <iconify-icon icon="ph:table-duotone" class="text-accent"></iconify-icon>
+        Employee Payroll Summary
+      </h2>
+
+      <span class="text-xs bg-accent/10 px-3 py-1 rounded-full">JO / COS only</span>
+    </div>
+
+    <div class="overflow-x-auto payroll-scroll">
+      <table class="w-full min-w-[1600px] text-sm" id="payrollTable">
+        <thead class="sticky top-0 z-10 glass-premium backdrop-blur-md">
+          <tr class="text-left text-gray-600 dark:text-gray-300 border-b border-white/20">
+            <th class="py-3 pr-3 font-semibold">Details</th>
+            <th class="py-3 pr-3 font-semibold">Employee</th>
+            <th class="py-3 pr-3 font-semibold">Type</th>
+            <th class="py-3 pr-3 font-semibold">Branch</th>
+            <th class="py-3 pr-3 font-semibold">Present</th>
+            <th class="py-3 pr-3 font-semibold">Travel</th>
+            <th class="py-3 pr-3 font-semibold">Holiday/Susp.</th>
+            <th class="py-3 pr-3 font-semibold">Late</th>
+            <th class="py-3 pr-3 font-semibold">Undertime</th>
+            <th class="py-3 pr-3 font-semibold">Absences</th>
+            <th class="py-3 pr-3 font-semibold">Base Pay</th>
+            <th class="py-3 pr-3 font-semibold">Premium</th>
+            <th class="py-3 pr-3 font-semibold">OT Pay</th>
+            <th class="py-3 pr-3 font-semibold">Gov</th>
+            <th class="py-3 pr-3 font-semibold">Tax</th>
+            <th class="py-3 pr-3 font-semibold">Deductions</th>
+            <th class="py-3 pr-3 font-semibold">Net Pay</th>
+            <th class="py-3 pr-3 font-semibold">Issues</th>
+            <th class="py-3 pr-3 font-semibold">Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for employee in employees %}
+          <tr class="border-b border-white/10 hover:bg-white/10 dark:hover:bg-slate-800/40 transition-all duration-150 payroll-row"
+              data-employee-id="{{ employee.id }}">
+
+            <td class="py-3 pr-3">
+              <button type="button"
+                      class="expand-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
+                      aria-expanded="false"
+                      data-target="{{ employee.id }}">
+                <iconify-icon icon="ph:caret-down-bold" class="text-accent transition-transform"></iconify-icon>
+              </button>
+            </td>
+
+            <td class="py-3 pr-3 font-medium">
+              {{ employee.name|default:employee.full_name|default:employee.user.username }}
+              <div class="text-xs text-gray-400">ID: {{ employee.employee_id|default:employee.id }}</div>
+            </td>
+
+            <td class="py-3 pr-3">
+              <span class="status-chip {% if employee.employment_type == 'JO' or employee.emp_type == 'JO' or employee.type == 'JO' %}amber{% else %}green{% endif %}">
+                {{ employee.employment_type|default:employee.emp_type|default:employee.type }}
+              </span>
+            </td>
+
+            <td class="py-3 pr-3">
+              {{ employee.branch_name|default:employee.branch.name }}
+            </td>
+
+            <td class="py-3 pr-3">{{ employee.attendance_summary.days_present|default:employee.days_present|default:0 }}</td>
+            <td class="py-3 pr-3">{{ employee.travel_days|default:0 }}</td>
+            <td class="py-3 pr-3">{{ employee.holidays_suspensions|default:0 }}</td>
+
+            <td class="py-3 pr-3 {% if employee.attendance_summary.total_late_minutes > 0 or employee.late_minutes > 0 %}text-rose-400 font-medium{% endif %}">
+              {{ employee.attendance_summary.total_late_minutes|default:employee.late_minutes|default:0 }}
+            </td>
+
+            <td class="py-3 pr-3 {% if employee.attendance_summary.total_undertime_minutes > 0 or employee.undertime_minutes > 0 %}text-orange-400 font-medium{% endif %}">
+              {{ employee.attendance_summary.total_undertime_minutes|default:employee.undertime_minutes|default:0 }}
+            </td>
+
+            <td class="py-3 pr-3">{{ employee.attendance_summary.days_absent|default:employee.absences|default:0 }}</td>
+
+            <td class="py-3 pr-3">₱{{ employee.base_pay|default:employee.computed_payroll.base|default:"0.00" }}</td>
+            <td class="py-3 pr-3">₱{{ employee.premium|default:employee.computed_payroll.premium|default:"0.00" }}</td>
+            <td class="py-3 pr-3">₱{{ employee.ot_pay|default:employee.computed_payroll.ot|default:"0.00" }}</td>
+            <td class="py-3 pr-3">₱{{ employee.gov_contributions|default:employee.gov_contributions_total|default:"0.00" }}</td>
+            <td class="py-3 pr-3">₱{{ employee.tax|default:employee.tax_total|default:"0.00" }}</td>
+            <td class="py-3 pr-3">₱{{ employee.deductions|default:employee.deductions_total|default:"0.00" }}</td>
+
+            <td class="py-3 pr-3 font-bold text-accent" title="Base + OT + Premium - deductions">
+              ₱{{ employee.net_pay|default:employee.computed_payroll.net|default:"0.00" }}
+            </td>
+
+            <td class="py-3 pr-3">
+              {% if employee.issues %}
+                <span class="inline-flex items-center gap-1 text-amber-400" title="{{ employee.issues }}">
+                  <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
+                </span>
+              {% elif employee.attendance_summary.has_missing_logs %}
+                <span class="inline-flex items-center gap-1 text-amber-400" title="Missing attendance logs">
+                  <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
+                </span>
+              {% else %}
+                <iconify-icon icon="ph:check-circle-duotone" class="text-emerald-400"></iconify-icon>
+              {% endif %}
+            </td>
+
+            <td class="py-3 pr-3">
+              <div class="flex gap-2">
+                <button type="button"
+                        class="view-dtr-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
+                        data-employee-id="{{ employee.id }}"
+                        data-employee-name="{{ employee.name|default:employee.full_name|default:employee.user.username }}"
+                        data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escapejs }}'>
+                  <iconify-icon icon="ph:calendar-check-duotone" class="text-accent text-lg"></iconify-icon>
+                </button>
+
+                <button type="button"
+                        class="print-dtr-single p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
+                        data-employee-id="{{ employee.id }}"
+                        data-employee-name="{{ employee.name|default:employee.full_name|default:employee.user.username }}">
+                  <iconify-icon icon="ph:printer-duotone" class="text-accent text-lg"></iconify-icon>
+                </button>
+              </div>
+            </td>
+          </tr>
+
+          <tr class="expand-detail-row hidden" data-detail-for="{{ employee.id }}">
+            <td colspan="19" class="p-4">
+              <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
+                <div class="glass-premium p-3 rounded-lg">
+                  <span class="text-gray-500">Daily Rate</span>
+                  <strong class="block mt-1">₱{{ employee.daily_rate|default:"0.00" }}</strong>
+                </div>
+
+                <div class="glass-premium p-3 rounded-lg">
+                  <span class="text-gray-500">Hourly Rate</span>
+                  <strong class="block mt-1">₱{{ employee.hourly_rate|default:"0.00" }}</strong>
+                </div>
+
+                <div class="glass-premium p-3 rounded-lg">
+                  <span class="text-gray-500">Per-Minute Rate</span>
+                  <strong class="block mt-1">₱{{ employee.per_minute_rate|default:"0.00" }}</strong>
+                </div>
+
+                <div class="glass-premium p-3 rounded-lg">
+                  <span class="text-gray-500">Late Deduction</span>
+                  <strong class="block mt-1 text-rose-400">₱{{ employee.late_deduction|default:"0.00" }}</strong>
+                </div>
+
+                <div class="glass-premium p-3 rounded-lg">
+                  <span class="text-gray-500">Undertime Deduction</span>
+                  <strong class="block mt-1 text-orange-400">₱{{ employee.undertime_deduction|default:"0.00" }}</strong>
+                </div>
+
+                <div class="glass-premium p-3 rounded-lg">
+                  <span class="text-gray-500">OT Eligibility</span>
+                  <strong class="block mt-1">{{ employee.ot_status|default:"Computed by backend" }}</strong>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          {% empty %}
+          <tr>
+            <td colspan="19" class="text-center py-10 text-gray-400">
+              No JO/COS employees match the selected filters.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DTR Modal -->
+  <div id="dtrModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 backdrop-blur-md transition-all duration-300">
+    <div class="absolute inset-0 bg-slate-900/70" id="dtrModalBackdrop"></div>
+
+    <div class="relative glass-premium rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl modal-entrance">
+      <div class="flex justify-between items-center p-5 border-b border-white/20 bg-white/20 dark:bg-slate-800/30 sticky top-0">
+        <h3 class="text-xl font-bold flex items-center gap-2">
+          <iconify-icon icon="ph:calendar-duotone" class="text-accent"></iconify-icon>
+          Daily Time Record —
+          <span id="dtrEmployeeName"></span>
+        </h3>
+
+        <button type="button" id="closeDtrModal" class="p-2 rounded-full glass-premium hover:bg-white/30 transition">
+          <iconify-icon icon="ph:x-duotone" class="text-xl"></iconify-icon>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto p-5 payroll-scroll max-h-[75vh]">
+        <div id="dtrSummary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"></div>
+
+        <div class="flex justify-end mb-3">
+          <button type="button" id="printDtrFromModal" class="px-4 py-2 rounded-xl glass-premium hover:shadow-md text-sm flex items-center gap-2">
+            <iconify-icon icon="ph:printer-duotone"></iconify-icon>
+            Print DTR
+          </button>
+        </div>
+
+        <div class="overflow-x-auto payroll-scroll">
+          <table class="w-full min-w-[1000px] text-sm">
+            <thead class="sticky top-0 glass-premium">
+              <tr class="text-left text-gray-600 dark:text-gray-300">
+                <th class="p-2">Date</th>
+                <th>Day</th>
+                <th>AM In</th>
+                <th>AM Out</th>
+                <th>PM In</th>
+                <th>PM Out</th>
+                <th>Total Hrs</th>
+                <th>Late</th>
+                <th>Undertime</th>
+                <th>Status</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="dtrTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch History -->
+  <div class="glass-premium rounded-2xl p-5 border border-white/30">
+    <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
+      <iconify-icon icon="ph:history-duotone" class="text-accent"></iconify-icon>
+      Payroll Batch History
+    </h2>
+
+    <div class="overflow-x-auto payroll-scroll">
+      <table class="w-full min-w-[900px] text-sm">
+        <thead class="border-b border-white/20">
+          <tr class="text-left text-gray-500">
+            <th class="pb-2">Batch Name</th>
+            <th>Branch</th>
+            <th>Period</th>
+            <th>Status</th>
+            <th>Processed By</th>
+            <th>Processed At</th>
+            <th>Total Net</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for batch in payroll_batches %}
+          <tr class="border-b border-white/10 hover:bg-white/5 transition">
+            <td class="py-2 font-medium">{{ batch.name }}</td>
+            <td>{{ batch.branch.name|default:batch.branch_name }}</td>
+            <td>{{ batch.period.name|default:batch.period_name }}</td>
+            <td>
+              <span class="status-chip {% if batch.status == 'completed' or batch.status == 'Completed' %}green{% else %}amber{% endif %}">
+                {{ batch.status }}
+              </span>
+            </td>
+            <td>{{ batch.processed_by.username|default:batch.processed_by|default:"—" }}</td>
+            <td>{{ batch.processed_at|date:"Y-m-d H:i"|default:"—" }}</td>
+            <td class="font-semibold">₱{{ batch.totals_net|default:batch.total_net|default:"0.00" }}</td>
+            <td>
+              <button type="button" class="viewBatchBtn text-accent text-xs underline-offset-2 hover:underline" data-batch-id="{{ batch.id }}">
+                View / Print
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="py-6 text-center text-gray-400">No previous batches found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Validation Panel -->
+  <div class="rounded-2xl p-5 border border-amber-200/50 bg-amber-50/40 dark:bg-amber-900/20 dark:border-amber-800/30 backdrop-blur-sm">
+    <div class="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-4">
+      <iconify-icon icon="ph:warning-triangle-duotone" class="text-2xl"></iconify-icon>
+      <h3 class="font-semibold">Validation & Warnings</h3>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
+        <iconify-icon icon="ph:clock-countdown-duotone" class="text-amber-500"></iconify-icon>
+        Missing checkout logs:
+        <span class="font-mono font-bold ml-auto">{{ missing_checkout_count|default:0 }}</span>
+      </div>
+
+      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
+        <iconify-icon icon="ph:fork-knife-duotone" class="text-amber-500"></iconify-icon>
+        Missing lunch logs:
+        <span class="font-mono font-bold ml-auto">{{ missing_lunch_count|default:0 }}</span>
+      </div>
+
+      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
+        <iconify-icon icon="ph:currency-circle-dollar-duotone" class="text-amber-500"></iconify-icon>
+        No salary configured:
+        <span class="font-mono font-bold ml-auto">{{ no_salary_count|default:0 }}</span>
+      </div>
+
+      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
+        <iconify-icon icon="ph:shield-duotone" class="text-blue-500"></iconify-icon>
+        Contribution missing:
+        <span class="font-mono font-bold ml-auto">{{ missing_contribution_count|default:0 }}</span>
+      </div>
+
+      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
+        <iconify-icon icon="ph:airplane-tilt-duotone" class="text-purple-500"></iconify-icon>
+        Active travel orders:
+        <span class="font-mono font-bold ml-auto">{{ travel_count|default:0 }}</span>
+      </div>
+
+      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
+        <iconify-icon icon="ph:calendar-x-duotone" class="text-rose-500"></iconify-icon>
+        OT disqualified:
+        <span class="font-mono font-bold ml-auto">{{ ot_disqualified_count|default:0 }}</span>
+      </div>
+    </div>
+  </div>
+
 </div>
 
-<!-- Tabs Wrapper -->
-<div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-2xl shadow-xl border border-white/30 dark:border-gray-700/60 overflow-hidden">
-    <div class="border-b border-white/30 dark:border-gray-700/60 overflow-x-auto">
-        <nav class="flex -mb-px">
-            <button id="payroll-processing-tab" class="payroll-tab py-4 px-6 text-center border-b-2 border-amber-500 text-amber-500 dark:text-amber-400 font-medium flex items-center whitespace-nowrap">
-                <iconify-icon icon="ph:calculator-duotone" class="mr-2"></iconify-icon>
-                Payroll Processing
-            </button>
-            <button id="payroll-setup-tab" class="payroll-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
-                <iconify-icon icon="ph:gear-duotone" class="mr-2"></iconify-icon>
-                Payroll Setup
-            </button>
-            <button id="salary-structure-tab" class="payroll-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
-                <iconify-icon icon="ph:chart-bar-duotone" class="mr-2"></iconify-icon>
-                Salary Structure
-            </button>
-            <button id="payroll-history-tab" class="payroll-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
-                <iconify-icon icon="ph:clock-counter-clockwise-duotone" class="mr-2"></iconify-icon>
-                Payroll History
-            </button>
-            <button id="financial-dashboard-tab" class="payroll-tab py-4 px-6 text-center border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium flex items-center whitespace-nowrap">
-                <iconify-icon icon="ph:chart-line-up-duotone" class="mr-2"></iconify-icon>
-                Financial Dashboard
-            </button>
-        </nav>
-    </div>
-
-    <div class="p-6">
-        <!-- Payroll Processing Content (Default) -->
-        <div id="payroll-processing-content" class="payroll-content">
-            <div class="sticky-action-bar bg-white/90 dark:bg-gray-800/90 backdrop-blur rounded-xl p-4 mb-6 shadow-lg border border-white/30 dark:border-gray-700/60">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                        <h3 class="text-xl font-bold">Payroll Processing - MIMAROPA</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Process payroll for {{ employees|length|default:"0" }} employees | Weekdays-only payroll computation</p>
-                    </div>
-                    <div class="flex flex-wrap gap-3">
-                        <button id="generatePreviewBtn" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg flex items-center shadow-lg transition-all duration-300 hover:scale-105">
-                            <iconify-icon icon="ph:play-circle-duotone" class="mr-2"></iconify-icon>
-                            Generate Payroll Preview
-                        </button>
-
-                        <div class="relative group">
-                            <button class="px-4 py-2 bg-white dark:bg-gray-700 border border-white/30 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg flex items-center shadow-md">
-                                <iconify-icon icon="ph:printer-duotone" class="mr-2"></iconify-icon>
-                                DTR Print
-                            </button>
-                            <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                                <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-lg">
-                                    <iconify-icon icon="ph:printer-duotone" class="mr-2"></iconify-icon>
-                                    Print DTR
-                                </button>
-                                <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    <iconify-icon icon="ph:file-pdf-duotone" class="mr-2"></iconify-icon>
-                                    Export DTR PDF
-                                </button>
-                                <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b-lg">
-                                    <iconify-icon icon="ph:file-csv-duotone" class="mr-2"></iconify-icon>
-                                    Export DTR CSV
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Branch</label>
-                        <select id="branchFilter" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                            {% for branch in branches %}
-                            <option value="{{ branch.id }}" {% if branch.id == selected_branch %}selected{% endif %}>{{ branch.name }}</option>
-                            {% empty %}
-                            <option value="">No branches</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div>
-                        <div class="flex items-center justify-between">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payroll Period</label>
-                            <button id="openAddPeriodBtn" type="button" class="text-xs px-2 py-1 rounded-md bg-blue-500 hover:bg-blue-600 text-white">
-                                + Add Period
-                            </button>
-                        </div>
-                        <select id="periodFilter" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                            {% for period in payroll_periods %}
-                            <option value="{{ period.id }}" {% if period.id == selected_period %}selected{% endif %}>
-                                {{ period.name }} • {{ period.start_date }} - {{ period.end_date }}{% if period.pay_mode %} • {{ period.get_pay_mode_display }}{% endif %}
-                            </option>
-                            {% empty %}
-                            <option value="">No periods</option>
-                            {% endfor %}
-                        </select>
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Note: Payroll computation counts only Weekdays (Mon–Fri). Weekends are excluded.
-                        </p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Employment Type</label>
-                        <select id="typeFilter" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                            <option value="ALL" {% if selected_type == "ALL" %}selected{% endif %}>All Types</option>
-                            <option value="JO" {% if selected_type == "JO" %}selected{% endif %}>Job Order (JO)</option>
-                            <option value="COS" {% if selected_type == "COS" %}selected{% endif %}>Contract of Service (COS)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div id="payrollPreview" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-white/30 dark:border-gray-700/60 mb-6">
-                <div class="px-6 py-4 border-b border-white/30 dark:border-gray-700/60 flex justify-between items-center">
-                    <h3 class="text-lg font-semibold">Payroll Preview</h3>
-                    <div class="flex items-center gap-2">
-                        <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">Preview Mode</span>
-                        <button id="approveProcessBtn" class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm">
-                            Approve & Process
-                        </button>
-                    </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-700/60">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Type</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Base</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Premium</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">OT</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Late</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Undertime</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Absences</th>
-                                <!-- New columns for extended preview -->
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Pay Basis</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Weekdays</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Worked Days</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Holiday Days</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Travel Order Days</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Gross Pay</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Gov. Contributions</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Tax</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Manual Deductions</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Deductions</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Net</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Issues</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" id="previewTableBody"></tbody>
-                    </table>
-                </div>
-                <div class="px-6 py-4 border-t border-white/30 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-700/30">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Total Employees: <span id="previewTotalEmployees">0</span></p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Total Net Pay: <span id="previewTotalNet" class="font-bold peso">0.00</span></p>
-                        </div>
-                        <button id="closePreviewBtn" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg">
-                            Close Preview
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-white/30 dark:border-gray-700/60">
-                <div class="px-6 py-4 border-b border-white/30 dark:border-gray-700/60 flex justify-between items-center">
-                    <h3 class="text-lg font-semibold">Employee Payroll Details</h3>
-                    <div class="flex space-x-2">
-                        <a href="{% url 'admin_biometrics' %}" class="px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm flex items-center">
-                            <iconify-icon icon="ph:fingerprint-duotone" class="mr-2"></iconify-icon>
-                            Biometrics Integration
-                        </a>
-                    </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-700/60">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Type</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Branch</th>
-                                <!-- New columns -->
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Pay Basis</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Base Rate</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Weekdays in Period</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Worked Days</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Holiday Days</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Late Minutes</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Undertime Minutes</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Authorized OT Hours</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Gross Pay</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Government Contributions</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Total Deductions</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Net Pay</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            {% for employee in employees|slice:":10" %}
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10">
-                                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold">
-                                                {{ employee.name|first }}
-                                            </div>
-                                        </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium">{{ employee.name }}</div>
-                                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ employee.position }}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 text-xs rounded-full {% if employee.employment_type == 'JO' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% else %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200{% endif %}">
-                                        {{ employee.employment_type }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ employee.branch_name }}</td>
-                                <!-- Pay Basis -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    {% if employee.employment_type == 'JO' %}
-                                        JO Daily (No Work No Pay)
-                                    {% else %}
-                                        {% if selected_period and selected_period.pay_mode == 'MONTHLY' %}
-                                            COS Monthly
-                                        {% elif selected_period and selected_period.pay_mode == 'FIRST_HALF' %}
-                                            COS First Half
-                                        {% elif selected_period and selected_period.pay_mode == 'SECOND_HALF' %}
-                                            COS Second Half
-                                        {% else %}
-                                            COS Monthly
-                                        {% endif %}
-                                    {% endif %}
-                                </td>
-                                <!-- Base Rate -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm peso">
-                                    {% if employee.employment_type == 'JO' %}
-                                        {{ employee.daily_rate|default:"0.00" }}
-                                    {% else %}
-                                        {{ employee.monthly_salary|default:"0.00" }}
-                                    {% endif %}
-                                </td>
-                                <!-- Weekdays in Period -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    {{ employee.computed_payroll.weekdays_in_period|default:"0" }}
-                                </td>
-                                <!-- Worked Days -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    {{ employee.computed_payroll.worked_days|default:"0" }}
-                                </td>
-                                <!-- Holiday Days -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    {{ employee.computed_payroll.holiday_days|default:"0" }}
-                                </td>
-                                <!-- Late Minutes -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    {{ employee.computed_payroll.late_minutes|default:"0" }}
-                                </td>
-                                <!-- Undertime Minutes -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    {{ employee.computed_payroll.undertime_minutes|default:"0" }}
-                                </td>
-                                <!-- Authorized OT Hours -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    {{ employee.computed_payroll.authorized_ot_hours|default:"0" }}
-                                </td>
-                                <!-- Gross Pay -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm peso">
-                                    {{ employee.computed_payroll.gross|default:"0.00" }}
-                                </td>
-                                <!-- Government Contributions (existing) -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <div class="space-y-1">
-                                        <div>SSS: ₱{{ employee.sss_amount|default:"760" }}</div>
-                                        <div>PhilHealth: ₱{{ employee.philhealth_value|default:"—" }}</div>
-                                        <div>Pag-IBIG: ₱{{ employee.pagibig_amount|default:"400" }}</div>
-                                        {% if employee.has_premium %}
-                                        <div class="text-green-600">Premium: 20%</div>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                                <!-- Total Deductions -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 peso">
-                                    {{ employee.computed_payroll.total_deductions|default:"0.00" }}
-                                </td>
-                                <!-- Net Pay -->
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-semibold peso">{{ employee.computed_payroll.net|default:"0.00" }}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    {% if employee.attendance_summary.has_missing_logs %}
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Issues</span>
-                                    {% else %}
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Ready</span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <div class="flex space-x-2">
-                                        <button class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg view-dtr-btn"
-                                                data-employee-id="{{ employee.id }}">
-                                            <iconify-icon icon="ph:eye-duotone" class="mr-1"></iconify-icon> View DTR
-                                        </button>
-                                        <button class="text-amber-600 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-3 py-1 rounded-lg">
-                                            <iconify-icon icon="ph:pencil-simple-duotone" class="mr-1"></iconify-icon> Adjust
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="18" class="px-6 py-12 text-center">
-                                    <iconify-icon icon="ph:users-duotone" class="text-4xl text-gray-400"></iconify-icon>
-                                    <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">No employees found</h3>
-                                    <p class="mt-2 text-sm text-gray-500">Add employees or adjust your filters.</p>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Payroll Setup Content -->
-        <div id="payroll-setup-content" class="payroll-content hidden">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                <div>
-                    <h3 class="text-xl font-bold">Payroll Setup & Configuration</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure MIMAROPA government payroll rules, contributions, and payroll administration</p>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
-                        <h3 class="text-lg font-semibold mb-4">Payroll Rules Configuration</h3>
-                        <form id="payrollRulesForm" class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tax Rate %</label>
-                                    <input name="tax_rate_percent" type="number" step="0.01" min="0" max="100"
-                                           value="{{ payroll_rules.tax_rate_percent|default:'5' }}"
-                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Premium Rate %</label>
-                                    <input name="premium_rate_percent" type="number" step="0.01" min="0" max="100"
-                                           value="{{ payroll_rules.premium_rate_percent|default:'20' }}"
-                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PhilHealth Default</label>
-                                <div class="flex items-center gap-4 mb-2">
-                                    <label class="flex items-center">
-                                        <input type="radio" name="philhealth_mode" value="percent"
-                                               {% if payroll_rules.philhealth_default_mode != 'fixed' %}checked{% endif %}
-                                               class="h-4 w-4 text-blue-600">
-                                        <span class="ml-2 text-sm">Percentage (%)</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="radio" name="philhealth_mode" value="fixed"
-                                               {% if payroll_rules.philhealth_default_mode == 'fixed' %}checked{% endif %}
-                                               class="h-4 w-4 text-blue-600">
-                                        <span class="ml-2 text-sm">Fixed Amount</span>
-                                    </label>
-                                </div>
-                                <input name="philhealth_default_value" type="number" step="0.01" min="0"
-                                       value="{{ payroll_rules.philhealth_default_value|default:'5' }}"
-                                       class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Late Penalty per Minute (₱)</label>
-                                    <input name="late_penalty_per_minute" type="number" step="0.01" min="0"
-                                           value="{{ payroll_rules.late_penalty_per_minute|default:'1.50' }}"
-                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Undertime Penalty per Minute (₱)</label>
-                                    <input name="undertime_penalty_per_minute" type="number" step="0.01" min="0"
-                                           value="{{ payroll_rules.undertime_penalty_per_minute|default:'2.00' }}"
-                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grace Minutes (Normal Days)</label>
-                                    <input name="grace_minutes_normal" type="number" min="0"
-                                           value="{{ payroll_rules.grace_minutes_normal|default:'15' }}"
-                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Flag Ceremony Cutoff</label>
-                                    <input name="flag_ceremony_cutoff_time" type="time"
-                                           value="{{ payroll_rules.flag_ceremony_cutoff_time|default:'08:00' }}"
-                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Work Start Time (Earliest IN)</label>
-                                    <input name="work_start_time" type="time"
-                                           value="{{ payroll_rules.work_start_time|default:'07:00' }}"
-                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                                    <p class="mt-1 text-xs text-gray-500">Sliding Flexy: arrival can be after start as long as 8 hours is completed.</p>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Work End Time (Earliest OUT)</label>
-                                    <input name="work_end_time" type="time"
-                                           value="{{ payroll_rules.work_end_time|default:'16:00' }}"
-                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                                    <p class="mt-1 text-xs text-gray-500">Earliest OUT is used only for UI hints; undertime is computed from total work minutes.</p>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="flex items-center">
-                                        <input name="lunch_break_required" type="checkbox"
-                                               {% if payroll_rules.lunch_break_required %}checked{% endif %}
-                                               class="h-4 w-4 rounded border-gray-300 text-blue-600">
-                                        <span class="ml-2 text-sm">Require Lunch Break Logs</span>
-                                    </label>
-                                    <p class="mt-1 text-xs text-gray-500">If enabled, missing lunch logs will be marked as “Issues”.</p>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Daily Hours Required</label>
-                                    <input name="daily_hours_required" type="number" step="0.5" min="0"
-                                           value="{{ payroll_rules.daily_hours_required|default:'8' }}"
-                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                                </div>
-                            </div>
-
-                            <!-- New Payroll Rules Fields -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Flag Ceremony Grace Minutes</label>
-                                    <input name="flag_ceremony_grace_minutes" type="number" min="0" step="1"
-                                           value="{{ payroll_rules.flag_ceremony_grace_minutes|default:'5' }}"
-                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                                </div>
-                                <div>
-                                    <label class="flex items-center">
-                                        <input name="move_flag_ceremony_if_holiday" type="checkbox"
-                                               {% if payroll_rules.move_flag_ceremony_if_holiday %}checked{% endif %}
-                                               class="h-4 w-4 rounded border-gray-300 text-blue-600">
-                                        <span class="ml-2 text-sm">Move flag ceremony if Monday is holiday/suspension</span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="flex items-center">
-                                        <input name="ot_requires_approval" type="checkbox"
-                                               {% if payroll_rules.ot_requires_approval %}checked{% endif %}
-                                               class="h-4 w-4 rounded border-gray-300 text-blue-600">
-                                        <span class="ml-2 text-sm">OT requires approval</span>
-                                    </label>
-                                </div>
-                                <div>
-                                    <label class="flex items-center">
-                                        <input name="disallow_ot_when_late" type="checkbox"
-                                               {% if payroll_rules.disallow_ot_when_late %}checked{% endif %}
-                                               class="h-4 w-4 rounded border-gray-300 text-blue-600">
-                                        <span class="ml-2 text-sm">Disallow OT when late</span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="flex items-center">
-                                        <input name="disallow_ot_if_absent_previous_day" type="checkbox"
-                                               {% if payroll_rules.disallow_ot_if_absent_previous_day %}checked{% endif %}
-                                               class="h-4 w-4 rounded border-gray-300 text-blue-600">
-                                        <span class="ml-2 text-sm">Disallow OT if absent previous day</span>
-                                    </label>
-                                </div>
-                                <div>
-                                    <label class="flex items-center">
-                                        <input name="disallow_ot_after_travel_order" type="checkbox"
-                                               {% if payroll_rules.disallow_ot_after_travel_order %}checked{% endif %}
-                                               class="h-4 w-4 rounded border-gray-300 text-blue-600">
-                                        <span class="ml-2 text-sm">Disallow OT after Travel Order</span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">OT Multiplier</label>
-                                    <input name="ot_multiplier" type="number" step="0.01" min="1.0"
-                                           value="{{ payroll_rules.ot_multiplier|default:'1.25' }}"
-                                           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
-                                </div>
-                            </div>
-
-                            <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-                                <button id="savePayrollRulesBtn" type="submit" class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-lg">
-                                    Save Payroll Rules
-                                </button>
-                                <button type="button" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg ml-2">
-                                    Reset to Defaults
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold">Government Contributions (Employee-Specific)</h3>
-                            <button id="saveContribBtn" class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">
-                                Save Changes
-                            </button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" id="contribTable">
-                                <thead class="bg-gray-50 dark:bg-gray-700/60">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">SSS Amount (Min ₱760)</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Pag-IBIG (Min ₱400)</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">PhilHealth</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Premium</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    {% for employee in employees|slice:":5" %}
-                                    <tr data-profile-id="{{ employee.id }}">
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">{{ employee.name }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <input data-field="sss_amount" type="number" min="760" step="0.01"
-                                                   value="{{ employee.sss_amount|default:'760' }}"
-                                                   class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <input data-field="pagibig_amount" type="number" min="400" step="0.01"
-                                                   value="{{ employee.pagibig_amount|default:'400' }}"
-                                                   class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <div class="space-y-1">
-                                                <select data-field="philhealth_mode" class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
-                                                    <option value="percent" {% if employee.philhealth_mode != 'fixed' %}selected{% endif %}>%</option>
-                                                    <option value="fixed" {% if employee.philhealth_mode == 'fixed' %}selected{% endif %}>Fixed</option>
-                                                </select>
-                                                <input data-field="philhealth_value" type="number" step="0.01" min="0"
-                                                       value="{{ employee.philhealth_value|default:'5' }}"
-                                                       class="w-full rounded border border-gray-300 px-2 py-1 text-sm mt-1">
-                                            </div>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <label class="inline-flex items-center">
-                                                <input data-field="has_premium" type="checkbox" {% if employee.has_premium %}checked{% endif %}
-                                                       class="h-4 w-4 rounded border-gray-300 text-blue-600">
-                                                <span class="ml-2 text-sm">Apply Premium</span>
-                                            </label>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                            These are employee-specific contribution values (not global defaults).
-                        </p>
-                    </div>
-
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold">Employee-Specific Deductions</h3>
-                            <button id="saveDeductionsBtn" class="px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm">
-                                Save Deductions
-                            </button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" id="deductionsTable">
-                                <thead class="bg-gray-50 dark:bg-gray-700/60">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Employment Type</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Base (COS Monthly / JO Daily)</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Manual Deduction (₱)</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Notes</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    {% for employee in employees|slice:":10" %}
-                                    <tr data-profile-id="{{ employee.id }}">
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">{{ employee.name }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                            <span class="px-2 py-1 text-xs rounded-full {% if employee.employment_type == 'JO' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% else %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200{% endif %}">
-                                                {{ employee.employment_type }}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                            {% if employee.employment_type == 'JO' %}
-                                                <span class="peso">{{ employee.daily_rate|default:"0.00" }}</span>
-                                            {% else %}
-                                                <span class="peso">{{ employee.monthly_salary|default:"0.00" }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <input data-field="manual_deduction_amount" type="number" min="0" step="0.01"
-                                                   value="{{ employee.manual_deduction_amount|default:'0.00' }}"
-                                                   class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <input data-field="manual_deduction_note" type="text"
-                                                   value="{{ employee.manual_deduction_note|default:'' }}"
-                                                   class="w-full rounded border border-gray-300 px-2 py-1 text-sm"
-                                                   placeholder="e.g., cash advance / uniform / loan">
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                            Manual deductions are per employee (e.g., cash advance/loan) and will be added to payroll deductions.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Right column, holiday manager removed -->
-                <div class="space-y-6">
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
-                        <h3 class="text-lg font-semibold mb-4">Audit Trail</h3>
-                        <div class="space-y-3 max-h-64 overflow-y-auto">
-                            {% for batch in payroll_batches|slice:":8" %}
-                            <div class="border-l-2 border-blue-500 pl-3">
-                                <p class="text-sm font-medium">{{ batch.name }}</p>
-                                <p class="text-xs text-gray-500">{{ batch.processed_by }} • {{ batch.processed_at|date:"M d, Y H:i" }}</p>
-                                <p class="text-xs mt-1">
-                                    <span class="px-1.5 py-0.5 rounded-full {% if batch.status == 'completed' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
-                                        {{ batch.get_status_display }}
-                                    </span>
-                                </p>
-                            </div>
-                            {% empty %}
-                            <p class="text-sm text-gray-500 text-center py-4">No payroll batches processed yet</p>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-lg font-semibold">Payroll Period Manager</h3>
-                            <button id="openAddPeriodBtn2" class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">
-                                + Add Period
-                            </button>
-                        </div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                            Create flexible payroll periods (any dates). Computation uses weekdays only.
-                        </p>
-                    </div>
-
-                    <div class="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-xl p-6 text-white">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-lg font-bold">DTR Security</h3>
-                            <iconify-icon icon="ph:file-text-duotone" class="text-2xl"></iconify-icon>
-                        </div>
-                        <p class="text-green-100 mb-4">Tamper-resistant DTRs with system-generated watermarks and complete audit logs.</p>
-                        <button class="text-sm bg-white text-green-700 hover:bg-green-50 px-3 py-2 rounded-lg font-medium inline-flex items-center shadow-md" onclick="switchTab('payroll-setup-tab')">
-                            <iconify-icon icon="ph:eye-duotone" class="mr-2"></iconify-icon>
-                            View Audit Trail
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Salary Structure Tab - Enhanced Compensation Structure -->
-        <div id="salary-structure-content" class="payroll-content hidden">
-            <div class="max-w-4xl mx-auto">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-white/30 dark:border-gray-700/60">
-                    <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-700 dark:to-gray-800">
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-white">Compensation Structure - DA MIMAROPA</h3>
-                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Standardized pay rules for Job Order (JO) and Contract of Service (COS) personnel</p>
-                    </div>
-                    <div class="p-6 space-y-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- JO Daily Rate -->
-                            <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-5 border border-yellow-200 dark:border-yellow-800">
-                                <div class="flex items-center gap-3 mb-3">
-                                    <span class="px-3 py-1 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded-full text-xs font-bold">JO</span>
-                                    <h4 class="text-lg font-semibold text-gray-800 dark:text-white">Job Order (Daily Rate)</h4>
-                                </div>
-                                <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">No Work, No Pay. Compensation is based on actual days worked within the payroll period.</p>
-                                <div class="space-y-2 text-sm">
-                                    <div class="flex justify-between"><span class="font-medium">Daily Rate:</span> <span class="peso">{{ jo_daily_rate|default:"537.00" }}</span> <span class="text-xs text-gray-500">(Minimum wage MIMAROPA)</span></div>
-                                    <div class="flex justify-between"><span class="font-medium">Computation:</span> <span>Daily Rate × Worked Days</span></div>
-                                    <div class="flex justify-between"><span class="font-medium">Premium Eligibility:</span> <span class="text-green-600">✓ 20% on rest days/special holidays</span></div>
-                                </div>
-                            </div>
-                            <!-- COS Monthly Salary -->
-                            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 border border-blue-200 dark:border-blue-800">
-                                <div class="flex items-center gap-3 mb-3">
-                                    <span class="px-3 py-1 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full text-xs font-bold">COS</span>
-                                    <h4 class="text-lg font-semibold text-gray-800 dark:text-white">Contract of Service (Monthly)</h4>
-                                </div>
-                                <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">Fixed monthly salary, prorated for incomplete months or half-periods.</p>
-                                <div class="space-y-2 text-sm">
-                                    <div class="flex justify-between"><span class="font-medium">Monthly Salary:</span> <span class="peso">{{ cos_monthly_salary|default:"25000.00" }}</span> <span class="text-xs text-gray-500">(Based on contract)</span></div>
-                                    <div class="flex justify-between"><span class="font-medium">Pay Modes:</span> <span>Monthly / First Half / Second Half</span></div>
-                                    <div class="flex justify-between"><span class="font-medium">Proration:</span> <span>Worked weekdays / Total weekdays in period</span></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
-                            <h4 class="font-semibold text-gray-800 dark:text-white mb-3 flex items-center gap-2"><iconify-icon icon="ph:info-duotone"></iconify-icon> Contract Type Labels & Premium Eligibility</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                <div><span class="font-medium">JO:</span> Daily wage earner, no work no pay, entitled to premium pay for work during rest days/special holidays if present.</div>
-                                <div><span class="font-medium">COS:</span> Monthly compensated, entitled to full month salary if all weekdays worked, prorated otherwise. Premium pay applicable for holiday work.</div>
-                                <div class="md:col-span-2 mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-800 dark:text-amber-200 text-xs">
-                                    <iconify-icon icon="ph:calculator-duotone" class="inline mr-1"></iconify-icon> Note: All payroll computations exclude weekends (Saturday & Sunday). Only weekdays (Monday–Friday) are considered payable days.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="payroll-history-content" class="payroll-content hidden">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h3 class="text-xl font-bold">Payroll History</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Shows processed payroll batches and totals.</p>
-                </div>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-white/30 dark:border-gray-700/60">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-700/60">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Batch</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Branch</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Period</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Processed By</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Processed At</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Net Total</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Deductions Total</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            {% for batch in payroll_batches %}
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium">{{ batch.name }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-500">{{ batch.branch.name }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-500">{{ batch.period.name }}</td>
-                                <td class="px-6 py-4 text-sm">
-                                    <span class="px-2 py-1 rounded-full text-xs {% if batch.status == 'completed' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
-                                        {{ batch.get_status_display }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-gray-500">{{ batch.processed_by|default:"—" }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-500">{{ batch.processed_at|date:"M d, Y H:i"|default:"—" }}</td>
-                                <td class="px-6 py-4 text-sm font-semibold peso">{{ batch.totals_net|default:"0.00" }}</td>
-                                <td class="px-6 py-4 text-sm font-semibold peso text-red-600">{{ batch.totals_deductions|default:"0.00" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="8" class="px-6 py-12 text-center">
-                                    <iconify-icon icon="ph:clock-counter-clockwise-duotone" class="text-4xl text-gray-400"></iconify-icon>
-                                    <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">No payroll history yet</h3>
-                                    <p class="mt-2 text-sm text-gray-500">Process a payroll batch to generate history records.</p>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div id="financial-dashboard-content" class="payroll-content hidden">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h3 class="text-xl font-bold">Financial Dashboard</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Monthly totals (net pay and deductions) from processed payroll batches.</p>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Net Pay (Selected Month)</p>
-                    <div class="mt-2 text-2xl font-extrabold peso">
-                        {{ dashboard_selected_net|default:"0.00" }}
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Deductions (Selected Month)</p>
-                    <div class="mt-2 text-2xl font-extrabold peso text-red-600">
-                        {{ dashboard_selected_deductions|default:"0.00" }}
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Batches Completed</p>
-                    <div class="mt-2 text-2xl font-extrabold">
-                        {{ dashboard_selected_batches|default:"0" }}
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-white/30 dark:border-gray-700/60">
-                <div class="flex items-center justify-between mb-3">
-                    <h4 class="text-lg font-semibold">Monthly Breakdown</h4>
-                    <p class="text-xs text-gray-500">Uses processed batches only</p>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-700/60">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Month</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Net Total</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Deductions Total</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Batches</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            {% for row in dashboard_months %}
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium">{{ row.month }}</td>
-                                <td class="px-6 py-4 text-sm font-semibold peso">{{ row.net|default:"0.00" }}</td>
-                                <td class="px-6 py-4 text-sm font-semibold peso text-red-600">{{ row.deductions|default:"0.00" }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-500">{{ row.batches|default:"0" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500">
-                                    No dashboard data yet. Process payroll batches to populate this chart/table.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-    </div>
-</div>
-
-<!-- DTR Modal -->
-<div id="dtrModal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-black/50"></div>
-    <div class="relative mx-auto mt-10 w-[95%] max-w-6xl rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-white/20 dark:border-gray-700 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <div>
-                <h3 class="text-lg font-semibold">Daily Time Record</h3>
-                <p class="text-sm text-gray-500">System-generated attendance view</p>
-            </div>
-            <button id="closeDtrModalBtn" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700">
-                <iconify-icon icon="ph:x-duotone"></iconify-icon>
-            </button>
-        </div>
-
-        <div class="p-6">
-            <div class="relative">
-                <div class="dtr-watermark inset-0 flex items-center justify-center absolute">INTELLIHRTRACK</div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-800/60">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Date</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Day</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Time In</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Time Out</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Lunch In</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Lunch Out</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Total Hours</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Late</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Undertime</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dtrTableBody" class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Payroll Period Modal with weekday helper -->
-<div id="periodModal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-black/50"></div>
-    <div class="relative mx-auto mt-16 w-[95%] max-w-xl rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-white/20 dark:border-gray-700 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <div>
-                <h3 class="text-lg font-semibold">Add Payroll Period</h3>
-                <p class="text-sm text-gray-500">Create flexible payroll period dates</p>
-            </div>
-            <button id="closePeriodModalBtn" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700">
-                <iconify-icon icon="ph:x-duotone"></iconify-icon>
-            </button>
-        </div>
-
-        <form id="periodForm" class="p-6 space-y-4">
-            <div>
-                <label class="block text-sm font-medium mb-1">Period Name</label>
-                <input type="text" name="name" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm" placeholder="e.g. April 1–15, 2026">
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Start Date</label>
-                    <input type="date" name="start_date" id="periodStartDate" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">End Date</label>
-                    <input type="date" name="end_date" id="periodEndDate" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
-                </div>
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-1">Pay Mode</label>
-                <select name="pay_mode" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
-                    <option value="MONTHLY">Monthly</option>
-                    <option value="FIRST_HALF">Kinsenas (1st Half)</option>
-                    <option value="SECOND_HALF">Katapusan (2nd Half)</option>
-                </select>
-            </div>
-            <!-- Helper text for weekdays -->
-            <div id="weekdayHelper" class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                <iconify-icon icon="ph:calendar-check-duotone" class="inline mr-1"></iconify-icon>
-                Weekdays in selected range: <span id="weekdayCount">—</span> (Mon–Fri only). Weekends are excluded from payroll.
-            </div>
-            <div class="pt-2 flex items-center justify-end gap-2">
-                <button type="button" id="cancelPeriodBtn" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
-                <button type="submit" id="savePeriodBtn" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Save Period</button>
-            </div>
-        </form>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
 <script>
-    const tabMap = [
-        { tabId: 'payroll-processing-tab', contentId: 'payroll-processing-content' },
-        { tabId: 'payroll-setup-tab', contentId: 'payroll-setup-content' },
-        { tabId: 'salary-structure-tab', contentId: 'salary-structure-content' },
-        { tabId: 'payroll-history-tab', contentId: 'payroll-history-content' },
-        { tabId: 'financial-dashboard-tab', contentId: 'financial-dashboard-content' },
-    ];
+(function () {
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || "";
 
-    function setTabStyles(btn, active) {
-        if (!btn) return;
-        btn.classList.toggle('border-amber-500', active);
-        btn.classList.toggle('text-amber-500', active);
-        btn.classList.toggle('dark:text-amber-400', active);
-        btn.classList.toggle('border-transparent', !active);
-        btn.classList.toggle('text-gray-500', !active);
-        btn.classList.toggle('dark:text-gray-400', !active);
+  function showToast(message, type = "info") {
+    if (window.showToast) {
+      window.showToast(message, type);
+    } else {
+      alert(message);
+    }
+  }
+
+  function formatNumber(value, decimals = 2, prefix = "") {
+    const numeric = Number(value || 0);
+    return prefix + numeric.toLocaleString(undefined, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals
+    });
+  }
+
+  function animateCounter(element, target) {
+    const prefix = element.getAttribute("data-prefix") || "";
+    const decimals = Number(element.getAttribute("data-decimals") || 0);
+    const numericTarget = Number(target || 0);
+    const duration = 700;
+    const startTime = performance.now();
+
+    function update(now) {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = numericTarget * eased;
+
+      element.innerText = formatNumber(current, decimals, prefix);
+
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      } else {
+        element.innerText = formatNumber(numericTarget, decimals, prefix);
+      }
     }
 
-    function switchTab(targetTabId) {
-        tabMap.forEach(({ tabId, contentId }) => {
-            const btn = document.getElementById(tabId);
-            const content = document.getElementById(contentId);
-            const isActive = tabId === targetTabId;
-            setTabStyles(btn, isActive);
-            if (content) content.classList.toggle('hidden', !isActive);
-        });
+    requestAnimationFrame(update);
+  }
+
+  document.querySelectorAll(".counter-number").forEach(el => {
+    const target = el.getAttribute("data-target") || "0";
+    animateCounter(el, target);
+  });
+
+  document.querySelectorAll(".expand-btn").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const employeeId = this.getAttribute("data-target");
+      const row = document.querySelector(`.expand-detail-row[data-detail-for="${employeeId}"]`);
+      const expanded = this.getAttribute("aria-expanded") === "true";
+
+      this.setAttribute("aria-expanded", expanded ? "false" : "true");
+
+      if (row) {
+        row.classList.toggle("hidden");
+      }
+    });
+  });
+
+  const filterForm = document.getElementById("payrollFilterForm");
+  if (filterForm) {
+    filterForm.querySelectorAll("select").forEach(select => {
+      select.addEventListener("change", () => {
+        filterForm.submit();
+      });
+    });
+  }
+
+  document.querySelectorAll(".remove-chip").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const filterName = btn.getAttribute("data-filter");
+      const url = new URL(window.location.href);
+      url.searchParams.delete(filterName);
+      window.location.href = url.toString();
+    });
+  });
+
+  document.getElementById("resetFilters")?.addEventListener("click", () => {
+    window.location.href = window.location.pathname;
+  });
+
+  const dtrModal = document.getElementById("dtrModal");
+  const dtrBody = document.getElementById("dtrTableBody");
+  const dtrSummary = document.getElementById("dtrSummary");
+  const dtrEmployeeSpan = document.getElementById("dtrEmployeeName");
+
+  function statusClass(status) {
+    const normalized = String(status || "").toLowerCase();
+
+    if (normalized.includes("late")) return "amber";
+    if (normalized.includes("absent")) return "red";
+    if (normalized.includes("travel")) return "purple";
+    if (normalized.includes("holiday")) return "blue";
+    if (normalized.includes("suspension")) return "blue";
+    if (normalized.includes("missing")) return "red";
+    return "green";
+  }
+
+  function closeDtrModal() {
+    if (!dtrModal) return;
+    dtrModal.classList.add("hidden");
+    dtrModal.classList.remove("flex");
+    dtrBody.innerHTML = "";
+    dtrSummary.innerHTML = "";
+  }
+
+  document.getElementById("closeDtrModal")?.addEventListener("click", closeDtrModal);
+  document.getElementById("dtrModalBackdrop")?.addEventListener("click", closeDtrModal);
+
+  function openDtrModal(employeeName, records) {
+    dtrEmployeeSpan.innerText = employeeName || "Employee";
+
+    if (!records || records.length === 0) {
+      dtrBody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-gray-400">No DTR records for this period.</td></tr>`;
+      dtrSummary.innerHTML = `<div class="glass-premium p-3 rounded-xl col-span-4 text-center">No data available yet</div>`;
+      dtrModal.classList.remove("hidden");
+      dtrModal.classList.add("flex");
+      return;
     }
 
-    tabMap.forEach(({ tabId }) => {
-        const btn = document.getElementById(tabId);
-        btn && btn.addEventListener('click', () => switchTab(tabId));
+    let totalHours = 0;
+    let totalLate = 0;
+    let totalUndertime = 0;
+    let presentDays = 0;
+
+    let rowsHtml = "";
+
+    records.forEach(rec => {
+      const total = Number(rec.total_hours || rec.totalHours || 0);
+      const late = Number(rec.late || 0);
+      const undertime = Number(rec.undertime || 0);
+      const status = rec.status || "Present";
+
+      totalHours += total;
+      totalLate += late;
+      totalUndertime += undertime;
+
+      if (!String(status).toLowerCase().includes("absent")) {
+        presentDays += 1;
+      }
+
+      rowsHtml += `
+        <tr class="border-b border-white/10">
+          <td class="p-2">${rec.date || ""}</td>
+          <td>${rec.day || ""}</td>
+          <td>${rec.am_in || rec.timeIn || "--"}</td>
+          <td>${rec.am_out || rec.lunchOut || "--"}</td>
+          <td>${rec.pm_in || rec.lunchIn || "--"}</td>
+          <td>${rec.pm_out || rec.timeOut || "--"}</td>
+          <td>${total.toFixed(2)}</td>
+          <td class="${late > 0 ? "text-rose-400 font-medium" : ""}">${late}</td>
+          <td class="${undertime > 0 ? "text-orange-400 font-medium" : ""}">${undertime}</td>
+          <td><span class="status-chip ${statusClass(status)}">${status}</span></td>
+          <td>${rec.remarks || ""}</td>
+        </tr>
+      `;
     });
 
-    function getCsrfToken() {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        return meta ? meta.getAttribute('content') : '';
-    }
+    dtrBody.innerHTML = rowsHtml;
+    dtrSummary.innerHTML = `
+      <div class="glass-premium p-3 rounded-xl text-center">
+        <div class="text-xs text-gray-500">Total Hours</div>
+        <div class="text-xl font-bold">${totalHours.toFixed(2)}</div>
+      </div>
+      <div class="glass-premium p-3 rounded-xl text-center">
+        <div class="text-xs text-gray-500">Present Days</div>
+        <div class="text-xl font-bold text-emerald-400">${presentDays}</div>
+      </div>
+      <div class="glass-premium p-3 rounded-xl text-center">
+        <div class="text-xs text-gray-500">Late Minutes</div>
+        <div class="text-xl font-bold text-rose-400">${totalLate}</div>
+      </div>
+      <div class="glass-premium p-3 rounded-xl text-center">
+        <div class="text-xs text-gray-500">Undertime</div>
+        <div class="text-xl font-bold text-orange-400">${totalUndertime}</div>
+      </div>
+    `;
 
-    function peso(n) {
-        const num = Number(n || 0);
-        return num.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
+    dtrModal.classList.remove("hidden");
+    dtrModal.classList.add("flex");
+  }
 
-    function setBusy(btn, busy, labelIdle) {
-        if (!btn) return;
-        btn.disabled = !!busy;
-        btn.classList.toggle('opacity-70', !!busy);
-        btn.classList.toggle('cursor-not-allowed', !!busy);
-        if (labelIdle) btn.dataset.labelIdle = labelIdle;
-        if (busy) {
-            btn.dataset.labelWas = btn.innerHTML;
-            btn.innerHTML = `<span class="inline-flex items-center gap-2"><span class="animate-spin h-4 w-4 border-2 border-white/70 border-t-transparent rounded-full"></span>Loading…</span>`;
-        } else if (btn.dataset.labelWas) {
-            btn.innerHTML = btn.dataset.labelWas;
-        }
-    }
+  document.querySelectorAll(".view-dtr-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const employeeName = btn.getAttribute("data-employee-name") || "Employee";
+      let records = [];
 
-    function showToast(message, kind = "info") {
-        const root = document.createElement('div');
-        root.className = `fixed right-4 top-4 z-[70] rounded-xl px-4 py-3 shadow-xl text-white ${
-            kind === "error" ? "bg-red-600" :
-            kind === "success" ? "bg-green-600" :
-            "bg-slate-800"
-        }`;
-        root.textContent = message;
-        document.body.appendChild(root);
-        setTimeout(() => root.remove(), 2600);
-    }
+      try {
+        records = JSON.parse(btn.getAttribute("data-dtr-records") || "[]");
+      } catch (e) {
+        records = [];
+      }
 
-    function setProgress(percent) {
-        const bar = document.getElementById('topbarProgress');
-        if (!bar) return;
-        bar.style.width = `${percent}%`;
-        if (percent >= 100) {
-            setTimeout(() => { bar.style.width = '0%'; }, 500);
-        }
-    }
-
-    const dtrModal = document.getElementById('dtrModal');
-    const closeDtrModalBtn = document.getElementById('closeDtrModalBtn');
-    closeDtrModalBtn?.addEventListener('click', () => dtrModal.classList.add('hidden'));
-    dtrModal?.addEventListener('click', (e) => {
-        if (e.target === dtrModal || e.target.classList.contains('bg-black/50')) {
-            dtrModal.classList.add('hidden');
-        }
+      openDtrModal(employeeName, records);
     });
+  });
 
-    async function loadDTR(profileId) {
-        const periodFilter = document.getElementById('periodFilter');
-        const periodId = periodFilter?.value || '';
-        const res = await fetch(`/admin-ui/payroll/dtr/${profileId}/?period=${encodeURIComponent(periodId)}`, {
-            headers: { "Accept": "application/json" }
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.error || "Failed to load DTR");
-        return data;
+  document.getElementById("printDtrFromModal")?.addEventListener("click", () => {
+    const content = document.querySelector("#dtrModal .overflow-y-auto")?.cloneNode(true);
+    const employee = dtrEmployeeSpan?.innerText || "Employee";
+
+    if (!content) return;
+
+    const win = window.open("", "_blank");
+    win.document.write(`
+      <html>
+        <head>
+          <title>DTR_${employee}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; color: #111827; }
+            h1 { font-size: 18px; margin-bottom: 12px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { border: 1px solid #d1d5db; padding: 6px; text-align: left; }
+            th { background: #f3f4f6; }
+            .glass-premium { box-shadow: none !important; border: none !important; background: transparent !important; }
+            button { display: none !important; }
+          </style>
+        </head>
+        <body>
+          <h1>Daily Time Record - ${employee}</h1>
+          ${content.innerHTML}
+        </body>
+      </html>
+    `);
+    win.document.close();
+    win.print();
+  });
+
+  document.querySelectorAll(".print-dtr-single").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const employeeId = btn.getAttribute("data-employee-id");
+      const dtrBtn = document.querySelector(`.view-dtr-btn[data-employee-id="${employeeId}"]`);
+
+      if (dtrBtn) {
+        dtrBtn.click();
+        setTimeout(() => {
+          document.getElementById("printDtrFromModal")?.click();
+        }, 300);
+      }
+    });
+  });
+
+  document.getElementById("previewPayrollBtn")?.addEventListener("click", () => {
+    const form = document.getElementById("payrollFilterForm");
+    if (form) form.submit();
+  });
+
+  document.getElementById("exportPayrollBtn")?.addEventListener("click", () => {
+    window.print();
+  });
+
+  document.getElementById("processPayrollBtn")?.addEventListener("click", async function () {
+    const btn = this;
+
+    const hasCriticalWarnings = Number("{{ no_salary_count|default:0 }}") > 0 ||
+                                Number("{{ missing_checkout_count|default:0 }}") > 0;
+
+    let warning = "This will process payroll for the selected branch and period.";
+    if (hasCriticalWarnings) {
+      warning += "\n\nWarning: There are validation issues. Review them before finalizing.";
     }
 
-    function renderDTR(rows) {
-        const tbody = document.getElementById('dtrTableBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
+    if (!confirm(warning + "\n\nContinue?")) return;
 
-        if (!rows || !rows.length) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="10" class="px-4 py-8 text-center text-sm text-gray-500">
-                        No DTR records found for this employee and period.
-                    </td>
-                </tr>
-            `;
-            return;
-        }
+    btn.classList.add("btn-loading");
 
-        rows.forEach(record => {
-            const tr = document.createElement('tr');
-            const lateCls = Number(record.late || 0) > 0 ? 'text-amber-600 font-medium' : '';
-            const underCls = Number(record.undertime || 0) > 0 ? 'text-red-600 font-medium' : '';
-            
-            // Enhanced status display: combine holiday name, suspension, travel order, missing lunch, flag ceremony
-            let statusText = record.status || '';
-            const extras = [];
-            if (record.holiday_name) extras.push(`Holiday: ${record.holiday_name}`);
-            if (record.suspension_label) extras.push(`Suspension: ${record.suspension_label}`);
-            if (record.travel_order) extras.push(`TO: ${record.travel_order}`);
-            if (record.missing_lunch_logs) extras.push(`Missing lunch`);
-            if (record.flag_ceremony_day) extras.push(`Flag ceremony day`);
-            if (extras.length) statusText += ` (${extras.join(', ')})`;
-            
-            const statusBadgeClass = 
-                (record.status || '').toLowerCase().includes('present') ? 'bg-green-100 text-green-800' :
-                (record.status || '').toLowerCase().includes('late') ? 'bg-amber-100 text-amber-800' :
-                (record.status || '').toLowerCase().includes('weekend') ? 'bg-slate-100 text-slate-700' :
-                (record.status || '').toLowerCase().includes('missing') ? 'bg-yellow-100 text-yellow-800' :
-                'bg-red-100 text-red-800';
+    try {
+      const form = document.getElementById("payrollFilterForm");
+      const formData = new FormData(form || undefined);
 
-            tr.innerHTML = `
-                <td class="px-4 py-2 text-sm">${record.date || ''}</td>
-                <td class="px-4 py-2 text-sm">${record.day || ''}</td>
-                <td class="px-4 py-2 text-sm">${record.timeIn || ''}</td>
-                <td class="px-4 py-2 text-sm">${record.timeOut || ''}</td>
-                <td class="px-4 py-2 text-sm">${record.lunchIn || ''}</td>
-                <td class="px-4 py-2 text-sm">${record.lunchOut || ''}</td>
-                <td class="px-4 py-2 text-sm">${record.totalHours ?? ''}</td>
-                <td class="px-4 py-2 text-sm ${lateCls}">${record.late ?? 0}</td>
-                <td class="px-4 py-2 text-sm ${underCls}">${record.undertime ?? 0}</td>
-                <td class="px-4 py-2 text-sm">
-                    <span class="px-2 py-1 rounded-full text-xs ${statusBadgeClass}" title="${extras.join(', ')}">
-                        ${statusText}
-                    </span>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+      const response = await fetch("{% url 'admin_payroll_process_batch' %}", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken,
+          "Accept": "application/json"
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Payroll processing failed.");
+      }
+
+      showToast("Payroll processed successfully.", "success");
+      window.location.reload();
+
+    } catch (error) {
+      showToast(error.message || "Payroll processing failed.", "error");
+    } finally {
+      btn.classList.remove("btn-loading");
     }
+  });
 
-    document.querySelectorAll('.view-dtr-btn').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const profileId = this.getAttribute('data-employee-id');
-            if (!profileId) return;
-            try {
-                setBusy(this, true);
-                const data = await loadDTR(profileId);
-                renderDTR(data.rows || []);
-                dtrModal.classList.remove('hidden');
-            } catch (err) {
-                showToast(err.message || "Failed to load DTR", "error");
-            } finally {
-                setBusy(this, false);
-            }
-        });
-    });
-
-    const generatePreviewBtn = document.getElementById('generatePreviewBtn');
-    const payrollPreview = document.getElementById('payrollPreview');
-    const closePreviewBtn = document.getElementById('closePreviewBtn');
-    const approveProcessBtn = document.getElementById('approveProcessBtn');
-
-    const branchFilter = document.getElementById('branchFilter');
-    const periodFilter = document.getElementById('periodFilter');
-    const typeFilter = document.getElementById('typeFilter');
-
-    async function loadPreview() {
-        const branchId = branchFilter?.value || '';
-        const periodId = periodFilter?.value || '';
-        const type = typeFilter?.value || 'ALL';
-
-        const url = `/admin-ui/payroll/preview/?branch=${encodeURIComponent(branchId)}&period=${encodeURIComponent(periodId)}&type=${encodeURIComponent(type)}`;
-        const res = await fetch(url, { headers: { "Accept": "application/json" } });
-        const data = await res.json();
-        if (!res.ok || !data.ok) {
-            throw new Error(data.error || "Failed to generate preview");
-        }
-        return data;
-    }
-
-    function renderPreview(employees) {
-        const tbody = document.getElementById('previewTableBody');
-        if (!tbody) return;
-
-        tbody.innerHTML = '';
-        let totalNet = 0;
-
-        if (!employees || !employees.length) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="20" class="px-6 py-10 text-center text-sm text-gray-500">
-                        No preview data found for the selected filters.
-                    </td>
-                </tr>
-            `;
-            document.getElementById('previewTotalEmployees').textContent = '0';
-            document.getElementById('previewTotalNet').textContent = '0.00';
-            return;
-        }
-
-        employees.forEach(emp => {
-            totalNet += Number(emp.net || 0);
-            const issues = Array.isArray(emp.issues) ? emp.issues.join(', ') : (emp.issues || '');
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="px-6 py-4 text-sm font-medium">${emp.name || ''}</td>
-                <td class="px-6 py-4 text-sm">${emp.employment_type || ''}</td>
-                <td class="px-6 py-4 text-sm">${peso(emp.base)}</td>
-                <td class="px-6 py-4 text-sm">${peso(emp.premium)}</td>
-                <td class="px-6 py-4 text-sm">${peso(emp.ot)}</td>
-                <td class="px-6 py-4 text-sm">${emp.late_minutes ?? 0} min</td>
-                <td class="px-6 py-4 text-sm">${emp.undertime_minutes ?? 0} min</td>
-                <td class="px-6 py-4 text-sm">${emp.absences ?? 0}</td>
-                <td class="px-6 py-4 text-sm">${emp.pay_basis || ''}</td>
-                <td class="px-6 py-4 text-sm">${emp.weekdays_in_period ?? 0}</td>
-                <td class="px-6 py-4 text-sm">${emp.worked_days ?? 0}</td>
-                <td class="px-6 py-4 text-sm">${emp.holiday_days ?? 0}</td>
-                <td class="px-6 py-4 text-sm">${emp.travel_order_days ?? 0}</td>
-                <td class="px-6 py-4 text-sm peso">${peso(emp.gross_pay)}</td>
-                <td class="px-6 py-4 text-sm peso">${peso(emp.gov_contributions)}</td>
-                <td class="px-6 py-4 text-sm peso">${peso(emp.tax)}</td>
-                <td class="px-6 py-4 text-sm peso">${peso(emp.manual_deductions)}</td>
-                <td class="px-6 py-4 text-sm text-red-600 peso">${peso(emp.deductions)}</td>
-                <td class="px-6 py-4 text-sm font-semibold peso">${peso(emp.net)}</td>
-                <td class="px-6 py-4 text-sm">${issues || '—'}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-
-        document.getElementById('previewTotalEmployees').textContent = String(employees.length);
-        document.getElementById('previewTotalNet').textContent = peso(totalNet);
-    }
-
-    generatePreviewBtn?.addEventListener('click', async function() {
-        try {
-            setBusy(this, true);
-            setProgress(20);
-            const data = await loadPreview();
-            setProgress(70);
-            renderPreview(data.employees || []);
-            payrollPreview?.classList.remove('hidden');
-            setProgress(100);
-        } catch (err) {
-            showToast(err.message || "Failed to generate preview", "error");
-            setProgress(100);
-        } finally {
-            setBusy(this, false);
-        }
-    });
-
-    closePreviewBtn?.addEventListener('click', () => payrollPreview?.classList.add('hidden'));
-
-    approveProcessBtn?.addEventListener('click', async function() {
-        try {
-            setBusy(this, true);
-            setProgress(20);
-
-            const branchId = branchFilter?.value || '';
-            const periodId = periodFilter?.value || '';
-            const type = typeFilter?.value || 'ALL';
-
-            const res = await fetch(`/admin-ui/payroll/process/?branch=${encodeURIComponent(branchId)}&period=${encodeURIComponent(periodId)}&type=${encodeURIComponent(type)}`, {
-                method: 'POST',
-                headers: {
-                    "Accept": "application/json",
-                    "X-CSRFToken": getCsrfToken(),
-                }
-            });
-
-            const data = await res.json();
-            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to process payroll");
-
-            setProgress(100);
-            showToast("Payroll batch processed successfully!", "success");
-            window.location.reload();
-        } catch (err) {
-            showToast(err.message || "Failed to process payroll", "error");
-            setProgress(100);
-        } finally {
-            setBusy(this, false);
-        }
-    });
-
-    document.getElementById('payrollRulesForm')?.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        showToast("Payroll rules form is ready. Connect this to your save endpoint.", "info");
-    });
-
-    document.getElementById('saveContribBtn')?.addEventListener('click', async function() {
-        try {
-            setBusy(this, true);
-            const rows = [];
-            document.querySelectorAll('#contribTable tbody tr[data-profile-id]').forEach(tr => {
-                rows.push({
-                    profile_id: tr.getAttribute('data-profile-id'),
-                    sss_amount: tr.querySelector('[data-field="sss_amount"]')?.value ?? "760",
-                    pagibig_amount: tr.querySelector('[data-field="pagibig_amount"]')?.value ?? "400",
-                    philhealth_mode: tr.querySelector('[data-field="philhealth_mode"]')?.value ?? "percent",
-                    philhealth_value: tr.querySelector('[data-field="philhealth_value"]')?.value ?? "5",
-                    has_premium: tr.querySelector('[data-field="has_premium"]')?.checked ?? false,
-                });
-            });
-
-            const res = await fetch("/admin-ui/payroll/save-contributions/", {
-                method: "POST",
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCsrfToken(),
-                },
-                body: JSON.stringify({ rows })
-            });
-
-            const data = await res.json();
-            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to save contributions");
-            showToast("Contributions saved!", "success");
-        } catch (err) {
-            showToast(err.message || "Failed to save contributions", "error");
-        } finally {
-            setBusy(this, false);
-        }
-    });
-
-    document.getElementById('saveDeductionsBtn')?.addEventListener('click', async function() {
-        try {
-            setBusy(this, true);
-            const rows = [];
-            document.querySelectorAll('#deductionsTable tbody tr[data-profile-id]').forEach(tr => {
-                const profileId = tr.getAttribute('data-profile-id');
-                const amount = tr.querySelector('[data-field="manual_deduction_amount"]')?.value ?? "0";
-                const note = tr.querySelector('[data-field="manual_deduction_note"]')?.value ?? "";
-                rows.push({ profile_id: profileId, manual_deduction_amount: amount, manual_deduction_note: note });
-            });
-
-            const res = await fetch("/admin-ui/payroll/save-deductions/", {
-                method: "POST",
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCsrfToken(),
-                },
-                body: JSON.stringify({ rows })
-            });
-
-            const data = await res.json();
-            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to save deductions");
-            showToast("Deductions saved!", "success");
-        } catch (err) {
-            showToast(err.message || "Failed to save deductions", "error");
-        } finally {
-            setBusy(this, false);
-        }
-    });
-
-    const periodModal = document.getElementById('periodModal');
-    const openAddPeriodBtn = document.getElementById('openAddPeriodBtn');
-    const openAddPeriodBtn2 = document.getElementById('openAddPeriodBtn2');
-    const closePeriodModalBtn = document.getElementById('closePeriodModalBtn');
-    const cancelPeriodBtn = document.getElementById('cancelPeriodBtn');
-
-    function openPeriodModal() {
-        periodModal?.classList.remove('hidden');
-    }
-    function closePeriodModal() {
-        periodModal?.classList.add('hidden');
-    }
-
-    openAddPeriodBtn?.addEventListener('click', openPeriodModal);
-    openAddPeriodBtn2?.addEventListener('click', openPeriodModal);
-    closePeriodModalBtn?.addEventListener('click', closePeriodModal);
-    cancelPeriodBtn?.addEventListener('click', closePeriodModal);
-
-    periodModal?.addEventListener('click', (e) => {
-        if (e.target === periodModal || e.target.classList.contains('bg-black/50')) {
-            closePeriodModal();
-        }
-    });
-
-    // Weekday calculation helper for period modal
-    function updateWeekdayCount() {
-        const startDateInput = document.getElementById('periodStartDate');
-        const endDateInput = document.getElementById('periodEndDate');
-        const weekdaySpan = document.getElementById('weekdayCount');
-        if (!startDateInput || !endDateInput || !weekdaySpan) return;
-        const start = new Date(startDateInput.value);
-        const end = new Date(endDateInput.value);
-        if (isNaN(start) || isNaN(end) || start > end) {
-            weekdaySpan.textContent = '—';
-            return;
-        }
-        let count = 0;
-        const current = new Date(start);
-        while (current <= end) {
-            const dayOfWeek = current.getDay();
-            // Monday = 1, Tuesday = 2, Wednesday = 3, Thursday = 4, Friday = 5
-            if (dayOfWeek >= 1 && dayOfWeek <= 5) count++;
-            current.setDate(current.getDate() + 1);
-        }
-        weekdaySpan.textContent = count;
-    }
-    document.getElementById('periodStartDate')?.addEventListener('change', updateWeekdayCount);
-    document.getElementById('periodEndDate')?.addEventListener('change', updateWeekdayCount);
-
-    document.getElementById('periodForm')?.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        showToast("Payroll period form is ready. Connect this to your create-period endpoint.", "info");
-        closePeriodModal();
-    });
-
-    function reloadWithFilters() {
-        const params = new URLSearchParams(window.location.search);
-        if (branchFilter?.value) params.set("branch", branchFilter.value);
-        if (periodFilter?.value) params.set("period", periodFilter.value);
-        if (typeFilter?.value) params.set("type", typeFilter.value);
-        window.location.search = params.toString();
-    }
-
-    branchFilter?.addEventListener('change', () => {
-        localStorage.setItem('payroll_selected_branch', branchFilter.value);
-        reloadWithFilters();
-    });
-
-    periodFilter?.addEventListener('change', () => reloadWithFilters());
-    typeFilter?.addEventListener('change', () => reloadWithFilters());
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const savedBranch = localStorage.getItem('payroll_selected_branch');
-        if (savedBranch && branchFilter) branchFilter.value = savedBranch;
-        switchTab('payroll-processing-tab');
-        updateWeekdayCount();
-    });
+})();
 </script>
 {% endblock %}

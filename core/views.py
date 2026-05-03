@@ -2743,31 +2743,18 @@ def attendance_delete(request, pk):
         },
     )
 
-
 #==============================================================
 # -------------------------
-# Payroll helpers
+# Payroll helpers / Payroll Engine
 # -------------------------
-def _time_to_dt(d: date, t: time):
-    return datetime.combine(d, t)
+
+SALARY_DIVISOR = Decimal("22")
+DAILY_HOURS = Decimal("8")
+OT_MULTIPLIER = Decimal("1.25")
 
 
-def _daterange(d1: date, d2: date):
-    cur = d1
-    while cur <= d2:
-        yield cur
-        cur += timedelta(days=1)
-
-
-def _ensure_aware(dt_value):
-    """
-    Make datetime timezone-aware if USE_TZ is enabled and value is naive.
-    """
-    if not dt_value:
-        return dt_value
-    if settings.USE_TZ and timezone.is_naive(dt_value):
-        return timezone.make_aware(dt_value, timezone.get_current_timezone())
-    return dt_value
+def _money(value):
+    return Decimal(value or 0).quantize(Decimal("0.01"))
 
 
 def _get_or_create_rules(branch: Branch) -> PayrollRule:
@@ -2780,216 +2767,316 @@ def _get_or_create_contrib(profile: UserProfile) -> EmployeeContribution:
     return contrib
 
 
+def _daterange(d1: date, d2: date):
+    cur = d1
+    while cur <= d2:
+        yield cur
+        cur += timedelta(days=1)
+
+
+def _is_weekday(d: date):
+    return d.weekday() < 5
+
+
+def _ensure_aware(dt: datetime) -> datetime:
+    if not dt:
+        return dt
+    if settings.USE_TZ and timezone.is_naive(dt):
+        return timezone.make_aware(dt, timezone.get_current_timezone())
+    return dt
+
+
 def _scoped_branch_for_admin_or_404(request, branch_id):
-    """
-    staff admin -> only their branch
-    superuser -> any branch
-    """
     if request.user.is_superuser:
         if branch_id and str(branch_id).isdigit():
             return Branch.objects.filter(id=int(branch_id)).first()
-        return None
+        return Branch.objects.first()
 
     try:
-        b = request.user.profile.branch
+        admin_branch = request.user.profile.branch
     except UserProfile.DoesNotExist:
         return None
 
-    if branch_id and b and str(branch_id).isdigit() and int(branch_id) != b.id:
+    if branch_id and str(branch_id).isdigit() and admin_branch and int(branch_id) != admin_branch.id:
         return None
-    return b
+
+    return admin_branch
 
 
-def _is_holiday_for(branch: Branch, d: date):
+def _get_profile_biometric_id(profile: UserProfile):
     """
-    Return matching holiday/suspension for a given branch/date.
+    Payroll must match AttendanceRecord.employee_id using Hikvision employee number.
+    Example:
+    UserProfile.biometric_employee_id = 3
+    AttendanceRecord.employee_id = 3
     """
-    qs = HolidaySuspension.objects.filter(date=d).filter(
+    biometric_id = str(getattr(profile, "biometric_employee_id", "") or "").strip()
+    if biometric_id:
+        return biometric_id
+
+    # fallback only, but biometric_employee_id should be filled
+    return str(profile.user.username).strip()
+
+
+def _holiday_for(branch: Branch, d: date):
+    return HolidaySuspension.objects.filter(date=d).filter(
         Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
         | Q(scope=HolidaySuspension.SCOPE_REGION)
         | Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=branch)
-    )
-    return qs.first()
+    ).first()
 
 
-def _attendance_summary_for_period(employee_id: str, branch: Branch, period: PayrollPeriod, rules: PayrollRule):
+def _is_travel_day(profile: UserProfile, d: date):
+    return TravelOrder.objects.filter(
+        employee=profile,
+        start_date__lte=d,
+        end_date__gte=d,
+    ).exists()
+
+
+def _flag_ceremony_day_for_week(branch: Branch, d: date):
     """
-    Attendance summary for payroll + DTR.
-    Holidays/suspensions are treated as remarks, not absences.
-    Weekends are excluded from absence counting.
+    Monday = flag ceremony.
+    If Monday holiday, move to next working day.
     """
-    start, end = period.start_date, period.end_date
+    monday = d - timedelta(days=d.weekday())
 
+    for i in range(5):
+        candidate = monday + timedelta(days=i)
+        if not _holiday_for(branch, candidate):
+            return candidate
+
+    return monday
+
+
+def _late_cutoff_for_day(branch: Branch, d: date, rules: PayrollRule):
+    flag_day = _flag_ceremony_day_for_week(branch, d)
+
+    if d == flag_day:
+        return rules.flag_ceremony_cutoff_time or time(8, 0)
+
+    normal_start = rules.work_start_time or time(8, 0)
+    grace = int(rules.grace_minutes_normal or 15)
+    return (datetime.combine(date.today(), normal_start) + timedelta(minutes=grace)).time()
+
+
+def _rate_info(profile: UserProfile):
+    monthly = Decimal(profile.monthly_salary or 0)
+    daily = Decimal(profile.daily_rate or 0)
+
+    if daily <= 0 and monthly > 0:
+        daily = monthly / SALARY_DIVISOR
+
+    hourly = daily / DAILY_HOURS if daily > 0 else Decimal("0")
+    per_minute = hourly / Decimal("60") if hourly > 0 else Decimal("0")
+
+    return {
+        "monthly": _money(monthly),
+        "daily": _money(daily),
+        "hourly": _money(hourly),
+        "per_minute": _money(per_minute),
+    }
+
+
+def _daily_logs(employee_id: str, branch: Branch, d: date):
     qs = AttendanceRecord.objects.filter(
         branch=branch,
         employee_id=employee_id,
-        timestamp__date__gte=start,
-        timestamp__date__lte=end,
+        timestamp__date=d,
     ).order_by("timestamp")
 
-    by_day = {}
+    ins = []
+    outs = []
+
     for rec in qs:
-        d = rec.timestamp.date()
-        by_day.setdefault(d, {
-            "ins": [],
-            "outs": [],
-            "status": "",
-            "remark": "",
-            "is_holiday": False,
-            "holiday_name": "",
-        })
         if rec.attendance_status == AttendanceRecord.STATUS_CHECKIN:
-            by_day[d]["ins"].append(rec.timestamp)
+            ins.append(rec.timestamp)
         elif rec.attendance_status == AttendanceRecord.STATUS_CHECKOUT:
-            by_day[d]["outs"].append(rec.timestamp)
+            outs.append(rec.timestamp)
+
+    return ins, outs
+
+
+def _build_dtr_and_summary(profile: UserProfile, branch: Branch, period: PayrollPeriod, rules: PayrollRule):
+    employee_id = _get_profile_biometric_id(profile)
+
+    rows = []
 
     days_present = 0
-    days_absent = 0
-    late_minutes_total = 0
-    undertime_minutes_total = 0
-    has_missing_logs = False
+    travel_days = 0
+    holiday_days = 0
+    absences = 0
+    late_minutes = 0
+    undertime_minutes = 0
+    missing_logs = 0
 
-    grace = int(rules.grace_minutes_normal or 0)
-    start_limit_time = (datetime.combine(date.today(), rules.work_start_time) + timedelta(minutes=grace)).time()
-    tz = timezone.get_current_timezone() if settings.USE_TZ else None
+    for d in _daterange(period.start_date, period.end_date):
+        if not _is_weekday(d):
+            continue
 
-    for d in _daterange(start, end):
-        by_day.setdefault(d, {
-            "ins": [],
-            "outs": [],
-            "status": "",
-            "remark": "",
-            "is_holiday": False,
-            "holiday_name": "",
+        holiday = _holiday_for(branch, d)
+        is_travel = _is_travel_day(profile, d)
+
+        ins, outs = _daily_logs(employee_id, branch, d)
+
+        first_in = min(ins) if ins else None
+        last_out = max(outs) if outs else None
+
+        status = "Absent"
+        remarks = ""
+
+        if holiday:
+            holiday_days += 1
+            remarks = holiday.name
+            if profile.employment_type == UserProfile.EMP_COS:
+                status = "Holiday"
+            else:
+                status = "Holiday - No Pay"
+
+        if is_travel:
+            travel_days += 1
+            status = "Travel"
+            remarks = "Official Travel"
+
+        if first_in:
+            days_present += 1
+            if status not in ["Travel"]:
+                status = "Present"
+
+        if first_in and not last_out:
+            missing_logs += 1
+            if status == "Present":
+                status = "Missing Out"
+
+        if last_out and not first_in:
+            missing_logs += 1
+            status = "Missing In"
+
+        if not first_in and not holiday and not is_travel:
+            absences += 1
+
+        if profile.employment_type == UserProfile.EMP_JO and holiday and not first_in and not is_travel:
+            absences += 1
+
+        # late computation
+        day_late = 0
+        if first_in:
+            cutoff_time = _late_cutoff_for_day(branch, d, rules)
+            cutoff_dt = datetime.combine(d, cutoff_time)
+
+            if settings.USE_TZ:
+                cutoff_dt = timezone.make_aware(cutoff_dt, timezone.get_current_timezone())
+                first_in_checked = _ensure_aware(first_in)
+            else:
+                first_in_checked = first_in
+
+            if first_in_checked > cutoff_dt:
+                day_late = int((first_in_checked - cutoff_dt).total_seconds() // 60)
+                late_minutes += day_late
+                if status == "Present":
+                    status = "Late"
+
+        # undertime computation
+        day_undertime = 0
+        if first_in and last_out:
+            first_local = timezone.localtime(first_in) if settings.USE_TZ else first_in
+            last_local = timezone.localtime(last_out) if settings.USE_TZ else last_out
+
+            rendered_minutes = int((last_local - first_local).total_seconds() // 60)
+
+            # subtract 1 hour lunch if rendered time is more than 5 hours
+            if rendered_minutes > 300:
+                rendered_minutes -= 60
+
+            required_minutes = int(Decimal(rules.daily_hours_required or 8) * Decimal("60"))
+
+            if rendered_minutes < required_minutes:
+                day_undertime = required_minutes - rendered_minutes
+                undertime_minutes += day_undertime
+
+        total_hours = ""
+        if first_in and last_out:
+            first_local = timezone.localtime(first_in) if settings.USE_TZ else first_in
+            last_local = timezone.localtime(last_out) if settings.USE_TZ else last_out
+            mins = int((last_local - first_local).total_seconds() // 60)
+            if mins > 300:
+                mins -= 60
+            total_hours = round(mins / 60, 2)
+
+        rows.append({
+            "date": d.strftime("%Y-%m-%d"),
+            "day": d.strftime("%a"),
+            "am_in": first_in.strftime("%I:%M %p") if first_in else "",
+            "am_out": "",
+            "pm_in": "",
+            "pm_out": last_out.strftime("%I:%M %p") if last_out else "",
+            "timeIn": first_in.strftime("%I:%M %p") if first_in else "",
+            "timeOut": last_out.strftime("%I:%M %p") if last_out else "",
+            "total_hours": total_hours,
+            "totalHours": total_hours,
+            "late": day_late,
+            "undertime": day_undertime,
+            "status": status,
+            "remarks": remarks,
         })
 
-        logs = by_day[d]
-        holiday_obj = _is_holiday_for(branch, d)
-
-        # 1) Holiday / Suspension remark
-        if holiday_obj:
-            logs["is_holiday"] = True
-            logs["holiday_name"] = holiday_obj.name
-
-            if holiday_obj.type == HolidaySuspension.TYPE_HOLIDAY:
-                logs["status"] = f"Holiday - {holiday_obj.name}"
-            elif holiday_obj.type == HolidaySuspension.TYPE_SUSPENSION:
-                logs["status"] = f"Suspension - {holiday_obj.name}"
-            else:
-                logs["status"] = f"Special Day - {holiday_obj.name}"
-
-            logs["remark"] = logs["status"]
-            continue
-
-        # 2) Weekend = not absent
-        if d.weekday() >= 5:
-            logs["status"] = "Weekend"
-            logs["remark"] = "Weekend"
-            continue
-
-        # 3) No logs on working day = absent
-        if not logs["ins"] and not logs["outs"]:
-            days_absent += 1
-            logs["status"] = "Absent"
-            logs["remark"] = "Absent"
-            continue
-
-        # 4) Present / missing logs
-        if logs["ins"]:
-            days_present += 1
-        else:
-            has_missing_logs = True
-
-        if logs["ins"] and not logs["outs"]:
-            has_missing_logs = True
-            logs["status"] = "Missing Time Out"
-        elif logs["outs"] and not logs["ins"]:
-            has_missing_logs = True
-            logs["status"] = "Missing Time In"
-        else:
-            logs["status"] = "Present"
-
-        # 5) Late computation
-        if logs["ins"]:
-            first_in = min(logs["ins"])
-            cutoff_dt = datetime.combine(d, start_limit_time)
-
-            if settings.USE_TZ:
-                cutoff_dt = timezone.make_aware(cutoff_dt, tz) if timezone.is_naive(cutoff_dt) else cutoff_dt
-                first_in = _ensure_aware(first_in)
-
-            if first_in > cutoff_dt:
-                late_mins = int((first_in - cutoff_dt).total_seconds() // 60)
-                late_minutes_total += late_mins
-                if "Missing" not in logs["status"]:
-                    logs["status"] = f"Present - Late ({late_mins} min)"
-
-        # 6) Undertime computation
-        if logs["outs"]:
-            last_out = max(logs["outs"])
-            end_dt = datetime.combine(d, rules.work_end_time)
-
-            if settings.USE_TZ:
-                end_dt = timezone.make_aware(end_dt, tz) if timezone.is_naive(end_dt) else end_dt
-                last_out = _ensure_aware(last_out)
-
-            if last_out < end_dt:
-                undertime_mins = int((end_dt - last_out).total_seconds() // 60)
-                undertime_minutes_total += undertime_mins
-                if logs["status"] == "Present":
-                    logs["status"] = f"Present - Undertime ({undertime_mins} min)"
-
-        logs["remark"] = logs["status"]
-
     return {
+        "rows": rows,
         "days_present": days_present,
-        "days_absent": days_absent,
-        "total_late_minutes": late_minutes_total,
-        "total_undertime_minutes": undertime_minutes_total,
-        "has_missing_logs": has_missing_logs,
-        "by_day": by_day,
+        "travel_days": travel_days,
+        "holiday_days": holiday_days,
+        "absences": absences,
+        "late_minutes": late_minutes,
+        "undertime_minutes": undertime_minutes,
+        "missing_logs": missing_logs,
+        "employee_id_used": employee_id,
     }
 
 
 def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod, rules: PayrollRule):
+    rates = _rate_info(profile)
     contrib = _get_or_create_contrib(profile)
+    summary = _build_dtr_and_summary(profile, branch, period, rules)
 
-    candidate_ids = [str(profile.user.username), str(profile.user.id)]
-    picked_id = candidate_ids[0]
-    if not AttendanceRecord.objects.filter(branch=branch, employee_id=picked_id).exists():
-        picked_id = candidate_ids[1]
+    daily_rate = rates["daily"]
+    monthly_rate = rates["monthly"]
+    per_minute = rates["per_minute"]
 
-    summary = _attendance_summary_for_period(picked_id, branch, period, rules)
+    days_present = Decimal(summary["days_present"])
+    travel_days = Decimal(summary["travel_days"])
+    absences = Decimal(summary["absences"])
 
-    days_present = summary["days_present"]
-    days_absent = summary["days_absent"]
-    late_minutes = summary["total_late_minutes"]
-    undertime_minutes = summary["total_undertime_minutes"]
-    has_missing_logs = summary["has_missing_logs"]
+    late_minutes = int(summary["late_minutes"])
+    undertime_minutes = int(summary["undertime_minutes"])
 
-    base = Decimal("0.00")
-    absences = days_absent
-
-    # JO = daily rate x actual working days present
+    # Gross pay
     if profile.employment_type == UserProfile.EMP_JO:
-        base = Decimal(profile.daily_rate or 0) * Decimal(days_present)
-
-    # COS = monthly or half-monthly fixed base
+        payable_days = days_present + travel_days
+        base_pay = daily_rate * payable_days
     else:
-        ms = Decimal(profile.monthly_salary or 0)
         if period.pay_mode == PayrollPeriod.PAY_MONTHLY:
-            base = ms
+            base_pay = monthly_rate
         else:
-            base = ms / Decimal("2.0")
+            base_pay = monthly_rate / Decimal("2")
 
-    premium = Decimal("0.00")
-    if profile.has_premium and base > 0:
-        premium = base * (Decimal(rules.premium_rate_percent or 0) / Decimal("100"))
+        # COS: deduct only actual unauthorized absences
+        absence_deduction = daily_rate * absences
+        base_pay = base_pay - absence_deduction
 
+    if base_pay < 0:
+        base_pay = Decimal("0.00")
+
+    late_deduction = per_minute * Decimal(late_minutes)
+    undertime_deduction = per_minute * Decimal(undertime_minutes)
+
+    premium_pay = Decimal("0.00")
+    if profile.has_premium and base_pay > 0:
+        premium_pay = base_pay * (Decimal(rules.premium_rate_percent or 20) / Decimal("100"))
+
+    overtime_hours = Decimal("0.00")
     overtime_pay = Decimal("0.00")
 
-    late_pen = Decimal(rules.late_penalty_per_minute or 0) * Decimal(late_minutes)
-    under_pen = Decimal(rules.undertime_penalty_per_minute or 0) * Decimal(undertime_minutes)
+    gross_before_deductions = base_pay + premium_pay + overtime_pay
 
     sss = Decimal(contrib.sss_amount or 0)
     pagibig = Decimal(contrib.pagibig_amount or 0)
@@ -2997,55 +3084,58 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     if contrib.philhealth_mode == EmployeeContribution.PHILHEALTH_FIXED:
         philhealth = Decimal(contrib.philhealth_value or 0)
     else:
-        philhealth = base * (Decimal(contrib.philhealth_value or 0) / Decimal("100"))
+        philhealth = gross_before_deductions * (Decimal(contrib.philhealth_value or 5) / Decimal("100"))
+
+    tax = gross_before_deductions * (Decimal(rules.tax_rate_percent or 5) / Decimal("100"))
 
     gov_total = sss + pagibig + philhealth
+    deductions_total = gov_total + tax + late_deduction + undertime_deduction
 
-    gross = base + premium + overtime_pay
-
-    tax = Decimal("0.00")
-    if gross > 0:
-        tax = gross * (Decimal(rules.tax_rate_percent or 0) / Decimal("100"))
-
-    manual_deduction = Decimal(profile.manual_deduction_amount or 0)
-
-    deductions_total = late_pen + under_pen + gov_total + tax + manual_deduction
-
-    net = gross - deductions_total
-    if net < 0:
-        net = Decimal("0.00")
+    net_pay = gross_before_deductions - deductions_total
+    if net_pay < 0:
+        net_pay = Decimal("0.00")
 
     issues = []
-    if has_missing_logs:
-        issues.append("Missing logs")
-    if rules.lunch_break_required:
-        issues.append("Lunch logs not tracked")
+    if not getattr(profile, "biometric_employee_id", ""):
+        issues.append("Missing biometric employee ID")
+    if summary["missing_logs"] > 0:
+        issues.append(f"{summary['missing_logs']} missing log day(s)")
+    if daily_rate <= 0:
+        issues.append("No daily/monthly salary configured")
+    if late_minutes > 0:
+        issues.append(f"{late_minutes} late minute(s)")
+    if undertime_minutes > 0:
+        issues.append(f"{undertime_minutes} undertime minute(s)")
 
     return {
+        "rates": rates,
         "attendance_summary": summary,
         "computed_payroll": {
-            "base": base,
-            "premium": premium,
-            "ot": overtime_pay,
+            "base": _money(base_pay),
+            "premium": _money(premium_pay),
+            "ot": _money(overtime_pay),
+            "overtime_hours": overtime_hours,
             "late_minutes": late_minutes,
             "undertime_minutes": undertime_minutes,
-            "absences": absences,
-            "deductions": deductions_total,
-            "net": net,
+            "absences": int(absences),
+            "late_deduction": _money(late_deduction),
+            "undertime_deduction": _money(undertime_deduction),
+            "deductions": _money(deductions_total),
+            "net": _money(net_pay),
         },
         "gov": {
-            "sss": sss,
-            "pagibig": pagibig,
-            "philhealth": philhealth,
-            "tax": tax,
-            "gov_total": gov_total,
+            "sss": _money(sss),
+            "pagibig": _money(pagibig),
+            "philhealth": _money(philhealth),
+            "tax": _money(tax),
+            "gov_total": _money(gov_total),
         },
-        "issues": ", ".join([x for x in issues if x]),
-        "picked_employee_id": picked_id,
+        "issues": ", ".join(issues),
+        "picked_employee_id": summary["employee_id_used"],
+        "dtr_rows": summary["rows"],
     }
-# -------------------------
-# Admin payroll page (REAL context)
-# -------------------------
+
+
 @login_required
 def admin_payroll(request):
     if not (request.user.is_staff or request.user.is_superuser):
@@ -3054,124 +3144,199 @@ def admin_payroll(request):
     selected_branch = request.GET.get("branch")
     branch_obj = _scoped_branch_for_admin_or_404(request, selected_branch)
 
-    if not request.user.is_superuser and not branch_obj:
-        messages.error(request, "Admin has no branch assigned.")
+    if not branch_obj:
+        messages.error(request, "No valid branch selected or assigned.")
         return redirect("admin_dashboard")
 
-    if request.user.is_superuser:
-        branches = Branch.objects.all().order_by("name")
-    else:
-        branches = Branch.objects.filter(id=branch_obj.id).order_by("name")
+    branches = Branch.objects.all().order_by("name") if request.user.is_superuser else Branch.objects.filter(id=branch_obj.id)
 
     payroll_periods = PayrollPeriod.objects.all().order_by("-start_date")[:24]
-
     selected_period = request.GET.get("period")
+
     period_obj = None
     if selected_period and str(selected_period).isdigit():
         period_obj = PayrollPeriod.objects.filter(id=int(selected_period)).first()
+
     if not period_obj:
         period_obj = payroll_periods.first()
 
-    if request.user.is_superuser and not branch_obj:
-        branch_obj = branches.first()
+    if not period_obj:
+        messages.error(request, "Please create a payroll period first.")
+        return render(request, "admin/payroll.html", {
+            "current": "payroll",
+            "branches": branches,
+            "selected_branch": branch_obj.id,
+            "payroll_periods": [],
+            "selected_period": None,
+            "employees": [],
+        })
 
-    payroll_rules = _get_or_create_rules(branch_obj) if branch_obj else None
+    payroll_rules = _get_or_create_rules(branch_obj)
 
-    holidays = HolidaySuspension.objects.all().order_by("-date")[:50]
-    if branch_obj:
-        holidays = HolidaySuspension.objects.filter(
-            Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
-            | Q(scope=HolidaySuspension.SCOPE_REGION)
-            | Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=branch_obj)
-        ).order_by("-date")[:50]
+    emp_type = (request.GET.get("emp_type") or request.GET.get("type") or "ALL").upper()
+    if emp_type == "ALL":
+        emp_type = "all"
 
-    payroll_batches = PayrollBatch.objects.all().order_by("-created_at")[:20]
-    if branch_obj:
-        payroll_batches = PayrollBatch.objects.filter(branch=branch_obj).order_by("-created_at")[:20]
-
-    # 🔥 FIX HERE (REMOVE ADMINS)
     prof_qs = UserProfile.objects.select_related("user", "branch").filter(
         is_approved=True,
+        branch=branch_obj,
         user__is_staff=False,
-        user__is_superuser=False
+        user__is_superuser=False,
     )
 
-    if branch_obj:
-        prof_qs = prof_qs.filter(branch=branch_obj)
-
-    type_filter = (request.GET.get("type") or "ALL").upper()
-    if type_filter in ("JO", "COS"):
-        prof_qs = prof_qs.filter(employment_type=type_filter)
+    if emp_type in ("JO", "COS"):
+        prof_qs = prof_qs.filter(employment_type=emp_type)
 
     employees = []
     total_payroll = Decimal("0.00")
     attendance_deductions = Decimal("0.00")
     gov_contributions = Decimal("0.00")
+    travel_count = 0
 
-    if branch_obj and period_obj and payroll_rules:
-        for prof in prof_qs.order_by("user__username"):
-            result = _compute_payroll(prof, branch_obj, period_obj, payroll_rules)
+    missing_checkout_count = 0
+    missing_lunch_count = 0
+    no_salary_count = 0
+    contribution_missing_count = 0
+    ot_disqualified_count = 0
 
-            total_payroll += result["computed_payroll"]["net"]
+    for prof in prof_qs.order_by("user__username"):
+        result = _compute_payroll(prof, branch_obj, period_obj, payroll_rules)
+        p = result["computed_payroll"]
+        gov = result["gov"]
+        summary = result["attendance_summary"]
+        rates = result["rates"]
 
-            attendance_deductions += (
-                Decimal(payroll_rules.late_penalty_per_minute or 0)
-                * Decimal(result["computed_payroll"]["late_minutes"])
-                + Decimal(payroll_rules.undertime_penalty_per_minute or 0)
-                * Decimal(result["computed_payroll"]["undertime_minutes"])
-            )
+        total_payroll += p["net"]
+        attendance_deductions += p["late_deduction"] + p["undertime_deduction"]
+        gov_contributions += gov["gov_total"]
+        travel_count += summary["travel_days"]
 
-            gov_contributions += result["gov"]["gov_total"]
+        if summary["missing_logs"] > 0:
+            missing_checkout_count += 1
+        if rates["daily"] <= 0:
+            no_salary_count += 1
+        if gov["sss"] <= 0 or gov["pagibig"] <= 0:
+            contribution_missing_count += 1
+        if p["late_minutes"] > 0:
+            ot_disqualified_count += 1
 
-            employees.append({
-                "id": prof.id,
-                "name": (prof.user.get_full_name() or prof.user.username),
-                "position": prof.position or "—",
-                "employment_type": prof.employment_type,
-                "branch_name": prof.branch.name if prof.branch else "—",
-                "attendance_summary": result["attendance_summary"],
-                "computed_payroll": {
-                    "net": f"{result['computed_payroll']['net']:.2f}",
-                },
-                "sss_amount": f"{result['gov']['sss']:.2f}",
-                "pagibig_amount": f"{result['gov']['pagibig']:.2f}",
-                "philhealth_value": f"{result['gov']['philhealth']:.2f}",
-                "philhealth_mode": "fixed",
-                "has_premium": prof.has_premium,
-            })
+        employees.append({
+            "id": prof.id,
 
-    pending_approval = Decimal("0.00")
-    if branch_obj and period_obj:
-        draft = PayrollBatch.objects.filter(
-            branch=branch_obj,
-            period=period_obj,
-            status=PayrollBatch.STATUS_DRAFT
-        ).first()
+            # Template-safe user data
+            "user": {
+                "id": prof.user.id,
+                "username": prof.user.username,
+                "email": prof.user.email,
+            },
 
-        if draft:
-            pending_approval = draft.totals_net or 0
+            "username": prof.user.username,
+            "employee_id": result["picked_employee_id"],
+            "biometric_employee_id": getattr(prof, "biometric_employee_id", "") or "",
+
+            "full_name": prof.user.get_full_name() or prof.user.username,
+            "name": prof.user.get_full_name() or prof.user.username,
+            
+            "type": prof.employment_type,
+            
+            "emp_type": prof.employment_type,
+            "employment_type": prof.employment_type,
+            "branch": prof.branch,
+            "branch_name": prof.branch.name if prof.branch else "—",
+            "position": prof.position or "—",
+
+            "days_present": summary["days_present"],
+            "travel_days": summary["travel_days"],
+            "holidays_suspensions": summary["holiday_days"],
+            "late_minutes": p["late_minutes"],
+            "undertime_minutes": p["undertime_minutes"],
+            "absences": p["absences"],
+
+            "daily_rate": rates["daily"],
+            "hourly_rate": rates["hourly"],
+            "per_minute_rate": rates["per_minute"],
+
+            "base_pay": p["base"],
+            "premium": p["premium"],
+            "premium_pay": p["premium"],
+            "ot_pay": p["ot"],
+            "gov_contributions": gov["gov_total"],
+            "tax": gov["tax"],
+            "net_pay": p["net"],
+
+            "late_deduction": p["late_deduction"],
+            "undertime_deduction": p["undertime_deduction"],
+
+            "attendance_summary": {
+                "days_present": summary["days_present"],
+                "days_absent": summary["absences"],
+                "total_late_minutes": p["late_minutes"],
+                "total_undertime_minutes": p["undertime_minutes"],
+                "has_missing_logs": summary["missing_logs"] > 0,
+            },
+
+            "computed_payroll": {
+                "base": p["base"],
+                "premium": p["premium"],
+                "ot": p["ot"],
+                "net": p["net"],
+            },
+
+            "gov_contributions_total": gov["gov_total"],
+            "tax_total": gov["tax"],
+            "deductions": p["deductions"],
+            "deductions_total": p["deductions"],
+            
+            "issues": result["issues"],
+            "dtr_records_json": json.dumps(result["dtr_rows"], default=str),
+        })
+
+    payroll_batches = PayrollBatch.objects.select_related("branch", "period", "processed_by").filter(branch=branch_obj).order_by("-created_at")[:20]
+
+    formatted_batches = []
+    for b in payroll_batches:
+        formatted_batches.append({
+            "id": b.id,
+            "name": b.name,
+            "branch_name": b.branch.name,
+            "period_name": b.period.name,
+            "status": b.get_status_display() if hasattr(b, "get_status_display") else b.status,
+            "processed_by": b.processed_by.username if b.processed_by else "—",
+            "processed_at": b.processed_at,
+            "total_net": b.totals_net,
+        })
 
     context = {
         "current": "payroll",
+        "is_superadmin": request.user.is_superuser,
         "branches": branches,
-        "selected_branch": branch_obj.id if branch_obj else None,
+        "selected_branch": branch_obj.id,
         "payroll_periods": payroll_periods,
-        "selected_period": period_obj.id if period_obj else None,
+        "selected_period": period_obj,
         "payroll_rules": payroll_rules,
+
         "employees": employees,
-        "holidays": holidays,
-        "payroll_batches": payroll_batches,
-        "total_payroll": total_payroll,
-        "pending_approval": pending_approval,
-        "attendance_deductions": attendance_deductions,
-        "gov_contributions": gov_contributions,
+        "payroll_batches": formatted_batches,
+
+        "total_payroll": _money(total_payroll),
+        "attendance_deductions": _money(attendance_deductions),
+        "gov_contributions": _money(gov_contributions),
+        "travel_count": travel_count,
+        "payroll_status": "Draft",
+
+        "missing_checkout_count": missing_checkout_count,
+        "missing_lunch_count": missing_lunch_count,
+        "no_salary_count": no_salary_count,
+        "contribution_missing_count": contribution_missing_count,
+        "ot_disqualified_count": ot_disqualified_count,
+
+        "salary_divisor": SALARY_DIVISOR,
+        "ot_multiplier": OT_MULTIPLIER,
     }
 
     return render(request, "admin/payroll.html", context)
 
-# -------------------------
-# Payroll Preview API (JSON)
-# -------------------------
+
 @login_required
 def admin_payroll_preview_api(request):
     if not (request.user.is_staff or request.user.is_superuser):
@@ -3179,7 +3344,7 @@ def admin_payroll_preview_api(request):
 
     branch_id = request.GET.get("branch")
     period_id = request.GET.get("period")
-    emp_type = (request.GET.get("type") or "ALL").upper()
+    emp_type = (request.GET.get("emp_type") or request.GET.get("type") or "ALL").upper()
 
     branch_obj = _scoped_branch_for_admin_or_404(request, branch_id)
     if not branch_obj:
@@ -3191,12 +3356,11 @@ def admin_payroll_preview_api(request):
 
     rules = _get_or_create_rules(branch_obj)
 
-    # 🔥 FIX HERE
     prof_qs = UserProfile.objects.select_related("user", "branch").filter(
         is_approved=True,
         branch=branch_obj,
         user__is_staff=False,
-        user__is_superuser=False
+        user__is_superuser=False,
     )
 
     if emp_type in ("JO", "COS"):
@@ -3210,6 +3374,7 @@ def admin_payroll_preview_api(request):
         p = res["computed_payroll"]
 
         rows.append({
+            "id": prof.id,
             "name": prof.user.get_full_name() or prof.user.username,
             "type": prof.employment_type,
             "base": float(p["base"]),
@@ -3234,9 +3399,7 @@ def admin_payroll_preview_api(request):
         "total_net": float(total_net),
     })
 
-# -------------------------
-# DTR API (JSON)
-# -------------------------
+
 @login_required
 def admin_employee_dtr_api(request, profile_id: int):
     if not (request.user.is_staff or request.user.is_superuser):
@@ -3244,10 +3407,12 @@ def admin_employee_dtr_api(request, profile_id: int):
 
     period_id = request.GET.get("period")
     period = PayrollPeriod.objects.filter(id=period_id).first() if str(period_id).isdigit() else PayrollPeriod.objects.first()
+
     if not period:
         return JsonResponse({"ok": False, "error": "No payroll period found"}, status=400)
 
     prof = UserProfile.objects.select_related("user", "branch").filter(id=profile_id).first()
+
     if not prof or not prof.branch:
         return JsonResponse({"ok": False, "error": "Profile not found"}, status=404)
 
@@ -3256,78 +3421,125 @@ def admin_employee_dtr_api(request, profile_id: int):
         return JsonResponse({"ok": False, "error": "Unauthorized branch"}, status=403)
 
     rules = _get_or_create_rules(branch_obj)
+    result = _compute_payroll(prof, branch_obj, period, rules)
 
-    candidate_ids = [str(prof.user.username), str(prof.user.id)]
-    picked_id = candidate_ids[0]
-    if not AttendanceRecord.objects.filter(branch=branch_obj, employee_id=picked_id).exists():
-        picked_id = candidate_ids[1]
+    return JsonResponse({
+        "ok": True,
+        "employee": {
+            "id": prof.id,
+            "name": prof.user.get_full_name() or prof.user.username,
+            "biometric_employee_id": _get_profile_biometric_id(prof),
+        },
+        "branch": {"id": branch_obj.id, "name": branch_obj.name},
+        "period": {"id": period.id, "name": period.name},
+        "rows": result["dtr_rows"],
+    })
 
-    summ = _attendance_summary_for_period(picked_id, branch_obj, period, rules)
-    by_day = summ["by_day"]
 
-    out = []
-    for d in _daterange(period.start_date, period.end_date):
-        logs = by_day.get(d, {
-            "ins": [],
-            "outs": [],
-            "status": "Absent",
-            "remark": "Absent",
-            "is_holiday": False,
-            "holiday_name": "",
-        })
+@login_required
+@require_POST
+def admin_payroll_process_batch(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
 
-        ins = logs.get("ins", [])
-        outs = logs.get("outs", [])
+    branch_id = request.POST.get("branch")
+    period_id = request.POST.get("period")
+    emp_type = (request.POST.get("emp_type") or request.POST.get("type") or "ALL").upper()
 
-        time_in = min(ins).strftime("%H:%M") if ins else ""
-        time_out = max(outs).strftime("%H:%M") if outs else ""
+    branch_obj = _scoped_branch_for_admin_or_404(request, branch_id)
+    if not branch_obj:
+        return JsonResponse({"ok": False, "error": "Invalid/unauthorized branch"}, status=400)
 
-        late_val = 0
-        undertime_val = 0
+    period = PayrollPeriod.objects.filter(id=period_id).first() if str(period_id).isdigit() else None
+    if not period:
+        return JsonResponse({"ok": False, "error": "Invalid payroll period"}, status=400)
 
-        if ins:
-            grace = int(rules.grace_minutes_normal or 0)
-            cutoff_dt = datetime.combine(d, rules.work_start_time) + timedelta(minutes=grace)
-            first_in = min(ins)
-            if settings.USE_TZ:
-                tz = timezone.get_current_timezone()
-                cutoff_dt = timezone.make_aware(cutoff_dt, tz) if timezone.is_naive(cutoff_dt) else cutoff_dt
-                first_in = _ensure_aware(first_in)
-            if first_in > cutoff_dt:
-                late_val = int((first_in - cutoff_dt).total_seconds() // 60)
+    rules = _get_or_create_rules(branch_obj)
 
-        if outs:
-            end_dt = datetime.combine(d, rules.work_end_time)
-            last_out = max(outs)
-            if settings.USE_TZ:
-                tz = timezone.get_current_timezone()
-                end_dt = timezone.make_aware(end_dt, tz) if timezone.is_naive(end_dt) else end_dt
-                last_out = _ensure_aware(last_out)
-            if last_out < end_dt:
-                undertime_val = int((end_dt - last_out).total_seconds() // 60)
+    prof_qs = UserProfile.objects.select_related("user", "branch").filter(
+        is_approved=True,
+        branch=branch_obj,
+        user__is_staff=False,
+        user__is_superuser=False,
+    )
 
-        total_hours = ""
-        if ins and outs:
-            first_in = min(ins)
-            last_out = max(outs)
-            diff = last_out - first_in
-            total_hours = round(diff.total_seconds() / 3600, 2)
+    if emp_type in ("JO", "COS"):
+        prof_qs = prof_qs.filter(employment_type=emp_type)
 
-        out.append({
-            "date": d.strftime("%Y-%m-%d"),
-            "day": d.strftime("%A"),
-            "timeIn": time_in,
-            "timeOut": time_out,
-            "lunchIn": "",
-            "lunchOut": "",
-            "totalHours": total_hours,
-            "late": late_val,
-            "undertime": undertime_val,
-            "status": logs.get("status", "Absent"),
-        })
+    batch, _ = PayrollBatch.objects.get_or_create(
+        branch=branch_obj,
+        period=period,
+        defaults={
+            "name": f"Payroll {branch_obj.name} - {period.name}",
+            "status": PayrollBatch.STATUS_DRAFT,
+        }
+    )
 
-    return JsonResponse({"ok": True, "rows": out})
+    PayrollItem.objects.filter(batch=batch).delete()
 
+    totals_net = Decimal("0.00")
+    totals_deductions = Decimal("0.00")
+
+    with transaction.atomic():
+        for prof in prof_qs.order_by("user__username"):
+            res = _compute_payroll(prof, branch_obj, period, rules)
+            p = res["computed_payroll"]
+            gov = res["gov"]
+
+            PayrollItem.objects.create(
+                batch=batch,
+                profile=prof,
+                base_pay=p["base"],
+                premium_pay=p["premium"],
+                overtime_hours=p["overtime_hours"],
+                overtime_pay=p["ot"],
+                late_minutes=p["late_minutes"],
+                undertime_minutes=p["undertime_minutes"],
+                absences=p["absences"],
+                manual_deduction=Decimal("0.00"),
+                deductions_total=p["deductions"],
+                gov_contributions_total=gov["gov_total"],
+                tax_total=gov["tax"],
+                net_pay=p["net"],
+                issues=res["issues"],
+                meta={
+                    "period": {
+                        "start": str(period.start_date),
+                        "end": str(period.end_date),
+                    },
+                    "employee_id_used": res["picked_employee_id"],
+                    "rates": {
+                        "daily": str(res["rates"]["daily"]),
+                        "hourly": str(res["rates"]["hourly"]),
+                        "per_minute": str(res["rates"]["per_minute"]),
+                    },
+                    "dtr_rows": res["dtr_rows"],
+                }
+            )
+
+            totals_net += p["net"]
+            totals_deductions += p["deductions"]
+
+        batch.totals_net = _money(totals_net)
+        batch.totals_deductions = _money(totals_deductions)
+        batch.status = PayrollBatch.STATUS_COMPLETED
+        batch.processed_by = request.user
+        batch.processed_at = timezone.now()
+        batch.save()
+
+    return JsonResponse({
+        "ok": True,
+        "message": "Payroll processed successfully.",
+        "batch": {
+            "id": batch.id,
+            "name": batch.name,
+            "status": batch.status,
+        },
+        "totals": {
+            "net": float(totals_net),
+            "deductions": float(totals_deductions),
+        },
+    })
 # -------------------------
 # Process / Create Payroll Batch (Approve & Process)
 # -------------------------
