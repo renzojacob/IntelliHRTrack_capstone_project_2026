@@ -3988,6 +3988,16 @@ def admin_payroll(request):
 
     for prof in prof_qs.order_by("user__username"):
         result = _compute_payroll(prof, branch_obj, period_obj, payroll_rules)
+        saved_item = (
+            PayrollItem.objects
+            .filter(
+                batch__branch=branch_obj,
+                batch__period=period_obj,
+                profile=prof,
+            )
+            .order_by("-batch__processed_at", "-id")
+            .first()
+        )
 
         rates = result.get("rates", {})
         summary = result.get("attendance_summary", {})
@@ -4036,6 +4046,7 @@ def admin_payroll(request):
         employees.append({
             "id": prof.id,
             "profile_id": prof.id,
+            "payroll_item_id": saved_item.id if saved_item else None,
             "user_id": prof.user.id,
 
             "username": prof.user.username,
@@ -4108,9 +4119,12 @@ def admin_payroll(request):
                 "undertime_deduction": undertime_deduction,
                 "deductions": deductions,
             },
+            
 
             "issues": issues_text,
             "dtr_records_json": json.dumps(result.get("dtr_rows", []), default=str),
+
+            
         })
 
     payroll_batches = (
@@ -4352,6 +4366,88 @@ def admin_employee_dtr_api(request, profile_id: int):
         "period": {"id": period.id, "name": period.name},
         "rows": result["dtr_rows"],
     })
+
+@login_required
+def admin_payroll_item_dtr_print(request, item_id: int):
+    """
+    Civil Service Form No. 48 style DTR print page.
+    Uses SAVED PayrollItem.meta["dtr_rows"] from processed payroll.
+    This is better than live recomputation because printed DTR should match finalized payroll.
+    """
+    if not (request.user.is_staff or request.user.is_superuser):
+        return redirect("login_ui")
+
+    item = get_object_or_404(
+        PayrollItem.objects.select_related(
+            "batch",
+            "batch__branch",
+            "batch__period",
+            "profile",
+            "profile__user",
+            "profile__branch",
+        ),
+        id=item_id,
+    )
+
+    # Branch security
+    admin_branch = _get_admin_branch(request)
+    if admin_branch and item.batch.branch_id != admin_branch.id:
+        messages.error(request, "You are not allowed to view DTR from another branch.")
+        return redirect("admin_payroll")
+
+    profile = item.profile
+    user = profile.user
+    batch = item.batch
+    period = batch.period
+
+    meta = item.meta or {}
+    dtr_rows = meta.get("dtr_rows", [])
+
+    # Fallback if old PayrollItem has no saved DTR rows
+    if not dtr_rows:
+        rules = _get_or_create_rules(batch.branch)
+        result = _compute_payroll(profile, batch.branch, period, rules)
+        dtr_rows = result.get("dtr_rows", [])
+
+    # Totals
+    total_undertime_hours = 0
+    total_undertime_minutes = 0
+
+    for row in dtr_rows:
+        total_undertime_hours += int(row.get("undertime_hour", 0) or 0)
+        total_undertime_minutes += int(row.get("undertime_minute", 0) or 0)
+
+    # Convert excess minutes to hours
+    extra_hours = total_undertime_minutes // 60
+    total_undertime_hours += extra_hours
+    total_undertime_minutes = total_undertime_minutes % 60
+
+    month_label = f"{period.start_date.strftime('%B')} {period.start_date.day}-{period.end_date.day}, {period.end_date.year}"
+
+    context = {
+        "item": item,
+        "batch": batch,
+        "period": period,
+        "profile": profile,
+        "employee": user,
+
+        "employee_name": user.get_full_name() or user.username,
+        "biometric_employee_id": profile.biometric_employee_id or meta.get("employee", {}).get("employee_id_used", ""),
+        "department": profile.department or "Department of Agriculture RFO - MIMAROPA",
+        "division": profile.department or "Department of Agriculture RFO - MiMaRoPa",
+        "branch_name": batch.branch.name if batch.branch else "—",
+
+        "month_label": month_label,
+        "dtr_rows": dtr_rows,
+
+        "total_undertime_hours": total_undertime_hours,
+        "total_undertime_minutes": total_undertime_minutes,
+
+        "printed_by": request.user.get_full_name() or request.user.username,
+        "printed_at": timezone.localtime(timezone.now()),
+    }
+
+    return render(request, "admin/payroll_dtr_print.html", context)
 
 
 @login_required
