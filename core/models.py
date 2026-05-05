@@ -244,15 +244,17 @@ class PayrollPeriod(models.Model):
 
     PAY_MODE_CHOICES = [
         (PAY_MONTHLY, "Monthly"),
-        (PAY_FIRST_HALF, "Kinsenas (1st Half)"),
-        (PAY_SECOND_HALF, "Katapusan (2nd Half)"),
+        (PAY_FIRST_HALF, "Semi-monthly 1st Half"),
+        (PAY_SECOND_HALF, "Semi-monthly 2nd Half"),
     ]
 
     name = models.CharField(max_length=120)
     start_date = models.DateField(db_index=True)
     end_date = models.DateField(db_index=True)
     pay_mode = models.CharField(
-        max_length=20, choices=PAY_MODE_CHOICES, default=PAY_MONTHLY
+        max_length=20,
+        choices=PAY_MODE_CHOICES,
+        default=PAY_MONTHLY,
     )
 
     class Meta:
@@ -262,10 +264,11 @@ class PayrollPeriod(models.Model):
     def __str__(self):
         return f"{self.name} ({self.start_date} - {self.end_date})"
 
-
 class PayrollRule(models.Model):
     branch = models.OneToOneField(
-        Branch, on_delete=models.CASCADE, related_name="payroll_rules"
+        Branch,
+        on_delete=models.CASCADE,
+        related_name="payroll_rules",
     )
 
     tax_rate_percent = models.DecimalField(max_digits=6, decimal_places=2, default=5)
@@ -274,17 +277,27 @@ class PayrollRule(models.Model):
     PHILHEALTH_PERCENT = "percent"
     PHILHEALTH_FIXED = "fixed"
 
-    philhealth_default_mode = models.CharField(max_length=10, default=PHILHEALTH_PERCENT)
-    philhealth_default_value = models.DecimalField(max_digits=10, decimal_places=2, default=5)
+    philhealth_default_mode = models.CharField(
+        max_length=10,
+        default=PHILHEALTH_PERCENT,
+    )
+    philhealth_default_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=5,
+    )
 
-    late_penalty_per_minute = models.DecimalField(max_digits=10, decimal_places=2, default=1.50)
-    undertime_penalty_per_minute = models.DecimalField(max_digits=10, decimal_places=2, default=2.00)
+    salary_divisor = models.DecimalField(max_digits=6, decimal_places=2, default=22)
+
+    sss_minimum = models.DecimalField(max_digits=10, decimal_places=2, default=760)
+    pagibig_minimum = models.DecimalField(max_digits=10, decimal_places=2, default=400)
+
+    ot_multiplier = models.DecimalField(max_digits=5, decimal_places=2, default=1.25)
 
     grace_minutes_normal = models.PositiveIntegerField(default=15)
-
     flag_ceremony_cutoff_time = models.TimeField(default="08:00")
 
-    lunch_break_required = models.BooleanField(default=False)
+    lunch_break_required = models.BooleanField(default=True)
     daily_hours_required = models.DecimalField(max_digits=5, decimal_places=2, default=8)
 
     work_start_time = models.TimeField(default="08:00")
@@ -454,3 +467,33 @@ class TravelOrder(models.Model):
     def __str__(self):
         return f"{self.employee.user.username} ({self.start_date} - {self.end_date})"
 
+    #
+class OvertimeRequest(models.Model):
+    profile = models.ForeignKey(
+        UserProfile,
+        on_delete=models.CASCADE,
+        related_name="overtime_requests",
+    )
+    date = models.DateField(db_index=True)
+    hours = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+
+    approved = models.BooleanField(default=False)
+    approved_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="approved_overtime_requests",
+    )
+
+    reason = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "core_overtimerequest"
+        ordering = ["-date", "-created_at"]
+        unique_together = [("profile", "date")]
+
+    def __str__(self):
+        return f"{self.profile.user.username} OT {self.date} ({self.hours} hrs)"
+    

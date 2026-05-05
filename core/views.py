@@ -7,6 +7,9 @@ import json
 from decimal import Decimal
 from datetime import date, datetime, time, timedelta
 
+from collections import defaultdict
+from django.utils import timezone
+
 from django.db.models import Count, Sum, Q
 
 
@@ -28,6 +31,8 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.cache import never_cache
 from .models import BiometricDevice
 from .hikvision_sync import fetch_hikvision_attendance
+from core.models import AttendanceRecord
+
 from .forms import AttendanceImportForm, AttendanceRecordForm
 from .models import (
     Branch,
@@ -42,6 +47,7 @@ from .models import (
     PayrollBatch,
     PayrollItem,
     TravelOrder,
+    OvertimeRequest,
 )
 
 
@@ -270,10 +276,7 @@ def signup_ui(request):
 # =========================
 # Admin Dashboard UI pages
 # =========================
-from collections import defaultdict
-from datetime import time
-from decimal import Decimal
-from django.utils import timezone
+
 
 @login_required
 @never_cache
@@ -2897,8 +2900,308 @@ def _daily_logs(employee_id: str, branch: Branch, d: date):
     return ins, outs
 
 
-def _build_dtr_and_summary(profile: UserProfile, branch: Branch, period: PayrollPeriod, rules: PayrollRule):
+# =========================================================
+# PAYROLL STEP 2 HELPERS
+# Attendance matching + DTR summary computation
+# =========================================================
+
+def _money(value):
+    """
+    Safe money formatter for Decimal values.
+    If you already have _money above this, you may keep only one version.
+    """
+    try:
+        return Decimal(value or 0).quantize(Decimal("0.01"))
+    except Exception:
+        return Decimal("0.00")
+
+
+def _normalize_emp_id(value):
+    """
+    Normalize biometric IDs:
+    3, "3", " 3 " => "3"
+    """
+    return str(value or "").strip()
+
+
+def _get_profile_biometric_id(profile):
+    """
+    The official attendance identity must come from UserProfile.biometric_employee_id.
+    Fallbacks are only for debugging / old data compatibility.
+    """
+    bio_id = _normalize_emp_id(getattr(profile, "biometric_employee_id", ""))
+
+    if bio_id:
+        return bio_id
+
+    # fallback only if biometric_employee_id is empty
+    return _normalize_emp_id(getattr(profile.user, "id", ""))
+
+
+def _normalize_status_text(value):
+    return str(value or "").strip().lower().replace("-", "").replace("_", "").replace(" ", "")
+
+
+def _record_attendance_kind(record):
+    """
+    Returns: "in", "out", or "unknown"
+
+    IMPORTANT:
+    Your SQL dump shows some Hikvision Check Out logs were saved as CHECK_IN.
+    So we trust raw_row['label'] / raw_row['attendanceStatus'] first,
+    then fallback to AttendanceRecord.attendance_status.
+    """
+    raw = record.raw_row or {}
+
+    raw_status = _normalize_status_text(raw.get("attendanceStatus"))
+    raw_label = _normalize_status_text(raw.get("label"))
+    db_status = _normalize_status_text(record.attendance_status)
+
+    # Hikvision raw values
+    if raw_status in {"checkin", "timein", "in"}:
+        return "in"
+    if raw_status in {"checkout", "timeout", "out"}:
+        return "out"
+
+    if raw_label in {"checkin", "timein", "in"}:
+        return "in"
+    if raw_label in {"checkout", "timeout", "out"}:
+        return "out"
+
+    # Django stored values
+    if db_status in {"checkin", "check_in", "timein", "in"}:
+        return "in"
+    if db_status in {"checkout", "check_out", "timeout", "out"}:
+        return "out"
+
+    return "unknown"
+
+
+def _record_local_datetime(record):
+    """
+    Prefer Hikvision raw time because it contains +08:00.
+    This avoids timezone mismatch when DB stores UTC-like timestamp.
+    """
+    raw = record.raw_row or {}
+    raw_time = raw.get("time")
+
+    if raw_time:
+        try:
+            dt = parse_datetime(str(raw_time))
+            if dt:
+                if timezone.is_aware(dt):
+                    return timezone.localtime(dt)
+                return timezone.make_aware(dt, timezone.get_current_timezone())
+        except Exception:
+            pass
+
+    ts = record.timestamp
+
+    if timezone.is_aware(ts):
+        return timezone.localtime(ts)
+
+    if settings.USE_TZ:
+        try:
+            return timezone.make_aware(ts, timezone.get_current_timezone())
+        except Exception:
+            return ts
+
+    return ts
+
+
+def _date_range(start_date, end_date):
+    current = start_date
+    while current <= end_date:
+        yield current
+        current += timedelta(days=1)
+
+
+def _is_weekend(day):
+    # Monday = 0, Sunday = 6
+    return day.weekday() >= 5
+
+
+def _holidays_for_period(branch, period):
+    """
+    Return dictionary:
+    {
+        date: HolidaySuspension object
+    }
+    """
+    qs = HolidaySuspension.objects.filter(
+        date__gte=period.start_date,
+        date__lte=period.end_date,
+    ).filter(
+        Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
+        | Q(scope=HolidaySuspension.SCOPE_REGION)
+        | Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=branch)
+    )
+
+    return {h.date: h for h in qs}
+
+
+def _is_holiday_for_branch(day, holiday_map):
+    return day in holiday_map
+
+
+def _is_flag_ceremony_day(day, holiday_map):
+    """
+    Monday flag ceremony rule:
+    - Normal: Monday is flag ceremony day.
+    - If Monday is holiday/suspension, move to next working day.
+    - If Monday and Tuesday are holidays, move to Wednesday, etc.
+    """
+    monday = day - timedelta(days=day.weekday())
+
+    candidate = monday
+    for _ in range(5):  # Mon-Fri only
+        if not _is_weekend(candidate) and not _is_holiday_for_branch(candidate, holiday_map):
+            return day == candidate
+        candidate += timedelta(days=1)
+
+    return False
+
+
+def _time_to_str(value):
+    if not value:
+        return ""
+    try:
+        return value.strftime("%I:%M %p")
+    except Exception:
+        return str(value)
+
+
+def _minutes_between(start_time, end_time, day):
+    if not start_time or not end_time:
+        return 0
+
+    start_dt = datetime.combine(day, start_time)
+    end_dt = datetime.combine(day, end_time)
+
+    if end_dt < start_dt:
+        return 0
+
+    return int((end_dt - start_dt).total_seconds() // 60)
+
+
+def _build_dtr_and_summary(profile, branch, period, rules):
+    """
+    STEP 2 FIX:
+    Build DTR rows and attendance summary from AttendanceRecord.
+
+    Main fixes:
+    1. Match AttendanceRecord.employee_id to UserProfile.biometric_employee_id.
+    2. Use raw_row['label'] / raw_row['attendanceStatus'] to detect Check In / Check Out.
+    3. Use raw_row['time'] to avoid timezone mismatch.
+    4. Compute present, absent, late, undertime, travel, holiday/suspension.
+    """
+
     employee_id = _get_profile_biometric_id(profile)
+    issues = []
+
+    if not employee_id:
+        issues.append("Missing biometric employee ID")
+
+    # This is your period range.
+    start_day = period.start_date
+    end_day = period.end_date
+
+    # Wide datetime range. We still group using local/raw date below.
+    start_dt = datetime.combine(start_day, time.min)
+    end_dt = datetime.combine(end_day + timedelta(days=1), time.min)
+
+    if settings.USE_TZ:
+        try:
+            start_dt = timezone.make_aware(start_dt, timezone.get_current_timezone())
+            end_dt = timezone.make_aware(end_dt, timezone.get_current_timezone())
+        except Exception:
+            pass
+
+    # Employee ID candidates. Official is biometric_employee_id.
+    employee_id_candidates = {
+        _normalize_emp_id(employee_id),
+        _normalize_emp_id(profile.user.id),
+        _normalize_emp_id(profile.user.username),
+    }
+    employee_id_candidates = [x for x in employee_id_candidates if x]
+
+    # IMPORTANT:
+    # First, get records without strict branch filter.
+    # This helps if older attendance rows have null/wrong branch.
+    records_qs = AttendanceRecord.objects.filter(
+        employee_id__in=employee_id_candidates,
+        timestamp__gte=start_dt,
+        timestamp__lt=end_dt,
+    ).order_by("timestamp")
+
+    records_without_branch_count = records_qs.count()
+
+    # Then prefer same-branch records.
+    branch_records_qs = records_qs.filter(branch=branch)
+
+    if branch_records_qs.exists():
+        records_qs = branch_records_qs
+    else:
+        # Fallback: use records even if branch is missing/wrong, but warn.
+        if records_without_branch_count > 0:
+            issues.append("Attendance branch mismatch or blank branch; used employee ID match fallback")
+
+    records = list(records_qs)
+
+    # Debug print. Keep this while testing.
+    print("========== PAYROLL DTR DEBUG ==========")
+    print("USER:", profile.user.username)
+    print("PROFILE ID:", profile.id)
+    print("BIO ID USED:", employee_id)
+    print("PERIOD:", start_day, "to", end_day)
+    print("BRANCH:", branch.name if branch else None)
+    print("EMPLOYEE ID CANDIDATES:", employee_id_candidates)
+    print("RECORDS FOUND WITHOUT BRANCH FILTER:", records_without_branch_count)
+    print("RECORDS USED:", len(records))
+    print("MATCHING RECORD BRANCHES:", list(records_qs.values_list("branch__name", flat=True).distinct()))
+    print("MATCHING RECORD SAMPLE:", [
+        {
+            "id": r.id,
+            "employee_id": r.employee_id,
+            "timestamp": str(r.timestamp),
+            "local": str(_record_local_datetime(r)),
+            "db_status": r.attendance_status,
+            "raw_label": (r.raw_row or {}).get("label"),
+            "raw_attendanceStatus": (r.raw_row or {}).get("attendanceStatus"),
+            "kind": _record_attendance_kind(r),
+            "branch": r.branch.name if r.branch else None,
+        }
+        for r in records[:10]
+    ])
+    print("=======================================")
+
+    # Group records by local date
+    records_by_day = defaultdict(list)
+
+    for rec in records:
+        local_dt = _record_local_datetime(rec)
+        local_day = local_dt.date()
+
+        if start_day <= local_day <= end_day:
+            records_by_day[local_day].append(rec)
+
+    holiday_map = _holidays_for_period(branch, period)
+
+    travel_qs = TravelOrder.objects.filter(
+        employee=profile,
+        start_date__lte=end_day,
+        end_date__gte=start_day,
+    )
+
+    travel_days_set = set()
+    for travel in travel_qs:
+        s = max(travel.start_date, start_day)
+        e = min(travel.end_date, end_day)
+        for d in _date_range(s, e):
+            if not _is_weekend(d):
+                travel_days_set.add(d)
+
+    required_minutes = int(Decimal(rules.daily_hours_required or 8) * Decimal("60"))
 
     rows = []
 
@@ -2906,236 +3209,614 @@ def _build_dtr_and_summary(profile: UserProfile, branch: Branch, period: Payroll
     travel_days = 0
     holiday_days = 0
     absences = 0
-    late_minutes = 0
-    undertime_minutes = 0
     missing_logs = 0
 
-    for d in _daterange(period.start_date, period.end_date):
-        if not _is_weekday(d):
-            continue
+    late_minutes_total = 0
+    undertime_minutes_total = 0
 
-        holiday = _holiday_for(branch, d)
-        is_travel = _is_travel_day(profile, d)
+    for current_day in _date_range(start_day, end_day):
+        weekday_name = current_day.strftime("%A")
+        is_weekend = _is_weekend(current_day)
+        holiday_obj = holiday_map.get(current_day)
+        is_holiday = bool(holiday_obj)
+        is_travel = current_day in travel_days_set
 
-        ins, outs = _daily_logs(employee_id, branch, d)
+        day_records = sorted(
+            records_by_day.get(current_day, []),
+            key=lambda r: _record_local_datetime(r)
+        )
 
-        first_in = min(ins) if ins else None
-        last_out = max(outs) if outs else None
+        in_times = []
+        out_times = []
+        unknown_times = []
+
+        for rec in day_records:
+            local_dt = _record_local_datetime(rec)
+            kind = _record_attendance_kind(rec)
+
+            if kind == "in":
+                in_times.append(local_dt.time().replace(second=0, microsecond=0))
+            elif kind == "out":
+                out_times.append(local_dt.time().replace(second=0, microsecond=0))
+            else:
+                unknown_times.append(local_dt.time().replace(second=0, microsecond=0))
+
+        # Remove duplicates while preserving order
+        in_times = sorted(set(in_times))
+        out_times = sorted(set(out_times))
+        unknown_times = sorted(set(unknown_times))
+
+        has_in = bool(in_times)
+        has_out = bool(out_times)
+        has_any_log = bool(in_times or out_times or unknown_times)
+
+        am_in = ""
+        am_out = ""
+        pm_in = ""
+        pm_out = ""
+
+        total_rendered_minutes = 0
+        late_minutes = 0
+        undertime_minutes = 0
 
         status = "Absent"
         remarks = ""
 
-        if holiday:
+        if is_weekend:
+            status = "Weekend"
+            remarks = "Weekend"
+
+        elif is_holiday:
+            status = "Holiday/Suspension"
+            remarks = holiday_obj.name if holiday_obj else "Holiday/Suspension"
             holiday_days += 1
-            remarks = holiday.name
-            if profile.employment_type == UserProfile.EMP_COS:
-                status = "Holiday"
-            else:
-                status = "Holiday - No Pay"
 
-        if is_travel:
+        elif is_travel:
+            status = "Official Travel"
+            remarks = "Official travel"
             travel_days += 1
-            status = "Travel"
-            remarks = "Official Travel"
-
-        if first_in:
             days_present += 1
-            if status not in ["Travel"]:
-                status = "Present"
 
-        if first_in and not last_out:
-            missing_logs += 1
-            if status == "Present":
-                status = "Missing Out"
+        elif has_any_log:
+            status = "Present"
+            days_present += 1
 
-        if last_out and not first_in:
-            missing_logs += 1
-            status = "Missing In"
+            first_in = in_times[0] if in_times else None
+            last_out = out_times[-1] if out_times else None
 
-        if not first_in and not holiday and not is_travel:
-            absences += 1
+            # Civil Service Form No. 48 style columns
+            morning_ins = [t for t in in_times if t < time(12, 0)]
+            afternoon_ins = [t for t in in_times if t >= time(12, 0)]
 
-        if profile.employment_type == UserProfile.EMP_JO and holiday and not first_in and not is_travel:
-            absences += 1
+            morning_outs = [t for t in out_times if t <= time(12, 59)]
+            afternoon_outs = [t for t in out_times if t > time(12, 0)]
 
-        # late computation
-        day_late = 0
-        if first_in:
-            cutoff_time = _late_cutoff_for_day(branch, d, rules)
-            cutoff_dt = datetime.combine(d, cutoff_time)
+            if morning_ins:
+                am_in = _time_to_str(morning_ins[0])
+            elif first_in:
+                am_in = _time_to_str(first_in)
 
-            if settings.USE_TZ:
-                cutoff_dt = timezone.make_aware(cutoff_dt, timezone.get_current_timezone())
-                first_in_checked = _ensure_aware(first_in)
+            if morning_outs:
+                am_out = _time_to_str(morning_outs[-1])
+
+            if afternoon_ins:
+                pm_in = _time_to_str(afternoon_ins[0])
+
+            if afternoon_outs:
+                pm_out = _time_to_str(afternoon_outs[-1])
+            elif last_out:
+                pm_out = _time_to_str(last_out)
+
+            if first_in and last_out:
+                span_minutes = _minutes_between(first_in, last_out, current_day)
+
+                # Deduct 1 hour lunch if work span crosses lunch period.
+                lunch_deduct = 0
+                if first_in < time(12, 0) and last_out > time(13, 0):
+                    lunch_deduct = 60
+
+                total_rendered_minutes = max(0, span_minutes - lunch_deduct)
+
+            elif first_in and not last_out:
+                status = "Incomplete"
+                remarks = "Missing check-out"
+                missing_logs += 1
+
+            elif last_out and not first_in:
+                status = "Incomplete"
+                remarks = "Missing check-in"
+                missing_logs += 1
+
             else:
-                first_in_checked = first_in
+                status = "Incomplete"
+                remarks = "Unknown attendance logs"
+                missing_logs += 1
 
-            if first_in_checked > cutoff_dt:
-                day_late = int((first_in_checked - cutoff_dt).total_seconds() // 60)
-                late_minutes += day_late
-                if status == "Present":
-                    status = "Late"
+            # Late computation
+            if first_in:
+                if _is_flag_ceremony_day(current_day, holiday_map):
+                    threshold = rules.flag_ceremony_cutoff_time
+                else:
+                    threshold_dt = datetime.combine(current_day, rules.work_start_time) + timedelta(
+                        minutes=int(rules.grace_minutes_normal or 15)
+                    )
+                    threshold = threshold_dt.time()
 
-        # undertime computation
-        day_undertime = 0
-        if first_in and last_out:
-            first_local = timezone.localtime(first_in) if settings.USE_TZ else first_in
-            last_local = timezone.localtime(last_out) if settings.USE_TZ else last_out
+                if first_in > threshold:
+                    late_minutes = _minutes_between(threshold, first_in, current_day)
 
-            rendered_minutes = int((last_local - first_local).total_seconds() // 60)
+            # Undertime computation
+            if first_in and last_out:
+                if total_rendered_minutes < required_minutes:
+                    undertime_minutes = required_minutes - total_rendered_minutes
 
-            # subtract 1 hour lunch if rendered time is more than 5 hours
-            if rendered_minutes > 300:
-                rendered_minutes -= 60
+            late_minutes_total += late_minutes
+            undertime_minutes_total += undertime_minutes
 
-            required_minutes = int(Decimal(rules.daily_hours_required or 8) * Decimal("60"))
+        else:
+            status = "Absent"
+            remarks = "No attendance logs"
+            absences += 1
 
-            if rendered_minutes < required_minutes:
-                day_undertime = required_minutes - rendered_minutes
-                undertime_minutes += day_undertime
-
-        total_hours = ""
-        if first_in and last_out:
-            first_local = timezone.localtime(first_in) if settings.USE_TZ else first_in
-            last_local = timezone.localtime(last_out) if settings.USE_TZ else last_out
-            mins = int((last_local - first_local).total_seconds() // 60)
-            if mins > 300:
-                mins -= 60
-            total_hours = round(mins / 60, 2)
+        total_hours = Decimal(total_rendered_minutes) / Decimal("60")
 
         rows.append({
-            "date": d.strftime("%Y-%m-%d"),
-            "day": d.strftime("%a"),
-            "am_in": first_in.strftime("%I:%M %p") if first_in else "",
-            "am_out": "",
-            "pm_in": "",
-            "pm_out": last_out.strftime("%I:%M %p") if last_out else "",
-            "timeIn": first_in.strftime("%I:%M %p") if first_in else "",
-            "timeOut": last_out.strftime("%I:%M %p") if last_out else "",
-            "total_hours": total_hours,
-            "totalHours": total_hours,
-            "late": day_late,
-            "undertime": day_undertime,
+            "date": current_day.isoformat(),
+            "day": current_day.day,
+            "weekday": weekday_name,
+
+            # Civil Service Form No. 48 style fields
+            "am_in": am_in,
+            "am_out": am_out,
+            "pm_in": pm_in,
+            "pm_out": pm_out,
+
+            "total_hours": f"{total_hours:.2f}",
+            "late": int(late_minutes),
+            "undertime": int(undertime_minutes),
+
+            # Optional display helpers
+            "undertime_hour": int(undertime_minutes // 60),
+            "undertime_minute": int(undertime_minutes % 60),
+
             "status": status,
             "remarks": remarks,
+
+            "raw_log_count": len(day_records),
         })
 
     return {
-        "rows": rows,
-        "days_present": days_present,
-        "travel_days": travel_days,
-        "holiday_days": holiday_days,
-        "absences": absences,
-        "late_minutes": late_minutes,
-        "undertime_minutes": undertime_minutes,
-        "missing_logs": missing_logs,
         "employee_id_used": employee_id,
+        "rows": rows,
+
+        "days_present": int(days_present),
+        "travel_days": int(travel_days),
+        "holiday_days": int(holiday_days),
+        "absences": int(absences),
+        "missing_logs": int(missing_logs),
+
+        "late_minutes": int(late_minutes_total),
+        "undertime_minutes": int(undertime_minutes_total),
+
+        "records_found": int(records_without_branch_count),
+        "records_used": int(len(records)),
+        "issues": issues,
     }
 
 
+    
 def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod, rules: PayrollRule):
-    rates = _rate_info(profile)
-    contrib = _get_or_create_contrib(profile)
-    summary = _build_dtr_and_summary(profile, branch, period, rules)
+    """
+    STEP 2/3 payroll computation.
 
-    daily_rate = rates["daily"]
-    monthly_rate = rates["monthly"]
-    per_minute = rates["per_minute"]
+    Current supported:
+    - Attendance matching from biometric_employee_id
+    - JO no work, no pay
+    - COS monthly/semi-monthly base
+    - Holidays/suspensions not counted as absences
+    - Travel counted as paid present day
+    - Automatic late and undertime deduction
+    - SSS, Pag-IBIG, PhilHealth, tax
+    - Premium pay
+    - Approved overtime
+    - DTR rows for print preparation
+    """
 
-    days_present = Decimal(summary["days_present"])
-    travel_days = Decimal(summary["travel_days"])
-    absences = Decimal(summary["absences"])
+    issues = []
 
-    late_minutes = int(summary["late_minutes"])
-    undertime_minutes = int(summary["undertime_minutes"])
+    dtr = _build_dtr_and_summary(profile, branch, period, rules)
 
-    # Gross pay
-    if profile.employment_type == UserProfile.EMP_JO:
-        payable_days = days_present + travel_days
-        base_pay = daily_rate * payable_days
+    issues.extend(dtr.get("issues", []))
+
+    # -------------------------
+    # Rates
+    # -------------------------
+    monthly_salary = Decimal(profile.monthly_salary or 0)
+    daily_rate_profile = Decimal(profile.daily_rate or 0)
+
+    salary_divisor = Decimal(rules.salary_divisor or 22)
+    if salary_divisor <= 0:
+        salary_divisor = Decimal("22")
+
+    daily_required_hours = Decimal(rules.daily_hours_required or 8)
+    if daily_required_hours <= 0:
+        daily_required_hours = Decimal("8")
+
+    # Daily Rate = Monthly Salary / Salary Divisor
+    if monthly_salary > 0:
+        daily_rate = monthly_salary / salary_divisor
     else:
-        if period.pay_mode == PayrollPeriod.PAY_MONTHLY:
-            base_pay = monthly_rate
+        daily_rate = daily_rate_profile
+
+    hourly_rate = daily_rate / daily_required_hours if daily_required_hours > 0 else Decimal("0.00")
+    per_minute_rate = hourly_rate / Decimal("60") if hourly_rate > 0 else Decimal("0.00")
+
+    if daily_rate <= 0 and monthly_salary <= 0:
+        issues.append("No daily/monthly salary configured")
+
+    # -------------------------
+    # Attendance summary
+    # -------------------------
+    present_days = int(dtr["days_present"])
+    travel_days = int(dtr["travel_days"])
+    holiday_days = int(dtr["holiday_days"])
+    absences = int(dtr["absences"])
+    late_minutes = int(dtr["late_minutes"])
+    undertime_minutes = int(dtr["undertime_minutes"])
+
+    paid_attendance_days = present_days
+
+    # -------------------------
+    # Base pay
+    # -------------------------
+    emp_type = str(profile.employment_type or "").upper()
+
+    if emp_type == UserProfile.EMP_JO:
+        # JO = no work, no pay.
+        # Holidays are not paid unless they actually have attendance/travel.
+        base_pay = daily_rate * Decimal(paid_attendance_days)
+
+    else:
+        # COS = monthly/semi-monthly salary.
+        # Holidays/suspensions are not deducted because _build_dtr_and_summary
+        # does not count them as absences.
+        if monthly_salary > 0:
+            if period.pay_mode == PayrollPeriod.PAY_MONTHLY:
+                base_pay = monthly_salary
+            else:
+                base_pay = monthly_salary / Decimal("2")
         else:
-            base_pay = monthly_rate / Decimal("2")
+            # Fallback if COS has no monthly salary but has daily rate.
+            working_days = 0
+            for row in dtr["rows"]:
+                if row["status"] not in ["Weekend", "Holiday/Suspension"]:
+                    working_days += 1
 
-        # COS: deduct only actual unauthorized absences
-        absence_deduction = daily_rate * absences
-        base_pay = base_pay - absence_deduction
+            base_pay = daily_rate * Decimal(max(0, working_days - absences))
 
-    if base_pay < 0:
-        base_pay = Decimal("0.00")
+    base_pay = _money(base_pay)
 
-    late_deduction = per_minute * Decimal(late_minutes)
-    undertime_deduction = per_minute * Decimal(undertime_minutes)
+    # -------------------------
+    # Late and undertime deductions
+    # -------------------------
+    late_deduction = _money(Decimal(late_minutes) * per_minute_rate)
+    undertime_deduction = _money(Decimal(undertime_minutes) * per_minute_rate)
 
+    attendance_deduction = _money(late_deduction + undertime_deduction)
+
+    # -------------------------
+    # Premium pay
+    # -------------------------
     premium_pay = Decimal("0.00")
-    if profile.has_premium and base_pay > 0:
-        premium_pay = base_pay * (Decimal(rules.premium_rate_percent or 20) / Decimal("100"))
+    if profile.has_premium:
+        premium_rate = Decimal(rules.premium_rate_percent or 0) / Decimal("100")
+        premium_pay = _money(base_pay * premium_rate)
 
-    overtime_hours = Decimal("0.00")
-    overtime_pay = Decimal("0.00")
+    # -------------------------
+    # Overtime
+    # -------------------------
+    ot_hours = Decimal("0.00")
 
-    gross_before_deductions = base_pay + premium_pay + overtime_pay
+    try:
+        ot_qs = OvertimeRequest.objects.filter(
+            profile=profile,
+            approved=True,
+            date__gte=period.start_date,
+            date__lte=period.end_date,
+        )
+
+        for ot in ot_qs:
+            # Rule: if late that day, OT is disqualified.
+            matching_dtr_row = None
+            for row in dtr["rows"]:
+                if row["date"] == ot.date.isoformat():
+                    matching_dtr_row = row
+                    break
+
+            if matching_dtr_row and int(matching_dtr_row.get("late", 0)) > 0:
+                issues.append(f"OT disqualified on {ot.date}: employee was late")
+                continue
+
+            ot_hours += Decimal(ot.hours or 0)
+
+    except Exception:
+        ot_hours = Decimal("0.00")
+
+    ot_multiplier = Decimal(rules.ot_multiplier or Decimal("1.25"))
+    overtime_pay = _money(ot_hours * hourly_rate * ot_multiplier)
+
+    # -------------------------
+    # Government contributions
+    # -------------------------
+    contrib, _ = EmployeeContribution.objects.get_or_create(
+        profile=profile,
+        defaults={
+            "sss_amount": rules.sss_minimum or Decimal("760"),
+            "pagibig_amount": rules.pagibig_minimum or Decimal("400"),
+            "philhealth_mode": rules.philhealth_default_mode or EmployeeContribution.PHILHEALTH_PERCENT,
+            "philhealth_value": rules.philhealth_default_value or Decimal("5"),
+        }
+    )
 
     sss = Decimal(contrib.sss_amount or 0)
     pagibig = Decimal(contrib.pagibig_amount or 0)
 
+    # Enforce minimums
+    if sss < Decimal(rules.sss_minimum or 0):
+        sss = Decimal(rules.sss_minimum or 0)
+
+    if pagibig < Decimal(rules.pagibig_minimum or 0):
+        pagibig = Decimal(rules.pagibig_minimum or 0)
+
+    gross_before_deductions = _money(base_pay + premium_pay + overtime_pay)
+
+    philhealth = Decimal("0.00")
+
     if contrib.philhealth_mode == EmployeeContribution.PHILHEALTH_FIXED:
         philhealth = Decimal(contrib.philhealth_value or 0)
     else:
-        philhealth = gross_before_deductions * (Decimal(contrib.philhealth_value or 5) / Decimal("100"))
+        philhealth_rate = Decimal(contrib.philhealth_value or 0) / Decimal("100")
+        philhealth = gross_before_deductions * philhealth_rate
 
-    tax = gross_before_deductions * (Decimal(rules.tax_rate_percent or 5) / Decimal("100"))
+    philhealth = _money(philhealth)
 
-    gov_total = sss + pagibig + philhealth
-    deductions_total = gov_total + tax + late_deduction + undertime_deduction
+    gov_total = _money(sss + pagibig + philhealth)
 
-    net_pay = gross_before_deductions - deductions_total
+    # -------------------------
+    # Tax
+    # -------------------------
+    tax_rate = Decimal(rules.tax_rate_percent or 0) / Decimal("100")
+    tax_total = _money(gross_before_deductions * tax_rate)
+
+    # -------------------------
+    # Manual deduction
+    # -------------------------
+    manual_deduction = _money(profile.manual_deduction_amount or Decimal("0.00"))
+
+    # -------------------------
+    # Final computation
+    # -------------------------
+    deductions_total = _money(
+        attendance_deduction
+        + gov_total
+        + tax_total
+        + manual_deduction
+    )
+
+    net_pay = _money(gross_before_deductions - deductions_total)
+
     if net_pay < 0:
         net_pay = Decimal("0.00")
 
-    issues = []
-    if not getattr(profile, "biometric_employee_id", ""):
-        issues.append("Missing biometric employee ID")
-    if summary["missing_logs"] > 0:
-        issues.append(f"{summary['missing_logs']} missing log day(s)")
-    if daily_rate <= 0:
-        issues.append("No daily/monthly salary configured")
-    if late_minutes > 0:
-        issues.append(f"{late_minutes} late minute(s)")
-    if undertime_minutes > 0:
-        issues.append(f"{undertime_minutes} undertime minute(s)")
+    # -------------------------
+    # Issue flags
+    # -------------------------
+    if dtr["records_found"] == 0:
+        issues.append("No attendance records found for biometric ID in selected period")
+
+    if dtr["missing_logs"] > 0:
+        issues.append(f"{dtr['missing_logs']} day(s) with missing attendance logs")
+
+    if sss <= 0 or pagibig <= 0:
+        issues.append("Contribution missing")
+
+    issues_text = ", ".join(dict.fromkeys([i for i in issues if i]))
 
     return {
-        "rates": rates,
-        "attendance_summary": summary,
+        "picked_employee_id": dtr["employee_id_used"],
+
+        "attendance_summary": {
+            "present_days": present_days,
+            "travel_days": travel_days,
+            "holiday_days": holiday_days,
+            "absences": absences,
+            "missing_logs": int(dtr["missing_logs"]),
+            "records_found": int(dtr["records_found"]),
+            "records_used": int(dtr["records_used"]),
+        },
+
+        "rates": {
+            "daily": _money(daily_rate),
+            "hourly": _money(hourly_rate),
+            "per_minute": _money(per_minute_rate),
+        },
+
         "computed_payroll": {
             "base": _money(base_pay),
             "premium": _money(premium_pay),
+            "overtime_hours": _money(ot_hours),
             "ot": _money(overtime_pay),
-            "overtime_hours": overtime_hours,
-            "late_minutes": late_minutes,
-            "undertime_minutes": undertime_minutes,
+
+            "late_minutes": int(late_minutes),
+            "undertime_minutes": int(undertime_minutes),
             "absences": int(absences),
+
             "late_deduction": _money(late_deduction),
             "undertime_deduction": _money(undertime_deduction),
+            "attendance_deduction": _money(attendance_deduction),
+
             "deductions": _money(deductions_total),
             "net": _money(net_pay),
         },
+
         "gov": {
             "sss": _money(sss),
             "pagibig": _money(pagibig),
             "philhealth": _money(philhealth),
-            "tax": _money(tax),
             "gov_total": _money(gov_total),
+            "tax": _money(tax_total),
         },
-        "issues": ", ".join(issues),
-        "picked_employee_id": summary["employee_id_used"],
-        "dtr_rows": summary["rows"],
+
+        "issues": issues_text,
+        "dtr_rows": dtr["rows"],
     }
+    
+# ============================================
+# 🔥 PAYROLL ENGINE (FINAL - GOVERNMENT LOGIC)
+# ============================================
+
+def _get_or_create_rules(branch):
+    rule, _ = PayrollRule.objects.get_or_create(branch=branch)
+    return rule
 
 
+def _get_employee_attendance(profile, period):
+    if not profile.biometric_employee_id:
+        return AttendanceRecord.objects.none()
+
+    qs = AttendanceRecord.objects.filter(
+        employee_id=str(profile.biometric_employee_id),
+        timestamp__date__gte=period.start_date,
+        timestamp__date__lte=period.end_date,
+    )
+
+    # 🔥 IMPORTANT FIX: ignore branch mismatch issue
+    return qs.order_by("timestamp")
+
+
+def _group_attendance_by_day(records):
+    grouped = defaultdict(list)
+    for r in records:
+        grouped[r.timestamp.date()].append(r)
+    return grouped
+
+
+def _compute_daily_hours_and_late(day_records, rules):
+    if not day_records:
+        return 0, 0, 0
+
+    day_records = sorted(day_records, key=lambda x: x.timestamp)
+
+    check_in = None
+    check_out = None
+
+    for r in day_records:
+        if r.attendance_status == AttendanceRecord.STATUS_CHECKIN and not check_in:
+            check_in = r.timestamp
+
+        if r.attendance_status == AttendanceRecord.STATUS_CHECKOUT:
+            check_out = r.timestamp
+
+    if not check_in or not check_out:
+        return 0, 0, 0
+
+    total_hours = (check_out - check_in).total_seconds() / 3600
+
+    # 🔥 LATE LOGIC (with grace + flag ceremony)
+    late_minutes = 0
+    undertime_minutes = 0
+
+    scheduled_start = datetime.combine(check_in.date(), rules.work_start_time)
+
+    # Monday flag ceremony strict
+    if check_in.weekday() == 0:
+        if check_in.time() > rules.flag_ceremony_cutoff_time:
+            late_minutes = (check_in - scheduled_start).total_seconds() / 60
+    else:
+        if check_in > scheduled_start:
+            diff = (check_in - scheduled_start).total_seconds() / 60
+            if diff > rules.grace_minutes_normal:
+                late_minutes = diff
+
+    # undertime
+    required_hours = float(rules.daily_hours_required)
+    if total_hours < required_hours:
+        undertime_minutes = (required_hours - total_hours) * 60
+
+    return total_hours, late_minutes, undertime_minutes
+
+def _compute_employee_payroll(profile, period, rules):
+    records = _get_employee_attendance(profile, period)
+    grouped = _group_attendance_by_day(records)
+
+    days_present = 0
+    total_hours = 0
+    total_late = 0
+    total_undertime = 0
+
+    for day, recs in grouped.items():
+        hours, late, undertime = _compute_daily_hours_and_late(recs, rules)
+
+        if hours > 0:
+            days_present += 1
+
+        total_hours += hours
+        total_late += late
+        total_undertime += undertime
+
+    # =========================
+    # 💰 RATE COMPUTATION
+    # =========================
+    if profile.monthly_salary:
+        daily_rate = profile.monthly_salary / rules.salary_divisor
+    else:
+        daily_rate = profile.daily_rate or 0
+
+    hourly_rate = daily_rate / 8
+    per_minute_rate = hourly_rate / 60
+
+    late_deduction = Decimal(total_late) * Decimal(per_minute_rate)
+    undertime_deduction = Decimal(total_undertime) * Decimal(per_minute_rate)
+
+    base_pay = Decimal(days_present) * Decimal(daily_rate)
+
+    # =========================
+    # 💸 CONTRIBUTIONS
+    # =========================
+    sss = rules.sss_minimum
+    pagibig = rules.pagibig_minimum
+
+    philhealth = base_pay * (rules.philhealth_default_value / 100)
+
+    tax = base_pay * (rules.tax_rate_percent / 100)
+
+    gov_total = sss + pagibig + philhealth
+
+    # =========================
+    # 🧾 NET PAY
+    # =========================
+    if base_pay <= 0:
+        gov_total = Decimal("0.00")
+        tax = Decimal("0.00")
+        net_pay = Decimal("0.00")
+    else:
+        net_pay = base_pay - late_deduction - undertime_deduction - gov_total - tax
+
+    if net_pay < 0:
+        net_pay = Decimal("0.00")
+
+    return {
+        "days_present": days_present,
+        "late_minutes": int(total_late),
+        "undertime_minutes": int(total_undertime),
+        "base_pay": base_pay,
+        "late_deduction": late_deduction,
+        "undertime_deduction": undertime_deduction,
+        "gov_contributions": gov_total,
+        "tax": tax,
+        "net_pay": net_pay,
+    }
+#==============================
 @login_required
 def admin_payroll(request):
     if not (request.user.is_staff or request.user.is_superuser):
@@ -3148,7 +3829,11 @@ def admin_payroll(request):
         messages.error(request, "No valid branch selected or assigned.")
         return redirect("admin_dashboard")
 
-    branches = Branch.objects.all().order_by("name") if request.user.is_superuser else Branch.objects.filter(id=branch_obj.id)
+    branches = (
+        Branch.objects.all().order_by("name")
+        if request.user.is_superuser
+        else Branch.objects.filter(id=branch_obj.id)
+    )
 
     payroll_periods = PayrollPeriod.objects.all().order_by("-start_date")[:24]
     selected_period = request.GET.get("period")
@@ -3164,11 +3849,26 @@ def admin_payroll(request):
         messages.error(request, "Please create a payroll period first.")
         return render(request, "admin/payroll.html", {
             "current": "payroll",
+            "is_superadmin": request.user.is_superuser,
             "branches": branches,
             "selected_branch": branch_obj.id,
             "payroll_periods": [],
             "selected_period": None,
+            "payroll_rules": None,
             "employees": [],
+            "payroll_batches": [],
+            "total_payroll": Decimal("0.00"),
+            "attendance_deductions": Decimal("0.00"),
+            "gov_contributions": Decimal("0.00"),
+            "travel_count": 0,
+            "payroll_status": "Draft",
+            "missing_checkout_count": 0,
+            "missing_lunch_count": 0,
+            "no_salary_count": 0,
+            "contribution_missing_count": 0,
+            "ot_disqualified_count": 0,
+            "salary_divisor": Decimal("22"),
+            "ot_multiplier": Decimal("1.25"),
         })
 
     payroll_rules = _get_or_create_rules(branch_obj)
@@ -3191,107 +3891,147 @@ def admin_payroll(request):
     total_payroll = Decimal("0.00")
     attendance_deductions = Decimal("0.00")
     gov_contributions = Decimal("0.00")
-    travel_count = 0
 
     missing_checkout_count = 0
     missing_lunch_count = 0
     no_salary_count = 0
     contribution_missing_count = 0
+    travel_count = 0
     ot_disqualified_count = 0
 
     for prof in prof_qs.order_by("user__username"):
         result = _compute_payroll(prof, branch_obj, period_obj, payroll_rules)
-        p = result["computed_payroll"]
-        gov = result["gov"]
-        summary = result["attendance_summary"]
-        rates = result["rates"]
 
-        total_payroll += p["net"]
-        attendance_deductions += p["late_deduction"] + p["undertime_deduction"]
-        gov_contributions += gov["gov_total"]
-        travel_count += summary["travel_days"]
+        rates = result.get("rates", {})
+        summary = result.get("attendance_summary", {})
+        p = result.get("computed_payroll", {})
+        gov = result.get("gov", {})
 
-        if summary["missing_logs"] > 0:
+        present_days = summary.get("present_days", summary.get("days_present", 0))
+        travel_days = summary.get("travel_days", 0)
+        holiday_days = summary.get("holiday_days", 0)
+        absences = p.get("absences", summary.get("absences", 0))
+
+        late_minutes = p.get("late_minutes", 0)
+        undertime_minutes = p.get("undertime_minutes", 0)
+
+        late_deduction = p.get("late_deduction", Decimal("0.00"))
+        undertime_deduction = p.get("undertime_deduction", Decimal("0.00"))
+
+        net_pay = p.get("net", Decimal("0.00"))
+        deductions = p.get("deductions", Decimal("0.00"))
+        gov_total = gov.get("gov_total", Decimal("0.00"))
+
+        total_payroll += Decimal(net_pay or 0)
+        attendance_deductions += Decimal(late_deduction or 0) + Decimal(undertime_deduction or 0)
+        gov_contributions += Decimal(gov_total or 0)
+
+        issues_text = result.get("issues", "") or ""
+
+        if "missing" in issues_text.lower():
             missing_checkout_count += 1
-        if rates["daily"] <= 0:
+
+        if "lunch" in issues_text.lower():
+            missing_lunch_count += 1
+
+        if "salary" in issues_text.lower():
             no_salary_count += 1
-        if gov["sss"] <= 0 or gov["pagibig"] <= 0:
+
+        if "contribution" in issues_text.lower():
             contribution_missing_count += 1
-        if p["late_minutes"] > 0:
+
+        if int(travel_days or 0) > 0:
+            travel_count += 1
+
+        if "ot disqualified" in issues_text.lower():
             ot_disqualified_count += 1
 
         employees.append({
             "id": prof.id,
-
-            # Template-safe user data
-            "user": {
-                "id": prof.user.id,
-                "username": prof.user.username,
-                "email": prof.user.email,
-            },
+            "profile_id": prof.id,
+            "user_id": prof.user.id,
 
             "username": prof.user.username,
-            "employee_id": result["picked_employee_id"],
-            "biometric_employee_id": getattr(prof, "biometric_employee_id", "") or "",
-
-            "full_name": prof.user.get_full_name() or prof.user.username,
+            "user": prof.user,
+            "employee": prof.user,
             "name": prof.user.get_full_name() or prof.user.username,
-            
+            "full_name": prof.user.get_full_name() or prof.user.username,
+            "employee_name": prof.user.get_full_name() or prof.user.username,
+
+            "employee_id": result.get("picked_employee_id", ""),
+            "biometric_employee_id": result.get("picked_employee_id", ""),
+            "department": prof.department or "—",
+
             "type": prof.employment_type,
-            
             "emp_type": prof.employment_type,
             "employment_type": prof.employment_type,
+            
             "branch": prof.branch,
             "branch_name": prof.branch.name if prof.branch else "—",
             "position": prof.position or "—",
 
-            "days_present": summary["days_present"],
-            "travel_days": summary["travel_days"],
-            "holidays_suspensions": summary["holiday_days"],
-            "late_minutes": p["late_minutes"],
-            "undertime_minutes": p["undertime_minutes"],
-            "absences": p["absences"],
+            "picked_employee_id": result.get("picked_employee_id", ""),
+            "employee_id": result.get("picked_employee_id", ""),
+            "biometric_employee_id": result.get("picked_employee_id", ""),
+            "department": prof.department or "—",
 
-            "daily_rate": rates["daily"],
-            "hourly_rate": rates["hourly"],
-            "per_minute_rate": rates["per_minute"],
+            "days_present": present_days,
 
-            "base_pay": p["base"],
-            "premium": p["premium"],
-            "premium_pay": p["premium"],
-            "ot_pay": p["ot"],
-            "gov_contributions": gov["gov_total"],
-            "tax": gov["tax"],
-            "net_pay": p["net"],
 
-            "late_deduction": p["late_deduction"],
-            "undertime_deduction": p["undertime_deduction"],
+            "present_days": present_days,
+            "travel_days": travel_days,
+            "holidays_suspensions": holiday_days,
+            "holiday_days": holiday_days,
 
-            "attendance_summary": {
-                "days_present": summary["days_present"],
-                "days_absent": summary["absences"],
-                "total_late_minutes": p["late_minutes"],
-                "total_undertime_minutes": p["undertime_minutes"],
-                "has_missing_logs": summary["missing_logs"] > 0,
-            },
+            "late_minutes": late_minutes,
+            "undertime_minutes": undertime_minutes,
+            "absences": absences,
 
+            "daily_rate": rates.get("daily", Decimal("0.00")),
+            "hourly_rate": rates.get("hourly", Decimal("0.00")),
+            "per_minute_rate": rates.get("per_minute", Decimal("0.00")),
+
+            "base_pay": p.get("base", Decimal("0.00")),
+            "premium": p.get("premium", Decimal("0.00")),
+            "premium_pay": p.get("premium", Decimal("0.00")),
+            "ot_pay": p.get("ot", Decimal("0.00")),
+            "overtime_hours": p.get("overtime_hours", Decimal("0.00")),
+
+            "gov_contributions": gov_total,
+            "gov_contributions_total": gov_total,
+            "tax": gov.get("tax", Decimal("0.00")),
+            "tax_total": gov.get("tax", Decimal("0.00")),
+
+            "late_deduction": late_deduction,
+            "undertime_deduction": undertime_deduction,
+            "deductions": deductions,
+            "deductions_total": deductions,
+            "net_pay": net_pay,
+
+            "attendance_summary": summary,
             "computed_payroll": {
-                "base": p["base"],
-                "premium": p["premium"],
-                "ot": p["ot"],
-                "net": p["net"],
+                "base": p.get("base", Decimal("0.00")),
+                "premium": p.get("premium", Decimal("0.00")),
+                "ot": p.get("ot", Decimal("0.00")),
+                "net": net_pay,
+                "late_minutes": late_minutes,
+                "undertime_minutes": undertime_minutes,
+                "absences": absences,
+                "late_deduction": late_deduction,
+                "undertime_deduction": undertime_deduction,
+                "deductions": deductions,
             },
 
-            "gov_contributions_total": gov["gov_total"],
-            "tax_total": gov["tax"],
-            "deductions": p["deductions"],
-            "deductions_total": p["deductions"],
-            
-            "issues": result["issues"],
-            "dtr_records_json": json.dumps(result["dtr_rows"], default=str),
+            "issues": issues_text,
+            "dtr_records_json": json.dumps(result.get("dtr_rows", []), default=str),
         })
 
-    payroll_batches = PayrollBatch.objects.select_related("branch", "period", "processed_by").filter(branch=branch_obj).order_by("-created_at")[:20]
+    payroll_batches = (
+        PayrollBatch.objects
+        .select_related("branch", "period", "processed_by")
+        .filter(branch=branch_obj)
+        .order_by("-created_at")[:20]
+    )
 
     formatted_batches = []
     for b in payroll_batches:
@@ -3330,12 +4070,11 @@ def admin_payroll(request):
         "contribution_missing_count": contribution_missing_count,
         "ot_disqualified_count": ot_disqualified_count,
 
-        "salary_divisor": SALARY_DIVISOR,
-        "ot_multiplier": OT_MULTIPLIER,
+        "salary_divisor": payroll_rules.salary_divisor,
+        "ot_multiplier": payroll_rules.ot_multiplier,
     }
 
     return render(request, "admin/payroll.html", context)
-
 
 @login_required
 def admin_payroll_preview_api(request):
