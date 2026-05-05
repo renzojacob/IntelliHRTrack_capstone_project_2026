@@ -1,6 +1,6 @@
 {% extends 'admin/base_admin.html' %}
 
-{% block title %}intellihrtrack — employee management{% endblock %}
+{% block title %}IntelliHRTrack — Employee Management{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -18,7 +18,6 @@
     background: rgba(34,197,94,.15);
     color: rgb(22,163,74);
   }
-
   .pill {
     padding:.25rem .6rem;
     border-radius:9999px;
@@ -33,6 +32,13 @@
     background: rgba(139,92,246,.15);
     color: rgb(124,58,237);
   }
+  .field-label {
+    font-size: .70rem;
+    color: rgb(100,116,139);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
 </style>
 {% endblock %}
 
@@ -44,14 +50,14 @@
     <div>
       <h1 class="text-2xl font-extrabold">Employee Management</h1>
       <p class="text-sm text-slate-500">
-        approve accounts and manage employee profiles
+        Approve accounts, manage employee profiles, and configure payroll rates.
       </p>
     </div>
 
     <a href="{% url 'signup_ui' %}"
        class="px-4 py-2 rounded-xl text-white bg-teal-600 hover:bg-teal-700 flex items-center gap-2">
       <iconify-icon icon="ph:user-plus-duotone"></iconify-icon>
-      signup page
+      Signup Page
     </a>
   </div>
 
@@ -77,7 +83,7 @@
     </div>
   </div>
 
-  <!-- EMPLOYEE TABLE (APPROVE/REJECT) -->
+  <!-- PENDING / APPROVED ACCOUNTS -->
   <div class="glass rounded-2xl p-4 overflow-x-auto">
     <table class="w-full text-sm">
       <thead class="text-xs uppercase text-slate-500 border-b">
@@ -94,8 +100,6 @@
       </thead>
 
       <tbody class="divide-y">
-
-        <!-- PENDING -->
         <tr class="bg-amber-50/40">
           <td colspan="8" class="px-3 py-2 font-semibold text-amber-700">
             Pending Accounts
@@ -108,7 +112,6 @@
           <td class="px-3 py-2">{{ p.user.email|default:"—" }}</td>
           <td class="px-3 py-2">{{ p.branch|default:"—" }}</td>
           <td class="px-3 py-2">{{ p.department|default:"—" }}</td>
-
           <td class="px-3 py-2">
             {% if p.employment_type == "COS" %}
               <span class="pill pill-cos">COS</span>
@@ -118,13 +121,10 @@
               —
             {% endif %}
           </td>
-
           <td class="px-3 py-2">
             <span class="status-badge status-pending">PENDING</span>
           </td>
-
           <td class="px-3 py-2">{{ p.created_at|date:"Y-m-d H:i" }}</td>
-
           <td class="px-3 py-2 text-right space-x-2">
             <form method="post" action="{% url 'approve_user' p.id %}" class="inline">
               {% csrf_token %}
@@ -147,12 +147,11 @@
         {% empty %}
         <tr>
           <td colspan="8" class="text-center py-6 text-slate-400">
-            No pending accounts
+            No pending accounts.
           </td>
         </tr>
         {% endfor %}
 
-        <!-- APPROVED -->
         <tr class="bg-emerald-50/40">
           <td colspan="8" class="px-3 py-2 font-semibold text-emerald-700">
             Approved Employees
@@ -165,7 +164,6 @@
           <td class="px-3 py-2">{{ p.user.email|default:"—" }}</td>
           <td class="px-3 py-2">{{ p.branch|default:"—" }}</td>
           <td class="px-3 py-2">{{ p.department|default:"—" }}</td>
-
           <td class="px-3 py-2">
             {% if p.employment_type == "COS" %}
               <span class="pill pill-cos">COS</span>
@@ -175,106 +173,167 @@
               —
             {% endif %}
           </td>
-
           <td class="px-3 py-2">
             <span class="status-badge status-approved">APPROVED</span>
           </td>
-
           <td class="px-3 py-2">{{ p.created_at|date:"Y-m-d H:i" }}</td>
-
-          <td class="px-3 py-2 text-right text-xs text-slate-400">
-            —
-          </td>
+          <td class="px-3 py-2 text-right text-xs text-slate-400">—</td>
         </tr>
         {% empty %}
         <tr>
           <td colspan="8" class="text-center py-6 text-slate-400">
-            No approved employees
+            No approved employees.
           </td>
         </tr>
         {% endfor %}
-
       </tbody>
     </table>
   </div>
 
-  <!-- ===================================================== -->
-  <!-- ✅ EMPLOYEE PROFILES (SAME PAGE) -->
-  <!-- ===================================================== -->
-  <div class="glass rounded-3xl p-6 space-y-4">
+  <!-- EMPLOYEE PROFILES -->
+  <div class="glass rounded-3xl p-6 space-y-5">
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-xl font-extrabold">Employee Profiles</h2>
-        <p class="text-sm text-slate-500">Add, update, and delete employee profiles</p>
+        <h2 class="text-xl font-extrabold">Employee Profiles & Payroll Rates</h2>
+        <p class="text-sm text-slate-500">
+          Add, update, and delete employee profiles. Monthly salary and daily rate are used by payroll.
+        </p>
       </div>
     </div>
 
-    <!-- ✅ CREATE EMPLOYEE -->
-    <form method="post" action="{% url 'admin_employees' %}" class="grid grid-cols-1 md:grid-cols-6 gap-3">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="create_employee">
+    <!-- CREATE EMPLOYEE -->
+    <div class="rounded-2xl border bg-white/60 p-4">
+      <h3 class="font-bold mb-3">Create Employee</h3>
 
-      <div class="md:col-span-1">
-        <label class="text-xs text-slate-500">Username</label>
-        <input name="username" class="w-full px-3 py-2 rounded-xl border" required>
-      </div>
+      <form method="post" action="{% url 'admin_employees' %}" class="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-6 gap-3">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_employee">
 
-      <div class="md:col-span-1">
-        <label class="text-xs text-slate-500">Email</label>
-        <input name="email" type="email" class="w-full px-3 py-2 rounded-xl border">
-      </div>
+        <div>
+          <label class="field-label">Username</label>
+          <input name="username" class="w-full px-3 py-2 rounded-xl border" required>
+        </div>
 
-      <div class="md:col-span-1">
-        <label class="text-xs text-slate-500">Password</label>
-        <input name="password" type="password" class="w-full px-3 py-2 rounded-xl border" required>
-      </div>
+        <div>
+          <label class="field-label">Email</label>
+          <input name="email" type="email" class="w-full px-3 py-2 rounded-xl border">
+        </div>
 
-      <div class="md:col-span-1">
-        <label class="text-xs text-slate-500">Department</label>
-        <input name="department" class="w-full px-3 py-2 rounded-xl border">
-      </div>
+        <div>
+          <label class="field-label">Password</label>
+          <input name="password" type="password" class="w-full px-3 py-2 rounded-xl border" required>
+        </div>
 
-      <div class="md:col-span-1">
-        <label class="text-xs text-slate-500">Job Type</label>
-        <select name="employment_type" class="w-full px-3 py-2 rounded-xl border" required>
-          <option value="COS">COS</option>
-          <option value="JO">JO</option>
-        </select>
-      </div>
+        <div>
+          <label class="field-label">Biometric ID</label>
+          <input name="biometric_employee_id" class="w-full px-3 py-2 rounded-xl border" placeholder="e.g. 3">
+        </div>
 
-      <div class="md:col-span-1">
-        <label class="text-xs text-slate-500">Branch</label>
-        {% if request.user.is_superuser %}
-          <select name="branch_id" class="w-full px-3 py-2 rounded-xl border" required>
-            <option value="">Select branch</option>
-            {% for b in branches %}
-              <option value="{{ b.id }}">{{ b.name }}</option>
-            {% endfor %}
+        <div>
+          <label class="field-label">Department</label>
+          <input name="department" class="w-full px-3 py-2 rounded-xl border">
+        </div>
+
+        <div>
+          <label class="field-label">Position</label>
+          <input name="position" class="w-full px-3 py-2 rounded-xl border">
+        </div>
+
+        <div>
+          <label class="field-label">Job Type</label>
+          <select name="employment_type" class="w-full px-3 py-2 rounded-xl border" required>
+            <option value="COS">COS</option>
+            <option value="JO">JO</option>
           </select>
-        {% else %}
-          <input class="w-full px-3 py-2 rounded-xl border bg-slate-50"
-                 value="{{ request.user.profile.branch }}"
-                 disabled>
-        {% endif %}
-      </div>
+        </div>
 
-      <div class="md:col-span-6 flex justify-end">
-        <button class="px-4 py-2 rounded-xl bg-teal-600 text-white hover:bg-teal-700">
-          Create Employee
-        </button>
-      </div>
-    </form>
+        <div>
+          <label class="field-label">Monthly Salary</label>
+          <input name="monthly_salary" type="number" step="0.01" min="0" value="0.00"
+                 class="w-full px-3 py-2 rounded-xl border">
+        </div>
 
-    <!-- ✅ PROFILES TABLE -->
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="text-xs uppercase text-slate-500 border-b">
+        <div>
+          <label class="field-label">Daily Rate</label>
+          <input name="daily_rate" type="number" step="0.01" min="0" value="0.00"
+                 class="w-full px-3 py-2 rounded-xl border">
+        </div>
+
+        <div>
+          <label class="field-label">SSS</label>
+          <input name="sss_amount" type="number" step="0.01" min="0" value="760.00"
+                 class="w-full px-3 py-2 rounded-xl border">
+        </div>
+
+        <div>
+          <label class="field-label">Pag-IBIG</label>
+          <input name="pagibig_amount" type="number" step="0.01" min="0" value="400.00"
+                 class="w-full px-3 py-2 rounded-xl border">
+        </div>
+
+        <div>
+          <label class="field-label">PhilHealth Mode</label>
+          <select name="philhealth_mode" class="w-full px-3 py-2 rounded-xl border">
+            <option value="percent">Percent</option>
+            <option value="fixed">Fixed</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="field-label">PhilHealth Value</label>
+          <input name="philhealth_value" type="number" step="0.01" min="0" value="5.00"
+                 class="w-full px-3 py-2 rounded-xl border">
+        </div>
+
+        <div>
+          <label class="field-label">Branch</label>
+          {% if request.user.is_superuser %}
+            <select name="branch_id" class="w-full px-3 py-2 rounded-xl border" required>
+              <option value="">Select branch</option>
+              {% for b in branches %}
+                <option value="{{ b.id }}">{{ b.name }}</option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <input class="w-full px-3 py-2 rounded-xl border bg-slate-50"
+                   value="{{ request.user.profile.branch }}"
+                   disabled>
+          {% endif %}
+        </div>
+
+        <div class="flex items-end">
+          <label class="flex items-center gap-2 px-3 py-2 rounded-xl border bg-white w-full">
+            <input type="checkbox" name="has_premium" value="1">
+            <span class="text-sm font-semibold">Premium?</span>
+          </label>
+        </div>
+
+        <div class="md:col-span-4 xl:col-span-6 flex justify-end">
+          <button class="px-4 py-2 rounded-xl bg-teal-600 text-white hover:bg-teal-700">
+            Create Employee
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- EMPLOYEE PROFILE TABLE -->
+    <div class="overflow-x-auto rounded-2xl border bg-white/60">
+      <table class="w-full text-sm min-w-[1600px]">
+        <thead class="text-xs uppercase text-slate-500 border-b bg-slate-50">
           <tr>
             <th class="px-3 py-2 text-left">Username</th>
             <th class="px-3 py-2 text-left">Email</th>
             <th class="px-3 py-2 text-left">Branch</th>
+            <th class="px-3 py-2 text-left">Bio ID</th>
             <th class="px-3 py-2 text-left">Department</th>
-            <th class="px-3 py-2 text-left">Job Type</th>
+            <th class="px-3 py-2 text-left">Position</th>
+            <th class="px-3 py-2 text-left">Type</th>
+            <th class="px-3 py-2 text-left">Monthly Salary</th>
+            <th class="px-3 py-2 text-left">Daily Rate</th>
+            <th class="px-3 py-2 text-left">Premium</th>
+            <th class="px-3 py-2 text-left">SSS</th>
+            <th class="px-3 py-2 text-left">Pag-IBIG</th>
+            <th class="px-3 py-2 text-left">PhilHealth</th>
             <th class="px-3 py-2 text-left">Status</th>
             <th class="px-3 py-2 text-right">Actions</th>
           </tr>
@@ -282,21 +341,23 @@
 
         <tbody class="divide-y">
           {% for p in employee_profiles %}
-          <tr class="hover:bg-slate-50">
+          <tr class="hover:bg-slate-50 align-top">
             <form method="post" action="{% url 'admin_employees' %}">
               {% csrf_token %}
               <input type="hidden" name="action" value="update_employee">
               <input type="hidden" name="profile_id" value="{{ p.id }}">
 
-              <td class="px-3 py-2 font-medium">{{ p.user.username }}</td>
+              <td class="px-3 py-2 font-medium">
+                {{ p.user.username }}
+              </td>
 
               <td class="px-3 py-2">
-                <input name="email" value="{{ p.user.email }}" class="w-full px-2 py-1 rounded border">
+                <input name="email" value="{{ p.user.email }}" class="w-40 px-2 py-1 rounded border">
               </td>
 
               <td class="px-3 py-2">
                 {% if request.user.is_superuser %}
-                  <select name="branch_id" class="w-full px-2 py-1 rounded border">
+                  <select name="branch_id" class="w-44 px-2 py-1 rounded border">
                     {% for b in branches %}
                       <option value="{{ b.id }}" {% if p.branch_id == b.id %}selected{% endif %}>
                         {{ b.name }}
@@ -304,19 +365,89 @@
                     {% endfor %}
                   </select>
                 {% else %}
-                  {{ p.branch|default:"—" }}
+                  <span class="text-xs">{{ p.branch|default:"—" }}</span>
                 {% endif %}
               </td>
 
               <td class="px-3 py-2">
-                <input name="department" value="{{ p.department }}" class="w-full px-2 py-1 rounded border">
+                <input name="biometric_employee_id"
+                       value="{{ p.biometric_employee_id }}"
+                       class="w-24 px-2 py-1 rounded border"
+                       placeholder="Bio ID">
               </td>
 
               <td class="px-3 py-2">
-                <select name="employment_type" class="w-full px-2 py-1 rounded border">
+                <input name="department" value="{{ p.department }}" class="w-36 px-2 py-1 rounded border">
+              </td>
+
+              <td class="px-3 py-2">
+                <input name="position" value="{{ p.position }}" class="w-36 px-2 py-1 rounded border">
+              </td>
+
+              <td class="px-3 py-2">
+                <select name="employment_type" class="w-24 px-2 py-1 rounded border">
                   <option value="COS" {% if p.employment_type == "COS" %}selected{% endif %}>COS</option>
                   <option value="JO" {% if p.employment_type == "JO" %}selected{% endif %}>JO</option>
                 </select>
+              </td>
+
+              <td class="px-3 py-2">
+                <input name="monthly_salary"
+                       type="number"
+                       step="0.01"
+                       min="0"
+                       value="{{ p.monthly_salary }}"
+                       class="w-32 px-2 py-1 rounded border">
+              </td>
+
+              <td class="px-3 py-2">
+                <input name="daily_rate"
+                       type="number"
+                       step="0.01"
+                       min="0"
+                       value="{{ p.daily_rate }}"
+                       class="w-32 px-2 py-1 rounded border">
+              </td>
+
+              <td class="px-3 py-2">
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" name="has_premium" value="1" {% if p.has_premium %}checked{% endif %}>
+                  <span class="text-xs">Yes</span>
+                </label>
+              </td>
+
+              <td class="px-3 py-2">
+                <input name="sss_amount"
+                       type="number"
+                       step="0.01"
+                       min="0"
+                       value="{{ p.contrib.sss_amount }}"
+                       class="w-28 px-2 py-1 rounded border">
+              </td>
+
+              <td class="px-3 py-2">
+                <input name="pagibig_amount"
+                       type="number"
+                       step="0.01"
+                       min="0"
+                       value="{{ p.contrib.pagibig_amount }}"
+                       class="w-28 px-2 py-1 rounded border">
+              </td>
+
+              <td class="px-3 py-2">
+                <div class="flex gap-1">
+                  <select name="philhealth_mode" class="w-24 px-2 py-1 rounded border">
+                    <option value="percent" {% if p.contrib.philhealth_mode == "percent" %}selected{% endif %}>%</option>
+                    <option value="fixed" {% if p.contrib.philhealth_mode == "fixed" %}selected{% endif %}>Fixed</option>
+                  </select>
+
+                  <input name="philhealth_value"
+                         type="number"
+                         step="0.01"
+                         min="0"
+                         value="{{ p.contrib.philhealth_value }}"
+                         class="w-24 px-2 py-1 rounded border">
+                </div>
               </td>
 
               <td class="px-3 py-2">
@@ -327,7 +458,7 @@
                 {% endif %}
               </td>
 
-              <td class="px-3 py-2 text-right space-x-2">
+              <td class="px-3 py-2 text-right space-x-2 whitespace-nowrap">
                 <button class="px-3 py-1 rounded bg-indigo-600 text-white text-xs">
                   Update
                 </button>
@@ -348,13 +479,19 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="7" class="text-center py-6 text-slate-400">
+            <td colspan="15" class="text-center py-6 text-slate-400">
               No employee profiles found.
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+    </div>
+
+    <div class="rounded-2xl border border-teal-200 bg-teal-50/60 p-4 text-sm text-slate-700">
+      <strong class="text-teal-700">Payroll note:</strong>
+      COS employees should usually have a Monthly Salary. JO employees can use Daily Rate for no-work-no-pay computation.
+      Biometric ID must match the Hikvision Employee ID.
     </div>
   </div>
 
