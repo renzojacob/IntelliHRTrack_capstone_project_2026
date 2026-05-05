@@ -686,37 +686,80 @@ def admin_delete_travel(request, travel_id):
 @never_cache
 def admin_employee_management(request):
     """
-    SAME PAGE:
+    Employee Management:
     - Pending profiles for approval
     - Approved profiles list
-    - ✅ Employee Profiles CRUD table on the same page
+    - Employee Profiles CRUD
+    - Payroll setup per employee:
+        biometric_employee_id
+        monthly_salary
+        daily_rate
+        has_premium
+        EmployeeContribution: SSS, Pag-IBIG, PhilHealth
     """
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
     qs = _scoped_profiles_for_admin(request)
 
+    def _to_decimal(value, default="0.00"):
+        raw = str(value or "").strip().replace(",", "")
+        if not raw:
+            return Decimal(default)
+        try:
+            return Decimal(raw)
+        except Exception:
+            return Decimal(default)
+
+    def _get_allowed_branch_from_post():
+        if request.user.is_superuser:
+            bid = (request.POST.get("branch_id") or "").strip()
+            if not bid:
+                return None
+            return Branch.objects.filter(id=bid).first()
+
+        try:
+            return request.user.profile.branch
+        except UserProfile.DoesNotExist:
+            return None
+
+    def _save_employee_contribution(profile):
+        sss_amount = _to_decimal(request.POST.get("sss_amount"), "760.00")
+        pagibig_amount = _to_decimal(request.POST.get("pagibig_amount"), "400.00")
+        philhealth_mode = (request.POST.get("philhealth_mode") or "percent").strip().lower()
+        philhealth_value = _to_decimal(request.POST.get("philhealth_value"), "5.00")
+
+        if philhealth_mode not in ("percent", "fixed"):
+            philhealth_mode = "percent"
+
+        EmployeeContribution.objects.update_or_create(
+            profile=profile,
+            defaults={
+                "sss_amount": sss_amount,
+                "pagibig_amount": pagibig_amount,
+                "philhealth_mode": philhealth_mode,
+                "philhealth_value": philhealth_value,
+            }
+        )
+
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-
-        def _get_allowed_branch_from_post():
-            if request.user.is_superuser:
-                bid = (request.POST.get("branch_id") or "").strip()
-                if not bid:
-                    return None
-                return Branch.objects.filter(id=bid).first()
-            try:
-                return request.user.profile.branch
-            except UserProfile.DoesNotExist:
-                return None
 
         if action == "create_employee":
             username = (request.POST.get("username") or "").strip()
             email = (request.POST.get("email") or "").strip()
             password = request.POST.get("password") or ""
+
             department = (request.POST.get("department") or "").strip()
+            position = (request.POST.get("position") or "").strip()
+            biometric_employee_id = (request.POST.get("biometric_employee_id") or "").strip()
+
             employment_type = (request.POST.get("employment_type") or "").strip().upper()
             branch = _get_allowed_branch_from_post()
+
+            monthly_salary = _to_decimal(request.POST.get("monthly_salary"), "0.00")
+            daily_rate = _to_decimal(request.POST.get("daily_rate"), "0.00")
+            has_premium = bool(request.POST.get("has_premium"))
 
             if not username:
                 messages.error(request, "Username is required.")
@@ -731,7 +774,7 @@ def admin_employee_management(request):
                 return redirect("admin_employees")
 
             if not password or len(password) < 8:
-                messages.error(request, "Password is required (min 8 chars).")
+                messages.error(request, "Password is required and must be at least 8 characters.")
                 return redirect("admin_employees")
 
             if User.objects.filter(username=username).exists():
@@ -745,14 +788,24 @@ def admin_employee_management(request):
                         email=email,
                         password=password,
                     )
-                    UserProfile.objects.create(
+
+                    profile = UserProfile.objects.create(
                         user=user,
                         branch=branch,
                         department=department,
+                        position=position,
                         employment_type=employment_type,
+                        biometric_employee_id=biometric_employee_id,
+                        monthly_salary=monthly_salary,
+                        daily_rate=daily_rate,
+                        has_premium=has_premium,
                         is_approved=True,
                     )
+
+                    _save_employee_contribution(profile)
+
                 messages.success(request, f"Employee created: {username}")
+
             except Exception as e:
                 messages.error(request, f"Create failed: {e}")
 
@@ -760,6 +813,7 @@ def admin_employee_management(request):
 
         elif action == "update_employee":
             profile_id = request.POST.get("profile_id")
+
             prof = get_object_or_404(
                 UserProfile.objects.select_related("user", "branch"),
                 id=profile_id,
@@ -774,9 +828,15 @@ def admin_employee_management(request):
                     messages.error(request, "Admin profile missing.")
                     return redirect("admin_employees")
 
-            department = (request.POST.get("department") or "").strip()
-            employment_type = (request.POST.get("employment_type") or "").strip().upper()
             email = (request.POST.get("email") or "").strip()
+            department = (request.POST.get("department") or "").strip()
+            position = (request.POST.get("position") or "").strip()
+            biometric_employee_id = (request.POST.get("biometric_employee_id") or "").strip()
+            employment_type = (request.POST.get("employment_type") or "").strip().upper()
+
+            monthly_salary = _to_decimal(request.POST.get("monthly_salary"), "0.00")
+            daily_rate = _to_decimal(request.POST.get("daily_rate"), "0.00")
+            has_premium = bool(request.POST.get("has_premium"))
 
             if employment_type not in ("COS", "JO"):
                 messages.error(request, "Employment type must be COS or JO.")
@@ -790,18 +850,26 @@ def admin_employee_management(request):
                         prof.branch = b
 
             prof.department = department
+            prof.position = position
             prof.employment_type = employment_type
+            prof.biometric_employee_id = biometric_employee_id
+            prof.monthly_salary = monthly_salary
+            prof.daily_rate = daily_rate
+            prof.has_premium = has_premium
             prof.save()
 
             if email != prof.user.email:
                 prof.user.email = email
                 prof.user.save(update_fields=["email"])
 
+            _save_employee_contribution(prof)
+
             messages.success(request, f"Updated: {prof.user.username}")
             return redirect("admin_employees")
 
         elif action == "delete_employee":
             profile_id = request.POST.get("profile_id")
+
             prof = get_object_or_404(
                 UserProfile.objects.select_related("user", "branch"),
                 id=profile_id,
@@ -818,6 +886,7 @@ def admin_employee_management(request):
 
             username = prof.user.username
             prof.user.delete()
+
             messages.success(request, f"Deleted employee: {username}")
             return redirect("admin_employees")
 
@@ -827,10 +896,28 @@ def admin_employee_management(request):
 
     pending_profiles = qs.filter(is_approved=False)
     approved_profiles = qs.filter(is_approved=True)
-    employee_profiles = qs.filter(
-        user__is_staff=False,
-        user__is_superuser=False,
-    ).order_by("user__username")
+
+    employee_profiles = (
+        qs.filter(
+            user__is_staff=False,
+            user__is_superuser=False,
+        )
+        .select_related("user", "branch")
+        .prefetch_related("contrib")
+        .order_by("user__username")
+    )
+
+    # Ensure every employee has contribution row for display.
+    for prof in employee_profiles:
+        EmployeeContribution.objects.get_or_create(
+            profile=prof,
+            defaults={
+                "sss_amount": Decimal("760.00"),
+                "pagibig_amount": Decimal("400.00"),
+                "philhealth_mode": "percent",
+                "philhealth_value": Decimal("5.00"),
+            }
+        )
 
     branches = Branch.objects.all().order_by("name")
 
@@ -3965,7 +4052,7 @@ def admin_payroll(request):
             "type": prof.employment_type,
             "emp_type": prof.employment_type,
             "employment_type": prof.employment_type,
-            
+
             "branch": prof.branch,
             "branch_name": prof.branch.name if prof.branch else "—",
             "position": prof.position or "—",
@@ -4078,20 +4165,28 @@ def admin_payroll(request):
 
 @login_required
 def admin_payroll_preview_api(request):
+    """
+    Payroll preview API.
+    Does not save to database.
+    Used for frontend preview/testing.
+    """
     if not (request.user.is_staff or request.user.is_superuser):
         return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
 
-    branch_id = request.GET.get("branch")
-    period_id = request.GET.get("period")
+    branch_id = (request.GET.get("branch") or "").strip()
+    period_id = (request.GET.get("period") or "").strip()
     emp_type = (request.GET.get("emp_type") or request.GET.get("type") or "ALL").upper()
 
     branch_obj = _scoped_branch_for_admin_or_404(request, branch_id)
     if not branch_obj:
-        return JsonResponse({"ok": False, "error": "Invalid/unauthorized branch"}, status=400)
+        return JsonResponse({"ok": False, "error": "Invalid or unauthorized branch."}, status=400)
 
-    period = PayrollPeriod.objects.filter(id=period_id).first() if str(period_id).isdigit() else PayrollPeriod.objects.first()
+    period = PayrollPeriod.objects.filter(id=period_id).first() if period_id.isdigit() else None
     if not period:
-        return JsonResponse({"ok": False, "error": "No payroll period found"}, status=400)
+        period = PayrollPeriod.objects.order_by("-start_date").first()
+
+    if not period:
+        return JsonResponse({"ok": False, "error": "No payroll period found."}, status=400)
 
     rules = _get_or_create_rules(branch_obj)
 
@@ -4106,36 +4201,120 @@ def admin_payroll_preview_api(request):
         prof_qs = prof_qs.filter(employment_type=emp_type)
 
     rows = []
+    total_base = Decimal("0.00")
+    total_premium = Decimal("0.00")
+    total_ot = Decimal("0.00")
+    total_deductions = Decimal("0.00")
+    total_gov = Decimal("0.00")
+    total_tax = Decimal("0.00")
     total_net = Decimal("0.00")
 
     for prof in prof_qs.order_by("user__username"):
         res = _compute_payroll(prof, branch_obj, period, rules)
-        p = res["computed_payroll"]
+
+        p = res.get("computed_payroll", {})
+        gov = res.get("gov", {})
+        rates = res.get("rates", {})
+        summary = res.get("attendance_summary", {})
+
+        base = _money(p.get("base", Decimal("0.00")))
+        premium = _money(p.get("premium", Decimal("0.00")))
+        ot = _money(p.get("ot", Decimal("0.00")))
+        deductions = _money(p.get("deductions", Decimal("0.00")))
+        gov_total = _money(gov.get("gov_total", Decimal("0.00")))
+        tax = _money(gov.get("tax", Decimal("0.00")))
+        net = _money(p.get("net", Decimal("0.00")))
 
         rows.append({
             "id": prof.id,
+            "profile_id": prof.id,
+            "user_id": prof.user.id,
+            "username": prof.user.username,
             "name": prof.user.get_full_name() or prof.user.username,
+            "full_name": prof.user.get_full_name() or prof.user.username,
+
             "type": prof.employment_type,
-            "base": float(p["base"]),
-            "premium": float(p["premium"]),
-            "ot": float(p["ot"]),
-            "late": int(p["late_minutes"]),
-            "undertime": int(p["undertime_minutes"]),
-            "absences": int(p["absences"]),
-            "deductions": float(p["deductions"]),
-            "net": float(p["net"]),
-            "issues": res["issues"],
+            "employment_type": prof.employment_type,
+            "branch": branch_obj.name,
+            "department": prof.department or "",
+            "position": prof.position or "",
+
+            "biometric_employee_id": prof.biometric_employee_id or "",
+            "picked_employee_id": res.get("picked_employee_id", ""),
+
+            "monthly_salary": float(_money(prof.monthly_salary or Decimal("0.00"))),
+            "daily_rate_profile": float(_money(prof.daily_rate or Decimal("0.00"))),
+            "computed_daily_rate": float(_money(rates.get("daily", Decimal("0.00")))),
+            "computed_hourly_rate": float(_money(rates.get("hourly", Decimal("0.00")))),
+            "computed_per_minute_rate": float(_money(rates.get("per_minute", Decimal("0.00")))),
+
+            "present_days": int(summary.get("present_days", 0) or 0),
+            "travel_days": int(summary.get("travel_days", 0) or 0),
+            "holiday_days": int(summary.get("holiday_days", 0) or 0),
+            "absences": int(p.get("absences", 0) or 0),
+            "missing_logs": int(summary.get("missing_logs", 0) or 0),
+            "records_found": int(summary.get("records_found", 0) or 0),
+            "records_used": int(summary.get("records_used", 0) or 0),
+
+            "base": float(base),
+            "premium": float(premium),
+            "overtime_hours": float(_money(p.get("overtime_hours", Decimal("0.00")))),
+            "ot": float(ot),
+
+            "late_minutes": int(p.get("late_minutes", 0) or 0),
+            "undertime_minutes": int(p.get("undertime_minutes", 0) or 0),
+            "late_deduction": float(_money(p.get("late_deduction", Decimal("0.00")))),
+            "undertime_deduction": float(_money(p.get("undertime_deduction", Decimal("0.00")))),
+
+            "sss": float(_money(gov.get("sss", Decimal("0.00")))),
+            "pagibig": float(_money(gov.get("pagibig", Decimal("0.00")))),
+            "philhealth": float(_money(gov.get("philhealth", Decimal("0.00")))),
+            "gov_total": float(gov_total),
+            "tax": float(tax),
+
+            "deductions": float(deductions),
+            "net": float(net),
+
+            "issues": res.get("issues", ""),
+            "dtr_rows": res.get("dtr_rows", []),
         })
 
-        total_net += p["net"]
+        total_base += base
+        total_premium += premium
+        total_ot += ot
+        total_deductions += deductions
+        total_gov += gov_total
+        total_tax += tax
+        total_net += net
 
     return JsonResponse({
         "ok": True,
-        "period": {"id": period.id, "name": period.name},
-        "branch": {"id": branch_obj.id, "name": branch_obj.name},
+        "period": {
+            "id": period.id,
+            "name": period.name,
+            "start": str(period.start_date),
+            "end": str(period.end_date),
+            "pay_mode": period.pay_mode,
+        },
+        "branch": {
+            "id": branch_obj.id,
+            "name": branch_obj.name,
+        },
+        "filter": {
+            "employment_type": emp_type,
+        },
         "employees": rows,
         "total_employees": len(rows),
-        "total_net": float(total_net),
+        "totals": {
+            "base": float(_money(total_base)),
+            "premium": float(_money(total_premium)),
+            "ot": float(_money(total_ot)),
+            "gov": float(_money(total_gov)),
+            "tax": float(_money(total_tax)),
+            "deductions": float(_money(total_deductions)),
+            "net": float(_money(total_net)),
+        },
+        "total_net": float(_money(total_net)),
     })
 
 
@@ -4178,20 +4357,39 @@ def admin_employee_dtr_api(request, profile_id: int):
 @login_required
 @require_POST
 def admin_payroll_process_batch(request):
+    """
+    STEP 3.3:
+    Process payroll and save computed results into PayrollBatch + PayrollItem.
+
+    Saves:
+    - base pay
+    - premium pay
+    - overtime hours/pay
+    - late minutes
+    - undertime minutes
+    - absences
+    - manual deduction
+    - government contributions
+    - tax
+    - total deductions
+    - net pay
+    - issues
+    - DTR rows and computation snapshot inside meta
+    """
     if not (request.user.is_staff or request.user.is_superuser):
         return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
 
-    branch_id = request.POST.get("branch")
-    period_id = request.POST.get("period")
-    emp_type = (request.POST.get("emp_type") or request.POST.get("type") or "ALL").upper()
+    branch_id = (request.POST.get("branch") or "").strip()
+    period_id = (request.POST.get("period") or "").strip()
+    emp_type = (request.POST.get("type") or request.POST.get("emp_type") or "ALL").upper()
 
     branch_obj = _scoped_branch_for_admin_or_404(request, branch_id)
     if not branch_obj:
-        return JsonResponse({"ok": False, "error": "Invalid/unauthorized branch"}, status=400)
+        return JsonResponse({"ok": False, "error": "Invalid or unauthorized branch."}, status=400)
 
-    period = PayrollPeriod.objects.filter(id=period_id).first() if str(period_id).isdigit() else None
+    period = PayrollPeriod.objects.filter(id=period_id).first() if period_id.isdigit() else None
     if not period:
-        return JsonResponse({"ok": False, "error": "Invalid payroll period"}, status=400)
+        return JsonResponse({"ok": False, "error": "Invalid payroll period."}, status=400)
 
     rules = _get_or_create_rules(branch_obj)
 
@@ -4205,60 +4403,166 @@ def admin_payroll_process_batch(request):
     if emp_type in ("JO", "COS"):
         prof_qs = prof_qs.filter(employment_type=emp_type)
 
-    batch, _ = PayrollBatch.objects.get_or_create(
-        branch=branch_obj,
-        period=period,
-        defaults={
-            "name": f"Payroll {branch_obj.name} - {period.name}",
-            "status": PayrollBatch.STATUS_DRAFT,
-        }
-    )
-
-    PayrollItem.objects.filter(batch=batch).delete()
+    if not prof_qs.exists():
+        return JsonResponse({
+            "ok": False,
+            "error": "No approved JO/COS employees found for this branch and filter."
+        }, status=400)
 
     totals_net = Decimal("0.00")
     totals_deductions = Decimal("0.00")
+    total_items = 0
 
     with transaction.atomic():
+        batch, created = PayrollBatch.objects.get_or_create(
+            branch=branch_obj,
+            period=period,
+            defaults={
+                "name": f"Payroll {branch_obj.name} - {period.name}",
+                "status": PayrollBatch.STATUS_DRAFT,
+                "processed_by": request.user,
+                "processed_at": timezone.now(),
+            }
+        )
+
+        # Re-process safely: remove old items from this batch.
+        PayrollItem.objects.filter(batch=batch).delete()
+
         for prof in prof_qs.order_by("user__username"):
             res = _compute_payroll(prof, branch_obj, period, rules)
-            p = res["computed_payroll"]
-            gov = res["gov"]
+
+            p = res.get("computed_payroll", {})
+            gov = res.get("gov", {})
+            rates = res.get("rates", {})
+            attendance_summary = res.get("attendance_summary", {})
+            dtr_rows = res.get("dtr_rows", [])
+
+            base_pay = _money(p.get("base", Decimal("0.00")))
+            premium_pay = _money(p.get("premium", Decimal("0.00")))
+            overtime_hours = _money(p.get("overtime_hours", Decimal("0.00")))
+            overtime_pay = _money(p.get("ot", Decimal("0.00")))
+
+            late_minutes = int(p.get("late_minutes", 0) or 0)
+            undertime_minutes = int(p.get("undertime_minutes", 0) or 0)
+            absences = int(p.get("absences", 0) or 0)
+
+            manual_deduction = _money(prof.manual_deduction_amount or Decimal("0.00"))
+            deductions_total = _money(p.get("deductions", Decimal("0.00")))
+
+            gov_contributions_total = _money(gov.get("gov_total", Decimal("0.00")))
+            tax_total = _money(gov.get("tax", Decimal("0.00")))
+            net_pay = _money(p.get("net", Decimal("0.00")))
+
+            issues_text = res.get("issues", "") or ""
 
             PayrollItem.objects.create(
                 batch=batch,
                 profile=prof,
-                base_pay=p["base"],
-                premium_pay=p["premium"],
-                overtime_hours=p["overtime_hours"],
-                overtime_pay=p["ot"],
-                late_minutes=p["late_minutes"],
-                undertime_minutes=p["undertime_minutes"],
-                absences=p["absences"],
-                manual_deduction=Decimal("0.00"),
-                deductions_total=p["deductions"],
-                gov_contributions_total=gov["gov_total"],
-                tax_total=gov["tax"],
-                net_pay=p["net"],
-                issues=res["issues"],
+
+                base_pay=base_pay,
+                premium_pay=premium_pay,
+
+                overtime_hours=overtime_hours,
+                overtime_pay=overtime_pay,
+
+                late_minutes=late_minutes,
+                undertime_minutes=undertime_minutes,
+                absences=absences,
+
+                manual_deduction=manual_deduction,
+
+                deductions_total=deductions_total,
+                gov_contributions_total=gov_contributions_total,
+                tax_total=tax_total,
+
+                net_pay=net_pay,
+                issues=issues_text,
+
                 meta={
+                    "processed_snapshot": {
+                        "processed_at": str(timezone.localtime(timezone.now())),
+                        "processed_by": request.user.username,
+                    },
+
+                    "employee": {
+                        "profile_id": prof.id,
+                        "user_id": prof.user.id,
+                        "username": prof.user.username,
+                        "full_name": prof.user.get_full_name() or prof.user.username,
+                        "employment_type": prof.employment_type,
+                        "branch": prof.branch.name if prof.branch else "",
+                        "department": prof.department or "",
+                        "position": prof.position or "",
+                        "biometric_employee_id": prof.biometric_employee_id or "",
+                        "employee_id_used": res.get("picked_employee_id", ""),
+                    },
+
                     "period": {
+                        "id": period.id,
+                        "name": period.name,
                         "start": str(period.start_date),
                         "end": str(period.end_date),
+                        "pay_mode": period.pay_mode,
                     },
-                    "employee_id_used": res["picked_employee_id"],
+
+                    "rules": {
+                        "salary_divisor": str(rules.salary_divisor),
+                        "tax_rate_percent": str(rules.tax_rate_percent),
+                        "premium_rate_percent": str(rules.premium_rate_percent),
+                        "philhealth_default_mode": rules.philhealth_default_mode,
+                        "philhealth_default_value": str(rules.philhealth_default_value),
+                        "sss_minimum": str(rules.sss_minimum),
+                        "pagibig_minimum": str(rules.pagibig_minimum),
+                        "ot_multiplier": str(rules.ot_multiplier),
+                        "grace_minutes_normal": rules.grace_minutes_normal,
+                        "flag_ceremony_cutoff_time": str(rules.flag_ceremony_cutoff_time),
+                        "daily_hours_required": str(rules.daily_hours_required),
+                        "work_start_time": str(rules.work_start_time),
+                        "work_end_time": str(rules.work_end_time),
+                    },
+
                     "rates": {
-                        "daily": str(res["rates"]["daily"]),
-                        "hourly": str(res["rates"]["hourly"]),
-                        "per_minute": str(res["rates"]["per_minute"]),
+                        "monthly_salary": str(prof.monthly_salary or Decimal("0.00")),
+                        "daily_rate_profile": str(prof.daily_rate or Decimal("0.00")),
+                        "computed_daily_rate": str(rates.get("daily", Decimal("0.00"))),
+                        "computed_hourly_rate": str(rates.get("hourly", Decimal("0.00"))),
+                        "computed_per_minute_rate": str(rates.get("per_minute", Decimal("0.00"))),
                     },
-                    "dtr_rows": res["dtr_rows"],
+
+                    "attendance_summary": attendance_summary,
+
+                    "payroll": {
+                        "base_pay": str(base_pay),
+                        "premium_pay": str(premium_pay),
+                        "overtime_hours": str(overtime_hours),
+                        "overtime_pay": str(overtime_pay),
+                        "late_minutes": late_minutes,
+                        "undertime_minutes": undertime_minutes,
+                        "absences": absences,
+                        "manual_deduction": str(manual_deduction),
+                        "deductions_total": str(deductions_total),
+                        "gov_contributions_total": str(gov_contributions_total),
+                        "tax_total": str(tax_total),
+                        "net_pay": str(net_pay),
+                    },
+
+                    "gov": {
+                        "sss": str(gov.get("sss", Decimal("0.00"))),
+                        "pagibig": str(gov.get("pagibig", Decimal("0.00"))),
+                        "philhealth": str(gov.get("philhealth", Decimal("0.00"))),
+                        "gov_total": str(gov_contributions_total),
+                        "tax": str(tax_total),
+                    },
+
+                    "dtr_rows": dtr_rows,
                 }
             )
 
-            totals_net += p["net"]
-            totals_deductions += p["deductions"]
+            totals_net += net_pay
+            totals_deductions += deductions_total
+            total_items += 1
 
+        batch.name = f"Payroll {branch_obj.name} - {period.name}"
         batch.totals_net = _money(totals_net)
         batch.totals_deductions = _money(totals_deductions)
         batch.status = PayrollBatch.STATUS_COMPLETED
@@ -4273,104 +4577,15 @@ def admin_payroll_process_batch(request):
             "id": batch.id,
             "name": batch.name,
             "status": batch.status,
+            "status_label": batch.get_status_display() if hasattr(batch, "get_status_display") else batch.status,
         },
         "totals": {
-            "net": float(totals_net),
-            "deductions": float(totals_deductions),
+            "items": total_items,
+            "net": float(_money(totals_net)),
+            "deductions": float(_money(totals_deductions)),
         },
     })
-# -------------------------
-# Process / Create Payroll Batch (Approve & Process)
-# -------------------------
-@login_required
-@require_POST
-def admin_payroll_process_batch(request):
-    if not (request.user.is_staff or request.user.is_superuser):
-        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
-
-    branch_id = request.POST.get("branch")
-    period_id = request.POST.get("period")
-    emp_type = (request.POST.get("type") or "ALL").upper()
-
-    branch_obj = _scoped_branch_for_admin_or_404(request, branch_id)
-    if not branch_obj:
-        return JsonResponse({"ok": False, "error": "Invalid/unauthorized branch"}, status=400)
-
-    period = PayrollPeriod.objects.filter(id=period_id).first() if str(period_id).isdigit() else None
-    if not period:
-        return JsonResponse({"ok": False, "error": "Invalid payroll period"}, status=400)
-
-    rules = _get_or_create_rules(branch_obj)
-
-    # 🔥 FIX HERE
-    prof_qs = UserProfile.objects.select_related("user", "branch").filter(
-        is_approved=True,
-        branch=branch_obj,
-        user__is_staff=False,
-        user__is_superuser=False
-    )
-
-    if emp_type in ("JO", "COS"):
-        prof_qs = prof_qs.filter(employment_type=emp_type)
-
-    batch, created = PayrollBatch.objects.get_or_create(
-        branch=branch_obj,
-        period=period,
-        defaults={
-            "name": f"Payroll {branch_obj.name} - {period.name}",
-            "status": PayrollBatch.STATUS_DRAFT,
-        }
-    )
-
-    PayrollItem.objects.filter(batch=batch).delete()
-
-    totals_net = Decimal("0.00")
-    totals_deductions = Decimal("0.00")
-
-    with transaction.atomic():
-        for prof in prof_qs.order_by("user__username"):
-            res = _compute_payroll(prof, branch_obj, period, rules)
-            p = res["computed_payroll"]
-            gov_total = res["gov"]["gov_total"]
-            tax_total = res["gov"]["tax"]
-
-            PayrollItem.objects.create(
-                batch=batch,
-                profile=prof,
-                base_pay=p["base"],
-                premium_pay=p["premium"],
-                overtime_pay=p["ot"],
-                late_minutes=p["late_minutes"],
-                undertime_minutes=p["undertime_minutes"],
-                absences=p["absences"],
-                deductions_total=p["deductions"],
-                gov_contributions_total=gov_total,
-                tax_total=tax_total,
-                net_pay=p["net"],
-                issues=res["issues"],
-                meta={
-                    "period": {"start": str(period.start_date), "end": str(period.end_date)},
-                    "employee_id_used": res["picked_employee_id"],
-                }
-            )
-
-            totals_net += p["net"]
-            totals_deductions += p["deductions"]
-
-        batch.totals_net = totals_net
-        batch.totals_deductions = totals_deductions
-        batch.status = PayrollBatch.STATUS_COMPLETED
-        batch.processed_by = request.user
-        batch.processed_at = timezone.now()
-        batch.save()
-
-    return JsonResponse({
-        "ok": True,
-        "batch": {"id": batch.id, "name": batch.name, "status": batch.status},
-        "totals": {"net": float(totals_net), "deductions": float(totals_deductions)},
-    })
-
-
+    
 
 #new added 3/3/2026 ======================================================================================
 
