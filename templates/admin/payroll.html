@@ -649,23 +649,36 @@
             </td>
 
             <td class="py-3 pr-3">
-              <div class="flex gap-2">
-                <button type="button"
-                        class="view-dtr-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
-                        data-employee-id="{{ employee.id }}"
-                        data-employee-name="{{ employee.name|default:employee.full_name|default:employee.user.username }}"
-                        data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escapejs }}'>
-                  <iconify-icon icon="ph:calendar-check-duotone" class="text-accent text-lg"></iconify-icon>
-                </button>
+                <div class="flex gap-2">
+                  <!-- View DTR in modal -->
+                  <button type="button"
+                          class="view-dtr-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
+                          title="View DTR details"
+                          data-employee-id="{{ employee.id }}"
+                          data-employee-name="{{ employee.name|default:employee.full_name|default:employee.user.username }}"
+                          data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escapejs }}'>
+                    <iconify-icon icon="ph:calendar-check-duotone" class="text-accent text-lg"></iconify-icon>
+                  </button>
 
-                <button type="button"
-                        class="print-dtr-single p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
-                        data-employee-id="{{ employee.id }}"
-                        data-employee-name="{{ employee.name|default:employee.full_name|default:employee.user.username }}">
-                  <iconify-icon icon="ph:printer-duotone" class="text-accent text-lg"></iconify-icon>
-                </button>
-              </div>
-            </td>
+                  <!-- Print saved Civil Service Form No. 48 DTR -->
+                  {% if employee.payroll_item_id %}
+                    <a href="{% url 'admin_payroll_item_dtr_print' employee.payroll_item_id %}"
+                      target="_blank"
+                      class="p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition inline-flex items-center justify-center"
+                      title="Print saved Civil Service Form No. 48 DTR">
+                      <iconify-icon icon="ph:printer-duotone" class="text-accent text-lg"></iconify-icon>
+                    </a>
+                  {% else %}
+                    <button type="button"
+                            class="p-1.5 rounded-lg bg-slate-100 text-slate-400 cursor-not-allowed inline-flex items-center justify-center"
+                            title="Process payroll first before printing saved DTR"
+                            disabled>
+                      <iconify-icon icon="ph:printer-duotone" class="text-lg"></iconify-icon>
+                    </button>
+                  {% endif %}
+                </div>
+              </td>
+
           </tr>
 
           <tr class="expand-detail-row hidden" data-detail-for="{{ employee.id }}">
@@ -737,9 +750,11 @@
         <div id="dtrSummary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"></div>
 
         <div class="flex justify-end mb-3">
-          <button type="button" id="printDtrFromModal" class="px-4 py-2 rounded-xl glass-premium hover:shadow-md text-sm flex items-center gap-2">
+          <button type="button"
+                  id="printDtrFromModal"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white text-teal-600 hover:bg-teal-50"
+                  title="Print modal DTR summary">
             <iconify-icon icon="ph:printer-duotone"></iconify-icon>
-            Print DTR
           </button>
         </div>
 
@@ -1099,19 +1114,7 @@
     win.print();
   });
 
-  document.querySelectorAll(".print-dtr-single").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const employeeId = btn.getAttribute("data-employee-id");
-      const dtrBtn = document.querySelector(`.view-dtr-btn[data-employee-id="${employeeId}"]`);
-
-      if (dtrBtn) {
-        dtrBtn.click();
-        setTimeout(() => {
-          document.getElementById("printDtrFromModal")?.click();
-        }, 300);
-      }
-    });
-  });
+  
 
   document.getElementById("previewPayrollBtn")?.addEventListener("click", () => {
     const form = document.getElementById("payrollFilterForm");

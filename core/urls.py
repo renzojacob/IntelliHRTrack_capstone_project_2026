@@ -41,11 +41,16 @@ urlpatterns = [
     path("admin-ui/employees/approve/<int:profile_id>/", views.approve_user, name="approve_user"),
     path("admin-ui/employees/reject/<int:profile_id>/", views.reject_user, name="reject_user"),
 
-    #Payroll Management
+        # Payroll Management
     path("admin-ui/payroll/", views.admin_payroll, name="admin_payroll"),
     path("admin-ui/payroll/preview/", views.admin_payroll_preview_api, name="admin_payroll_preview_api"),
-    path("admin-ui/payroll/dtr/<int:profile_id>/", views.admin_employee_dtr_api, name="admin_employee_dtr_api"),
     path("admin-ui/payroll/process/", views.admin_payroll_process_batch, name="admin_payroll_process_batch"),
+
+    # Live DTR JSON API
+    path("admin-ui/payroll/dtr/<int:profile_id>/", views.admin_employee_dtr_api, name="admin_employee_dtr_api"),
+
+    # Saved processed DTR print page
+    path("admin-ui/payroll/item/<int:item_id>/dtr/", views.admin_payroll_item_dtr_print, name="admin_payroll_item_dtr_print"),
 
     path("admin-ui/scheduling/", views.admin_shift_scheduling, name="admin_scheduling"),
     path("admin-ui/reports/", views.admin_reports, name="admin_reports"),
@@ -71,10 +76,5 @@ urlpatterns = [
     path("employee/notifications/", views.employee_notifications, name="employee_notifications"),
     path("employee/profile/", views.employee_profile, name="employee_profile"),
 
-    # -------------------------
-    # Payroll JSON APIs
-    # -------------------------
-    path("admin-ui/payroll/preview/", views.admin_payroll_preview_api, name="admin_payroll_preview_api"),
-    path("admin-ui/payroll/dtr/<int:profile_id>/", views.admin_employee_dtr_api, name="admin_employee_dtr_api"),
-    path("admin-ui/payroll/process/", views.admin_payroll_process_batch, name="admin_payroll_process_batch"),
+    
 ]
