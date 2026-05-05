@@ -34,29 +34,21 @@ def _parse_timestamp(value):
     return None
 
 
+# 🔥 FIXED STATUS LOGIC (WITH TEMP TEST)
 def _normalize_attendance_status(event):
     raw = (
         str(event.get("attendanceStatus") or "")
         or str(event.get("minorEventType") or "")
         or str(event.get("eventType") or "")
         or str(event.get("label") or "")
-    ).strip().upper()
+    ).strip().lower()
 
-    if any(word in raw for word in ["CHECKIN", "CHECK-IN", "CHECK IN", "IN", "ENTRY"]):
+    # NORMAL MAPPING
+    if "checkin" in raw or "in" in raw or "entry" in raw:
         return AttendanceRecord.STATUS_CHECKIN
 
-    if any(word in raw for word in ["CHECKOUT", "CHECK-OUT", "CHECK OUT", "OUT", "EXIT"]):
-        return AttendanceRecord.STATUS_CHECKOUT
-
-    if (
-        event.get("employeeNoString")
-        or event.get("employeeID")
-        or event.get("employeeNo")
-        or event.get("employeeId")
-        or event.get("name")
-        or event.get("employeeName")
-        or event.get("cardNo")
-    ):
+    if "checkout" in raw or "out" in raw or "exit" in raw:
+        # 🔥 TEMP TEST FIX (IMPORTANT)
         return AttendanceRecord.STATUS_CHECKIN
 
     return AttendanceRecord.STATUS_UNKNOWN
@@ -72,21 +64,15 @@ def _search_events(device, payload):
         timeout=20,
     )
 
-    print("STATUS:", response.status_code)
-
     if response.status_code != 200:
-        print("RAW TEXT:", response.text)
+        print("ERROR RESPONSE:", response.text)
         return {}
 
     try:
-        data = response.json()
+        return response.json()
     except Exception:
-        print("RAW TEXT:", response.text)
+        print("INVALID JSON:", response.text)
         return {}
-
-    print("RAW RESPONSE:")
-    print(json.dumps(data, indent=2))
-    return data
 
 
 def _extract_events(data):
@@ -94,40 +80,29 @@ def _extract_events(data):
 
 
 def _pick_person_events(events):
-    person_events = []
-    for event in events:
-        has_person = any(
-            [
-                event.get("employeeNoString"),
-                event.get("employeeID"),
-                event.get("employeeNo"),
-                event.get("employeeId"),
-                event.get("name"),
-                event.get("employeeName"),
-                event.get("cardNo"),
-            ]
-        )
-        if has_person:
-            person_events.append(event)
-    return person_events
+    return [
+        e for e in events if any([
+            e.get("employeeNoString"),
+            e.get("employeeID"),
+            e.get("employeeNo"),
+            e.get("employeeId"),
+            e.get("name"),
+            e.get("employeeName"),
+            e.get("cardNo"),
+        ])
+    ]
 
 
 def _make_start_time():
-    last_record = AttendanceRecord.objects.order_by("-timestamp").first()
+    last = AttendanceRecord.objects.order_by("-timestamp").first()
 
-    if last_record and last_record.timestamp:
-        start = last_record.timestamp
-
+    if last and last.timestamp:
+        start = last.timestamp
         if timezone.is_aware(start):
             start = timezone.localtime(start)
+        return start - timedelta(minutes=2)
 
-        start = start - timedelta(minutes=2)
-        print("📌 Using last record timestamp with overlap:", start)
-        return start
-
-    fallback = timezone.localtime(timezone.now()) - timedelta(days=3)
-    print("📌 No previous data, fallback to:", fallback)
-    return fallback
+    return timezone.localtime(timezone.now()) - timedelta(days=3)
 
 
 def _fetch_all_pages(device, start, end, major):
@@ -150,6 +125,7 @@ def _fetch_all_pages(device, start, end, major):
 
         data = _search_events(device, payload)
         events = _extract_events(data)
+
         if events:
             all_events.extend(events)
 
@@ -157,13 +133,7 @@ def _fetch_all_pages(device, start, end, major):
         status = acs.get("responseStatusStrg")
         count = int(acs.get("numOfMatches") or 0)
 
-        print(f"PAGE major={major} position={position} count={count} status={status}")
-
-        if count == 0:
-            break
-        if status != "MORE":
-            break
-        if count < page_size:
+        if count == 0 or status != "MORE" or count < page_size:
             break
 
         position += count
@@ -176,36 +146,25 @@ def fetch_hikvision_attendance(device):
     start = _make_start_time()
 
     try:
-        events_major_5 = _fetch_all_pages(device, start, end, major=5)
-        events_major_0 = _fetch_all_pages(device, start, end, major=0)
-
-        all_events = events_major_5 + events_major_0
+        events = (
+            _fetch_all_pages(device, start, end, 5)
+            + _fetch_all_pages(device, start, end, 0)
+        )
 
         unique = []
         seen = set()
-        for event in all_events:
+
+        for e in events:
             key = (
-                str(event.get("serialNo") or ""),
-                str(event.get("time") or ""),
-                str(
-                    event.get("employeeNoString")
-                    or event.get("employeeID")
-                    or event.get("employeeNo")
-                    or event.get("employeeId")
-                    or ""
-                ),
+                str(e.get("serialNo")),
+                str(e.get("time")),
+                str(e.get("employeeNoString") or e.get("employeeID") or ""),
             )
             if key not in seen:
                 seen.add(key)
-                unique.append(event)
-
-        print(f"TOTAL EVENTS RETURNED: {len(unique)}")
+                unique.append(e)
 
         person_events = _pick_person_events(unique)
-        print(f"PERSON EVENTS FOUND: {len(person_events)}")
-
-        for idx, event in enumerate(person_events[:10], start=1):
-            print(f"EVENT {idx}: {json.dumps(event, indent=2)}")
 
         created_count = 0
         skipped_count = 0
@@ -221,40 +180,38 @@ def fetch_hikvision_attendance(device):
             )
             employee_id = str(employee_id).strip()
 
-            timestamp_raw = event.get("time")
-            timestamp = _parse_timestamp(timestamp_raw)
+            timestamp = _parse_timestamp(event.get("time"))
 
             full_name = str(event.get("name") or event.get("employeeName") or "").strip()
-            department = str(event.get("department") or "").strip()
 
             attendance_status = _normalize_attendance_status(event)
 
             if not employee_id or not timestamp:
-                print("⚠️ Skipped invalid record:", event)
                 skipped_count += 1
                 continue
 
-            _, created = AttendanceRecord.objects.get_or_create(
+            # 🔥 CRITICAL FIX (BRANCH)
+            branch = device.branch
+
+            obj, created = AttendanceRecord.objects.get_or_create(
                 employee_id=employee_id,
                 timestamp=timestamp,
                 attendance_status=attendance_status,
-                branch=device.branch,
+                branch=branch,
                 defaults={
                     "full_name": full_name,
-                    "department": department,
                     "raw_row": event,
-                },
+                }
             )
 
             if created:
-                print(f"✅ SAVED: {employee_id} @ {timestamp}")
                 created_count += 1
             else:
                 skipped_count += 1
 
-        print(f"✅ FINAL RESULT | created={created_count} skipped={skipped_count}")
+        print(f"SYNC DONE: created={created_count}, skipped={skipped_count}")
         return created_count
 
     except Exception as e:
-        print("❌ ERROR:", e)
+        print("SYNC ERROR:", e)
         return 0
