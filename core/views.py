@@ -6,7 +6,7 @@ import re
 import json
 from decimal import Decimal
 from datetime import date, datetime, time, timedelta
-
+from types import SimpleNamespace
 from collections import defaultdict
 from django.utils import timezone
 
@@ -551,14 +551,99 @@ def admin_dashboard(request):
     return render(request, "admin/dashboard.html", context)
 
 
-# NOTE: This earlier stub is kept (as you requested not to remove other code),
-# but the REAL analytics view is defined later and will override this.
 @login_required
 @never_cache
 def admin_analytics(request):
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
-    return render(request, "admin/analytics.html", {"current": "analytics"})
+
+    payload = _analytics_build_payload(request)
+
+    branches = _analytics_get_branches_for_filter(request)
+
+    selected_branch_id = str(payload["filters"]["branch"] or "")
+    selected_emp_type = payload["filters"]["emp_type"]
+    selected_department = payload["filters"]["department"]
+
+    dept_qs = UserProfile.objects.filter(
+        is_approved=True,
+        user__is_staff=False,
+        user__is_superuser=False,
+    )
+
+    admin_branch = _get_admin_branch(request)
+    if admin_branch:
+        dept_qs = dept_qs.filter(branch=admin_branch)
+
+    departments = (
+        dept_qs.exclude(department="")
+        .values_list("department", flat=True)
+        .distinct()
+        .order_by("department")
+    )
+
+    context = {
+        "current": "analytics",
+
+        "branches": branches,
+        "departments": departments,
+
+        "selected_branch_id": selected_branch_id,
+        "selected_emp_type": selected_emp_type,
+        "selected_department": selected_department,
+        "selected_start": payload["filters"]["start"],
+        "selected_end": payload["filters"]["end"],
+
+        "branch_label": payload["filters"]["branch_name"],
+        "range_label": f"{payload['filters']['start']} to {payload['filters']['end']}",
+
+        "chart_payload_json": json.dumps(payload, default=str),
+    }
+
+    return render(request, "admin/analytics.html", context)
+
+
+@login_required
+@never_cache
+def admin_analytics_api(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
+
+    payload = _analytics_build_payload(request)
+    return JsonResponse({"ok": True, "data": payload}, safe=False)
+
+
+@login_required
+@never_cache
+def admin_analytics_employee_risks_api(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
+
+    payload = _analytics_build_payload(request)
+    return JsonResponse({
+        "ok": True,
+        "risk_rows": payload.get("risk_rows", []),
+        "late_rows": payload.get("late_rows", []),
+        "overwork_rows": payload.get("overwork_rows", []),
+    })
+
+
+@login_required
+@never_cache
+def admin_analytics_insights_api(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
+
+    payload = _analytics_build_payload(request)
+    return JsonResponse({
+        "ok": True,
+        "generated_at": payload.get("generated_at"),
+        "insights": payload.get("insights", []),
+        "summary": payload.get("summary", {}),
+        "comparison": payload.get("comparison", {}),
+    })
+
+    
 
 
 def _scoped_profiles_for_admin(request):
@@ -3758,6 +3843,1027 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
         "dtr_rows": dtr["rows"],
     }
     
+# =========================================================
+# AI Analytics Helpers
+# Rule-based analytics: no ML training required
+# =========================================================
+
+def _analytics_money(value):
+    try:
+        return Decimal(value or 0).quantize(Decimal("0.01"))
+    except Exception:
+        return Decimal("0.00")
+
+
+def _analytics_float(value):
+    try:
+        return float(value or 0)
+    except Exception:
+        return 0.0
+
+
+def _analytics_percent(part, total):
+    try:
+        total = float(total or 0)
+        part = float(part or 0)
+        if total <= 0:
+            return 0.0
+        return round((part / total) * 100, 2)
+    except Exception:
+        return 0.0
+
+
+def _analytics_clamp(value, minimum=0, maximum=100):
+    try:
+        value = float(value)
+    except Exception:
+        value = 0
+    return max(minimum, min(maximum, value))
+
+
+def _analytics_date_range(start_date, end_date):
+    current = start_date
+    while current <= end_date:
+        yield current
+        current += timedelta(days=1)
+
+
+def _analytics_is_weekend(day):
+    return day.weekday() >= 5
+
+
+def _analytics_parse_date(value, fallback):
+    raw = str(value or "").strip()
+    if not raw:
+        return fallback
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except Exception:
+        return fallback
+
+
+def _analytics_default_range():
+    today = timezone.localdate()
+    start = today.replace(day=1)
+    end = today
+    return start, end
+
+
+def _analytics_get_allowed_branch(request, branch_id=None):
+    """
+    Superuser:
+      - can view all branches when branch_id is empty
+      - can view selected branch when branch_id is valid
+
+    Staff admin:
+      - can view only their own branch
+    """
+    admin_branch = _get_admin_branch(request)
+
+    if admin_branch:
+        return admin_branch
+
+    if request.user.is_superuser and branch_id:
+        return Branch.objects.filter(id=branch_id).first()
+
+    return None
+
+
+def _analytics_get_branches_for_filter(request):
+    if request.user.is_superuser:
+        return Branch.objects.all().order_by("name")
+    b = _get_admin_branch(request)
+    if b:
+        return Branch.objects.filter(id=b.id)
+    return Branch.objects.none()
+
+
+def _analytics_get_rules(branch):
+    """
+    Uses your existing payroll rule helper if available.
+    Fallback creates default PayrollRule for the branch.
+    """
+    if not branch:
+        return None
+
+    try:
+        return _get_or_create_rules(branch)
+    except Exception:
+        rules, _ = PayrollRule.objects.get_or_create(branch=branch)
+        return rules
+
+
+def _analytics_make_period(start_date, end_date):
+    """
+    Fake payroll period object for analytics only.
+    This allows _build_dtr_and_summary() to be reused without saving a PayrollPeriod.
+    """
+    return SimpleNamespace(
+        id=None,
+        name=f"Analytics Range {start_date} to {end_date}",
+        start_date=start_date,
+        end_date=end_date,
+        pay_mode=PayrollPeriod.PAY_MONTHLY,
+    )
+
+
+def _analytics_leave_days_for_profile(profile, start_date, end_date):
+    """
+    Count approved leave days inside selected range.
+    Uses weekday days only.
+    """
+    total = 0.0
+
+    leave_qs = LeaveRequest.objects.filter(
+        employee=profile.user,
+        status=LeaveRequest.STATUS_APPROVED,
+        start_date__lte=end_date,
+        end_date__gte=start_date,
+    )
+
+    for leave in leave_qs:
+        s = max(leave.start_date, start_date)
+        e = min(leave.end_date, end_date)
+
+        for d in _analytics_date_range(s, e):
+            if _analytics_is_weekend(d):
+                continue
+
+            if leave.duration in (LeaveRequest.DURATION_HALF_AM, LeaveRequest.DURATION_HALF_PM):
+                total += 0.5
+            else:
+                total += 1
+
+    return total
+
+
+def _analytics_holiday_dates(branch, start_date, end_date):
+    """
+    Used for pattern detection like absence after/before holidays.
+    """
+    qs = HolidaySuspension.objects.filter(
+        date__gte=start_date,
+        date__lte=end_date,
+    )
+
+    if branch:
+        qs = qs.filter(
+            Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
+            | Q(scope=HolidaySuspension.SCOPE_REGION)
+            | Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=branch)
+        )
+
+    return set(qs.values_list("date", flat=True))
+
+
+def _analytics_profile_display_name(profile):
+    try:
+        return profile.user.get_full_name() or profile.user.username
+    except Exception:
+        return "Unknown Employee"
+
+
+def _analytics_empty_employee_summary(profile):
+    return {
+        "profile": profile,
+        "profile_id": profile.id,
+        "name": _analytics_profile_display_name(profile),
+        "username": profile.user.username,
+        "branch": profile.branch.name if profile.branch else "Unassigned",
+        "department": profile.department or "Unassigned",
+        "position": profile.position or "Not set",
+        "employment_type": profile.employment_type or "—",
+
+        "present_days": 0,
+        "absences": 0,
+        "late_days": 0,
+        "late_minutes": 0,
+        "undertime_days": 0,
+        "undertime_minutes": 0,
+        "missing_logs": 0,
+        "travel_days": 0,
+        "holiday_days": 0,
+        "leave_days": 0,
+
+        "working_days": 0,
+        "attendance_rate": 0.0,
+        "punctuality_rate": 0.0,
+        "total_hours": 0.0,
+        "long_work_days": 0,
+
+        "risk_score": 0,
+        "risk_level": "Low",
+        "risk_reasons": [],
+
+        "late_risk_score": 0,
+        "late_risk_level": "Low",
+        "late_pattern": "No repeated late pattern",
+
+        "overwork_score": 0,
+        "overwork_level": "Low",
+        "overwork_note": "Normal workload",
+
+        "estimated_gross": 0.0,
+        "estimated_deductions": 0.0,
+        "estimated_net": 0.0,
+
+        "deduction_drivers": {
+            "late": 0.0,
+            "undertime": 0.0,
+            "absence": 0.0,
+        },
+    }
+
+
+def _analytics_compute_employee_summary(profile, start_date, end_date):
+    """
+    Core rule-based AI analytics per employee.
+    Uses your existing DTR builder, so analytics follows payroll attendance rules.
+    """
+    summary = _analytics_empty_employee_summary(profile)
+
+    branch = profile.branch
+    if not branch:
+        summary["risk_score"] = 30
+        summary["risk_level"] = "Medium"
+        summary["risk_reasons"] = ["Employee has no assigned branch."]
+        return summary
+
+    rules = _analytics_get_rules(branch)
+    if not rules:
+        summary["risk_score"] = 30
+        summary["risk_level"] = "Medium"
+        summary["risk_reasons"] = ["No payroll rules found for branch."]
+        return summary
+
+    period = _analytics_make_period(start_date, end_date)
+
+    try:
+        dtr = _build_dtr_and_summary(profile, branch, period, rules)
+    except Exception as e:
+        summary["risk_score"] = 50
+        summary["risk_level"] = "Medium"
+        summary["risk_reasons"] = [f"DTR analytics failed: {e}"]
+        return summary
+
+    rows = dtr.get("rows", [])
+
+    working_days = 0
+    present_days = 0
+    absences = 0
+    late_days = 0
+    late_minutes = 0
+    undertime_days = 0
+    undertime_minutes = 0
+    missing_logs = 0
+    travel_days = int(dtr.get("travel_days", 0) or 0)
+    holiday_days = int(dtr.get("holiday_days", 0) or 0)
+    total_hours = Decimal("0.00")
+    long_work_days = 0
+
+    monday_friday_absences = 0
+    weekday_late_counter = defaultdict(int)
+
+    holiday_dates = _analytics_holiday_dates(branch, start_date - timedelta(days=3), end_date + timedelta(days=3))
+    absence_near_holiday = 0
+
+    for row in rows:
+        status = str(row.get("status") or "")
+        row_date_raw = row.get("date")
+
+        try:
+            row_date = datetime.strptime(row_date_raw, "%Y-%m-%d").date()
+        except Exception:
+            continue
+
+        if status in ["Weekend", "Holiday/Suspension"]:
+            continue
+
+        working_days += 1
+
+        row_late = int(row.get("late", 0) or 0)
+        row_undertime = int(row.get("undertime", 0) or 0)
+
+        try:
+            row_hours = Decimal(str(row.get("total_hours", "0") or "0"))
+        except Exception:
+            row_hours = Decimal("0.00")
+
+        if status in ["Present", "Official Travel", "Incomplete"]:
+            present_days += 1
+
+        if status == "Absent":
+            absences += 1
+
+            if row_date.weekday() in [0, 4]:
+                monday_friday_absences += 1
+
+            if (row_date - timedelta(days=1)) in holiday_dates or (row_date + timedelta(days=1)) in holiday_dates:
+                absence_near_holiday += 1
+
+        if status == "Incomplete":
+            missing_logs += 1
+
+        if row_late > 0:
+            late_days += 1
+            late_minutes += row_late
+            weekday_late_counter[row_date.strftime("%A")] += 1
+
+        if row_undertime > 0:
+            undertime_days += 1
+            undertime_minutes += row_undertime
+
+        total_hours += row_hours
+
+        if row_hours >= Decimal("9.50"):
+            long_work_days += 1
+
+    leave_days = _analytics_leave_days_for_profile(profile, start_date, end_date)
+
+    attendance_rate = _analytics_percent(present_days, working_days)
+    punctuality_rate = _analytics_percent(max(0, present_days - late_days), max(1, present_days))
+
+    # -------------------------
+    # Absenteeism risk score
+    # -------------------------
+    risk_score = 0
+    risk_reasons = []
+
+    if absences > 0:
+        add = min(45, absences * 15)
+        risk_score += add
+        risk_reasons.append(f"{absences} absence(s) in the selected range.")
+
+    if late_days >= 2:
+        add = min(25, late_days * 5)
+        risk_score += add
+        risk_reasons.append(f"{late_days} late day(s) detected.")
+
+    if missing_logs > 0:
+        add = min(20, missing_logs * 8)
+        risk_score += add
+        risk_reasons.append(f"{missing_logs} incomplete DTR day(s).")
+
+    if monday_friday_absences > 0:
+        risk_score += min(15, monday_friday_absences * 5)
+        risk_reasons.append(f"{monday_friday_absences} absence(s) happened on Monday/Friday.")
+
+    if absence_near_holiday > 0:
+        risk_score += min(12, absence_near_holiday * 4)
+        risk_reasons.append(f"{absence_near_holiday} absence(s) near a holiday/suspension.")
+
+    if leave_days >= 3:
+        risk_score += min(10, int(leave_days) * 2)
+        risk_reasons.append(f"{leave_days:g} approved leave day(s) in the selected range.")
+
+    risk_score = int(_analytics_clamp(risk_score))
+
+    if risk_score >= 70:
+        risk_level = "High"
+    elif risk_score >= 40:
+        risk_level = "Medium"
+    else:
+        risk_level = "Low"
+
+    if not risk_reasons:
+        risk_reasons = ["Stable attendance behavior in the selected range."]
+
+    # -------------------------
+    # Late arrival risk
+    # -------------------------
+    late_risk_score = int(_analytics_clamp((late_days * 12) + (late_minutes / 10)))
+
+    if late_risk_score >= 70:
+        late_risk_level = "High"
+    elif late_risk_score >= 35:
+        late_risk_level = "Medium"
+    else:
+        late_risk_level = "Low"
+
+    if weekday_late_counter:
+        top_day, top_count = sorted(weekday_late_counter.items(), key=lambda x: x[1], reverse=True)[0]
+        late_pattern = f"Most late arrivals happened on {top_day} ({top_count} time/s)."
+    else:
+        late_pattern = "No repeated late pattern."
+
+    # -------------------------
+    # Workload / overwork risk
+    # -------------------------
+    overwork_score = int(_analytics_clamp((long_work_days * 12) + (float(total_hours) / max(1, working_days) - 8) * 10))
+
+    if overwork_score >= 70:
+        overwork_level = "High"
+        overwork_note = "Frequent long work hours. Review workload and overtime authority."
+    elif overwork_score >= 35:
+        overwork_level = "Medium"
+        overwork_note = "Some long work days detected. Monitor workload."
+    else:
+        overwork_level = "Low"
+        overwork_note = "Normal workload pattern."
+
+    # -------------------------
+    # Payroll forecast / cost projection
+    # -------------------------
+    monthly_salary = Decimal(profile.monthly_salary or 0)
+    daily_rate_profile = Decimal(profile.daily_rate or 0)
+    salary_divisor = Decimal(rules.salary_divisor or 22)
+    daily_hours_required = Decimal(rules.daily_hours_required or 8)
+
+    if salary_divisor <= 0:
+        salary_divisor = Decimal("22")
+
+    if daily_hours_required <= 0:
+        daily_hours_required = Decimal("8")
+
+    if monthly_salary > 0:
+        daily_rate = monthly_salary / salary_divisor
+    else:
+        daily_rate = daily_rate_profile
+
+    hourly_rate = daily_rate / daily_hours_required if daily_hours_required > 0 else Decimal("0.00")
+    per_minute_rate = hourly_rate / Decimal("60") if hourly_rate > 0 else Decimal("0.00")
+
+    emp_type = str(profile.employment_type or "").upper()
+
+    if emp_type == UserProfile.EMP_JO:
+        estimated_gross = daily_rate * Decimal(present_days)
+        absence_deduction = daily_rate * Decimal(absences)
+    else:
+        # Analytics projection: daily prorated estimate for selected date range.
+        # This is for forecasting display only, not final payroll processing.
+        estimated_gross = daily_rate * Decimal(max(0, working_days))
+        absence_deduction = daily_rate * Decimal(absences)
+
+    late_deduction = Decimal(late_minutes) * per_minute_rate
+    undertime_deduction = Decimal(undertime_minutes) * per_minute_rate
+
+    estimated_deductions = late_deduction + undertime_deduction + absence_deduction
+    estimated_net = estimated_gross - estimated_deductions
+
+    if estimated_net < 0:
+        estimated_net = Decimal("0.00")
+
+    summary.update({
+        "present_days": int(present_days),
+        "absences": int(absences),
+        "late_days": int(late_days),
+        "late_minutes": int(late_minutes),
+        "undertime_days": int(undertime_days),
+        "undertime_minutes": int(undertime_minutes),
+        "missing_logs": int(missing_logs),
+        "travel_days": int(travel_days),
+        "holiday_days": int(holiday_days),
+        "leave_days": float(leave_days),
+
+        "working_days": int(working_days),
+        "attendance_rate": round(attendance_rate, 2),
+        "punctuality_rate": round(punctuality_rate, 2),
+        "total_hours": round(float(total_hours), 2),
+        "long_work_days": int(long_work_days),
+
+        "risk_score": risk_score,
+        "risk_level": risk_level,
+        "risk_reasons": risk_reasons,
+
+        "late_risk_score": late_risk_score,
+        "late_risk_level": late_risk_level,
+        "late_pattern": late_pattern,
+
+        "overwork_score": overwork_score,
+        "overwork_level": overwork_level,
+        "overwork_note": overwork_note,
+
+        "estimated_gross": float(_analytics_money(estimated_gross)),
+        "estimated_deductions": float(_analytics_money(estimated_deductions)),
+        "estimated_net": float(_analytics_money(estimated_net)),
+
+        "deduction_drivers": {
+            "late": float(_analytics_money(late_deduction)),
+            "undertime": float(_analytics_money(undertime_deduction)),
+            "absence": float(_analytics_money(absence_deduction)),
+        },
+    })
+
+    return summary
+
+
+def _analytics_queryset_for_request(request, selected_branch, emp_type, department):
+    profiles = UserProfile.objects.select_related("user", "branch").filter(
+        is_approved=True,
+        user__is_staff=False,
+        user__is_superuser=False,
+    )
+
+    if selected_branch:
+        profiles = profiles.filter(branch=selected_branch)
+    elif not request.user.is_superuser:
+        admin_branch = _get_admin_branch(request)
+        profiles = profiles.filter(branch=admin_branch)
+
+    if emp_type in ["JO", "COS"]:
+        profiles = profiles.filter(employment_type=emp_type)
+
+    if department:
+        profiles = profiles.filter(department__iexact=department)
+
+    return profiles.order_by("branch__name", "department", "user__username")
+
+
+def _analytics_daily_timeline(employee_summaries, start_date, end_date):
+    """
+    Builds daily present/absent/late/undertime chart series.
+    Reuses DTR builder again per employee for exact daily status.
+    """
+    labels = []
+    present_count = []
+    absent_count = []
+    late_count = []
+    undertime_count = []
+    attendance_rate = []
+    productivity_rate = []
+
+    day_map = {}
+    for d in _analytics_date_range(start_date, end_date):
+        if _analytics_is_weekend(d):
+            continue
+
+        key = d.isoformat()
+        labels.append(d.strftime("%b %d"))
+        day_map[key] = {
+            "present": 0,
+            "absent": 0,
+            "late": 0,
+            "undertime": 0,
+            "total": 0,
+        }
+
+    for emp in employee_summaries:
+        profile = emp["profile"]
+        branch = profile.branch
+        if not branch:
+            continue
+
+        rules = _analytics_get_rules(branch)
+        if not rules:
+            continue
+
+        period = _analytics_make_period(start_date, end_date)
+
+        try:
+            dtr = _build_dtr_and_summary(profile, branch, period, rules)
+        except Exception:
+            continue
+
+        for row in dtr.get("rows", []):
+            key = row.get("date")
+            if key not in day_map:
+                continue
+
+            status = str(row.get("status") or "")
+            day_map[key]["total"] += 1
+
+            if status in ["Present", "Official Travel", "Incomplete"]:
+                day_map[key]["present"] += 1
+
+            if status == "Absent":
+                day_map[key]["absent"] += 1
+
+            if int(row.get("late", 0) or 0) > 0:
+                day_map[key]["late"] += 1
+
+            if int(row.get("undertime", 0) or 0) > 0:
+                day_map[key]["undertime"] += 1
+
+    for key in day_map:
+        item = day_map[key]
+        total = item["total"]
+
+        present_count.append(item["present"])
+        absent_count.append(item["absent"])
+        late_count.append(item["late"])
+        undertime_count.append(item["undertime"])
+
+        att = _analytics_percent(item["present"], total)
+        attendance_rate.append(att)
+
+        # Productivity proxy:
+        # attendance minus penalty for late and undertime.
+        penalty = (item["late"] * 3) + (item["undertime"] * 4)
+        productivity_rate.append(round(_analytics_clamp(att - penalty), 2))
+
+    return {
+        "timeline_labels": labels,
+        "present_count": present_count,
+        "absent_count": absent_count,
+        "late_count": late_count,
+        "undertime_count": undertime_count,
+        "attendance_rate": attendance_rate,
+        "productivity_rate": productivity_rate,
+    }
+
+
+def _analytics_compare_period(request, selected_branch, emp_type, department, start_date, end_date):
+    """
+    Compare current selected range vs previous same-length range.
+    """
+    days_len = (end_date - start_date).days + 1
+    prev_end = start_date - timedelta(days=1)
+    prev_start = prev_end - timedelta(days=days_len - 1)
+
+    current_profiles = _analytics_queryset_for_request(request, selected_branch, emp_type, department)
+    previous_profiles = current_profiles
+
+    current_summaries = [
+        _analytics_compute_employee_summary(profile, start_date, end_date)
+        for profile in current_profiles
+    ]
+
+    previous_summaries = [
+        _analytics_compute_employee_summary(profile, prev_start, prev_end)
+        for profile in previous_profiles
+    ]
+
+    def aggregate(items):
+        working = sum(i["working_days"] for i in items)
+        present = sum(i["present_days"] for i in items)
+        late = sum(i["late_days"] for i in items)
+        absent = sum(i["absences"] for i in items)
+        return {
+            "attendance_rate": _analytics_percent(present, working),
+            "late_days": late,
+            "absences": absent,
+        }
+
+    current = aggregate(current_summaries)
+    previous = aggregate(previous_summaries)
+
+    def diff_percent(a, b):
+        if b <= 0:
+            return 0.0
+        return round(((a - b) / b) * 100, 2)
+
+    return {
+        "previous_start": prev_start.isoformat(),
+        "previous_end": prev_end.isoformat(),
+        "current": current,
+        "previous": previous,
+        "attendance_change": diff_percent(current["attendance_rate"], previous["attendance_rate"]),
+        "late_change": diff_percent(current["late_days"], previous["late_days"]),
+        "absence_change": diff_percent(current["absences"], previous["absences"]),
+    }
+
+
+def _analytics_build_payload(request):
+    today = timezone.localdate()
+    default_start, default_end = _analytics_default_range()
+
+    start_date = _analytics_parse_date(request.GET.get("start"), default_start)
+    end_date = _analytics_parse_date(request.GET.get("end"), default_end)
+
+    if end_date < start_date:
+        end_date = start_date
+
+    branch_id = (request.GET.get("branch") or "").strip()
+    emp_type = (request.GET.get("emp_type") or "ALL").strip().upper()
+    department = (request.GET.get("department") or "").strip()
+
+    if emp_type not in ["ALL", "JO", "COS"]:
+        emp_type = "ALL"
+
+    selected_branch = _analytics_get_allowed_branch(request, branch_id)
+
+    profiles_qs = _analytics_queryset_for_request(
+        request=request,
+        selected_branch=selected_branch,
+        emp_type=emp_type,
+        department=department,
+    )
+
+    employee_summaries = [
+        _analytics_compute_employee_summary(profile, start_date, end_date)
+        for profile in profiles_qs
+    ]
+
+    total_employees = len(employee_summaries)
+    total_working_days = sum(x["working_days"] for x in employee_summaries)
+    total_present = sum(x["present_days"] for x in employee_summaries)
+    total_absences = sum(x["absences"] for x in employee_summaries)
+    total_late_days = sum(x["late_days"] for x in employee_summaries)
+    total_late_minutes = sum(x["late_minutes"] for x in employee_summaries)
+    total_undertime_minutes = sum(x["undertime_minutes"] for x in employee_summaries)
+    total_missing_logs = sum(x["missing_logs"] for x in employee_summaries)
+    total_overtime_proxy = sum(x["long_work_days"] for x in employee_summaries)
+    total_hours = sum(x["total_hours"] for x in employee_summaries)
+
+    estimated_gross = sum(Decimal(str(x["estimated_gross"])) for x in employee_summaries)
+    estimated_deductions = sum(Decimal(str(x["estimated_deductions"])) for x in employee_summaries)
+    estimated_net = sum(Decimal(str(x["estimated_net"])) for x in employee_summaries)
+
+    attendance_score = _analytics_percent(total_present, total_working_days)
+    punctuality_score = _analytics_percent(max(0, total_present - total_late_days), max(1, total_present))
+    leave_consistency = _analytics_percent(max(0, total_working_days - total_absences), max(1, total_working_days))
+
+    stability_value = round(
+        (attendance_score * 0.45) +
+        (punctuality_score * 0.35) +
+        (leave_consistency * 0.20),
+        2
+    )
+
+    avg_risk = 0.0
+    if total_employees > 0:
+        avg_risk = round(sum(x["risk_score"] for x in employee_summaries) / total_employees, 2)
+
+    high_risk_count = sum(1 for x in employee_summaries if x["risk_level"] == "High")
+    medium_risk_count = sum(1 for x in employee_summaries if x["risk_level"] == "Medium")
+    low_risk_count = sum(1 for x in employee_summaries if x["risk_level"] == "Low")
+
+    turnover_forecast = round(_analytics_clamp((high_risk_count * 12) + (medium_risk_count * 4)), 2)
+
+    # AI confidence is rule/data completeness score.
+    data_quality_penalty = 0
+    if total_employees <= 0:
+        data_quality_penalty += 30
+    if total_missing_logs > 0:
+        data_quality_penalty += min(25, total_missing_logs * 2)
+    if total_working_days <= 0:
+        data_quality_penalty += 20
+
+    ai_confidence = round(_analytics_clamp(95 - data_quality_penalty), 2)
+
+    timeline = _analytics_daily_timeline(employee_summaries, start_date, end_date)
+    comparison = _analytics_compare_period(request, selected_branch, emp_type, department, start_date, end_date)
+
+    # Department aggregation
+    dept_map = defaultdict(lambda: {
+        "employees": 0,
+        "present": 0,
+        "working": 0,
+        "late": 0,
+        "risk": 0,
+        "net": Decimal("0.00"),
+        "long_days": 0,
+    })
+
+    for emp in employee_summaries:
+        dept = emp["department"] or "Unassigned"
+        dept_map[dept]["employees"] += 1
+        dept_map[dept]["present"] += emp["present_days"]
+        dept_map[dept]["working"] += emp["working_days"]
+        dept_map[dept]["late"] += emp["late_days"]
+        dept_map[dept]["risk"] += emp["risk_score"]
+        dept_map[dept]["net"] += Decimal(str(emp["estimated_net"]))
+        dept_map[dept]["long_days"] += emp["long_work_days"]
+
+    dept_labels = list(dept_map.keys())
+    dept_attendance = [
+        _analytics_percent(dept_map[d]["present"], dept_map[d]["working"])
+        for d in dept_labels
+    ]
+    dept_late = [dept_map[d]["late"] for d in dept_labels]
+    dept_risk = [
+        round(dept_map[d]["risk"] / max(1, dept_map[d]["employees"]), 2)
+        for d in dept_labels
+    ]
+    dept_overtime = [dept_map[d]["long_days"] for d in dept_labels]
+
+    # Leave weekday chart
+    leave_weekday = [0, 0, 0, 0, 0]
+    leave_qs = LeaveRequest.objects.filter(
+        status=LeaveRequest.STATUS_APPROVED,
+        start_date__lte=end_date,
+        end_date__gte=start_date,
+    )
+
+    if selected_branch:
+        leave_qs = leave_qs.filter(branch=selected_branch)
+    elif not request.user.is_superuser:
+        admin_branch = _get_admin_branch(request)
+        leave_qs = leave_qs.filter(branch=admin_branch)
+
+    for leave in leave_qs:
+        s = max(leave.start_date, start_date)
+        e = min(leave.end_date, end_date)
+
+        for d in _analytics_date_range(s, e):
+            if d.weekday() < 5:
+                leave_weekday[d.weekday()] += 1
+
+    # Payroll forecast series: cumulative net estimate through timeline days.
+    payroll_labels = timeline["timeline_labels"]
+    payroll_series = []
+
+    running_estimate = Decimal("0.00")
+    if payroll_labels:
+        daily_estimate = estimated_net / Decimal(len(payroll_labels)) if len(payroll_labels) > 0 else Decimal("0.00")
+        for _ in payroll_labels:
+            running_estimate += daily_estimate
+            payroll_series.append(float(_analytics_money(running_estimate)))
+
+    salary_att_points = []
+    for emp in employee_summaries:
+        salary_est = emp["estimated_gross"]
+        salary_att_points.append({
+            "x": emp["attendance_rate"],
+            "y": salary_est,
+            "name": emp["name"],
+        })
+
+    # Deduction drivers
+    total_late_deduction = sum(Decimal(str(x["deduction_drivers"]["late"])) for x in employee_summaries)
+    total_undertime_deduction = sum(Decimal(str(x["deduction_drivers"]["undertime"])) for x in employee_summaries)
+    total_absence_deduction = sum(Decimal(str(x["deduction_drivers"]["absence"])) for x in employee_summaries)
+
+    deduction_labels = ["Late", "Undertime", "Absence"]
+    deduction_values = [
+        float(_analytics_money(total_late_deduction)),
+        float(_analytics_money(total_undertime_deduction)),
+        float(_analytics_money(total_absence_deduction)),
+    ]
+
+    # Actionable insights
+    insights = []
+
+    if comparison["late_change"] > 0:
+        insights.append({
+            "level": "warning",
+            "title": "Rising late arrival trend",
+            "text": f"Late arrivals increased by {comparison['late_change']}% compared to the previous period.",
+        })
+    elif comparison["late_change"] < 0:
+        insights.append({
+            "level": "success",
+            "title": "Improving punctuality",
+            "text": f"Late arrivals decreased by {abs(comparison['late_change'])}% compared to the previous period.",
+        })
+
+    if comparison["absence_change"] > 0:
+        insights.append({
+            "level": "danger",
+            "title": "Absence pattern increased",
+            "text": f"Absences increased by {comparison['absence_change']}% compared to the previous period.",
+        })
+
+    if high_risk_count > 0:
+        top_high = sorted(employee_summaries, key=lambda x: x["risk_score"], reverse=True)[0]
+        insights.append({
+            "level": "danger",
+            "title": "High absenteeism risk detected",
+            "text": f"{top_high['name']} has high risk due to: {', '.join(top_high['risk_reasons'][:2])}",
+        })
+
+    if total_missing_logs > 0:
+        insights.append({
+            "level": "warning",
+            "title": "Incomplete DTR logs found",
+            "text": f"{total_missing_logs} incomplete attendance record(s) may affect payroll accuracy.",
+        })
+
+    if estimated_deductions > 0:
+        biggest_driver = max(
+            [
+                ("late deductions", total_late_deduction),
+                ("undertime deductions", total_undertime_deduction),
+                ("absence deductions", total_absence_deduction),
+            ],
+            key=lambda x: x[1]
+        )
+
+        insights.append({
+            "level": "info",
+            "title": "Top payroll deduction driver",
+            "text": f"The largest deduction driver is {biggest_driver[0]} with an estimated ₱{_analytics_money(biggest_driver[1])}.",
+        })
+
+    if not insights:
+        insights.append({
+            "level": "success",
+            "title": "Stable workforce pattern",
+            "text": "No critical attendance or payroll risks were detected in the selected range.",
+        })
+
+    # Table rows
+    risk_rows = sorted(employee_summaries, key=lambda x: x["risk_score"], reverse=True)
+    late_rows = sorted(employee_summaries, key=lambda x: x["late_risk_score"], reverse=True)
+    overwork_rows = sorted(employee_summaries, key=lambda x: x["overwork_score"], reverse=True)
+
+    payload = {
+        "generated_at": timezone.localtime(timezone.now()).strftime("%Y-%m-%d %I:%M %p"),
+
+        "filters": {
+            "start": start_date.isoformat(),
+            "end": end_date.isoformat(),
+            "branch": selected_branch.id if selected_branch else "",
+            "branch_name": selected_branch.name if selected_branch else "All Branches",
+            "emp_type": emp_type,
+            "department": department,
+        },
+
+        "summary": {
+            "total_employees": total_employees,
+            "working_days_total": total_working_days,
+            "present_days_total": total_present,
+            "absences_total": total_absences,
+            "late_days_total": total_late_days,
+            "late_minutes_total": total_late_minutes,
+            "undertime_minutes_total": total_undertime_minutes,
+            "missing_logs_total": total_missing_logs,
+            "total_hours": round(total_hours, 2),
+            "estimated_gross": float(_analytics_money(estimated_gross)),
+            "estimated_deductions": float(_analytics_money(estimated_deductions)),
+            "estimated_net": float(_analytics_money(estimated_net)),
+        },
+
+        "stability_value": stability_value,
+        "stability_parts_attendance": attendance_score,
+        "stability_parts_schedule": punctuality_score,
+        "stability_parts_leave": leave_consistency,
+
+        "absenteeism_risk": avg_risk,
+        "turnover_forecast": turnover_forecast,
+        "ai_confidence": ai_confidence,
+
+        "overtime_hours": total_overtime_proxy,
+        "attendance": attendance_score,
+        "punctuality": punctuality_score,
+        "consistency": leave_consistency,
+
+        "risk_buckets": {
+            "low": low_risk_count,
+            "medium": medium_risk_count,
+            "high": high_risk_count,
+        },
+
+        "turnover_buckets": [low_risk_count, medium_risk_count, high_risk_count],
+
+        "dept_labels": dept_labels,
+        "dept_attendance": dept_attendance,
+        "dept_late": dept_late,
+        "dept_risk": dept_risk,
+        "dept_overtime": dept_overtime,
+
+        "payroll_labels": payroll_labels,
+        "payroll_series": payroll_series,
+
+        "salary_att_points": salary_att_points,
+        "leave_weekday": leave_weekday,
+
+        "deduction_labels": deduction_labels,
+        "deduction_values": deduction_values,
+
+        "comparison": comparison,
+
+        "insights": insights,
+
+        "risk_rows": [
+            {
+                "profile_id": r["profile_id"],
+                "name": r["name"],
+                "branch": r["branch"],
+                "department": r["department"],
+                "employment_type": r["employment_type"],
+                "risk_score": r["risk_score"],
+                "risk_level": r["risk_level"],
+                "reasons": r["risk_reasons"],
+                "absences": r["absences"],
+                "late_days": r["late_days"],
+                "missing_logs": r["missing_logs"],
+                "attendance_rate": r["attendance_rate"],
+            }
+            for r in risk_rows[:50]
+        ],
+
+        "late_rows": [
+            {
+                "name": r["name"],
+                "department": r["department"],
+                "late_days": r["late_days"],
+                "late_minutes": r["late_minutes"],
+                "late_risk_score": r["late_risk_score"],
+                "late_risk_level": r["late_risk_level"],
+                "late_pattern": r["late_pattern"],
+            }
+            for r in late_rows[:50]
+        ],
+
+        "overwork_rows": [
+            {
+                "name": r["name"],
+                "department": r["department"],
+                "total_hours": r["total_hours"],
+                "long_work_days": r["long_work_days"],
+                "overwork_score": r["overwork_score"],
+                "overwork_level": r["overwork_level"],
+                "overwork_note": r["overwork_note"],
+            }
+            for r in overwork_rows[:50]
+        ],
+
+        **timeline,
+    }
+
+    return payload
+
 # ============================================
 # 🔥 PAYROLL ENGINE (FINAL - GOVERNMENT LOGIC)
 # ============================================
