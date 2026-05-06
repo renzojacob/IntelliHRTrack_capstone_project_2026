@@ -54,7 +54,15 @@ urlpatterns = [
 
     path("admin-ui/scheduling/", views.admin_shift_scheduling, name="admin_scheduling"),
     path("admin-ui/reports/", views.admin_reports, name="admin_reports"),
+
+
     path("admin-ui/analytics/", views.admin_analytics, name="admin_analytics"),
+    path("admin-ui/analytics/api/", views.admin_analytics_api, name="admin_analytics_api"),
+    path("admin-ui/analytics/employee-risks/", views.admin_analytics_employee_risks_api, name="admin_analytics_employee_risks_api"),
+    path("admin-ui/analytics/insights/", views.admin_analytics_insights_api, name="admin_analytics_insights_api"),
+
+
+
     path("admin-ui/system/", views.admin_system_administration, name="admin_system"),
 
     # Attendance CRUD
