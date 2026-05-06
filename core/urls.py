@@ -45,6 +45,11 @@ urlpatterns = [
     path("admin-ui/payroll/", views.admin_payroll, name="admin_payroll"),
     path("admin-ui/payroll/preview/", views.admin_payroll_preview_api, name="admin_payroll_preview_api"),
     path("admin-ui/payroll/process/", views.admin_payroll_process_batch, name="admin_payroll_process_batch"),
+    path(
+    "admin-ui/payroll/payslip/<int:profile_id>/<int:period_id>/",
+    views.admin_payslip,
+    name="admin_payslip",
+    ),
 
     # Live DTR JSON API
     path("admin-ui/payroll/dtr/<int:profile_id>/", views.admin_employee_dtr_api, name="admin_employee_dtr_api"),

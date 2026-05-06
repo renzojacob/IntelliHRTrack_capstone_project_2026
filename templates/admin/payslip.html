@@ -1,0 +1,369 @@
+{% extends "admin/base_admin.html" %}
+{% load static %}
+
+{% block title %}Payslip | IntelliHRTrack{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+<style>
+  .payslip-shell {
+    max-width: 980px;
+    margin: 0 auto;
+  }
+
+  .glass-payslip {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.45);
+    box-shadow: 0 20px 55px rgba(15, 23, 42, 0.12);
+  }
+
+  .dark .glass-payslip {
+    background: rgba(15, 23, 42, 0.78);
+    border-color: rgba(255,255,255,0.10);
+  }
+
+  .line-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px dashed rgba(148, 163, 184, 0.45);
+    font-size: 0.875rem;
+  }
+
+  .line-item:last-child {
+    border-bottom: 0;
+  }
+
+  .print-only {
+    display: none;
+  }
+
+  @media print {
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+
+    html, body {
+      background: #ffffff !important;
+      color: #111827 !important;
+      font-size: 12px;
+    }
+
+    aside,
+    nav,
+    header,
+    .sidebar,
+    .navbar,
+    .admin-sidebar,
+    .admin-navbar,
+    .no-print {
+      display: none !important;
+    }
+
+    main,
+    .content,
+    .payslip-shell {
+      margin: 0 !important;
+      padding: 0 !important;
+      max-width: none !important;
+      width: 100% !important;
+    }
+
+    .glass-payslip {
+      background: #ffffff !important;
+      box-shadow: none !important;
+      border: 1px solid #d1d5db !important;
+      backdrop-filter: none !important;
+    }
+
+    .print-only {
+      display: block !important;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    .text-accent {
+      color: #047857 !important;
+    }
+
+    table {
+      page-break-inside: auto;
+    }
+
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="payslip-shell space-y-6">
+
+  <!-- Action Bar -->
+  <div class="no-print flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <a href="{% url 'admin_payroll' %}?branch={{ branch.id }}&period={{ period.id }}"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-xl glass-payslip hover:shadow-lg transition text-sm">
+      <iconify-icon icon="ph:arrow-left-duotone" class="text-accent text-lg"></iconify-icon>
+      Back to Payroll
+    </a>
+
+    <button type="button"
+            onclick="window.print()"
+            class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl gradient-accent text-white shadow-md hover:shadow-glow transition text-sm font-semibold">
+      <iconify-icon icon="ph:printer-duotone" class="text-lg"></iconify-icon>
+      Print Payslip
+    </button>
+  </div>
+
+  <!-- Payslip Card -->
+  <section class="glass-payslip rounded-3xl overflow-hidden">
+
+    <!-- Header -->
+    <div class="p-6 border-b border-slate-200/60 dark:border-white/10 bg-gradient-to-r from-emerald-500/10 via-white/5 to-blue-500/10">
+      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+          <p class="text-xs uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
+            Department of Agriculture – MIMAROPA
+          </p>
+          <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+            IntelliHRTrack
+          </h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Payroll & Employee Management System
+          </p>
+        </div>
+
+        <div class="text-left md:text-right">
+          <div class="inline-flex px-4 py-2 rounded-2xl bg-accent/10 text-accent font-bold">
+            PAYSLIP
+          </div>
+          <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Ref: {{ payslip.reference_code }}
+          </p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            {{ payslip.source_label }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Employee + Period Info -->
+    <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 border-b border-slate-200/60 dark:border-white/10">
+      <div>
+        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3">Employee Details</h2>
+
+        <div class="space-y-1 text-sm">
+          <div class="line-item"><span>Name</span><strong>{{ payslip.employee_name }}</strong></div>
+          <div class="line-item"><span>Employee/Biometric ID</span><strong>{{ payslip.employee_id }}</strong></div>
+          <div class="line-item"><span>Branch</span><strong>{{ payslip.branch }}</strong></div>
+          <div class="line-item"><span>Department</span><strong>{{ payslip.department }}</strong></div>
+          <div class="line-item"><span>Position</span><strong>{{ payslip.position }}</strong></div>
+          <div class="line-item"><span>Employment Type</span><strong>{{ payslip.employment_type }}</strong></div>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3">Payroll Details</h2>
+
+        <div class="space-y-1 text-sm">
+          <div class="line-item"><span>Payroll Period</span><strong>{{ payslip.period_name }}</strong></div>
+          <div class="line-item"><span>Start Date</span><strong>{{ payslip.period_start|date:"F d, Y" }}</strong></div>
+          <div class="line-item"><span>End Date</span><strong>{{ payslip.period_end|date:"F d, Y" }}</strong></div>
+          <div class="line-item"><span>Pay Mode</span><strong>{{ payslip.pay_mode }}</strong></div>
+          <div class="line-item"><span>Date Generated</span><strong>{{ payslip.date_generated|date:"F d, Y h:i A" }}</strong></div>
+          <div class="line-item"><span>Generated By</span><strong>{{ payslip.generated_by }}</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Money Summary -->
+    <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-slate-200/60 dark:border-white/10">
+      <div class="rounded-2xl p-5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/60 dark:border-emerald-800/40">
+        <p class="text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Gross Earnings</p>
+        <p class="mt-2 text-2xl font-black text-emerald-700 dark:text-emerald-300">₱{{ payslip.gross_pay }}</p>
+      </div>
+
+      <div class="rounded-2xl p-5 bg-rose-50 dark:bg-rose-900/20 border border-rose-200/60 dark:border-rose-800/40">
+        <p class="text-xs uppercase tracking-wider text-rose-700 dark:text-rose-300">Total Deductions</p>
+        <p class="mt-2 text-2xl font-black text-rose-700 dark:text-rose-300">₱{{ payslip.total_deductions }}</p>
+      </div>
+
+      <div class="rounded-2xl p-5 bg-accent/10 border border-accent/30">
+        <p class="text-xs uppercase tracking-wider text-accent">Net Pay</p>
+        <p class="mt-2 text-3xl font-black text-accent">₱{{ payslip.net_pay }}</p>
+      </div>
+    </div>
+
+    <!-- Earnings and Deductions -->
+    <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 border-b border-slate-200/60 dark:border-white/10">
+
+      <div class="rounded-2xl p-5 border border-slate-200/60 dark:border-white/10">
+        <h2 class="text-base font-bold flex items-center gap-2 mb-4">
+          <iconify-icon icon="ph:trend-up-duotone" class="text-emerald-500 text-xl"></iconify-icon>
+          Earnings
+        </h2>
+
+        <div class="space-y-1">
+          <div class="line-item"><span>Base Pay</span><strong>₱{{ payslip.base_pay }}</strong></div>
+          <div class="line-item"><span>Daily Rate</span><strong>₱{{ payslip.daily_rate }}</strong></div>
+          <div class="line-item"><span>Hourly Rate</span><strong>₱{{ payslip.hourly_rate }}</strong></div>
+          <div class="line-item"><span>Per-Minute Rate</span><strong>₱{{ payslip.per_minute_rate }}</strong></div>
+          <div class="line-item"><span>Days Present</span><strong>{{ payslip.days_present }}</strong></div>
+          <div class="line-item"><span>Travel Days</span><strong>{{ payslip.travel_days }}</strong></div>
+          <div class="line-item"><span>Holiday/Suspension Days</span><strong>{{ payslip.holiday_days }}</strong></div>
+          <div class="line-item"><span>Overtime Hours</span><strong>{{ payslip.overtime_hours }}</strong></div>
+          <div class="line-item"><span>Overtime Pay</span><strong>₱{{ payslip.overtime_pay }}</strong></div>
+          <div class="line-item"><span>Premium Pay</span><strong>₱{{ payslip.premium_pay }}</strong></div>
+          <div class="line-item text-emerald-600 dark:text-emerald-300"><span>Gross Pay</span><strong>₱{{ payslip.gross_pay }}</strong></div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl p-5 border border-slate-200/60 dark:border-white/10">
+        <h2 class="text-base font-bold flex items-center gap-2 mb-4">
+          <iconify-icon icon="ph:minus-circle-duotone" class="text-rose-500 text-xl"></iconify-icon>
+          Deductions
+        </h2>
+
+        <div class="space-y-1">
+          <div class="line-item"><span>Late Minutes</span><strong>{{ payslip.late_minutes }}</strong></div>
+          <div class="line-item"><span>Late Deduction</span><strong>₱{{ payslip.late_deduction }}</strong></div>
+          <div class="line-item"><span>Undertime Minutes</span><strong>{{ payslip.undertime_minutes }}</strong></div>
+          <div class="line-item"><span>Undertime Deduction</span><strong>₱{{ payslip.undertime_deduction }}</strong></div>
+          <div class="line-item"><span>Absences</span><strong>{{ payslip.absences }}</strong></div>
+          <div class="line-item"><span>Absence Deduction</span><strong>₱{{ payslip.absence_deduction }}</strong></div>
+          <div class="line-item"><span>SSS</span><strong>₱{{ payslip.sss }}</strong></div>
+          <div class="line-item"><span>PhilHealth</span><strong>₱{{ payslip.philhealth }}</strong></div>
+          <div class="line-item"><span>Pag-IBIG</span><strong>₱{{ payslip.pagibig }}</strong></div>
+          <div class="line-item"><span>Tax</span><strong>₱{{ payslip.tax }}</strong></div>
+          <div class="line-item"><span>Manual Deduction</span><strong>₱{{ payslip.manual_deduction }}</strong></div>
+          <div class="line-item text-rose-600 dark:text-rose-300"><span>Total Deductions</span><strong>₱{{ payslip.total_deductions }}</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attendance Basis -->
+    <div class="p-6 border-b border-slate-200/60 dark:border-white/10">
+      <h2 class="text-base font-bold flex items-center gap-2 mb-4">
+        <iconify-icon icon="ph:calendar-check-duotone" class="text-accent text-xl"></iconify-icon>
+        Attendance Basis Used for Computation
+      </h2>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-center">
+        <div class="rounded-xl p-3 bg-slate-100/70 dark:bg-slate-800/60">
+          <p class="text-xs text-gray-500">Present</p>
+          <p class="text-lg font-black">{{ payslip.days_present }}</p>
+        </div>
+        <div class="rounded-xl p-3 bg-slate-100/70 dark:bg-slate-800/60">
+          <p class="text-xs text-gray-500">Absences</p>
+          <p class="text-lg font-black">{{ payslip.absences }}</p>
+        </div>
+        <div class="rounded-xl p-3 bg-slate-100/70 dark:bg-slate-800/60">
+          <p class="text-xs text-gray-500">Late Min</p>
+          <p class="text-lg font-black">{{ payslip.late_minutes }}</p>
+        </div>
+        <div class="rounded-xl p-3 bg-slate-100/70 dark:bg-slate-800/60">
+          <p class="text-xs text-gray-500">Undertime</p>
+          <p class="text-lg font-black">{{ payslip.undertime_minutes }}</p>
+        </div>
+        <div class="rounded-xl p-3 bg-slate-100/70 dark:bg-slate-800/60">
+          <p class="text-xs text-gray-500">Travel</p>
+          <p class="text-lg font-black">{{ payslip.travel_days }}</p>
+        </div>
+        <div class="rounded-xl p-3 bg-slate-100/70 dark:bg-slate-800/60">
+          <p class="text-xs text-gray-500">Holiday</p>
+          <p class="text-lg font-black">{{ payslip.holiday_days }}</p>
+        </div>
+        <div class="rounded-xl p-3 bg-slate-100/70 dark:bg-slate-800/60">
+          <p class="text-xs text-gray-500">Missing Logs</p>
+          <p class="text-lg font-black">{{ payslip.missing_logs }}</p>
+        </div>
+      </div>
+
+      <div class="mt-4 rounded-2xl p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200/70 dark:border-amber-800/40">
+        <p class="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Issues / Notes</p>
+        <p class="mt-1 text-sm text-amber-800 dark:text-amber-200">{{ payslip.issues }}</p>
+      </div>
+    </div>
+
+    <!-- DTR Table -->
+    <div class="p-6 border-b border-slate-200/60 dark:border-white/10">
+      <h2 class="text-base font-bold mb-4">DTR Summary</h2>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-100 dark:bg-slate-800 text-left">
+              <th class="p-2 border border-slate-200 dark:border-slate-700">Date</th>
+              <th class="p-2 border border-slate-200 dark:border-slate-700">Day</th>
+              <th class="p-2 border border-slate-200 dark:border-slate-700">AM In</th>
+              <th class="p-2 border border-slate-200 dark:border-slate-700">AM Out</th>
+              <th class="p-2 border border-slate-200 dark:border-slate-700">PM In</th>
+              <th class="p-2 border border-slate-200 dark:border-slate-700">PM Out</th>
+              <th class="p-2 border border-slate-200 dark:border-slate-700">Hours</th>
+              <th class="p-2 border border-slate-200 dark:border-slate-700">Late</th>
+              <th class="p-2 border border-slate-200 dark:border-slate-700">Undertime</th>
+              <th class="p-2 border border-slate-200 dark:border-slate-700">Status</th>
+              <th class="p-2 border border-slate-200 dark:border-slate-700">Remarks</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for row in dtr_rows %}
+              <tr>
+                <td class="p-2 border border-slate-200 dark:border-slate-700">{{ row.date }}</td>
+                <td class="p-2 border border-slate-200 dark:border-slate-700">{{ row.weekday }}</td>
+                <td class="p-2 border border-slate-200 dark:border-slate-700">{{ row.am_in|default:"—" }}</td>
+                <td class="p-2 border border-slate-200 dark:border-slate-700">{{ row.am_out|default:"—" }}</td>
+                <td class="p-2 border border-slate-200 dark:border-slate-700">{{ row.pm_in|default:"—" }}</td>
+                <td class="p-2 border border-slate-200 dark:border-slate-700">{{ row.pm_out|default:"—" }}</td>
+                <td class="p-2 border border-slate-200 dark:border-slate-700">{{ row.total_hours|default:"0.00" }}</td>
+                <td class="p-2 border border-slate-200 dark:border-slate-700">{{ row.late|default:0 }}</td>
+                <td class="p-2 border border-slate-200 dark:border-slate-700">{{ row.undertime|default:0 }}</td>
+                <td class="p-2 border border-slate-200 dark:border-slate-700">{{ row.status }}</td>
+                <td class="p-2 border border-slate-200 dark:border-slate-700">{{ row.remarks }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="11" class="p-4 text-center text-gray-500 border border-slate-200">
+                  No DTR rows found for this period.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Note + Signatures -->
+    <div class="p-6">
+      <div class="rounded-2xl p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-white/10">
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+          This payslip was generated by IntelliHRTrack based on attendance and payroll records.
+        </p>
+      </div>
+
+      <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-8 text-center text-sm">
+        <div>
+          <div class="border-t border-slate-400 pt-2">Prepared by</div>
+        </div>
+
+        <div>
+          <div class="border-t border-slate-400 pt-2">Reviewed by</div>
+        </div>
+
+        <div>
+          <div class="border-t border-slate-400 pt-2">Employee Signature / Received by</div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</div>
+{% endblock %}

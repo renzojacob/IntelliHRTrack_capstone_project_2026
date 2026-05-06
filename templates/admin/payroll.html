@@ -679,6 +679,26 @@
                 </div>
               </td>
 
+              <td class="py-3 pr-3">
+              <div class="flex gap-2">
+                <!-- View DTR in modal -->
+                <button type="button"
+                        class="view-dtr-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
+                        title="View DTR details"
+                        data-employee-id="{{ employee.id }}"
+                        data-employee-name="{{ employee.name|default:employee.full_name|default:employee.user.username }}"
+                        data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escapejs }}'>
+                  <iconify-icon icon="ph:calendar-check-duotone" class="text-accent text-lg"></iconify-icon>
+                </button>
+
+                <!-- View / Print Payslip -->
+      <a href="{% url 'admin_payslip' employee.profile_id selected_period.id %}"
+        target="_blank"
+        class="p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition inline-flex items-center justify-center"
+        title="View / Print Payslip">
+        <iconify-icon icon="ph:receipt-duotone" class="text-accent text-lg"></iconify-icon>
+      </a>
+
           </tr>
 
           <tr class="expand-detail-row hidden" data-detail-for="{{ employee.id }}">

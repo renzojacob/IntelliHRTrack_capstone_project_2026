@@ -9,6 +9,8 @@ from datetime import date, datetime, time, timedelta
 from types import SimpleNamespace
 from collections import defaultdict
 from django.utils import timezone
+from django.core.exceptions import PermissionDenied
+
 
 from django.db.models import Count, Sum, Q
 
@@ -16,6 +18,7 @@ from django.db.models import Count, Sum, Q
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from .models import TravelOrder, UserProfile
+from django.contrib import messages
 
 from django.conf import settings
 from django.contrib import messages
@@ -2048,6 +2051,32 @@ def employee_dtr_print(request):
 
     return render(request, "employee/dtr_print.html", context)
 
+def _safe_decimal(value, default="0.00"):
+    try:
+        if value is None or value == "":
+            return Decimal(default)
+        return Decimal(str(value))
+    except Exception:
+        return Decimal(default)
+
+
+def _payslip_money(value):
+    return _money(_safe_decimal(value))
+
+
+def _get_from_meta(meta, *keys, default=None):
+    """
+    Safely get possible keys from PayrollItem.meta.
+    This helps if your processed PayrollItem saved extra data differently.
+    """
+    if not isinstance(meta, dict):
+        return default
+
+    for key in keys:
+        if key in meta:
+            return meta.get(key)
+
+    return default
 
 @login_required
 @never_cache
@@ -2089,7 +2118,7 @@ def employee_payslip_print(request, item_id):
 
     return render(request, "employee/payslip_print.html", context)
 
-    
+
 
 @login_required
 @never_cache
@@ -4011,6 +4040,7 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             "premium": _money(premium_pay),
             "overtime_hours": _money(ot_hours),
             "ot": _money(overtime_pay),
+            "gross": _money(gross_before_deductions),
 
             "late_minutes": int(late_minutes),
             "undertime_minutes": int(undertime_minutes),
@@ -4020,6 +4050,7 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             "undertime_deduction": _money(undertime_deduction),
             "attendance_deduction": _money(attendance_deduction),
 
+            "manual_deduction": _money(manual_deduction),
             "deductions": _money(deductions_total),
             "net": _money(net_pay),
         },
@@ -5475,6 +5506,223 @@ def admin_payroll(request):
     }
 
     return render(request, "admin/payroll.html", context)
+@login_required
+def admin_payslip(request, profile_id, period_id):
+    """
+    Admin-side printable payslip.
+
+    Behavior:
+    - Staff/superuser only.
+    - Branch admin can only view payslips from their assigned branch.
+    - Superadmin can view all branches.
+    - If PayrollItem exists, use saved processed data.
+    - If no PayrollItem exists yet, generate live preview using _compute_payroll().
+    """
+
+    if not (request.user.is_staff or request.user.is_superuser):
+        return redirect("login_ui")
+
+    profile = get_object_or_404(
+        UserProfile.objects.select_related("user", "branch"),
+        id=profile_id,
+        is_approved=True,
+        user__is_staff=False,
+        user__is_superuser=False,
+    )
+
+    period = get_object_or_404(PayrollPeriod, id=period_id)
+
+    if profile.employment_type not in [UserProfile.EMP_JO, UserProfile.EMP_COS]:
+        messages.error(request, "Payslip generation is only available for JO and COS employees.")
+        return redirect("admin_payroll")
+
+    # Branch restriction
+    if not request.user.is_superuser:
+        admin_profile = getattr(request.user, "profile", None)
+        admin_branch = getattr(admin_profile, "branch", None)
+
+        if not admin_branch or profile.branch_id != admin_branch.id:
+            raise PermissionDenied("You are not allowed to view payslips outside your assigned branch.")
+
+    branch = profile.branch
+
+    if not branch:
+        messages.error(request, "Employee has no assigned branch.")
+        return redirect("admin_payroll")
+
+    rules = _get_or_create_rules(branch)
+
+    # Always compute live data so the DTR basis is available.
+    live_result = _compute_payroll(profile, branch, period, rules)
+    rates = live_result.get("rates", {})
+    summary = live_result.get("attendance_summary", {})
+    computed = live_result.get("computed_payroll", {})
+    gov = live_result.get("gov", {})
+    dtr_rows = live_result.get("dtr_rows", [])
+    live_issues = live_result.get("issues", "")
+
+    saved_item = (
+        PayrollItem.objects
+        .select_related("batch", "batch__period", "batch__branch", "batch__processed_by")
+        .filter(
+            batch__branch=branch,
+            batch__period=period,
+            profile=profile,
+        )
+        .order_by("-batch__processed_at", "-id")
+        .first()
+    )
+
+    source_label = "Preview / Live Computation"
+    processed_batch = None
+
+    # Defaults from live computation
+    base_pay = _payslip_money(computed.get("base"))
+    premium_pay = _payslip_money(computed.get("premium"))
+    overtime_hours = _safe_decimal(computed.get("overtime_hours"))
+    overtime_pay = _payslip_money(computed.get("ot"))
+
+    late_minutes = int(computed.get("late_minutes") or 0)
+    undertime_minutes = int(computed.get("undertime_minutes") or 0)
+    absences = int(computed.get("absences") or summary.get("absences") or 0)
+
+    late_deduction = _payslip_money(computed.get("late_deduction"))
+    undertime_deduction = _payslip_money(computed.get("undertime_deduction"))
+    attendance_deduction = _payslip_money(computed.get("attendance_deduction"))
+
+    sss = _payslip_money(gov.get("sss"))
+    pagibig = _payslip_money(gov.get("pagibig"))
+    philhealth = _payslip_money(gov.get("philhealth"))
+    tax = _payslip_money(gov.get("tax"))
+
+    manual_deduction = _payslip_money(profile.manual_deduction_amount)
+    gov_total = _payslip_money(gov.get("gov_total"))
+    deductions_total = _payslip_money(computed.get("deductions"))
+    net_pay = _payslip_money(computed.get("net"))
+
+    issues = live_issues
+
+    if saved_item:
+        source_label = "Processed Payroll Record"
+        processed_batch = saved_item.batch
+
+        meta = saved_item.meta or {}
+
+        base_pay = _payslip_money(saved_item.base_pay)
+        premium_pay = _payslip_money(saved_item.premium_pay)
+        overtime_hours = _safe_decimal(saved_item.overtime_hours)
+        overtime_pay = _payslip_money(saved_item.overtime_pay)
+
+        late_minutes = int(saved_item.late_minutes or 0)
+        undertime_minutes = int(saved_item.undertime_minutes or 0)
+        absences = int(saved_item.absences or 0)
+
+        manual_deduction = _payslip_money(saved_item.manual_deduction)
+        gov_total = _payslip_money(saved_item.gov_contributions_total)
+        tax = _payslip_money(saved_item.tax_total)
+        deductions_total = _payslip_money(saved_item.deductions_total)
+        net_pay = _payslip_money(saved_item.net_pay)
+
+        issues = saved_item.issues or live_issues
+
+        # If your PayrollItem.meta saved detailed values, use them.
+        sss = _payslip_money(_get_from_meta(meta, "sss", "sss_amount", default=sss))
+        pagibig = _payslip_money(_get_from_meta(meta, "pagibig", "pagibig_amount", default=pagibig))
+        philhealth = _payslip_money(_get_from_meta(meta, "philhealth", "philhealth_amount", default=philhealth))
+
+        late_deduction = _payslip_money(_get_from_meta(meta, "late_deduction", default=late_deduction))
+        undertime_deduction = _payslip_money(_get_from_meta(meta, "undertime_deduction", default=undertime_deduction))
+        attendance_deduction = _payslip_money(
+            _get_from_meta(
+                meta,
+                "attendance_deduction",
+                default=late_deduction + undertime_deduction,
+            )
+        )
+
+        # If saved meta contains DTR rows, prefer it.
+        meta_dtr_rows = _get_from_meta(meta, "dtr_rows", "dtr", default=None)
+        if meta_dtr_rows:
+            dtr_rows = meta_dtr_rows
+
+    gross_pay = _money(base_pay + premium_pay + overtime_pay)
+
+    reference_code = f"ITHR-{period.id}-{profile.id}-{timezone.now().strftime('%Y%m%d%H%M')}"
+
+    payslip = {
+        "reference_code": reference_code,
+        "source_label": source_label,
+
+        "employee_name": profile.user.get_full_name() or profile.user.username,
+        "employee_username": profile.user.username,
+        "employee_id": live_result.get("picked_employee_id") or profile.biometric_employee_id or profile.user.id,
+        "branch": branch.name if branch else "—",
+        "department": profile.department or "—",
+        "position": profile.position or "—",
+        "employment_type": profile.employment_type,
+
+        "period_name": period.name,
+        "period_start": period.start_date,
+        "period_end": period.end_date,
+        "pay_mode": period.get_pay_mode_display() if hasattr(period, "get_pay_mode_display") else period.pay_mode,
+
+        "date_generated": timezone.now(),
+        "generated_by": request.user.get_full_name() or request.user.username,
+
+        "daily_rate": _payslip_money(rates.get("daily")),
+        "hourly_rate": _payslip_money(rates.get("hourly")),
+        "per_minute_rate": _payslip_money(rates.get("per_minute")),
+
+        "days_present": int(summary.get("present_days") or 0),
+        "travel_days": int(summary.get("travel_days") or 0),
+        "holiday_days": int(summary.get("holiday_days") or 0),
+        "missing_logs": int(summary.get("missing_logs") or 0),
+        "records_found": int(summary.get("records_found") or 0),
+        "records_used": int(summary.get("records_used") or 0),
+
+        "base_pay": base_pay,
+        "premium_pay": premium_pay,
+        "overtime_hours": overtime_hours,
+        "overtime_pay": overtime_pay,
+        "gross_pay": gross_pay,
+
+        "late_minutes": late_minutes,
+        "late_deduction": late_deduction,
+        "undertime_minutes": undertime_minutes,
+        "undertime_deduction": undertime_deduction,
+        "attendance_deduction": attendance_deduction,
+        "absences": absences,
+        "absence_deduction": Decimal("0.00"),
+
+        "sss": sss,
+        "philhealth": philhealth,
+        "pagibig": pagibig,
+        "gov_total": gov_total,
+        "tax": tax,
+        "manual_deduction": manual_deduction,
+        "total_deductions": deductions_total,
+        "net_pay": net_pay,
+
+        "issues": issues or "No issues found.",
+    }
+
+    back_url = f"{request.path.rsplit('/payroll/', 1)[0]}/payroll/?branch={branch.id}&period={period.id}"
+
+    context = {
+        "current": "payroll",
+        "profile": profile,
+        "period": period,
+        "branch": branch,
+        "rules": rules,
+        "payslip": payslip,
+        "dtr_rows": dtr_rows,
+        "saved_item": saved_item,
+        "processed_batch": processed_batch,
+        "back_url": back_url,
+    }
+
+    return render(request, "admin/payslip.html", context)
+
 
 @login_required
 def admin_payroll_preview_api(request):
