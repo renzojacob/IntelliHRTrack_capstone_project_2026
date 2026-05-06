@@ -643,7 +643,7 @@ def admin_analytics_insights_api(request):
         "comparison": payload.get("comparison", {}),
     })
 
-    
+
 
 
 def _scoped_profiles_for_admin(request):
@@ -1477,182 +1477,161 @@ def employee_dashboard(request):
 @login_required
 @never_cache
 def employee_attendance(request):
+    """
+    Employee Attendance Page:
+    - Shows only the logged-in employee's attendance.
+    - Uses UserProfile.biometric_employee_id to match AttendanceRecord.employee_id.
+    - Reuses _build_dtr_and_summary() so employee DTR follows the same payroll rules.
+    """
+
     # -------------------------
-    # Approval gate (employee only)
+    # Employee approval/profile gate
     # -------------------------
+    if request.user.is_staff or request.user.is_superuser:
+        return redirect("admin_dashboard")
+
     try:
-        if not (request.user.is_staff or request.user.is_superuser):
-            if not request.user.profile.is_approved:
-                messages.error(request, "Your account is pending approval by your branch admin.")
-                return redirect("employee_dashboard")
+        profile = request.user.profile
     except UserProfile.DoesNotExist:
         messages.error(request, "Account profile missing. Contact admin.")
-        return redirect("employee_dashboard")
+        return redirect("login_ui")
 
-    # -------------------------
-    # Branch required
-    # -------------------------
-    try:
-        prof = request.user.profile
-        emp_branch = prof.branch
-    except UserProfile.DoesNotExist:
-        messages.error(request, "Profile missing. Contact admin.")
-        return redirect("employee_dashboard")
+    if not profile.is_approved:
+        messages.error(request, "Your account is pending approval by your branch admin.")
+        return redirect("login_ui")
 
-    if not emp_branch:
+    branch = profile.branch
+    if not branch:
         messages.error(request, "No branch assigned. Contact admin.")
         return redirect("employee_dashboard")
 
-    # -------------------------
-    # Identify the employee_id used in AttendanceRecord
-    # -------------------------
-    employee_id_used = _pick_attendance_employee_id(request.user, emp_branch)
+    employee_id_used = _pick_attendance_employee_id(request.user, branch)
+    if not employee_id_used:
+        messages.error(request, "No biometric employee ID configured. Contact admin.")
+        return redirect("employee_dashboard")
 
     # -------------------------
-    # Today logs (check-in / check-out)
+    # Date filter
+    # Default: current month
     # -------------------------
-    now = timezone.localtime(timezone.now()) if settings.USE_TZ else datetime.now()
-    today = now.date()
+    today = timezone.localdate()
+    default_start = today.replace(day=1)
+    default_end = today
 
-    todays_qs = AttendanceRecord.objects.filter(
-        branch=emp_branch,
-        employee_id=employee_id_used,
-        timestamp__date=today,
-    ).order_by("timestamp")
+    start_raw = (request.GET.get("start") or "").strip()
+    end_raw = (request.GET.get("end") or "").strip()
 
-    ins = [r.timestamp for r in todays_qs if r.attendance_status == AttendanceRecord.STATUS_CHECKIN]
-    outs = [r.timestamp for r in todays_qs if r.attendance_status == AttendanceRecord.STATUS_CHECKOUT]
+    try:
+        start_date = datetime.strptime(start_raw, "%Y-%m-%d").date() if start_raw else default_start
+    except ValueError:
+        start_date = default_start
 
-    first_in = min(ins) if ins else None
-    last_out = max(outs) if outs else None
+    try:
+        end_date = datetime.strptime(end_raw, "%Y-%m-%d").date() if end_raw else default_end
+    except ValueError:
+        end_date = default_end
 
-    # Status logic
-    if first_in and not last_out:
-        current_status = "Checked In"
-        status_kind = "in"
-    elif first_in and last_out:
+    if end_date < start_date:
+        start_date, end_date = end_date, start_date
+
+    # -------------------------
+    # Use existing payroll rules
+    # -------------------------
+    rules = _get_or_create_rules(branch)
+
+    # Fake/simple period object for DTR computation
+    period = SimpleNamespace(
+        name=f"{start_date.strftime('%b %d, %Y')} - {end_date.strftime('%b %d, %Y')}",
+        start_date=start_date,
+        end_date=end_date,
+        pay_mode=PayrollPeriod.PAY_MONTHLY,
+    )
+
+    # Reuse your existing DTR builder
+    dtr = _build_dtr_and_summary(profile, branch, period, rules)
+    dtr_rows = dtr.get("rows", [])
+
+    # -------------------------
+    # Today's attendance status
+    # -------------------------
+    today_row = None
+    for row in dtr_rows:
+        if row.get("date") == today.isoformat():
+            today_row = row
+            break
+
+    if not today_row:
+        today_row = {
+            "date": today.isoformat(),
+            "am_in": "",
+            "am_out": "",
+            "pm_in": "",
+            "pm_out": "",
+            "total_hours": "0.00",
+            "late": 0,
+            "undertime": 0,
+            "status": "No Record",
+            "remarks": "No attendance row found for today.",
+        }
+
+    has_checkin = bool(today_row.get("am_in") or today_row.get("pm_in"))
+    has_checkout = bool(today_row.get("am_out") or today_row.get("pm_out"))
+
+    if has_checkin and has_checkout:
         current_status = "Checked Out"
         status_kind = "out"
+    elif has_checkin:
+        current_status = "Checked In"
+        status_kind = "in"
     else:
         current_status = "Not Checked In"
         status_kind = "none"
 
-    # Work duration (only if checked in and not checked out)
-    work_duration_text = "--"
-    if first_in and not last_out:
-        diff = now - timezone.localtime(first_in) if settings.USE_TZ else (datetime.now() - first_in)
-        mins = max(0, int(diff.total_seconds() // 60))
-        work_duration_text = f"{mins // 60}h {mins % 60}m"
-
-    # Late (simple rule)
-    late_cutoff = time(8, 15, 0)
-    is_late_today = bool(first_in and first_in.time() > late_cutoff)
-
     # -------------------------
-    # Attendance History (last 30 days)
-    # Build daily summary: earliest IN + latest OUT + total hours + status label
+    # Summary cards
     # -------------------------
-    days_back = 30
-    start_date = today - timedelta(days=days_back - 1)
-
-    period_qs = AttendanceRecord.objects.filter(
-        branch=emp_branch,
-        employee_id=employee_id_used,
-        timestamp__date__gte=start_date,
-        timestamp__date__lte=today,
-    ).order_by("timestamp")
-
-    by_day = {}
-    for rec in period_qs:
-        d = rec.timestamp.date()
-        by_day.setdefault(d, {"ins": [], "outs": []})
-        if rec.attendance_status == AttendanceRecord.STATUS_CHECKIN:
-            by_day[d]["ins"].append(rec.timestamp)
-        elif rec.attendance_status == AttendanceRecord.STATUS_CHECKOUT:
-            by_day[d]["outs"].append(rec.timestamp)
-
-    history_rows = []
-    for d in sorted(by_day.keys(), reverse=True):
-        logs = by_day[d]
-        din = min(logs["ins"]) if logs["ins"] else None
-        dout = max(logs["outs"]) if logs["outs"] else None
-
-        # total hours
-        total_hours_text = "-"
-        if din and dout and dout >= din:
-            delta = (timezone.localtime(dout) - timezone.localtime(din)) if settings.USE_TZ else (dout - din)
-            total_mins = int(delta.total_seconds() // 60)
-            total_hours_text = f"{total_mins // 60}h {total_mins % 60}m"
-
-        # status badge
-        badge = "Present" if din else "Absent"
-        badge_style = "green"
-        if din and din.time() > late_cutoff:
-            badge = "Late"
-            badge_style = "amber"
-        if din and not dout:
-            badge = "Missing Out"
-            badge_style = "red"
-        if dout and not din:
-            badge = "Missing In"
-            badge_style = "red"
-
-        history_rows.append({
-            "date": d,
-            "date_label": "Today" if d == today else d.strftime("%b %d"),
-            "check_in": _fmt_time_ampm(timezone.localtime(din) if (settings.USE_TZ and din) else din) if din else "-",
-            "check_out": _fmt_time_ampm(timezone.localtime(dout) if (settings.USE_TZ and dout) else dout) if dout else "-",
-            "total_hours": total_hours_text,
-            "badge": badge,
-            "badge_style": badge_style,
-            "remarks": "",
-        })
-
-    # show latest 20 in table
-    history_rows = history_rows[:20]
-
-    # -------------------------
-    # Calendar statuses for current month (present/late)
-    # -------------------------
-    first_of_month = today.replace(day=1)
-    next_month = (first_of_month.replace(day=28) + timedelta(days=4)).replace(day=1)
-    month_qs = AttendanceRecord.objects.filter(
-        branch=emp_branch,
-        employee_id=employee_id_used,
-        timestamp__date__gte=first_of_month,
-        timestamp__date__lt=next_month,
-    ).order_by("timestamp")
-
-    month_by_day_first_in = {}
-    for rec in month_qs:
-        if rec.attendance_status != AttendanceRecord.STATUS_CHECKIN:
-            continue
-        d = rec.timestamp.date()
-        if d not in month_by_day_first_in:
-            month_by_day_first_in[d] = rec.timestamp
-
-    calendar_statuses = {}
-    for d, din in month_by_day_first_in.items():
-        key = d.strftime("%Y-%m-%d")
-        calendar_statuses[key] = "late" if din.time() > late_cutoff else "present"
-
-    calendar_statuses_json = json.dumps(calendar_statuses, default=str)
+    summary = {
+        "days_present": dtr.get("days_present", 0),
+        "travel_days": dtr.get("travel_days", 0),
+        "holiday_days": dtr.get("holiday_days", 0),
+        "absences": dtr.get("absences", 0),
+        "late_minutes": dtr.get("late_minutes", 0),
+        "undertime_minutes": dtr.get("undertime_minutes", 0),
+        "missing_logs": dtr.get("missing_logs", 0),
+        "records_found": dtr.get("records_found", 0),
+        "records_used": dtr.get("records_used", 0),
+    }
 
     context = {
         "current": "attendance",
 
-        # header card (today)
-        "current_status": current_status,
-        "status_kind": status_kind,          # "in" | "out" | "none"
-        "today_checkin": _fmt_time_ampm(timezone.localtime(first_in) if (settings.USE_TZ and first_in) else first_in) if first_in else "",
-        "today_checkout": _fmt_time_ampm(timezone.localtime(last_out) if (settings.USE_TZ and last_out) else last_out) if last_out else "",
-        "work_duration": work_duration_text,
-        "is_late_today": is_late_today,
+        "profile": profile,
+        "employee_id_used": employee_id_used,
+        "employee_name": request.user.get_full_name() or request.user.username,
+        "employee_branch": branch.name,
 
-        # table + calendar
-        "history_rows": history_rows,
-        "calendar_statuses_json": calendar_statuses_json,
+        "start_date": start_date,
+        "end_date": end_date,
+        "period_name": period.name,
+
+        "current_status": current_status,
+        "status_kind": status_kind,
+        "today_row": today_row,
+        "today_checkin": today_row.get("am_in") or today_row.get("pm_in") or "--",
+        "today_checkout": today_row.get("pm_out") or today_row.get("am_out") or "--",
+        "work_duration": today_row.get("total_hours", "0.00"),
+        "today_late_minutes": today_row.get("late", 0),
+        "today_undertime_minutes": today_row.get("undertime", 0),
+        "today_attendance_status": today_row.get("status", "No Record"),
+        "today_remarks": today_row.get("remarks", ""),
+
+        "summary": summary,
+        "history_rows": dtr_rows,
+        "dtr_rows": dtr_rows,
+
+        "issues": dtr.get("issues", []),
     }
+
     return render(request, "employee/attendance.html", context)
 
 
@@ -1895,8 +1874,222 @@ def employee_leave_cancel(request, leave_id):
 @login_required
 @never_cache
 def employee_payroll(request):
-    return render(request, "employee/payroll.html", {"current": "payroll"})
+    """
+    Employee Payroll Page:
+    - Shows only logged-in employee's payroll.
+    - Uses request.user.profile only.
+    - Reuses _compute_payroll() for current preview.
+    - Shows saved payroll history from PayrollItem.
+    """
 
+    if request.user.is_staff or request.user.is_superuser:
+        return redirect("admin_dashboard")
+
+    try:
+        profile = request.user.profile
+    except UserProfile.DoesNotExist:
+        messages.error(request, "Account profile missing. Contact admin.")
+        return redirect("login_ui")
+
+    if not profile.is_approved:
+        messages.error(request, "Your account is pending approval by your branch admin.")
+        return redirect("login_ui")
+
+    branch = profile.branch
+    if not branch:
+        messages.error(request, "No branch assigned. Contact admin.")
+        return redirect("employee_dashboard")
+
+    employee_id_used = _pick_attendance_employee_id(request.user, branch)
+
+    # -------------------------
+    # Selected payroll period
+    # -------------------------
+    period_id = (request.GET.get("period") or "").strip()
+
+    if period_id.isdigit():
+        selected_period = PayrollPeriod.objects.filter(id=int(period_id)).first()
+    else:
+        selected_period = (
+            PayrollPeriod.objects
+            .filter(start_date__lte=timezone.localdate(), end_date__gte=timezone.localdate())
+            .order_by("-start_date")
+            .first()
+        )
+
+    if not selected_period:
+        selected_period = PayrollPeriod.objects.order_by("-start_date").first()
+
+    payroll_periods = PayrollPeriod.objects.all().order_by("-start_date")[:24]
+
+    rules = _get_or_create_rules(branch)
+
+    preview = None
+    computed = {}
+    attendance_summary = {}
+    rates = {}
+    gov = {}
+    dtr_rows = []
+    issues = []
+
+    if selected_period:
+        preview = _compute_payroll(profile, branch, selected_period, rules)
+        computed = preview.get("computed_payroll", {})
+        attendance_summary = preview.get("attendance_summary", {})
+        rates = preview.get("rates", {})
+        gov = preview.get("gov", {})
+        dtr_rows = preview.get("dtr_rows", [])
+        issues_text = preview.get("issues", "")
+        if isinstance(issues_text, str) and issues_text:
+            issues = [x.strip() for x in issues_text.split(";") if x.strip()]
+        elif isinstance(issues_text, list):
+            issues = issues_text
+
+    # -------------------------
+    # Saved payroll history
+    # -------------------------
+    payroll_history = (
+        PayrollItem.objects
+        .select_related("batch", "batch__period", "batch__branch")
+        .filter(profile=profile)
+        .order_by("-batch__period__start_date", "-batch__created_at")
+    )
+
+    latest_saved_item = payroll_history.first()
+
+    context = {
+        "current": "payroll",
+
+        "profile": profile,
+        "employee_name": request.user.get_full_name() or request.user.username,
+        "employee_branch": branch.name,
+        "employee_id_used": employee_id_used,
+
+        "payroll_periods": payroll_periods,
+        "selected_period": selected_period,
+
+        "rules": rules,
+        "rates": rates,
+        "attendance_summary": attendance_summary,
+        "computed": computed,
+        "gov": gov,
+        "dtr_rows": dtr_rows,
+        "issues": issues,
+
+        "payroll_history": payroll_history,
+        "latest_saved_item": latest_saved_item,
+    }
+
+    return render(request, "employee/payroll.html", context)
+
+@login_required
+@never_cache
+def employee_dtr_print(request):
+    """
+    Printable employee DTR.
+    Employee can only print their own DTR.
+    """
+
+    if request.user.is_staff or request.user.is_superuser:
+        return redirect("admin_dashboard")
+
+    try:
+        profile = request.user.profile
+    except UserProfile.DoesNotExist:
+        messages.error(request, "Account profile missing. Contact admin.")
+        return redirect("login_ui")
+
+    branch = profile.branch
+    if not branch:
+        messages.error(request, "No branch assigned. Contact admin.")
+        return redirect("employee_attendance")
+
+    today = timezone.localdate()
+    default_start = today.replace(day=1)
+    default_end = today
+
+    start_raw = (request.GET.get("start") or "").strip()
+    end_raw = (request.GET.get("end") or "").strip()
+
+    try:
+        start_date = datetime.strptime(start_raw, "%Y-%m-%d").date() if start_raw else default_start
+    except ValueError:
+        start_date = default_start
+
+    try:
+        end_date = datetime.strptime(end_raw, "%Y-%m-%d").date() if end_raw else default_end
+    except ValueError:
+        end_date = default_end
+
+    if end_date < start_date:
+        start_date, end_date = end_date, start_date
+
+    rules = _get_or_create_rules(branch)
+
+    period = SimpleNamespace(
+        name=f"{start_date.strftime('%b %d, %Y')} - {end_date.strftime('%b %d, %Y')}",
+        start_date=start_date,
+        end_date=end_date,
+        pay_mode=PayrollPeriod.PAY_MONTHLY,
+    )
+
+    dtr = _build_dtr_and_summary(profile, branch, period, rules)
+
+    context = {
+        "profile": profile,
+        "employee_name": request.user.get_full_name() or request.user.username,
+        "employee_branch": branch.name,
+        "employee_id_used": _pick_attendance_employee_id(request.user, branch),
+        "period": period,
+        "dtr": dtr,
+        "dtr_rows": dtr.get("rows", []),
+        "today": today,
+    }
+
+    return render(request, "employee/dtr_print.html", context)
+
+
+@login_required
+@never_cache
+def employee_payslip_print(request, item_id):
+    """
+    Printable employee payslip.
+    Security rule:
+    Employee can only open PayrollItem where PayrollItem.profile == request.user.profile.
+    """
+
+    if request.user.is_staff or request.user.is_superuser:
+        return redirect("admin_dashboard")
+
+    try:
+        profile = request.user.profile
+    except UserProfile.DoesNotExist:
+        messages.error(request, "Account profile missing. Contact admin.")
+        return redirect("login_ui")
+
+    item = get_object_or_404(
+        PayrollItem.objects.select_related("batch", "batch__period", "batch__branch", "profile", "profile__user"),
+        id=item_id,
+        profile=profile,
+    )
+
+    meta = item.meta or {}
+    dtr_rows = meta.get("dtr_rows", [])
+
+    context = {
+        "item": item,
+        "profile": profile,
+        "employee_name": request.user.get_full_name() or request.user.username,
+        "period": item.batch.period,
+        "batch": item.batch,
+        "meta": meta,
+        "dtr_rows": dtr_rows,
+        "today": timezone.localdate(),
+    }
+
+    return render(request, "employee/payslip_print.html", context)
+
+    
 
 @login_required
 @never_cache
@@ -5793,17 +5986,29 @@ def admin_payroll_process_batch(request):
 
 def _pick_attendance_employee_id(user, branch: Branch):
     """
-    AttendanceRecord.employee_id might be:
-    - username (common in demo)
-    - user.id (if you stored numeric ids)
-    Returns the first id that actually exists in AttendanceRecord for this branch.
+    Employee attendance identity.
+
+    IMPORTANT:
+    AttendanceRecord.employee_id must match UserProfile.biometric_employee_id.
+    Example:
+        AttendanceRecord.employee_id = "3"
+        UserProfile.biometric_employee_id = "3"
+
+    This prevents employees from seeing other employees' attendance.
     """
-    candidates = [str(user.username), str(user.id)]
-    for cid in candidates:
-        if AttendanceRecord.objects.filter(branch=branch, employee_id=cid).exists():
-            return cid
-    # fallback (still return username so page won't crash)
-    return candidates[0]
+    try:
+        profile = user.profile
+    except UserProfile.DoesNotExist:
+        return ""
+
+    biometric_id = str(profile.biometric_employee_id or "").strip()
+
+    if biometric_id:
+        return biometric_id
+
+    # Fallback only for testing/demo if biometric ID is not yet configured.
+    # In production, admins must set biometric_employee_id.
+    return str(user.username).strip()
 
 
 def _fmt_time_ampm(dt):

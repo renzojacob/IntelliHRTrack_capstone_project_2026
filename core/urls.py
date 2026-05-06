@@ -79,7 +79,12 @@ urlpatterns = [
     path("employee/schedule/", views.employee_schedule, name="employee_schedule"),
     path("employee/leave/", views.employee_leave, name="employee_leave"),
     path("employee/leave/<int:leave_id>/cancel/", views.employee_leave_cancel, name="employee_leave_cancel"),
+
+
     path("employee/payroll/", views.employee_payroll, name="employee_payroll"),
+    path("employee/attendance/print/", views.employee_dtr_print, name="employee_dtr_print"),
+    path("employee/payroll/payslip/<int:item_id>/", views.employee_payslip_print, name="employee_payslip_print"),
+
     path("employee/analytics/", views.employee_analytics, name="employee_analytics"),
     path("employee/notifications/", views.employee_notifications, name="employee_notifications"),
     path("employee/profile/", views.employee_profile, name="employee_profile"),

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Payslip | IntelliHRTrack</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 p-6">
+  <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow p-8">
+
+    <div class="no-print flex justify-end mb-4">
+      <button onclick="window.print()" class="px-5 py-2 rounded-xl bg-emerald-600 text-white font-semibold">
+        Print Payslip
+      </button>
+    </div>
+
+    <div class="text-center border-b pb-5 mb-6">
+      <h1 class="text-2xl font-black">IntelliHRTrack</h1>
+      <p class="text-sm">Department of Agriculture - MIMAROPA</p>
+      <h2 class="text-xl font-bold mt-3">Employee Payslip</h2>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 text-sm mb-6">
+      <div>
+        <p><strong>Employee:</strong> {{ employee_name }}</p>
+        <p><strong>Department:</strong> {{ profile.department|default:"Unassigned" }}</p>
+        <p><strong>Position:</strong> {{ profile.position|default:"Not set" }}</p>
+        <p><strong>Employment Type:</strong> {{ profile.employment_type }}</p>
+      </div>
+      <div>
+        <p><strong>Payroll Period:</strong> {{ period.name }}</p>
+        <p><strong>Coverage:</strong> {{ period.start_date }} to {{ period.end_date }}</p>
+        <p><strong>Batch:</strong> {{ batch.name }}</p>
+        <p><strong>Status:</strong> {{ batch.get_status_display }}</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="border rounded-xl p-5">
+        <h3 class="font-bold mb-3">Earnings</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span>Base Pay</span>
+            <strong>₱{{ item.base_pay }}</strong>
+          </div>
+          <div class="flex justify-between">
+            <span>Premium Pay</span>
+            <strong>₱{{ item.premium_pay }}</strong>
+          </div>
+          <div class="flex justify-between">
+            <span>Overtime Pay</span>
+            <strong>₱{{ item.overtime_pay }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="border rounded-xl p-5">
+        <h3 class="font-bold mb-3">Deductions</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span>Government Contributions</span>
+            <strong>₱{{ item.gov_contributions_total }}</strong>
+          </div>
+          <div class="flex justify-between">
+            <span>Tax</span>
+            <strong>₱{{ item.tax_total }}</strong>
+          </div>
+          <div class="flex justify-between">
+            <span>Manual / Other Deductions</span>
+            <strong>₱{{ item.manual_deduction }}</strong>
+          </div>
+          <div class="flex justify-between">
+            <span>Total Deductions</span>
+            <strong>₱{{ item.deductions_total }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 border rounded-xl p-5">
+      <h3 class="font-bold mb-3">Attendance Summary Used</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <p><strong>Late Minutes:</strong> {{ item.late_minutes }}</p>
+        <p><strong>Undertime Minutes:</strong> {{ item.undertime_minutes }}</p>
+        <p><strong>Absences:</strong> {{ item.absences }}</p>
+        <p><strong>OT Hours:</strong> {{ item.overtime_hours }}</p>
+      </div>
+    </div>
+
+    <div class="mt-6 rounded-xl bg-emerald-50 border border-emerald-200 p-5 flex justify-between items-center">
+      <span class="text-lg font-bold">Net Pay</span>
+      <span class="text-3xl font-black text-emerald-700">₱{{ item.net_pay }}</span>
+    </div>
+
+    {% if item.issues %}
+    <div class="mt-5 text-sm bg-amber-50 border border-amber-200 rounded-xl p-4">
+      <strong>Notes:</strong> {{ item.issues }}
+    </div>
+    {% endif %}
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DTR Print | IntelliHRTrack</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 p-6">
+  <div class="max-w-5xl mx-auto bg-white rounded-2xl shadow p-8">
+
+    <div class="no-print flex justify-end mb-4">
+      <button onclick="window.print()" class="px-5 py-2 rounded-xl bg-emerald-600 text-white font-semibold">
+        Print DTR
+      </button>
+    </div>
+
+    <div class="text-center mb-6">
+      <p class="text-sm">Civil Service Form No. 48</p>
+      <h1 class="text-2xl font-black uppercase">Daily Time Record</h1>
+      <p class="text-sm mt-1">IntelliHRTrack - Department of Agriculture MIMAROPA</p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 text-sm mb-6">
+      <div>
+        <p><strong>Name:</strong> {{ employee_name }}</p>
+        <p><strong>Branch:</strong> {{ employee_branch }}</p>
+        <p><strong>Biometric ID:</strong> {{ employee_id_used }}</p>
+      </div>
+      <div>
+        <p><strong>Period:</strong> {{ period.name }}</p>
+        <p><strong>Generated:</strong> {{ today }}</p>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full border border-slate-700 text-xs">
+        <thead>
+          <tr class="bg-slate-200">
+            <th class="border border-slate-700 p-2" rowspan="2">Day</th>
+            <th class="border border-slate-700 p-2" colspan="2">A.M.</th>
+            <th class="border border-slate-700 p-2" colspan="2">P.M.</th>
+            <th class="border border-slate-700 p-2" colspan="2">Undertime</th>
+            <th class="border border-slate-700 p-2" rowspan="2">Status</th>
+            <th class="border border-slate-700 p-2" rowspan="2">Remarks</th>
+          </tr>
+          <tr class="bg-slate-100">
+            <th class="border border-slate-700 p-2">Arrival</th>
+            <th class="border border-slate-700 p-2">Departure</th>
+            <th class="border border-slate-700 p-2">Arrival</th>
+            <th class="border border-slate-700 p-2">Departure</th>
+            <th class="border border-slate-700 p-2">Hours</th>
+            <th class="border border-slate-700 p-2">Minutes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in dtr_rows %}
+          <tr>
+            <td class="border border-slate-700 p-2 text-center">{{ row.day }}</td>
+            <td class="border border-slate-700 p-2 text-center">{{ row.am_in|default:"" }}</td>
+            <td class="border border-slate-700 p-2 text-center">{{ row.am_out|default:"" }}</td>
+            <td class="border border-slate-700 p-2 text-center">{{ row.pm_in|default:"" }}</td>
+            <td class="border border-slate-700 p-2 text-center">{{ row.pm_out|default:"" }}</td>
+            <td class="border border-slate-700 p-2 text-center">{{ row.undertime_hour|default:"0" }}</td>
+            <td class="border border-slate-700 p-2 text-center">{{ row.undertime_minute|default:"0" }}</td>
+            <td class="border border-slate-700 p-2 text-center">{{ row.status }}</td>
+            <td class="border border-slate-700 p-2">{{ row.remarks }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="border border-slate-700 p-4 text-center">
+              No DTR records found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid grid-cols-2 gap-10 mt-10 text-sm">
+      <div>
+        <p class="border-t border-slate-700 pt-2 text-center">Employee Signature</p>
+      </div>
+      <div>
+        <p class="border-t border-slate-700 pt-2 text-center">Authorized Officer</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
