@@ -1,457 +1,466 @@
-{% extends 'employee/base_employee.html' %}
+{% extends "employee/base_employee.html" %}
+{% load static %}
 
-{% block title %}Payroll | IntelliHRTrack - MIMAROPA{% endblock %}
+{% block title %}My Payroll{% endblock %}
+{% block page_title %}My Payroll{% endblock %}
 
 {% block content %}
-<!-- Hero / Title -->
-<header class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow reveal">
-    <div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
-    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="flex items-center gap-4">
-            <div class="relative">
-                <img class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-4 border-white/50 shadow-lg" src="https://randomuser.me/api/portraits/men/32.jpg" alt="Employee">
-                <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
-            </div>
-            <div>
-                <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">Payroll &amp; Finance</h1>
-                <p class="text-sm md:text-base text-gray-600 dark:text-gray-300 mt-1">View payslips, breakdowns, and financial insights</p>
-                <div class="flex items-center gap-2 mt-2 text-sm">
-                    <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">ID: EMP-8472</span>
-                    <span class="px-2 py-1 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 rounded-full">
-                        {% if employee.employment_type %}{{ employee.employment_type }}{% else %}COS{% endif %}
-                    </span>
-                    <span class="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full">
-                        {% if employee.branch_name %}{{ employee.branch_name }}{% else %}MIMAROPA{% endif %}
-                    </span>
-                </div>
-            </div>
-        </div>
-        <div class="flex items-center gap-3">
-            <button id="mobileMenu" class="lg:hidden p-2 rounded-xl glass" aria-label="Open Menu"><iconify-icon icon="ph:list-duotone"></iconify-icon></button>
-            <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-xl glass text-xs">
-                <span id="netDot" class="inline-block w-2.5 h-2.5 rounded-full bg-green-500" title="Online"></span>
-                <span id="headerClock">--:--:--</span>
-            </div>
-            <button id="themeToggleHeader" class="p-2 rounded-xl glass hover:shadow-glow transition">
-                <iconify-icon icon="ph:sun-dim-duotone" class="hidden dark:inline text-accent"></iconify-icon>
-                <iconify-icon icon="ph:moon-stars-duotone" class="dark:hidden text-accent"></iconify-icon>
-            </button>
-        </div>
-    </div>
-</header>
+<section class="space-y-6 animate-in">
 
-<!-- Quick Summary Cards -->
-<div class="glass rounded-3xl p-4 shadow reveal">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-700">
-            <div class="flex items-center justify-between">
-                <span class="text-sm text-blue-700 dark:text-blue-300">Total Gross Pay</span>
-                <div class="w-10 h-10 rounded-full bg-blue-500/90 text-white flex items-center justify-center"><iconify-icon icon="ph:money-duotone"></iconify-icon></div>
-            </div>
-            <div class="mt-2 text-2xl font-bold text-blue-900 dark:text-blue-100">₱{% if computed_payroll.gross %}{{ computed_payroll.gross|floatformat:2 }}{% else %}45,820.00{% endif %}</div>
-            <div class="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1"><iconify-icon icon="ph:trend-up-duotone"></iconify-icon> MIMAROPA Payroll</div>
-        </div>
-        <div class="p-4 rounded-2xl bg-gradient-to-br from-rose-50 to-red-100 dark:from-rose-900/30 dark:to-red-900/20 border border-rose-200 dark:border-rose-700">
-            <div class="flex items-center justify-between">
-                <span class="text-sm text-rose-700 dark:text-rose-300">Total Deductions</span>
-                <div class="w-10 h-10 rounded-full bg-rose-500/90 text-white flex items-center justify-center"><iconify-icon icon="ph:file-text-duotone"></iconify-icon></div>
-            </div>
-            <div class="mt-2 text-2xl font-bold text-rose-900 dark:text-rose-100">₱{% if computed_payroll.deductions_total %}{{ computed_payroll.deductions_total|floatformat:2 }}{% else %}8,745.00{% endif %}</div>
-            <div class="text-xs text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1"><iconify-icon icon="ph:trend-down-duotone"></iconify-icon> Gov't Contributions</div>
-        </div>
-        <div class="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-green-100 dark:from-emerald-900/30 dark:to-green-900/20 border border-emerald-200 dark:border-emerald-700">
-            <div class="flex items-center justify-between">
-                <span class="text-sm text-emerald-700 dark:text-emerald-300">Net Pay</span>
-                <div class="w-10 h-10 rounded-full bg-emerald-500/90 text-white flex items-center justify-center"><iconify-icon icon="ph:wallet-duotone"></iconify-icon></div>
-            </div>
-            <div class="mt-2 text-2xl font-bold text-emerald-900 dark:text-emerald-100">₱{% if computed_payroll.net %}{{ computed_payroll.net|floatformat:2 }}{% else %}37,075.00{% endif %}</div>
-            <div class="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1"><iconify-icon icon="ph:trend-up-duotone"></iconify-icon> Ready for disbursement</div>
-        </div>
-    </div>
-</div>
-
-<!-- Main Grid -->
-<section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-    <!-- Left Column -->
-    <div class="space-y-6">
-        <!-- Current Payslip -->
-        <div class="glass rounded-3xl p-6 shadow reveal">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-bold">Current Payslip - {{ payroll_period|default:"Nov 1-15, 2023" }}</h2>
-                <div class="flex items-center gap-2">
-                    <button class="px-3 py-2 rounded-xl glass text-sm flex items-center gap-2 ripple">
-                        <iconify-icon icon="ph:file-pdf-duotone"></iconify-icon> PDF
-                    </button>
-                    <button id="viewDtrBtn" class="px-3 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm flex items-center gap-2 ripple">
-                        <iconify-icon icon="ph:eye-duotone"></iconify-icon> View DTR
-                    </button>
-                </div>
-            </div>
-            <div class="rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <h3 class="font-semibold">Earnings</h3>
-                        <div class="mt-2 space-y-2 text-sm">
-                            <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Basic Salary</span><span class="font-medium">₱35,000.00</span></div>
-                            {% if computed_payroll.premium %}
-                            <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Premium (20%)</span><span class="font-medium">₱{{ computed_payroll.premium|default:"7,000.00" }}</span></div>
-                            {% endif %}
-                            {% if computed_payroll.overtime_pay %}
-                            <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Overtime (Authorized)</span><span class="font-medium">₱{{ computed_payroll.overtime_pay|default:"5,200.00" }}</span></div>
-                            {% endif %}
-                            <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Allowances</span><span class="font-medium">₱3,500.00</span></div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="font-semibold">Deductions</h3>
-                        <div class="mt-2 space-y-2 text-sm">
-                            <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Tax ({{ payroll_rules.tax_rate_percent|default:"5" }}%)</span><span class="font-medium">₱4,850.00</span></div>
-                            <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">SSS Contribution</span><span class="font-medium">₱{{ employee.sss_amount|default:"1,200.00" }}</span></div>
-                            <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">PhilHealth</span><span class="font-medium">₱{{ employee.philhealth_value|default:"900.00" }}</span></div>
-                            <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Pag-IBIG</span><span class="font-medium">₱{{ employee.pagibig_amount|default:"100.00" }}</span></div>
-                            <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Attendance Deductions</span><span class="font-medium">₱695.00</span></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <span class="text-sm font-medium">Net Pay</span>
-                    <span class="text-lg font-bold">₱{{ computed_payroll.net|default:"37,075.00" }}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Attendance Compliance -->
-        <div class="glass rounded-3xl p-6 shadow reveal">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-bold">Attendance Compliance</h2>
-                <span class="px-2 py-1 bg-{{ attendance_summary.has_missing_logs|yesno:'red,green' }}-100 text-{{ attendance_summary.has_missing_logs|yesno:'red,green' }}-800 rounded-full text-xs">
-                    {{ attendance_summary.has_missing_logs|yesno:'Issues,Compliant' }}
-                </span>
-            </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 text-center">
-                    <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">{{ attendance_summary.total_late_minutes|default:"15" }}</div>
-                    <div class="text-xs text-amber-700 dark:text-amber-300 mt-1">Late Minutes</div>
-                </div>
-                <div class="p-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-center">
-                    <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ attendance_summary.total_undertime_minutes|default:"30" }}</div>
-                    <div class="text-xs text-red-700 dark:text-red-300 mt-1">Undertime Minutes</div>
-                </div>
-                <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 text-center">
-                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ attendance_summary.days_present|default:"22" }}</div>
-                    <div class="text-xs text-blue-700 dark:text-blue-300 mt-1">Days Present</div>
-                </div>
-                <div class="p-3 rounded-xl bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 text-center">
-                    <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ attendance_summary.approved_ot_hours|default:"8" }}</div>
-                    <div class="text-xs text-green-700 dark:text-green-300 mt-1">Approved OT Hours</div>
-                </div>
-            </div>
-            <div class="mt-4 space-y-2">
-                {% if attendance_summary.has_missing_logs %}
-                <div class="flex items-center text-sm text-red-600">
-                    <iconify-icon icon="ph:warning-circle-duotone" class="mr-2"></iconify-icon>
-                    Missing lunch logs detected
-                </div>
-                {% endif %}
-                <div class="flex items-center text-sm text-gray-600">
-                    <iconify-icon icon="ph:calendar-duotone" class="mr-2"></iconify-icon>
-                    Travel Order days: {{ attendance_summary.to_days|default:"2" }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Payroll History -->
-        <div class="glass rounded-3xl p-6 shadow reveal">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-bold">Payroll History</h2>
-                <button class="px-3 py-2 rounded-xl glass text-sm ripple flex items-center gap-2"><iconify-icon icon="ph:download-simple-duotone"></iconify-icon> Export</button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="border-b border-gray-200 dark:border-gray-700">
-                            <th class="py-3 text-left text-gray-600 dark:text-gray-400">Period</th>
-                            <th class="py-3 text-left text-gray-600 dark:text-gray-400">Date Released</th>
-                            <th class="py-3 text-right text-gray-600 dark:text-gray-400">Gross Pay</th>
-                            <th class="py-3 text-right text-gray-600 dark:text-gray-400">Deductions</th>
-                            <th class="py-3 text-right text-gray-600 dark:text-gray-400">Net Pay</th>
-                            <th class="py-3 text-right text-gray-600 dark:text-gray-400">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for batch in payroll_batches|slice:":3" %}
-                        <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                            <td class="py-3">{{ batch.period }}</td>
-                            <td class="py-3">{{ batch.released_at|date:"M d, Y" }}</td>
-                            <td class="py-3 text-right peso">{{ batch.gross|default:"45,820.00" }}</td>
-                            <td class="py-3 text-right peso">{{ batch.deductions|default:"8,745.00" }}</td>
-                            <td class="py-3 text-right font-semibold peso">{{ batch.net|default:"37,075.00" }}</td>
-                            <td class="py-3 text-right"><button class="text-accent hover:underline text-xs">View</button></td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="py-6 text-center text-gray-500">No payroll history available</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+  <!-- Page Toolbar -->
+  <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+    <div>
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full glass text-xs font-semibold text-accent">
+        <iconify-icon icon="ph:wallet-duotone"></iconify-icon>
+        Employee Payroll
+      </div>
+      <h2 class="mt-3 text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+        Payroll Computation
+      </h2>
+      <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+        View your salary computation, attendance deductions, government contributions, net pay, and payslip history.
+      </p>
     </div>
 
-    <!-- Right Column -->
-    <div class="space-y-6">
-        <!-- Deduction Breakdown -->
-        <div class="glass rounded-3xl p-6 shadow reveal">
-            <h2 class="text-xl font-bold mb-4">Deduction Breakdown</h2>
-            <div class="h-64"><canvas id="deductionsChart"></canvas></div>
-            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                <div class="flex justify-between"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500"></span> Tax</span><span class="font-medium">₱4,850.00</span></div>
-                <div class="flex justify-between"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500"></span> SSS</span><span class="font-medium">₱{{ employee.sss_amount|default:"1,200.00" }}</span></div>
-                <div class="flex justify-between"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-yellow-500"></span> PhilHealth</span><span class="font-medium">₱{{ employee.philhealth_value|default:"900.00" }}</span></div>
-                <div class="flex justify-between"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-500"></span> Pag-IBIG</span><span class="font-medium">₱{{ employee.pagibig_amount|default:"100.00" }}</span></div>
-                <div class="flex justify-between"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-purple-500"></span> Attendance</span><span class="font-medium">₱695.00</span></div>
-            </div>
-        </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'employee_dashboard' %}"
+         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl glass hover:shadow-glow transition text-sm font-semibold">
+        <iconify-icon icon="ph:house-duotone"></iconify-icon>
+        Dashboard
+      </a>
 
-        <!-- Tax & Contributions -->
-        <div class="glass rounded-3xl p-6 shadow reveal">
-            <h2 class="text-xl font-bold mb-4">Government Contributions</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div class="p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl border border-indigo-200 dark:border-indigo-700">
-                    <p class="font-semibold text-indigo-800 dark:text-indigo-300">SSS</p>
-                    <p class="text-gray-700 dark:text-gray-300">Contribution: ₱{{ employee.sss_amount|default:"1,200.00" }}</p>
-                    <p class="text-xs text-gray-500">SSS No: 03-1234567-8</p>
-                </div>
-                <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl border border-blue-200 dark:border-blue-700">
-                    <p class="font-semibold text-blue-800 dark:text-blue-300">PhilHealth</p>
-                    <p class="text-gray-700 dark:text-gray-300">Contribution: ₱{{ employee.philhealth_value|default:"900.00" }}</p>
-                    <p class="text-xs text-gray-500">PIN: 03-123456789-0</p>
-                </div>
-                <div class="p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl border border-emerald-200 dark:border-emerald-700">
-                    <p class="font-semibold text-emerald-800 dark:text-emerald-300">Pag-IBIG</p>
-                    <p class="text-gray-700 dark:text-gray-300">Contribution: ₱{{ employee.pagibig_amount|default:"100.00" }}</p>
-                    <p class="text-xs text-gray-500">MID: 1234-5678-9012</p>
-                </div>
-                <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-xl border border-amber-200 dark:border-amber-700">
-                    <p class="font-semibold text-amber-800 dark:text-amber-300">Income Tax</p>
-                    <p class="text-gray-700 dark:text-gray-300">Rate: {{ payroll_rules.tax_rate_percent|default:"5" }}%</p>
-                    <p class="text-xs text-gray-500">TIN: 123-456-789-000</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Payroll Dispute -->
-        <div class="glass rounded-3xl p-6 shadow reveal">
-            <h2 class="text-xl font-bold mb-4">Request Correction</h2>
-            <form class="space-y-4">
-                <div>
-                    <label class="block text-sm mb-1">Payroll Period</label>
-                    <select class="w-full rounded-xl glass py-2 px-3">
-                        <option>Nov 1-15, 2023</option>
-                        <option>Oct 16-31, 2023</option>
-                        <option>Oct 1-15, 2023</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm mb-1">Issue Type</label>
-                    <select class="w-full rounded-xl glass py-2 px-3">
-                        <option value="missing_log">Missing Log Entry</option>
-                        <option value="to_tag">Travel Order Tag</option>
-                        <option value="ot_authority">Overtime Authority</option>
-                        <option value="wrong_deduction">Wrong Deduction</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm mb-1">Description</label>
-                    <textarea rows="3" class="w-full rounded-xl glass py-2 px-3" placeholder="Please describe the issue in detail..."></textarea>
-                </div>
-                <button class="w-full px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-medium transition-all ripple">
-                    Submit Correction Request
-                </button>
-            </form>
-        </div>
+      <a href="{% url 'employee_attendance' %}"
+         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl glass hover:shadow-glow transition text-sm font-semibold">
+        <iconify-icon icon="ph:calendar-check-duotone"></iconify-icon>
+        Attendance
+      </a>
     </div>
+  </div>
+
+  <!-- Employee Identity -->
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+    <article class="lg:col-span-2 glass rounded-3xl p-5 shadow-glow">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl gradient-accent text-white flex items-center justify-center text-xl font-extrabold profile-glow">
+          {% firstof employee_name.0|upper user.username.0|upper %}
+        </div>
+        <div>
+          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Employee</p>
+          <h3 class="text-xl font-extrabold text-gray-900 dark:text-white">{{ employee_name }}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            {{ profile.position|default:"Position not set" }} • {{ profile.department|default:"Unassigned Department" }}
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <article class="glass rounded-3xl p-5 hover:shadow-glow transition">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Employment</p>
+          <p class="mt-1 text-lg font-extrabold text-gray-900 dark:text-white">{{ profile.employment_type|default:"--" }}</p>
+        </div>
+        <div class="w-11 h-11 rounded-2xl bg-teal-500/10 text-accent flex items-center justify-center">
+          <iconify-icon icon="ph:user-list-duotone" class="text-2xl"></iconify-icon>
+        </div>
+      </div>
+    </article>
+
+    <article class="glass rounded-3xl p-5 hover:shadow-glow transition">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Biometric ID</p>
+          <p class="mt-1 text-lg font-extrabold text-gray-900 dark:text-white">{{ employee_id_used|default:"Not set" }}</p>
+        </div>
+        <div class="w-11 h-11 rounded-2xl bg-teal-500/10 text-accent flex items-center justify-center">
+          <iconify-icon icon="ph:fingerprint-duotone" class="text-2xl"></iconify-icon>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <!-- Period Filter -->
+  <article class="glass rounded-3xl p-5 shadow-sm">
+    <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+      <div class="md:col-span-2">
+        <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+          Payroll Period
+        </label>
+        <select name="period"
+                class="w-full px-4 py-3 rounded-2xl glass bg-white/60 dark:bg-slate-900/40 border border-white/40 dark:border-white/10 outline-none focus:ring-2 focus:ring-[var(--accent)]">
+          {% for p in payroll_periods %}
+            <option value="{{ p.id }}"
+              {% if selected_period and selected_period.id == p.id %}selected{% endif %}>
+              {{ p.name }} — {{ p.start_date }} to {{ p.end_date }}
+            </option>
+          {% empty %}
+            <option>No payroll period found</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button type="submit"
+              class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl gradient-accent text-white font-bold hover:shadow-glow transition">
+        <iconify-icon icon="ph:magnifying-glass-duotone"></iconify-icon>
+        View Payroll
+      </button>
+    </form>
+  </article>
+
+  {% if selected_period %}
+  <!-- Net Pay Hero -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+    <article class="xl:col-span-2 glass rounded-3xl p-6 shadow-glow relative overflow-hidden">
+      <div class="absolute -right-16 -top-16 w-48 h-48 rounded-full gradient-accent opacity-20 blur-2xl"></div>
+
+      <div class="relative z-10">
+        <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Estimated Net Pay</p>
+        <div class="mt-2 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h3 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">
+              ₱{{ computed.net|default:"0.00" }}
+            </h3>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              Computed using your attendance, payroll rules, deductions, contributions, and tax settings.
+            </p>
+          </div>
+
+          <div class="rounded-3xl gradient-accent text-white p-5 min-w-[220px] shadow-glow">
+            <p class="text-xs opacity-80">Total Deductions</p>
+            <p class="text-2xl font-extrabold">₱{{ computed.deductions|default:"0.00" }}</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+          <div class="rounded-2xl glass p-4">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Base Pay</p>
+            <p class="font-extrabold text-gray-900 dark:text-white">₱{{ computed.base|default:"0.00" }}</p>
+          </div>
+          <div class="rounded-2xl glass p-4">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Premium</p>
+            <p class="font-extrabold text-gray-900 dark:text-white">₱{{ computed.premium|default:"0.00" }}</p>
+          </div>
+          <div class="rounded-2xl glass p-4">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Overtime</p>
+            <p class="font-extrabold text-gray-900 dark:text-white">₱{{ computed.ot|default:"0.00" }}</p>
+          </div>
+          <div class="rounded-2xl glass p-4">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Attendance Deduction</p>
+            <p class="font-extrabold text-gray-900 dark:text-white">₱{{ computed.attendance_deduction|default:"0.00" }}</p>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="glass rounded-3xl p-6 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Selected Period</p>
+      <h3 class="mt-2 text-2xl font-extrabold text-gray-900 dark:text-white">{{ selected_period.name }}</h3>
+      <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+        {{ selected_period.start_date }} to {{ selected_period.end_date }}
+      </p>
+
+      <div class="neon-divider my-5"></div>
+
+      <div class="space-y-3 text-sm">
+        <div class="flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Branch</span>
+          <strong>{{ employee_branch }}</strong>
+        </div>
+        <div class="flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Daily Rate</span>
+          <strong>₱{{ profile.daily_rate|default:"0.00" }}</strong>
+        </div>
+        <div class="flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Monthly Salary</span>
+          <strong>₱{{ profile.monthly_salary|default:"0.00" }}</strong>
+        </div>
+        <div class="flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Premium</span>
+          <strong>{% if profile.has_premium %}Yes{% else %}No{% endif %}</strong>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <!-- Attendance Basis Cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
+    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
+      <p class="text-xs text-gray-500 dark:text-gray-400">Present</p>
+      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.days_present|default:"0" }}</p>
+    </article>
+    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
+      <p class="text-xs text-gray-500 dark:text-gray-400">Travel</p>
+      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.travel_days|default:"0" }}</p>
+    </article>
+    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
+      <p class="text-xs text-gray-500 dark:text-gray-400">Holiday</p>
+      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.holiday_days|default:"0" }}</p>
+    </article>
+    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
+      <p class="text-xs text-gray-500 dark:text-gray-400">Absences</p>
+      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.absences|default:"0" }}</p>
+    </article>
+    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
+      <p class="text-xs text-gray-500 dark:text-gray-400">Late</p>
+      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.late_minutes|default:"0" }}</p>
+    </article>
+    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
+      <p class="text-xs text-gray-500 dark:text-gray-400">Undertime</p>
+      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.undertime_minutes|default:"0" }}</p>
+    </article>
+    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
+      <p class="text-xs text-gray-500 dark:text-gray-400">Missing Logs</p>
+      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.missing_logs|default:"0" }}</p>
+    </article>
+    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
+      <p class="text-xs text-gray-500 dark:text-gray-400">Records Used</p>
+      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.records_used|default:"0" }}</p>
+    </article>
+  </div>
+
+  <!-- Breakdown -->
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+    <article class="glass rounded-3xl p-6 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-accent font-bold">Computation Breakdown</p>
+      <h3 class="mt-1 text-xl font-extrabold text-gray-900 dark:text-white">Rates and Attendance Deductions</h3>
+
+      <div class="mt-5 space-y-3 text-sm">
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Salary Divisor</span>
+          <strong>{{ rules.salary_divisor|default:"22" }}</strong>
+        </div>
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Daily Rate</span>
+          <strong>₱{{ rates.daily_rate|default:profile.daily_rate|default:"0.00" }}</strong>
+        </div>
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Hourly Rate</span>
+          <strong>₱{{ rates.hourly_rate|default:"0.00" }}</strong>
+        </div>
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Per-Minute Rate</span>
+          <strong>₱{{ rates.per_minute_rate|default:"0.00" }}</strong>
+        </div>
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Late Deduction</span>
+          <strong>₱{{ computed.late_deduction|default:"0.00" }}</strong>
+        </div>
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Undertime Deduction</span>
+          <strong>₱{{ computed.undertime_deduction|default:"0.00" }}</strong>
+        </div>
+      </div>
+    </article>
+
+    <article class="glass rounded-3xl p-6 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-accent font-bold">Deductions</p>
+      <h3 class="mt-1 text-xl font-extrabold text-gray-900 dark:text-white">Contributions and Tax</h3>
+
+      <div class="mt-5 space-y-3 text-sm">
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">SSS</span>
+          <strong>₱{{ gov.sss|default:"0.00" }}</strong>
+        </div>
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">PhilHealth</span>
+          <strong>₱{{ gov.philhealth|default:"0.00" }}</strong>
+        </div>
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Pag-IBIG</span>
+          <strong>₱{{ gov.pagibig|default:"0.00" }}</strong>
+        </div>
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Tax</span>
+          <strong>₱{{ gov.tax|default:"0.00" }}</strong>
+        </div>
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Manual Deduction</span>
+          <strong>₱{{ profile.manual_deduction_amount|default:"0.00" }}</strong>
+        </div>
+        <div class="rounded-2xl gradient-accent text-white p-4 flex justify-between gap-4 shadow-glow">
+          <span class="font-bold">Total Deductions</span>
+          <strong>₱{{ computed.deductions|default:"0.00" }}</strong>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <!-- Formula Guide -->
+  <article class="glass rounded-3xl p-6 shadow-sm">
+    <p class="text-xs uppercase tracking-wide text-accent font-bold">Formula Guide</p>
+    <h3 class="mt-1 text-xl font-extrabold text-gray-900 dark:text-white">How Your Payroll Is Computed</h3>
+
+    <div class="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 text-sm">
+      <div class="rounded-2xl glass p-4">
+        <h4 class="font-extrabold text-gray-900 dark:text-white">Rates</h4>
+        <p class="mt-2 text-gray-600 dark:text-gray-300">Daily Rate = Monthly Salary / Salary Divisor</p>
+        <p class="text-gray-600 dark:text-gray-300">Hourly Rate = Daily Rate / 8</p>
+      </div>
+
+      <div class="rounded-2xl glass p-4">
+        <h4 class="font-extrabold text-gray-900 dark:text-white">Per Minute</h4>
+        <p class="mt-2 text-gray-600 dark:text-gray-300">Per-Minute Rate = Hourly Rate / 60</p>
+        <p class="text-gray-600 dark:text-gray-300">Used for late and undertime deductions.</p>
+      </div>
+
+      <div class="rounded-2xl glass p-4">
+        <h4 class="font-extrabold text-gray-900 dark:text-white">JO</h4>
+        <p class="mt-2 text-gray-600 dark:text-gray-300">Job Order follows no work, no pay based on actual worked days.</p>
+      </div>
+
+      <div class="rounded-2xl glass p-4">
+        <h4 class="font-extrabold text-gray-900 dark:text-white">COS</h4>
+        <p class="mt-2 text-gray-600 dark:text-gray-300">COS uses salary rules. Valid holidays and suspensions are not deducted.</p>
+      </div>
+    </div>
+  </article>
+
+  {% if issues %}
+  <article class="glass rounded-3xl p-5 border border-amber-500/20">
+    <h3 class="font-extrabold text-amber-700 dark:text-amber-300 flex items-center gap-2">
+      <iconify-icon icon="ph:warning-duotone"></iconify-icon>
+      Payroll Notices
+    </h3>
+    <div class="mt-3 grid gap-2">
+      {% for issue in issues %}
+        <div class="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3 text-sm text-amber-800 dark:text-amber-200">
+          {{ issue }}
+        </div>
+      {% endfor %}
+    </div>
+  </article>
+  {% endif %}
+
+  <!-- Payroll DTR Basis -->
+  <article class="glass rounded-3xl p-5 shadow-sm">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+      <div>
+        <p class="text-xs uppercase tracking-wide text-accent font-bold">Attendance Used for Payroll</p>
+        <h3 class="text-xl font-extrabold text-gray-900 dark:text-white">Payroll DTR Basis</h3>
+      </div>
+
+      <a href="{% url 'employee_attendance' %}?start={{ selected_period.start_date|date:'Y-m-d' }}&end={{ selected_period.end_date|date:'Y-m-d' }}"
+         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl glass hover:shadow-glow transition text-sm font-semibold">
+        <iconify-icon icon="ph:calendar-check-duotone"></iconify-icon>
+        View Attendance
+      </a>
+    </div>
+
+    <div class="overflow-x-auto fancy-scroll rounded-2xl border border-white/30 dark:border-white/10">
+      <table class="min-w-[1100px] w-full text-sm">
+        <thead class="bg-white/70 dark:bg-slate-900/50 text-gray-700 dark:text-gray-200">
+          <tr>
+            <th class="text-left px-4 py-3">Date</th>
+            <th class="text-left px-4 py-3">AM In</th>
+            <th class="text-left px-4 py-3">AM Out</th>
+            <th class="text-left px-4 py-3">PM In</th>
+            <th class="text-left px-4 py-3">PM Out</th>
+            <th class="text-left px-4 py-3">Hours</th>
+            <th class="text-left px-4 py-3">Late</th>
+            <th class="text-left px-4 py-3">Undertime</th>
+            <th class="text-left px-4 py-3">Status</th>
+            <th class="text-left px-4 py-3">Remarks</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200/70 dark:divide-white/10">
+          {% for row in dtr_rows %}
+          <tr class="hover:bg-white/60 dark:hover:bg-white/5 transition">
+            <td class="px-4 py-3 font-semibold text-gray-900 dark:text-white">
+              {% if row.date %}{{ row.date }}{% else %}Day {{ row.day }}{% endif %}
+            </td>
+            <td class="px-4 py-3">{{ row.am_in|default:"--" }}</td>
+            <td class="px-4 py-3">{{ row.am_out|default:"--" }}</td>
+            <td class="px-4 py-3">{{ row.pm_in|default:"--" }}</td>
+            <td class="px-4 py-3">{{ row.pm_out|default:"--" }}</td>
+            <td class="px-4 py-3 font-bold">{{ row.total_hours|default:"0.00" }}</td>
+            <td class="px-4 py-3">{{ row.late|default:"0" }}</td>
+            <td class="px-4 py-3">{{ row.undertime|default:"0" }}</td>
+            <td class="px-4 py-3">
+              <span class="inline-flex px-3 py-1 rounded-full bg-teal-500/10 text-accent border border-teal-500/20 text-xs font-bold">
+                {{ row.status|default:"No Record" }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ row.remarks|default:"--" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="10" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+              No DTR rows found for this payroll period.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  {% else %}
+  <article class="glass rounded-3xl p-8 text-center shadow-sm">
+    <div class="mx-auto w-16 h-16 rounded-3xl gradient-accent text-white flex items-center justify-center shadow-glow">
+      <iconify-icon icon="ph:calendar-x-duotone" class="text-3xl"></iconify-icon>
+    </div>
+    <h3 class="mt-4 text-2xl font-extrabold text-gray-900 dark:text-white">No payroll period found</h3>
+    <p class="mt-2 text-gray-600 dark:text-gray-300">
+      Ask the admin to create a payroll period first.
+    </p>
+  </article>
+  {% endif %}
+
+  <!-- Payroll History -->
+  <article class="glass rounded-3xl p-5 shadow-sm">
+    <div class="mb-4">
+      <p class="text-xs uppercase tracking-wide text-accent font-bold">Saved Payroll Records</p>
+      <h3 class="text-xl font-extrabold text-gray-900 dark:text-white">Payroll History</h3>
+    </div>
+
+    <div class="overflow-x-auto fancy-scroll rounded-2xl border border-white/30 dark:border-white/10">
+      <table class="min-w-[950px] w-full text-sm">
+        <thead class="bg-white/70 dark:bg-slate-900/50 text-gray-700 dark:text-gray-200">
+          <tr>
+            <th class="text-left px-4 py-3">Period</th>
+            <th class="text-left px-4 py-3">Coverage</th>
+            <th class="text-left px-4 py-3">Base Pay</th>
+            <th class="text-left px-4 py-3">Deductions</th>
+            <th class="text-left px-4 py-3">Net Pay</th>
+            <th class="text-left px-4 py-3">Status</th>
+            <th class="text-left px-4 py-3">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200/70 dark:divide-white/10">
+          {% for item in payroll_history %}
+          <tr class="hover:bg-white/60 dark:hover:bg-white/5 transition">
+            <td class="px-4 py-3 font-bold text-gray-900 dark:text-white">{{ item.batch.period.name }}</td>
+            <td class="px-4 py-3 text-gray-600 dark:text-gray-300">
+              {{ item.batch.period.start_date }} to {{ item.batch.period.end_date }}
+            </td>
+            <td class="px-4 py-3">₱{{ item.base_pay }}</td>
+            <td class="px-4 py-3">₱{{ item.deductions_total }}</td>
+            <td class="px-4 py-3 font-extrabold text-accent">₱{{ item.net_pay }}</td>
+            <td class="px-4 py-3">
+              <span class="inline-flex px-3 py-1 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 text-xs font-bold">
+                {{ item.batch.get_status_display }}
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <a href="{% url 'employee_payslip_print' item.id %}"
+                 target="_blank"
+                 class="inline-flex items-center gap-2 px-4 py-2 rounded-xl gradient-accent text-white hover:shadow-glow transition text-xs font-bold">
+                <iconify-icon icon="ph:receipt-duotone"></iconify-icon>
+                Payslip
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+              No saved payroll history yet. Once admin processes payroll, your payslip will appear here.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
 </section>
-
-<!-- DTR Modal -->
-<div id="dtrModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-xl bg-white dark:bg-gray-800">
-        <div class="flex justify-between items-center mb-4">
-            <div>
-                <h3 class="text-lg font-semibold">Daily Time Record (DTR)</h3>
-                <p class="text-sm text-gray-500">Payroll Period: {{ payroll_period|default:"Nov 1-15, 2023" }}</p>
-            </div>
-            <div class="flex items-center gap-2">
-                <iconify-icon icon="ph:lock-duotone" class="text-amber-500"></iconify-icon>
-                <span class="text-sm text-gray-500">READ ONLY - SYSTEM GENERATED</span>
-                <button id="closeDtrModal" class="ml-4 text-gray-400 hover:text-gray-600">
-                    <iconify-icon icon="ph:x-duotone"></iconify-icon>
-                </button>
-            </div>
-        </div>
-        <div class="relative border rounded-lg p-4">
-            <div class="absolute inset-0 flex items-center justify-center opacity-10">
-                <div class="text-6xl font-bold text-gray-400 transform -rotate-45">SYSTEM GENERATED</div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Date</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Day</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Time In</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Time Out</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Lunch In</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Lunch Out</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Total Hours</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Late (mins)</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Undertime (mins)</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium">Remarks</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200" id="dtrTableBody">
-                        <!-- DTR data will be populated here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="mt-4 flex justify-between items-center">
-            <div class="text-sm text-gray-500">
-                <iconify-icon icon="ph:info-duotone"></iconify-icon>
-                This DTR is system-generated and cannot be edited. Contact HR for corrections.
-            </div>
-            <div class="flex gap-2">
-                <button class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">Print</button>
-                <button class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">Export PDF</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<footer class="pb-8 pt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
-    © IntelliHRTrack • MIMAROPA Government Payroll Portal
-</footer>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    // DTR Modal functionality
-    const dtrModal = document.getElementById('dtrModal');
-    const viewDtrBtn = document.getElementById('viewDtrBtn');
-    const closeDtrModal = document.getElementById('closeDtrModal');
-
-    viewDtrBtn?.addEventListener('click', () => {
-        // Sample DTR data
-        const sampleDtr = [
-            { date: '2024-01-15', day: 'Mon', timeIn: '07:45', timeOut: '16:30', lunchIn: '12:00', lunchOut: '13:00', totalHours: 8, late: 0, undertime: 0, remarks: 'Present' },
-            { date: '2024-01-16', day: 'Tue', timeIn: '08:16', timeOut: '17:00', lunchIn: '12:05', lunchOut: '13:05', totalHours: 7.5, late: 1, undertime: 30, remarks: 'Late - Flag Ceremony' },
-            { date: '2024-01-17', day: 'Wed', timeIn: '07:30', timeOut: '16:00', lunchIn: '12:00', lunchOut: '13:00', totalHours: 8, late: 0, undertime: 0, remarks: 'Present' },
-            { date: '2024-01-18', day: 'Thu', timeIn: '08:10', timeOut: '16:45', lunchIn: '12:00', lunchOut: '13:00', totalHours: 7.75, late: 0, undertime: 15, remarks: 'Grace Period' },
-            { date: '2024-01-19', day: 'Fri', timeIn: '07:55', timeOut: '16:30', lunchIn: '12:30', lunchOut: '13:30', totalHours: 7.5, late: 0, undertime: 30, remarks: 'Missing lunch log' },
-        ];
-
-        const tbody = document.getElementById('dtrTableBody');
-        tbody.innerHTML = '';
-        
-        sampleDtr.forEach(record => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="px-4 py-2 text-sm">${record.date}</td>
-                <td class="px-4 py-2 text-sm">${record.day}</td>
-                <td class="px-4 py-2 text-sm readonly-field">${record.timeIn}</td>
-                <td class="px-4 py-2 text-sm readonly-field">${record.timeOut}</td>
-                <td class="px-4 py-2 text-sm readonly-field">${record.lunchIn}</td>
-                <td class="px-4 py-2 text-sm readonly-field">${record.lunchOut}</td>
-                <td class="px-4 py-2 text-sm">${record.totalHours}</td>
-                <td class="px-4 py-2 text-sm ${record.late > 0 ? 'text-red-600 font-medium' : ''}">${record.late}</td>
-                <td class="px-4 py-2 text-sm ${record.undertime > 0 ? 'text-amber-600 font-medium' : ''}">${record.undertime}</td>
-                <td class="px-4 py-2 text-sm">${record.remarks}</td>
-            `;
-            tbody.appendChild(row);
-        });
-
-        dtrModal.classList.remove('hidden');
-    });
-
-    closeDtrModal?.addEventListener('click', () => {
-        dtrModal.classList.add('hidden');
-    });
-
-    // Close modal when clicking outside
-    window.addEventListener('click', (event) => {
-        if (event.target === dtrModal) {
-            dtrModal.classList.add('hidden');
-        }
-    });
-
-    // Format peso values
-    document.querySelectorAll('.peso').forEach(el => {
-        const text = el.textContent;
-        if (text && !text.startsWith('₱')) {
-            const num = parseFloat(text.replace(/[^0-9.-]+/g, ""));
-            if (!isNaN(num)) {
-                el.textContent = '₱' + num.toLocaleString('en-PH', { minimumFractionDigits: 2 });
-            }
-        }
-    });
-
-    // Charts
-    try {
-        const deductionsEl = document.getElementById('deductionsChart');
-        const deductionsCtx = deductionsEl ? deductionsEl.getContext('2d') : null;
-        if (deductionsCtx) {
-            new Chart(deductionsCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Tax', 'SSS', 'PhilHealth', 'Pag-IBIG', 'Attendance'],
-                    datasets: [{
-                        data: [4850, 1200, 900, 100, 695],
-                        backgroundColor: ['#3b82f6', '#ef4444', '#eab308', '#10b981', '#8b5cf6'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-    } catch (e) {
-        console.log('Chart initialization error:', e);
-    }
-
-    // Theme toggle
-    const themeToggleHeader = document.getElementById('themeToggleHeader');
-    themeToggleHeader?.addEventListener('click', () => {
-        document.documentElement.classList.toggle('dark');
-        localStorage.setItem('ih_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-    });
-
-    // Clock
-    const headerClock = document.getElementById('headerClock');
-    function updateClock() {
-        if (headerClock) {
-            const now = new Date();
-            headerClock.textContent = now.toLocaleTimeString('en-PH', { hour12: false });
-        }
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-
-    // Network status
-    const netDot = document.getElementById('netDot');
-    function updateNet() {
-        if (netDot) {
-            const isOnline = navigator.onLine;
-            netDot.className = `inline-block w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`;
-            netDot.title = isOnline ? 'Online' : 'Offline';
-        }
-    }
-    window.addEventListener('online', updateNet);
-    window.addEventListener('offline', updateNet);
-    updateNet();
-</script>
 {% endblock %}
