@@ -10,8 +10,8 @@
 
 <div class="space-y-5">
   <!-- HERO -->
-  <header class="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-cyan-950/70 p-6 md:p-8 shadow-2xl">
-    <div class="absolute inset-0 opacity-20"
+  <header class="relative overflow-hidden rounded-3xl border border-gray-200/70 bg-gradient-to-br from-white/95 via-cyan-50/80 to-teal-50/80 p-6 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-gradient-to-br dark:from-slate-900/90 dark:via-slate-900/80 dark:to-cyan-950/70 dark:shadow-2xl md:p-8">
+    <div class="absolute inset-0 opacity-30 dark:opacity-20"
          style="background-image:
          radial-gradient(circle at 20% 20%, rgba(20,184,166,.35), transparent 35%),
          radial-gradient(circle at 85% 25%, rgba(59,130,246,.25), transparent 30%),
@@ -20,37 +20,42 @@
 
     <div class="relative z-10 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
       <div>
-        <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
-          <span class="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
+        <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+          <span class="inline-block h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
           Workforce Command Center
         </div>
-        <h1 class="text-3xl font-black tracking-tight text-white md:text-4xl">
+
+        <h1 class="text-3xl font-black tracking-tight text-gray-950 dark:text-white md:text-4xl">
           Workforce Dashboard
         </h1>
-        <p class="mt-2 max-w-3xl text-sm text-slate-300 md:text-base">
+
+        <p class="mt-2 max-w-3xl text-sm text-gray-600 dark:text-slate-300 md:text-base">
           Monitor attendance, payroll readiness, leave approvals, device health, and operational risks across your branch in one clean view.
         </p>
       </div>
 
       <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur">
-          <div class="text-[11px] uppercase tracking-wide text-slate-400">Branch</div>
-          <div id="branchName" class="mt-1 text-sm font-semibold text-white">{{ dashboard_data.branch }}</div>
+        <div class="rounded-2xl border border-gray-200/70 bg-white/70 px-4 py-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
+          <div class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-slate-400">Branch</div>
+          <div id="branchName" class="mt-1 text-sm font-semibold text-gray-950 dark:text-white">{{ dashboard_data.branch }}</div>
         </div>
-        <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur">
-          <div class="text-[11px] uppercase tracking-wide text-slate-400">Date</div>
-          <div id="headerDate" class="mt-1 text-sm font-semibold text-white">{{ today }}</div>
+
+        <div class="rounded-2xl border border-gray-200/70 bg-white/70 px-4 py-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
+          <div class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-slate-400">Date</div>
+          <div id="headerDate" class="mt-1 text-sm font-semibold text-gray-950 dark:text-white">{{ today }}</div>
         </div>
-        <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur">
-          <div class="text-[11px] uppercase tracking-wide text-slate-400">System Status</div>
-          <div class="mt-1 flex items-center gap-2 text-sm font-semibold text-emerald-300">
-            <span id="netDot" class="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+
+        <div class="rounded-2xl border border-gray-200/70 bg-white/70 px-4 py-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
+          <div class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-slate-400">System Status</div>
+          <div class="mt-1 flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+            <span id="netDot" class="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
             <span id="networkLabel">Online</span>
           </div>
         </div>
-        <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur">
-          <div class="text-[11px] uppercase tracking-wide text-slate-400">Clock</div>
-          <div id="headerClock" class="mt-1 text-sm font-semibold text-white">--:--:--</div>
+
+        <div class="rounded-2xl border border-gray-200/70 bg-white/70 px-4 py-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
+          <div class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-slate-400">Clock</div>
+          <div id="headerClock" class="mt-1 text-sm font-semibold text-gray-950 dark:text-white">--:--:--</div>
         </div>
       </div>
     </div>
@@ -58,101 +63,102 @@
 
   <!-- KPI ROW -->
   <section class="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
-    <div class="rounded-2xl border border-emerald-500/20 bg-slate-900/80 p-4 shadow-lg">
-      <div class="text-xs text-slate-400">Total Employees</div>
-      <div id="totalEmployeesNum" class="mt-2 text-3xl font-black text-white">{{ dashboard_data.total_employees }}</div>
-      <div class="mt-1 text-xs text-slate-400">Active workforce</div>
+    <div class="rounded-2xl border border-emerald-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80 dark:shadow-lg">
+      <div class="text-xs text-gray-500 dark:text-slate-400">Total Employees</div>
+      <div id="totalEmployeesNum" class="mt-2 text-3xl font-black text-gray-950 dark:text-white">{{ dashboard_data.total_employees }}</div>
+      <div class="mt-1 text-xs text-gray-500 dark:text-slate-400">Active workforce</div>
     </div>
 
-    <div class="rounded-2xl border border-cyan-500/20 bg-slate-900/80 p-4 shadow-lg">
-      <div class="text-xs text-slate-400">Present</div>
-      <div id="presentNum" class="mt-2 text-3xl font-black text-cyan-300">{{ dashboard_data.present }}</div>
-      <div class="mt-1 text-xs text-emerald-400">Today</div>
+    <div class="rounded-2xl border border-cyan-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80 dark:shadow-lg">
+      <div class="text-xs text-gray-500 dark:text-slate-400">Present</div>
+      <div id="presentNum" class="mt-2 text-3xl font-black text-cyan-600 dark:text-cyan-300">{{ dashboard_data.present }}</div>
+      <div class="mt-1 text-xs text-emerald-600 dark:text-emerald-400">Today</div>
     </div>
 
-    <div class="rounded-2xl border border-amber-500/20 bg-slate-900/80 p-4 shadow-lg">
-      <div class="text-xs text-slate-400">Late</div>
-      <div id="lateNum" class="mt-2 text-3xl font-black text-amber-300">{{ dashboard_data.late }}</div>
-      <div id="lateDept" class="mt-1 text-xs text-amber-400">Based on first check-in</div>
+    <div class="rounded-2xl border border-amber-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80 dark:shadow-lg">
+      <div class="text-xs text-gray-500 dark:text-slate-400">Late</div>
+      <div id="lateNum" class="mt-2 text-3xl font-black text-amber-600 dark:text-amber-300">{{ dashboard_data.late }}</div>
+      <div id="lateDept" class="mt-1 text-xs text-amber-600 dark:text-amber-400">Based on first check-in</div>
     </div>
 
-    <div class="rounded-2xl border border-rose-500/20 bg-slate-900/80 p-4 shadow-lg">
-      <div class="text-xs text-slate-400">Absent</div>
-      <div id="absentNum" class="mt-2 text-3xl font-black text-rose-300">{{ dashboard_data.absent }}</div>
-      <div class="mt-1 text-xs text-rose-400">Requires review</div>
+    <div class="rounded-2xl border border-rose-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80 dark:shadow-lg">
+      <div class="text-xs text-gray-500 dark:text-slate-400">Absent</div>
+      <div id="absentNum" class="mt-2 text-3xl font-black text-rose-600 dark:text-rose-300">{{ dashboard_data.absent }}</div>
+      <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">Requires review</div>
     </div>
 
-    <div class="rounded-2xl border border-blue-500/20 bg-slate-900/80 p-4 shadow-lg">
-      <div class="text-xs text-slate-400">On Leave</div>
-      <div id="leaveNum" class="mt-2 text-3xl font-black text-blue-300">{{ dashboard_data.leave }}</div>
-      <div class="mt-1 text-xs text-slate-400">Approved today</div>
+    <div class="rounded-2xl border border-blue-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80 dark:shadow-lg">
+      <div class="text-xs text-gray-500 dark:text-slate-400">On Leave</div>
+      <div id="leaveNum" class="mt-2 text-3xl font-black text-blue-600 dark:text-blue-300">{{ dashboard_data.leave }}</div>
+      <div class="mt-1 text-xs text-gray-500 dark:text-slate-400">Approved today</div>
     </div>
 
-    <div class="rounded-2xl border border-fuchsia-500/20 bg-slate-900/80 p-4 shadow-lg">
-      <div class="text-xs text-slate-400">Pending Leaves</div>
-      <div id="pendingLeavesNum" class="mt-2 text-3xl font-black text-fuchsia-300">{{ dashboard_data.pending_leaves }}</div>
-      <div class="mt-1 text-xs text-fuchsia-400">Awaiting approval</div>
+    <div class="rounded-2xl border border-fuchsia-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80 dark:shadow-lg">
+      <div class="text-xs text-gray-500 dark:text-slate-400">Pending Leaves</div>
+      <div id="pendingLeavesNum" class="mt-2 text-3xl font-black text-fuchsia-600 dark:text-fuchsia-300">{{ dashboard_data.pending_leaves }}</div>
+      <div class="mt-1 text-xs text-fuchsia-600 dark:text-fuchsia-400">Awaiting approval</div>
     </div>
 
-    <div class="rounded-2xl border border-indigo-500/20 bg-slate-900/80 p-4 shadow-lg">
-      <div class="text-xs text-slate-400">Payroll Ready</div>
-      <div id="payrollReadyNum" class="mt-2 text-3xl font-black text-indigo-300">{{ dashboard_data.payroll_ready }}</div>
-      <div class="mt-1 text-xs text-slate-400">{{ dashboard_data.incomplete_dtr_count }} incomplete DTR</div>
+    <div class="rounded-2xl border border-indigo-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80 dark:shadow-lg">
+      <div class="text-xs text-gray-500 dark:text-slate-400">Payroll Ready</div>
+      <div id="payrollReadyNum" class="mt-2 text-3xl font-black text-indigo-600 dark:text-indigo-300">{{ dashboard_data.payroll_ready }}</div>
+      <div class="mt-1 text-xs text-gray-500 dark:text-slate-400">{{ dashboard_data.incomplete_dtr_count }} incomplete DTR</div>
     </div>
 
-    <div class="rounded-2xl border border-emerald-500/20 bg-slate-900/80 p-4 shadow-lg">
-      <div class="text-xs text-slate-400">Devices Online</div>
-      <div id="devicesOnlineNum" class="mt-2 text-3xl font-black text-emerald-300">{{ dashboard_data.devices_online }}/{{ dashboard_data.devices_total }}</div>
-      <div class="mt-1 text-xs text-amber-400">Branch devices</div>
+    <div class="rounded-2xl border border-emerald-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80 dark:shadow-lg">
+      <div class="text-xs text-gray-500 dark:text-slate-400">Devices Online</div>
+      <div id="devicesOnlineNum" class="mt-2 text-3xl font-black text-emerald-600 dark:text-emerald-300">{{ dashboard_data.devices_online }}/{{ dashboard_data.devices_total }}</div>
+      <div class="mt-1 text-xs text-amber-600 dark:text-amber-400">Branch devices</div>
     </div>
   </section>
 
   <!-- QUICK ACTIONS -->
   <section class="grid grid-cols-1 gap-4">
-    <div class="rounded-3xl border border-white/10 bg-slate-900/80 p-5 shadow-xl">
+    <div class="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
       <div class="flex items-center justify-between">
         <div>
-          <h3 class="text-lg font-bold text-white">Quick Actions</h3>
-          <p class="text-xs text-slate-400">Jump directly to the most important admin tasks.</p>
+          <h3 class="text-lg font-bold text-gray-950 dark:text-white">Quick Actions</h3>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Jump directly to the most important admin tasks.</p>
         </div>
-        <span class="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-300">Admin Tools</span>
+
+        <span class="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-700 dark:text-cyan-300">Admin Tools</span>
       </div>
 
       <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <a href="{% url 'admin_leave' %}"
            class="flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 transition hover:bg-emerald-500/20">
           <div>
-            <div class="text-sm font-bold text-white">Approve Leave Requests</div>
-            <div class="mt-1 text-xs text-slate-300">Review pending leave submissions</div>
+            <div class="text-sm font-bold text-gray-950 dark:text-white">Approve Leave Requests</div>
+            <div class="mt-1 text-xs text-gray-600 dark:text-slate-300">Review pending leave submissions</div>
           </div>
-          <iconify-icon icon="ph:check-circle-duotone" class="text-2xl text-emerald-300"></iconify-icon>
+          <iconify-icon icon="ph:check-circle-duotone" class="text-2xl text-emerald-600 dark:text-emerald-300"></iconify-icon>
         </a>
 
         <a href="{% url 'admin_payroll' %}"
            class="flex items-center justify-between rounded-2xl border border-violet-500/20 bg-violet-500/10 p-4 transition hover:bg-violet-500/20">
           <div>
-            <div class="text-sm font-bold text-white">Open Payroll Module</div>
-            <div class="mt-1 text-xs text-slate-300">Process and review payroll records</div>
+            <div class="text-sm font-bold text-gray-950 dark:text-white">Open Payroll Module</div>
+            <div class="mt-1 text-xs text-gray-600 dark:text-slate-300">Process and review payroll records</div>
           </div>
-          <iconify-icon icon="ph:currency-circle-dollar-duotone" class="text-2xl text-violet-300"></iconify-icon>
+          <iconify-icon icon="ph:currency-circle-dollar-duotone" class="text-2xl text-violet-600 dark:text-violet-300"></iconify-icon>
         </a>
 
         <a href="{% url 'admin_employees' %}"
            class="flex items-center justify-between rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 transition hover:bg-blue-500/20">
           <div>
-            <div class="text-sm font-bold text-white">Manage Employees</div>
-            <div class="mt-1 text-xs text-slate-300">Approve, edit, or remove employee accounts</div>
+            <div class="text-sm font-bold text-gray-950 dark:text-white">Manage Employees</div>
+            <div class="mt-1 text-xs text-gray-600 dark:text-slate-300">Approve, edit, or remove employee accounts</div>
           </div>
-          <iconify-icon icon="ph:users-three-duotone" class="text-2xl text-blue-300"></iconify-icon>
+          <iconify-icon icon="ph:users-three-duotone" class="text-2xl text-blue-600 dark:text-blue-300"></iconify-icon>
         </a>
 
         <a href="{% url 'admin_biometrics' %}"
            class="flex items-center justify-between rounded-2xl border border-pink-500/20 bg-pink-500/10 p-4 transition hover:bg-pink-500/20">
           <div>
-            <div class="text-sm font-bold text-white">Open Biometrics Module</div>
-            <div class="mt-1 text-xs text-slate-300">Import, sync, and manage attendance logs</div>
+            <div class="text-sm font-bold text-gray-950 dark:text-white">Open Biometrics Module</div>
+            <div class="mt-1 text-xs text-gray-600 dark:text-slate-300">Import, sync, and manage attendance logs</div>
           </div>
-          <iconify-icon icon="ph:fingerprint-duotone" class="text-2xl text-pink-300"></iconify-icon>
+          <iconify-icon icon="ph:fingerprint-duotone" class="text-2xl text-pink-600 dark:text-pink-300"></iconify-icon>
         </a>
       </div>
     </div>
@@ -163,98 +169,104 @@
     <!-- LEFT -->
     <div class="col-span-12 space-y-4 xl:col-span-8">
       <!-- ATTENDANCE BY DEPARTMENT -->
-      <div class="rounded-3xl border border-white/10 bg-slate-900/80 p-5 shadow-xl">
+      <div class="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-lg font-bold text-white">Attendance by Department</h3>
-            <p class="text-xs text-slate-400">Present and late employees per department</p>
+            <h3 class="text-lg font-bold text-gray-950 dark:text-white">Attendance by Department</h3>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Present and late employees per department</p>
           </div>
-          <span class="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-300">Today</span>
+
+          <span class="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-700 dark:text-cyan-300">Today</span>
         </div>
 
         {% if dashboard_data.department_attendance %}
           <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {% for row in dashboard_data.department_attendance %}
-              <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div class="min-h-[40px] text-sm font-bold text-white break-words">
+              <div class="rounded-2xl border border-gray-200/70 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                <div class="min-h-[40px] break-words text-sm font-bold text-gray-950 dark:text-white">
                   {{ row.department }}
                 </div>
 
                 <div class="mt-4 grid grid-cols-2 gap-3">
                   <div class="rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3">
-                    <div class="text-[11px] uppercase tracking-wide text-cyan-200">Present</div>
-                    <div class="mt-1 text-2xl font-black text-cyan-300">{{ row.present }}</div>
+                    <div class="text-[11px] uppercase tracking-wide text-cyan-700 dark:text-cyan-200">Present</div>
+                    <div class="mt-1 text-2xl font-black text-cyan-600 dark:text-cyan-300">{{ row.present }}</div>
                   </div>
 
                   <div class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
-                    <div class="text-[11px] uppercase tracking-wide text-amber-200">Late</div>
-                    <div class="mt-1 text-2xl font-black text-amber-300">{{ row.late }}</div>
+                    <div class="text-[11px] uppercase tracking-wide text-amber-700 dark:text-amber-200">Late</div>
+                    <div class="mt-1 text-2xl font-black text-amber-600 dark:text-amber-300">{{ row.late }}</div>
                   </div>
                 </div>
               </div>
             {% endfor %}
           </div>
         {% else %}
-          <div class="mt-5 rounded-2xl border border-dashed border-white/10 bg-white/5 px-4 py-8 text-center text-sm text-slate-400">
+          <div class="mt-5 rounded-2xl border border-dashed border-gray-300 bg-white/50 px-4 py-8 text-center text-sm text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
             No department attendance data available today.
           </div>
         {% endif %}
       </div>
 
       <!-- PAYROLL -->
-      <div class="rounded-3xl border border-white/10 bg-slate-900/80 p-5 shadow-xl">
+      <div class="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-lg font-bold text-white">Payroll Snapshot</h3>
-            <p class="text-xs text-slate-400">Current payroll readiness and attendance impact</p>
+            <h3 class="text-lg font-bold text-gray-950 dark:text-white">Payroll Snapshot</h3>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Current payroll readiness and attendance impact</p>
           </div>
-          <span class="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">Latest Batch</span>
+
+          <span class="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-700 dark:text-amber-300">Latest Batch</span>
         </div>
 
         <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div class="text-xs text-slate-400">Estimated Gross</div>
-            <div class="mt-2 text-2xl font-black text-white">₱{{ dashboard_data.estimated_gross }}</div>
+          <div class="rounded-2xl border border-gray-200/70 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+            <div class="text-xs text-gray-500 dark:text-slate-400">Estimated Gross</div>
+            <div class="mt-2 text-2xl font-black text-gray-950 dark:text-white">₱{{ dashboard_data.estimated_gross }}</div>
           </div>
-          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div class="text-xs text-slate-400">Deductions</div>
-            <div class="mt-2 text-2xl font-black text-rose-300">₱{{ dashboard_data.estimated_deductions }}</div>
+
+          <div class="rounded-2xl border border-gray-200/70 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+            <div class="text-xs text-gray-500 dark:text-slate-400">Deductions</div>
+            <div class="mt-2 text-2xl font-black text-rose-600 dark:text-rose-300">₱{{ dashboard_data.estimated_deductions }}</div>
           </div>
-          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div class="text-xs text-slate-400">Ready Employees</div>
-            <div class="mt-2 text-2xl font-black text-emerald-300">{{ dashboard_data.payroll_ready }}</div>
+
+          <div class="rounded-2xl border border-gray-200/70 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+            <div class="text-xs text-gray-500 dark:text-slate-400">Ready Employees</div>
+            <div class="mt-2 text-2xl font-black text-emerald-600 dark:text-emerald-300">{{ dashboard_data.payroll_ready }}</div>
           </div>
-          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div class="text-xs text-slate-400">Incomplete DTR</div>
-            <div class="mt-2 text-2xl font-black text-amber-300">{{ dashboard_data.incomplete_dtr_count }}</div>
+
+          <div class="rounded-2xl border border-gray-200/70 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+            <div class="text-xs text-gray-500 dark:text-slate-400">Incomplete DTR</div>
+            <div class="mt-2 text-2xl font-black text-amber-600 dark:text-amber-300">{{ dashboard_data.incomplete_dtr_count }}</div>
           </div>
         </div>
 
         <div class="mt-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4">
-          <div class="text-sm font-semibold text-indigo-200">Payroll Note</div>
-          <p class="mt-1 text-sm text-slate-300">
+          <div class="text-sm font-semibold text-indigo-700 dark:text-indigo-200">Payroll Note</div>
+          <p class="mt-1 text-sm text-gray-600 dark:text-slate-300">
             Some employees may have incomplete logs or payroll issues that should be reviewed before final release.
           </p>
         </div>
       </div>
 
       <!-- AI SUMMARY -->
-      <div class="rounded-3xl border border-emerald-500/20 bg-gradient-to-r from-emerald-500/15 to-cyan-500/10 p-5 shadow-xl">
+      <div class="rounded-3xl border border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 p-5 shadow-xl shadow-slate-200/60 dark:from-emerald-500/15 dark:to-cyan-500/10 dark:shadow-xl">
         <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <div class="flex items-center gap-2 text-white">
-              <iconify-icon icon="ph:brain-duotone" class="text-xl text-emerald-300"></iconify-icon>
+            <div class="flex items-center gap-2 text-gray-950 dark:text-white">
+              <iconify-icon icon="ph:brain-duotone" class="text-xl text-emerald-600 dark:text-emerald-300"></iconify-icon>
               <h3 class="text-lg font-bold">AI Summary Insight</h3>
             </div>
-            <p class="mt-1 text-xs text-slate-300">Updated: <span id="insightTime">now</span></p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-slate-300">Updated: <span id="insightTime">now</span></p>
           </div>
+
           <button id="runAnomaly"
                   class="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400">
             Run Anomaly Scan
           </button>
         </div>
 
-        <div id="aiInsightText" class="mt-4 text-sm leading-7 text-slate-100">
+        <div id="aiInsightText" class="mt-4 text-sm leading-7 text-gray-700 dark:text-slate-100">
           Loading insight...
         </div>
       </div>
@@ -263,10 +275,10 @@
     <!-- RIGHT -->
     <div class="col-span-12 space-y-4 xl:col-span-4">
       <!-- NOTIFICATIONS -->
-      <div class="rounded-3xl border border-white/10 bg-slate-900/80 p-5 shadow-xl">
+      <div class="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
         <div class="flex items-center justify-between">
-          <h3 class="text-lg font-bold text-white">Notifications & Alerts</h3>
-          <span class="rounded-full bg-rose-500/10 px-2.5 py-1 text-xs text-rose-300">Active</span>
+          <h3 class="text-lg font-bold text-gray-950 dark:text-white">Notifications & Alerts</h3>
+          <span class="rounded-full bg-rose-500/10 px-2.5 py-1 text-xs text-rose-700 dark:text-rose-300">Active</span>
         </div>
 
         <ul class="mt-4 space-y-3 pr-1">
@@ -274,46 +286,55 @@
             {% for alert in dashboard_data.alerts %}
               <li class="rounded-2xl border p-3
                 {% if alert.lvl == 'High' %}
-                  border-rose-500/20 bg-rose-500/10 text-rose-200
+                  border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-200
                 {% elif alert.lvl == 'Medium' %}
-                  border-amber-500/20 bg-amber-500/10 text-amber-100
+                  border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-100
                 {% else %}
-                  border-blue-500/20 bg-blue-500/10 text-blue-100
+                  border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-100
                 {% endif %}">
                 <div class="flex items-start justify-between gap-3">
                   <div class="text-sm font-medium">{{ alert.text }}</div>
-                  <span class="shrink-0 rounded-full bg-black/20 px-2 py-0.5 text-[10px] font-semibold">
+                  <span class="shrink-0 rounded-full bg-white/50 px-2 py-0.5 text-[10px] font-semibold dark:bg-black/20">
                     {{ alert.lvl }}
                   </span>
                 </div>
               </li>
             {% endfor %}
           {% else %}
-            <li class="rounded-2xl border border-dashed border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-slate-400">
+            <li class="rounded-2xl border border-dashed border-gray-300 bg-white/50 px-4 py-6 text-center text-sm text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
               No notifications available.
             </li>
           {% endif %}
         </ul>
       </div>
 
-      
       <!-- AUDIT SNAPSHOT -->
-      <div class="rounded-3xl border border-white/10 bg-slate-900/80 p-5 shadow-xl">
-        <h3 class="text-lg font-bold text-white">Audit Snapshot</h3>
-        <p class="mt-1 text-xs text-slate-400">
+      <div class="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
+        <h3 class="text-lg font-bold text-gray-950 dark:text-white">Audit Snapshot</h3>
+        <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
           Capture current dashboard state for compliance, reports, and incident review.
         </p>
+
         <div class="mt-4 grid gap-2">
-          <button id="captureBtn" class="rounded-xl bg-emerald-500 px-4 py-2.5 font-semibold text-white">Capture Snapshot</button>
-          <button id="downloadAudit" class="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 font-semibold text-slate-200">Download JSON</button>
-          <button id="exportAuditBtn" class="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-2.5 font-semibold text-cyan-200">Export Audit Snapshot</button>
+          <button id="captureBtn" class="rounded-xl bg-emerald-500 px-4 py-2.5 font-semibold text-white hover:bg-emerald-400">
+            Capture Snapshot
+          </button>
+
+          <button id="downloadAudit" class="rounded-xl border border-gray-200 bg-white/70 px-4 py-2.5 font-semibold text-gray-700 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10">
+            Download JSON
+          </button>
+
+          <button id="exportAuditBtn" class="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-2.5 font-semibold text-cyan-700 hover:bg-cyan-500/20 dark:text-cyan-200">
+            Export Audit Snapshot
+          </button>
         </div>
-        <div id="auditTime" class="mt-3 text-xs text-slate-400">Last captured: —</div>
+
+        <div id="auditTime" class="mt-3 text-xs text-gray-500 dark:text-slate-400">Last captured: —</div>
       </div>
+    </div>
+  </section>
 
-     
-
-  <footer class="pb-8 pt-2 text-center text-xs text-slate-500">
+  <footer class="pb-8 pt-2 text-center text-xs text-gray-500 dark:text-slate-500">
     © IntelliHRTrack • Admin workforce dashboard
   </footer>
 </div>
@@ -323,19 +344,6 @@
 
 {% block extra_js %}
 <script>
-  const themeToggle = document.getElementById('themeToggle');
-  themeToggle?.addEventListener('click', () => {
-    document.documentElement.classList.toggle('dark');
-    localStorage.setItem(
-      'ih_theme',
-      document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-    );
-  });
-
-  if (localStorage.getItem('ih_theme') === 'dark') {
-    document.documentElement.classList.add('dark');
-  }
-
   const state = JSON.parse(document.getElementById('dashboard-data').textContent);
 
   const headerClock = document.getElementById('headerClock');
@@ -346,22 +354,29 @@
     const now = new Date();
     if (headerClock) headerClock.textContent = now.toLocaleTimeString();
   }
+
   setInterval(updateClock, 1000);
   updateClock();
 
   function updateNet() {
     const online = navigator.onLine;
+
     if (netDot) {
-      netDot.classList.toggle('bg-emerald-400', online);
-      netDot.classList.toggle('bg-rose-400', !online);
+      netDot.classList.toggle('bg-emerald-500', online);
+      netDot.classList.toggle('dark:bg-emerald-400', online);
+      netDot.classList.toggle('bg-rose-500', !online);
+      netDot.classList.toggle('dark:bg-rose-400', !online);
     }
+
     if (networkLabel) networkLabel.textContent = online ? 'Online' : 'Offline';
   }
+
   window.addEventListener('online', updateNet);
   window.addEventListener('offline', updateNet);
   updateNet();
 
   const deviceStatus = document.getElementById('deviceStatus');
+
   function renderDevices() {
     if (!deviceStatus) return;
     deviceStatus.innerHTML = '';
@@ -369,10 +384,10 @@
     (state.devices || []).forEach(device => {
       const statusColor =
         device.status === 'online' || device.status === 'healthy'
-          ? 'text-emerald-300'
+          ? 'text-emerald-700 dark:text-emerald-300'
           : device.status === 'sync_delay'
-          ? 'text-amber-300'
-          : 'text-rose-300';
+          ? 'text-amber-700 dark:text-amber-300'
+          : 'text-rose-700 dark:text-rose-300';
 
       const badgeBg =
         device.status === 'online' || device.status === 'healthy'
@@ -382,11 +397,11 @@
           : 'bg-rose-500/10 border-rose-500/20';
 
       const item = document.createElement('div');
-      item.className = 'flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3';
+      item.className = 'flex items-center justify-between gap-3 rounded-2xl border border-gray-200/70 bg-white/60 p-3 dark:border-white/10 dark:bg-white/5';
       item.innerHTML = `
         <div>
-          <div class="text-sm font-semibold text-white">${device.name}</div>
-          <div class="mt-1 text-xs text-slate-400">${device.last} • Battery: ${device.battery}</div>
+          <div class="text-sm font-semibold text-gray-950 dark:text-white">${device.name}</div>
+          <div class="mt-1 text-xs text-gray-500 dark:text-slate-400">${device.last} • Battery: ${device.battery}</div>
         </div>
         <div class="rounded-full border px-2.5 py-1 text-xs font-semibold ${badgeBg} ${statusColor}">
           ${String(device.status).replace('_', ' ')}
@@ -395,6 +410,7 @@
       deviceStatus.appendChild(item);
     });
   }
+
   renderDevices();
 
   const aiInsightText = document.getElementById('aiInsightText');
@@ -416,6 +432,7 @@
         `${state.leave ?? 0} are on leave, and ${state.pending_leaves ?? 0} leave requests are pending approval.`;
     }
   }
+
   refreshInsight();
   setInterval(refreshInsight, 20000);
 
@@ -438,6 +455,7 @@
     };
 
     lastAudit = audit;
+
     const auditTime = document.getElementById('auditTime');
     if (auditTime) {
       auditTime.textContent = `Last captured: ${new Date(audit.timestamp).toLocaleString()}`;
@@ -450,11 +468,14 @@
     const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
+
     a.href = url;
     a.download = filename;
+
     document.body.appendChild(a);
     a.click();
     a.remove();
+
     URL.revokeObjectURL(url);
   }
 
