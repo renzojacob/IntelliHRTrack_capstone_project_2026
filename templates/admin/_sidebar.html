@@ -53,15 +53,12 @@
             <span>Payroll</span>
           </a>
         </li>
-
-         <!--
         <li>
           <a href="{% url 'admin_reports' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'reports' %}ring ring-white/30 bg-accent/10{% endif %}">
             <iconify-icon icon="ph:graph-duotone" class="text-accent"></iconify-icon>
             <span>Reports</span>
           </a>
         </li>
-          -->
 
         <li>
           <a href="{% url 'admin_analytics' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'analytics' %}ring ring-white/30 bg-accent/10{% endif %}">
@@ -70,15 +67,13 @@
           </a>
         </li>
 
-        <!-- 
+        
         <li>
           <a href="{% url 'admin_system' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'system' %}ring ring-white/30 bg-accent/10{% endif %}">
             <iconify-icon icon="ph:gear-six-duotone" class="text-accent"></iconify-icon>
             <span>System Administration</span>
           </a>
         </li>
-         -->
-
       </ul>
     </nav>
 
@@ -102,9 +97,9 @@
           <iconify-icon icon="ph:moon-stars-duotone" class="dark:hidden"></iconify-icon>
           Light / Dark
         </span>
-        <button id="themeToggle" class="p-2 rounded-xl glass hover:shadow-glow transition flex items-center gap-2">
-          <iconify-icon icon="ph:yin-yang-duotone" class="text-accent"></iconify-icon>
-          <span class="text-xs">Toggle</span>
+        <button data-theme-toggle type="button" class="w-full px-3 py-2 rounded-xl glass flex items-center justify-between">
+          <span>Light / Dark</span>
+          <span>Toggle</span>
         </button>
       </div>
     </div>

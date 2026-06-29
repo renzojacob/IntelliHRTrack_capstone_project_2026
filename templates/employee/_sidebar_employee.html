@@ -73,7 +73,7 @@
           </a>
         </li>
 
-        <!-- 
+
         <li>
           <a href="{% url 'employee_analytics' %}"
              class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'analytics' %}ring ring-white/30 bg-accent/10{% endif %}">
@@ -81,9 +81,7 @@
             <span>Analytics</span>
           </a>
         </li>
-         -->
 
-         <!--
        <li>
           <a href="{% url 'employee_notifications' %}"
              class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'notifications' %}ring ring-white/30 bg-accent/10{% endif %}">
@@ -91,8 +89,8 @@
             <span>Notifications</span>
           </a>
         </li>
-          -->
-<!--  
+
+
         <li>
           <a href="{% url 'employee_profile' %}"
              class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'profile' %}ring ring-white/30 bg-accent/10{% endif %}">
@@ -102,9 +100,13 @@
         </li>
       </ul>
     </nav>
-  -->
 
     <div class="neon-divider my-4"></div>
+
+    <button id="themeToggle" type="button" class="w-full px-3 py-2 rounded-xl glass flex items-center justify-between">
+  <span>Light / Dark</span>
+  <span>Toggle</span>
+</button>
 
     <!-- Logout (ADMIN STYLE – SAME COLOR & SIZE) -->
     <form method="post" action="{% url 'logout' %}">

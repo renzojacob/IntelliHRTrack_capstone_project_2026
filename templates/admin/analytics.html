@@ -45,7 +45,7 @@
         <span id="headerClock">--:--:--</span>
       </div>
 
-      <button id="themeToggle" type="button" class="p-2 rounded-xl glass hover:shadow-lg transition">
+      <button data-theme-toggle type="button" class="p-2 rounded-xl glass hover:shadow-lg transition">
         <iconify-icon icon="ph:sun-dim-duotone" class="hidden dark:inline text-accent"></iconify-icon>
         <iconify-icon icon="ph:moon-stars-duotone" class="dark:hidden text-accent"></iconify-icon>
       </button>
@@ -776,22 +776,7 @@ document.addEventListener('DOMContentLoaded', function () {
     `;
   }
 
-  const themeToggle = document.getElementById('themeToggle');
-  if (themeToggle) {
-    themeToggle.addEventListener('click', () => {
-      document.documentElement.classList.toggle('dark');
-      const isDark = document.documentElement.classList.contains('dark');
-      localStorage.setItem('ih_theme', isDark ? 'dark' : 'light');
-    });
-  }
-
-  const savedTheme = localStorage.getItem('ih_theme');
-  if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-
+  
   const headerClock = document.getElementById('headerClock');
 
   function updateClock() {
