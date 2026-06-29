@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+
+/* Make dark mode work by toggling class="dark" on <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Django template scanning */
+@source "../../../templates/**/*.html";
+@source "../../../core/**/*.html";
+@source "../../../core/**/*.py";
+
+
 /* ── Theme – custom design tokens ── */
 @theme {
   /* Font family */
