@@ -2,559 +2,742 @@
 {% block title %}Biometrics & Attendance | IntelliHRTrack{% endblock %}
 
 {% block content %}
-<div class="min-h-screen px-4 py-6 sm:px-6 lg:px-8" data-can-import="{{ can_import|yesno:'1,0' }}">
+<div class="space-y-6" data-can-import="{{ can_import|yesno:'1,0' }}">
 
-  <div class="mb-8">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Biometrics & Attendance</h1>
-        <p class="mt-2 text-gray-600 dark:text-gray-400">Import, validate, review, sync, and manage attendance logs.</p>
+  <!-- PAGE HERO -->
+  <section class="relative overflow-hidden rounded-3xl border border-gray-200/70 bg-gradient-to-br from-white/95 via-cyan-50/80 to-teal-50/70 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-gradient-to-br dark:from-slate-900/90 dark:via-slate-900/80 dark:to-cyan-950/70 dark:shadow-2xl sm:p-6 lg:p-8">
+    <div class="absolute inset-0 opacity-30 dark:opacity-20"
+         style="background-image:
+         radial-gradient(circle at 18% 20%, rgba(20,184,166,.35), transparent 34%),
+         radial-gradient(circle at 86% 25%, rgba(59,130,246,.25), transparent 30%),
+         radial-gradient(circle at 48% 85%, rgba(168,85,247,.18), transparent 35%);">
+    </div>
+
+    <div class="relative z-10 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+      <div class="max-w-3xl">
+        <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+          <span class="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
+          Biometric Attendance Control
+        </div>
+
+        <h1 class="text-3xl font-black tracking-tight text-gray-950 dark:text-white md:text-4xl">
+          Biometrics & Attendance
+        </h1>
+
+        <p class="mt-2 max-w-3xl text-sm leading-6 text-gray-600 dark:text-slate-300 md:text-base">
+          Import, validate, sync, review, and manage attendance logs from your Hikvision biometric device, CSV/Excel files, travel orders, and non-working dates.
+        </p>
       </div>
 
-      <div class="flex flex-wrap gap-3">
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2">
         <a href="{% url 'admin_biometrics_sync' %}"
-           class="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90">
-          <iconify-icon icon="ph:arrows-clockwise-duotone" class="mr-2"></iconify-icon>
+           class="inline-flex items-center justify-center gap-2 rounded-2xl bg-accent px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-[1.02] hover:shadow-glow">
+          <iconify-icon icon="ph:arrows-clockwise-duotone"></iconify-icon>
           Sync Device
         </a>
 
         <a href="{% url 'admin_attendance_create' %}"
-           class="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90">
+           class="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200/70 bg-white/80 px-4 py-3 text-sm font-bold text-gray-800 shadow-sm transition hover:bg-white hover:shadow-lg dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
+          <iconify-icon icon="ph:plus-circle-duotone" class="text-accent"></iconify-icon>
           Add Record
         </a>
 
         <a href="{% url 'admin_biometrics_template' %}"
-           class="inline-flex items-center rounded-lg border border-white/30 bg-white/60 px-4 py-2.5 text-sm font-medium text-accent shadow-sm transition hover:bg-white/80 dark:bg-slate-800/60">
-          Download Template
+           class="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-sm font-bold text-cyan-700 transition hover:bg-cyan-500/20 dark:text-cyan-300">
+          <iconify-icon icon="ph:file-arrow-down-duotone"></iconify-icon>
+          Template
         </a>
 
         <a href="{% url 'admin_biometrics_export' %}"
-           class="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90">
-          Export Records
+           class="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm font-bold text-blue-700 transition hover:bg-blue-500/20 dark:text-blue-300">
+          <iconify-icon icon="ph:export-duotone"></iconify-icon>
+          Export
         </a>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="mb-8 rounded-xl border border-white/20 bg-white/40 p-4 shadow-sm backdrop-blur-sm dark:bg-slate-800/40">
-    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div>
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Direct Device Sync</h2>
-        <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">
-          Use <span class="font-semibold text-accent">Sync Device</span> to fetch attendance logs directly from your Hikvision device into the database.
-        </p>
+  <!-- KPI CARDS -->
+  <section class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+    <div class="rounded-2xl border border-cyan-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Today Present</p>
+      <p class="mt-2 text-3xl font-black text-cyan-600 dark:text-cyan-300">{{ kpi.present|default:"—" }}</p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Based on check-in</p>
+    </div>
+
+    <div class="rounded-2xl border border-amber-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Late</p>
+      <p class="mt-2 text-3xl font-black text-amber-600 dark:text-amber-300">{{ kpi.late|default:"—" }}</p>
+      <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">After grace period</p>
+    </div>
+
+    <div class="rounded-2xl border border-rose-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Absent</p>
+      <p class="mt-2 text-3xl font-black text-rose-600 dark:text-rose-300">{{ kpi.absent|default:"—" }}</p>
+      <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">Excludes official travel</p>
+    </div>
+
+    <div class="rounded-2xl border border-blue-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">On Travel</p>
+      <p class="mt-2 text-3xl font-black text-blue-600 dark:text-blue-300">{{ kpi.on_travel|default:"0" }}</p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Official travel today</p>
+    </div>
+
+    <div class="col-span-2 rounded-2xl border border-emerald-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80 sm:col-span-1">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Last Import / Sync</p>
+      <p class="mt-2 text-lg font-black text-gray-950 dark:text-white">{{ kpi.last_sync|default:"—" }}</p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Most recent import time</p>
+    </div>
+  </section>
+
+  <!-- TOP WORK AREA -->
+  <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
+
+    <!-- IMPORT CARD -->
+    <section class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl xl:col-span-8">
+      <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Import Attendance File</h2>
+            <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Upload CSV, XLS, or XLSX files from your attendance exporter.</p>
+          </div>
+
+          <span class="w-fit rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-bold text-accent">
+            CSV / Excel
+          </span>
+        </div>
       </div>
-      <div class="flex flex-wrap gap-2 text-xs">
-        <span class="inline-flex items-center rounded-full bg-white/60 px-3 py-1 font-medium text-gray-700 ring-1 ring-white/30 dark:bg-slate-700/60 dark:text-gray-300">
-          Device → Django
-        </span>
-        <span class="inline-flex items-center rounded-full bg-white/60 px-3 py-1 font-medium text-gray-700 ring-1 ring-white/30 dark:bg-slate-700/60 dark:text-gray-300">
-          No manual export needed
-        </span>
-      </div>
-    </div>
-  </div>
 
-  <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
-    <div class="overflow-hidden rounded-xl glass p-5 shadow-sm">
-      <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Today Present</p>
-      <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{{ kpi.present|default:"—" }}</p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Based on Check-in</p>
-    </div>
+      <form id="importForm" method="post" enctype="multipart/form-data" action="{% url 'admin_biometrics_import' %}" class="p-5 sm:p-6">
+        {% csrf_token %}
 
-    <div class="overflow-hidden rounded-xl glass p-5 shadow-sm">
-      <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Late</p>
-      <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{{ kpi.late|default:"—" }}</p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">After grace period</p>
-    </div>
+        <div id="dropZone" class="group relative rounded-3xl border-2 border-dashed border-gray-300 bg-gray-50/80 p-6 text-center transition hover:border-accent hover:bg-accent/5 dark:border-white/10 dark:bg-white/5 sm:p-8">
+          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-accent/10 text-accent ring-1 ring-accent/20 sm:h-16 sm:w-16">
+            <iconify-icon icon="ph:cloud-arrow-up-duotone" class="text-3xl"></iconify-icon>
+          </div>
 
-    <div class="overflow-hidden rounded-xl glass p-5 shadow-sm">
-      <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Absent</p>
-      <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{{ kpi.absent|default:"—" }}</p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Excludes official travel</p>
-    </div>
+          <label for="file" class="mt-5 inline-block cursor-pointer text-base font-extrabold text-accent hover:text-accent/80">
+            Upload a file
+            <input id="file" name="file" type="file" accept=".csv,.xls,.xlsx" class="sr-only" />
+          </label>
 
-    <div class="overflow-hidden rounded-xl glass p-5 shadow-sm">
-      <p class="text-sm font-medium text-gray-600 dark:text-gray-400">On Travel</p>
-      <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{{ kpi.on_travel|default:"0" }}</p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Official travel today</p>
-    </div>
-
-    <div class="overflow-hidden rounded-xl glass p-5 shadow-sm">
-      <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Last Import / Sync</p>
-      <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ kpi.last_sync|default:"—" }}</p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Most recent import time</p>
-    </div>
-  </div>
-
-  <div class="lg:grid lg:grid-cols-3 lg:gap-8">
-
-    <div class="lg:col-span-2">
-
-      <div class="mb-8 overflow-hidden rounded-xl glass shadow-sm">
-        <div class="border-b border-white/20 px-6 py-5">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Import (CSV / Excel)</h2>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Upload .csv, .xls, or .xlsx from your exporter.</p>
+          <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">or drag and drop here</p>
+          <p class="mt-3 text-xs text-gray-500 dark:text-slate-400">CSV/Excel up to 10MB</p>
+          <p class="mt-1 break-all text-xs text-gray-500 dark:text-slate-400" id="fileName">No file selected</p>
         </div>
 
-        <form id="importForm" method="post" enctype="multipart/form-data" action="{% url 'admin_biometrics_import' %}" class="px-6 py-5">
-          {% csrf_token %}
-
-          <div class="mb-6">
-            <div id="dropZone" class="relative rounded-lg border-2 border-dashed border-white/30 p-8 transition hover:border-accent hover:bg-accent/5">
-              <div class="text-center">
-                <div class="mt-4">
-                  <label for="file" class="cursor-pointer font-medium text-accent hover:text-accent/80">
-                    <span>Upload a file</span>
-                    <input id="file" name="file" type="file" accept=".csv,.xls,.xlsx" class="sr-only" />
-                  </label>
-                  <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">or drag and drop</p>
-                </div>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">CSV/Excel up to 10MB</p>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" id="fileName">No file selected</p>
+        <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+          <label class="rounded-2xl border border-gray-200/70 bg-white/70 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" name="skip_duplicates" checked class="mt-1 h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent">
+              <div>
+                <span class="block text-sm font-bold text-gray-800 dark:text-white">Skip duplicates</span>
+                <span class="mt-1 block text-xs text-gray-500 dark:text-slate-400">Person ID + Time + Status + Branch</span>
               </div>
             </div>
-          </div>
+          </label>
 
-          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div>
-              <label class="flex items-center">
-                <input type="checkbox" name="skip_duplicates" checked class="h-4 w-4 rounded border-white/30 bg-white/20 text-accent focus:ring-accent">
-                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Skip duplicates</span>
-              </label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Duplicate key: Person ID + Time + Status + Branch</p>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Branch</label>
-              <select name="branch" id="branchSelect"
-                      class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
-                <option value="">Select branch</option>
-                {% for val, label in branches %}
-                  <option value="{{ val }}">{{ label }}</option>
-                {% endfor %}
-              </select>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Branch must be selected.</p>
-            </div>
-          </div>
-
-          <div class="mt-8 flex gap-3">
-            <button type="submit" name="action" value="validate"
-                    class="flex-1 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90">
-              Validate & Preview
-            </button>
-
-            <button id="importBtn" type="submit" name="action" value="import"
-                    class="flex-1 cursor-not-allowed rounded-lg border border-white/30 bg-white/30 px-4 py-3 text-sm font-medium text-gray-400 backdrop-blur-sm"
-                    disabled>
-              Import to Database
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {% if import_errors %}
-      <div id="importErrorsBox" class="mb-4 rounded-lg border border-red-400/30 bg-red-500/10 p-4 backdrop-blur-sm">
-        <h3 class="text-sm font-medium text-red-800 dark:text-red-400">Validation / Import Error</h3>
-        <pre class="mt-2 whitespace-pre-wrap text-sm text-red-700 dark:text-red-300">{% for e in import_errors %}{{ e }}{% if not forloop.last %}\n{% endif %}{% endfor %}</pre>
-      </div>
-      {% else %}
-      <div id="importErrorsBox" class="hidden"></div>
-      {% endif %}
-
-      {% if import_summary %}
-      <div class="mb-4 rounded-lg border border-green-400/30 bg-green-500/10 p-4 backdrop-blur-sm">
-        <h3 class="text-sm font-medium text-green-800 dark:text-green-400">Import Summary</h3>
-        <div id="importSummaryText" class="mt-2 text-sm text-green-700 dark:text-green-300">{{ import_summary }}</div>
-      </div>
-      {% endif %}
-
-      <div class="mb-8 overflow-hidden rounded-xl glass shadow-sm">
-        <div class="border-b border-white/20 px-6 py-5">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Preview (First 20 Rows)</h2>
-        </div>
-
-        <div class="overflow-x-auto">
-          {% if preview_rows %}
-          <table class="min-w-full divide-y divide-white/20">
-            <thead class="bg-white/30 dark:bg-slate-800/30">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Person ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Department</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Branch</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Time</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Attendance Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Status</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-white/20 bg-white/40 dark:bg-slate-800/40">
-              {% for row in preview_rows %}
-              <tr class="hover:bg-white/20 dark:hover:bg-slate-700/50">
-                <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{{ row.employee_id }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.full_name }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.department }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.branch }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.timestamp }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.attendance_status }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm">
-                  <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {% if row.status == 'valid' %}bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300{% else %}bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300{% endif %}">
-                    {{ row.status }}
-                  </span>
-                  {% if row.errors %}
-                    <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ row.errors }}</div>
-                  {% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          {% else %}
-          <div class="px-6 py-12 text-center">
-            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No preview data</h3>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Upload a file then click “Validate & Preview”.</p>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-
-      <div class="mb-8 overflow-hidden rounded-xl glass shadow-sm">
-        <div class="border-b border-white/20 px-6 py-5">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Travel Order Manager</h2>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Assign official travel without editing attendance logs.
-          </p>
-        </div>
-
-        <form id="travelForm" class="px-6 py-5">
-          {% csrf_token %}
-
-          <div class="grid grid-cols-1 gap-5 md:grid-cols-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Employee</label>
-              <select name="profile_id" id="travelEmployee"
-                      class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
-                <option value="">Select employee</option>
-                {% for emp in employees %}
-                  <option value="{{ emp.id }}">
-                    {{ emp.user.get_full_name|default:emp.user.username }} — {{ emp.branch.name }}
-                  </option>
-                {% endfor %}
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Date</label>
-              <input type="date" name="start_date" id="travelStart"
-                     class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">End Date</label>
-              <input type="date" name="end_date" id="travelEnd"
-                     class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reason</label>
-              <input type="text" name="reason" id="travelReason" placeholder="Official Travel"
-                     class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
-            </div>
-          </div>
-
-          <div class="mt-5">
-            <button type="submit"
-                    class="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-opacity-90">
-              <iconify-icon icon="ph:airplane-takeoff-duotone" class="mr-2"></iconify-icon>
-              Assign Travel
-            </button>
-          </div>
-        </form>
-
-        <div class="border-t border-white/20 px-6 py-5">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Current / Recent Travel Orders</h3>
-
-          <div class="mt-4 overflow-x-auto">
-            {% if travel_orders %}
-            <table class="min-w-full divide-y divide-white/20">
-              <thead class="bg-white/30 dark:bg-slate-800/30">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Employee</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Branch</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Date Range</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Reason</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Action</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-white/20 bg-white/40 dark:bg-slate-800/40">
-                {% for travel in travel_orders %}
-                <tr>
-                  <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                    {{ travel.employee.user.get_full_name|default:travel.employee.user.username }}
-                  </td>
-                  <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-                    {{ travel.employee.branch.name }}
-                  </td>
-                  <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-                    {{ travel.start_date }} to {{ travel.end_date }}
-                  </td>
-                  <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-                    {{ travel.reason|default:"Official Travel" }}
-                  </td>
-                  <td class="px-4 py-3 text-sm">
-                    <button type="button" onclick="deleteTravel('{{ travel.id }}')" class="text-red-500 hover:text-red-700">
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-            {% else %}
-            <p class="text-sm text-gray-600 dark:text-gray-400">No travel orders yet.</p>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-
-      <div class="overflow-hidden rounded-xl glass shadow-sm">
-        <div class="border-b border-white/20 px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Attendance Records</h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Imported and synced records from your device or files.</p>
-          </div>
-
-          <a href="{% url 'admin_biometrics_sync' %}"
-             class="inline-flex items-center justify-center rounded-lg border border-accent/30 bg-accent/10 px-4 py-2 text-sm font-medium text-accent shadow-sm transition hover:bg-accent/20">
-            <iconify-icon icon="ph:arrows-clockwise-duotone" class="mr-2"></iconify-icon>
-            Sync Now
-          </a>
-        </div>
-
-        <div class="overflow-x-auto">
-          {% if records %}
-          <table class="min-w-full divide-y divide-white/20">
-            <thead class="bg-white/30 dark:bg-slate-800/30">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Time</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Person ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Department</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Branch</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Attendance Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-white/20 bg-white/40 dark:bg-slate-800/40">
-              {% for row in records %}
-              <tr class="hover:bg-white/20 dark:hover:bg-slate-700/50">
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-white">{{ row.timestamp }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{{ row.employee_id }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.full_name }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.department }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.branch }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ row.get_attendance_status_display }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm">
-                  <div class="flex gap-3 flex-wrap">
-                    <a href="{% url 'admin_attendance_detail' row.id %}" class="text-accent hover:text-accent/80">View</a>
-                    <a href="{% url 'admin_attendance_update' row.id %}" class="text-accent hover:text-accent/80">Edit</a>
-                    <a href="{% url 'admin_attendance_delete' row.id %}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Delete</a>
-                  </div>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-
-          {% if records.has_other_pages %}
-          <div class="flex items-center justify-between border-t border-white/20 px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-            <div>Page {{ records.number }} of {{ records.paginator.num_pages }}</div>
-            <div class="flex gap-2">
-              {% if records.has_previous %}
-                <a href="?page={{ records.previous_page_number }}" class="rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-accent hover:bg-white/80 dark:bg-slate-800/60">Previous</a>
-              {% endif %}
-              {% if records.has_next %}
-                <a href="?page={{ records.next_page_number }}" class="rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-accent hover:bg-white/80 dark:bg-slate-800/60">Next</a>
-              {% endif %}
-            </div>
-          </div>
-          {% endif %}
-
-          {% else %}
-          <div class="px-6 py-12 text-center">
-            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No records found</h3>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Import attendance data or sync the device to get started.</p>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-
-    </div>
-
-    <div class="mt-8 lg:mt-0">
-      <div class="space-y-6">
-
-        <div class="overflow-hidden rounded-xl glass p-6 shadow-sm">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Device Sync Guide</h3>
-
-          <div class="mt-4 rounded-lg border border-accent/20 bg-accent/5 p-4">
-            <p class="text-xs font-semibold uppercase text-accent">Recommended Setup</p>
-            <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">
-              Connect the Hikvision device directly to the same LAN running Django using Ethernet.
-            </p>
-          </div>
-
-          <ol class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
-            <li>1. Make sure the device opens on this same laptop.</li>
-            <li>2. Click <span class="font-semibold text-accent">Sync Device</span>.</li>
-            <li>3. Refresh this page to see new attendance logs.</li>
-          </ol>
-        </div>
-
-        <div class="overflow-hidden rounded-xl glass p-6 shadow-sm">
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Holiday & Suspension Manager</h3>
-              <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Manage non-working dates that affect attendance interpretation and payroll computation.</p>
-            </div>
-            <button id="openHolidayModal"
-                    type="button"
-                    class="inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-opacity-90">
-              <iconify-icon icon="ph:calendar-plus-duotone" class="mr-2"></iconify-icon>
-              Add Holiday
-            </button>
-          </div>
-
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div class="rounded-xl border border-green-400/30 bg-green-500/10 p-4">
-              <p class="text-xs font-semibold uppercase text-green-700 dark:text-green-300">Upcoming</p>
-              <p class="mt-2 text-2xl font-bold text-green-800 dark:text-green-200">{{ holidays|length|default:"0" }}</p>
-              <p class="mt-1 text-xs text-green-700/80 dark:text-green-300/80">Configured holidays and suspensions</p>
-            </div>
-
-            <div class="rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
-              <p class="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">Attendance Impact</p>
-              <p class="mt-2 text-sm font-semibold text-amber-800 dark:text-amber-200">Integrated with attendance review</p>
-              <p class="mt-1 text-xs text-amber-700/80 dark:text-amber-300/80">Use this to explain non-working dates in logs.</p>
-            </div>
-
-            <div class="rounded-xl border border-blue-400/30 bg-blue-500/10 p-4">
-              <p class="text-xs font-semibold uppercase text-blue-700 dark:text-blue-300">Payroll Impact</p>
-              <p class="mt-2 text-sm font-semibold text-blue-800 dark:text-blue-200">Source of truth for payroll exclusions</p>
-              <p class="mt-1 text-xs text-blue-700/80 dark:text-blue-300/80">This feature now belongs here, not in payroll setup.</p>
-            </div>
-          </div>
-
-          <div class="mt-5">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Branch Filter</label>
-            <select id="attendanceBranchFilter"
-                    class="w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
-              <option value="">All Branches</option>
+            <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Branch</label>
+            <select name="branch" id="branchSelect"
+                    class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+              <option value="">Select branch</option>
               {% for val, label in branches %}
                 <option value="{{ val }}">{{ label }}</option>
               {% endfor %}
             </select>
-          </div>
-          
-          
-          <div class="mt-5 max-h-[420px] space-y-3 overflow-y-auto pr-2">            {% if holidays %}
-              {% for holiday in holidays %}
-              <div class="rounded-xl border p-4
-                {% if holiday.type == 'holiday' %}border-green-400/30 bg-green-500/10
-                {% elif holiday.type == 'suspension' %}border-red-400/30 bg-red-500/10
-                {% else %}border-amber-400/30 bg-amber-500/10{% endif %}">
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <div class="flex flex-wrap items-center gap-2">
-                      <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ holiday.name }}</h4>
-                      <span class="rounded-full px-2 py-1 text-xs font-semibold
-                        {% if holiday.type == 'holiday' %}bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300
-                        {% elif holiday.type == 'suspension' %}bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300
-                        {% else %}bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300{% endif %}">
-                        {{ holiday.get_type_display }}
-                      </span>
-                      <span class="text-xs text-gray-500 dark:text-gray-400">{{ holiday.date|date:"M d, Y" }}</span>
-                    </div>
-                    <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                      {% if holiday.scope == 'branch' and holiday.branch %}
-                        {{ holiday.branch.name }}
-                      {% else %}
-                        {{ holiday.get_scope_display }}
-                      {% endif %}
-                    </p>
-                    {% if holiday.notes %}
-                      <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">{{ holiday.notes }}</p>
-                    {% endif %}
-                  </div>
-
-                  <div class="flex gap-2">
-                    <button type="button"
-                            class="edit-holiday-btn rounded-lg bg-white/60 px-3 py-2 text-xs font-medium text-accent hover:bg-white/80 dark:bg-slate-800/60"
-                            data-holiday-id="{{ holiday.id }}"
-                            data-name="{{ holiday.name }}"
-                            data-date="{{ holiday.date|date:'Y-m-d' }}"
-                            data-type="{{ holiday.type }}"
-                            data-scope="{{ holiday.scope }}"
-                            data-branch="{{ holiday.branch_id|default:'' }}"
-                            data-notes="{{ holiday.notes|default:'' }}">
-                      Edit
-                    </button>
-
-                    <button type="button"
-                            class="delete-holiday-btn rounded-lg bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-500/20"
-                            data-holiday-id="{{ holiday.id }}">
-                      Delete
-                    </button>
-                  </div>
-                </div>
-
-                <p class="mt-3 text-xs font-semibold
-                  {% if holiday.type == 'holiday' %}text-green-700 dark:text-green-300
-                  {% elif holiday.type == 'suspension' %}text-red-700 dark:text-red-300
-                  {% else %}text-amber-700 dark:text-amber-300{% endif %}">
-                  Impact:
-                  {% if holiday.type == 'holiday' %}
-                    JO - No Pay, COS - Paid
-                  {% elif holiday.type == 'suspension' %}
-                    Work suspension affects expected attendance
-                  {% else %}
-                    Special non-working day behavior
-                  {% endif %}
-                </p>
-              </div>
-              {% endfor %}
-            {% else %}
-              <div class="rounded-xl border border-white/20 bg-white/30 p-6 text-center dark:bg-slate-800/30">
-                <iconify-icon icon="ph:calendar-blank-duotone" class="text-3xl text-gray-400"></iconify-icon>
-                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">No holidays or suspensions configured yet.</p>
-              </div>
-            {% endif %}
+            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Branch must be selected.</p>
           </div>
         </div>
 
-        <div class="overflow-hidden rounded-xl glass p-6 shadow-sm">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Required Columns</h3>
-          <div class="mt-4 rounded-md bg-white/50 p-3 dark:bg-slate-800/50">
-            <code class="text-sm text-gray-700 dark:text-gray-300">
-              Person ID, Name, Department, Time, Attendance Status
-            </code>
-          </div>
-          <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Branch is selected from the dropdown.
+        <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <button type="submit" name="action" value="validate"
+                  class="rounded-2xl bg-accent px-5 py-3 text-sm font-extrabold text-white shadow-lg transition hover:scale-[1.01] hover:shadow-glow">
+            Validate & Preview
+          </button>
+
+          <button id="importBtn" type="submit" name="action" value="import"
+                  class="cursor-not-allowed rounded-2xl border border-gray-200 bg-gray-100 px-5 py-3 text-sm font-extrabold text-gray-400 transition dark:border-white/10 dark:bg-white/5 dark:text-slate-500"
+                  disabled>
+            Import to Database
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- DEVICE GUIDE -->
+    <section class="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl xl:col-span-4">
+      <div class="flex items-start gap-4">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent ring-1 ring-accent/20">
+          <iconify-icon icon="ph:fingerprint-duotone" class="text-2xl"></iconify-icon>
+        </div>
+
+        <div>
+          <h2 class="text-base font-extrabold text-gray-950 dark:text-white">Direct Device Sync</h2>
+          <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-slate-300">
+            Fetch logs directly from Hikvision into Django.
           </p>
         </div>
-
       </div>
+
+      <div class="mt-5 flex flex-wrap gap-2 text-xs">
+        <span class="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-bold text-accent">Device → Django</span>
+        <span class="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 font-bold text-emerald-700 dark:text-emerald-300">LAN Ready</span>
+      </div>
+
+      <div class="mt-5 rounded-2xl border border-accent/20 bg-accent/10 p-4">
+        <p class="text-xs font-extrabold uppercase text-accent">Recommended Setup</p>
+        <p class="mt-1 text-sm text-gray-700 dark:text-slate-300">
+          Connect the Hikvision device directly to the same network using Ethernet.
+        </p>
+      </div>
+
+      <ol class="mt-5 space-y-3 text-sm text-gray-600 dark:text-slate-400">
+        <li class="flex gap-3"><span class="font-black text-accent">1.</span> Connect device and laptop.</li>
+        <li class="flex gap-3"><span class="font-black text-accent">2.</span> Click <span class="font-bold text-accent">Sync Device</span>.</li>
+        <li class="flex gap-3"><span class="font-black text-accent">3.</span> Refresh records.</li>
+      </ol>
+    </section>
+  </div>
+
+  {% if import_errors %}
+  <section id="importErrorsBox" class="rounded-3xl border border-red-400/30 bg-red-500/10 p-5 shadow-lg">
+    <h3 class="text-sm font-extrabold text-red-800 dark:text-red-300">Validation / Import Error</h3>
+    <pre class="mt-3 whitespace-pre-wrap text-sm text-red-700 dark:text-red-300">{% for e in import_errors %}{{ e }}{% if not forloop.last %}\n{% endif %}{% endfor %}</pre>
+  </section>
+  {% else %}
+  <div id="importErrorsBox" class="hidden"></div>
+  {% endif %}
+
+  {% if import_summary %}
+  <section class="rounded-3xl border border-green-400/30 bg-green-500/10 p-5 shadow-lg">
+    <h3 class="text-sm font-extrabold text-green-800 dark:text-green-300">Import Summary</h3>
+    <div id="importSummaryText" class="mt-2 text-sm text-green-700 dark:text-green-300">{{ import_summary }}</div>
+  </section>
+  {% endif %}
+
+  <!-- PREVIEW SECTION -->
+  <section class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
+    <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
+      <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Preview</h2>
+      <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">First 20 rows after validation.</p>
     </div>
+
+    {% if preview_rows %}
+      <!-- DESKTOP TABLE -->
+      <div class="hidden overflow-x-auto lg:block">
+        <table class="w-full table-auto text-sm">
+          <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-slate-400">
+            <tr>
+              <th class="w-[11%] px-3 py-3 text-left">Person ID</th>
+              <th class="w-[18%] px-3 py-3 text-left">Name</th>
+              <th class="w-[15%] px-3 py-3 text-left">Department</th>
+              <th class="w-[13%] px-3 py-3 text-left">Branch</th>
+              <th class="w-[18%] px-3 py-3 text-left">Time</th>
+              <th class="w-[15%] px-3 py-3 text-left">Attendance</th>
+              <th class="w-[10%] px-3 py-3 text-left">Status</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+            {% for row in preview_rows %}
+            <tr class="transition hover:bg-gray-50 dark:hover:bg-white/5">
+              <td class="px-3 py-3 font-bold text-gray-950 dark:text-white">{{ row.employee_id }}</td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[190px] truncate" title="{{ row.full_name }}">{{ row.full_name }}</div>
+              </td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[150px] truncate" title="{{ row.department }}">{{ row.department }}</div>
+              </td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[150px] truncate" title="{{ row.branch }}">{{ row.branch }}</div>
+              </td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[190px] truncate" title="{{ row.timestamp }}">{{ row.timestamp }}</div>
+              </td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[150px] truncate" title="{{ row.attendance_status }}">{{ row.attendance_status }}</div>
+              </td>
+              <td class="px-3 py-3">
+                <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-extrabold {% if row.status == 'valid' %}bg-green-500/10 text-green-700 dark:text-green-300{% else %}bg-red-500/10 text-red-700 dark:text-red-300{% endif %}">
+                  {{ row.status }}
+                </span>
+                {% if row.errors %}
+                  <div class="mt-1 max-w-[160px] truncate text-xs text-red-600 dark:text-red-400" title="{{ row.errors }}">{{ row.errors }}</div>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- MOBILE CARDS -->
+      <div class="grid gap-3 p-4 lg:hidden">
+        {% for row in preview_rows %}
+        <article class="rounded-2xl border border-gray-200 bg-white/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">Person ID</p>
+              <h3 class="truncate text-base font-black text-gray-950 dark:text-white">{{ row.employee_id }}</h3>
+              <p class="mt-1 truncate text-sm text-gray-600 dark:text-slate-300">{{ row.full_name }}</p>
+            </div>
+
+            <span class="shrink-0 rounded-full px-3 py-1 text-xs font-extrabold {% if row.status == 'valid' %}bg-green-500/10 text-green-700 dark:text-green-300{% else %}bg-red-500/10 text-red-700 dark:text-red-300{% endif %}">
+              {{ row.status }}
+            </span>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 gap-3 text-sm">
+            <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/5">
+              <p class="text-xs font-bold uppercase text-gray-500 dark:text-slate-400">Time</p>
+              <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ row.timestamp }}</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded-xl bg-cyan-500/10 p-3">
+                <p class="text-xs font-bold uppercase text-cyan-700 dark:text-cyan-300">Branch</p>
+                <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ row.branch }}</p>
+              </div>
+
+              <div class="rounded-xl bg-blue-500/10 p-3">
+                <p class="text-xs font-bold uppercase text-blue-700 dark:text-blue-300">Department</p>
+                <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ row.department }}</p>
+              </div>
+            </div>
+
+            <div class="rounded-xl bg-accent/10 p-3">
+              <p class="text-xs font-bold uppercase text-accent">Attendance Status</p>
+              <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ row.attendance_status }}</p>
+            </div>
+
+            {% if row.errors %}
+            <div class="rounded-xl bg-red-500/10 p-3">
+              <p class="text-xs font-bold uppercase text-red-700 dark:text-red-300">Errors</p>
+              <p class="mt-1 break-words text-sm text-red-700 dark:text-red-300">{{ row.errors }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="px-6 py-16 text-center">
+        <iconify-icon icon="ph:table-duotone" class="text-4xl text-gray-400"></iconify-icon>
+        <h3 class="mt-3 text-sm font-extrabold text-gray-950 dark:text-white">No preview data</h3>
+        <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Upload a file then click “Validate & Preview”.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- TRAVEL ORDER MANAGER -->
+  <section class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
+    <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
+      <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Travel Order Manager</h2>
+      <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Assign official travel without editing attendance logs.</p>
+    </div>
+
+    <form id="travelForm" class="p-5 sm:p-6">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div>
+          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Employee</label>
+          <select name="profile_id" id="travelEmployee"
+                  class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+            <option value="">Select employee</option>
+            {% for emp in employees %}
+              <option value="{{ emp.id }}">{{ emp.user.get_full_name|default:emp.user.username }} — {{ emp.branch.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Start Date</label>
+          <input type="date" name="start_date" id="travelStart"
+                 class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">End Date</label>
+          <input type="date" name="end_date" id="travelEnd"
+                 class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Reason</label>
+          <input type="text" name="reason" id="travelReason" placeholder="Official Travel"
+                 class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+        </div>
+      </div>
+
+      <button type="submit"
+              class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3 text-sm font-extrabold text-white shadow-lg transition hover:scale-[1.01] hover:shadow-glow sm:w-auto">
+        <iconify-icon icon="ph:airplane-takeoff-duotone"></iconify-icon>
+        Assign Travel
+      </button>
+    </form>
+
+    <div class="border-t border-gray-200/70 p-5 dark:border-white/10 sm:p-6">
+      <h3 class="text-base font-extrabold text-gray-950 dark:text-white">Current / Recent Travel Orders</h3>
+
+      {% if travel_orders %}
+        <div class="mt-4 hidden overflow-x-auto rounded-2xl border border-gray-200/70 dark:border-white/10 lg:block">
+          <table class="w-full table-auto text-sm">
+            <thead class="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-white/5 dark:text-slate-400">
+              <tr>
+                <th class="w-[24%] px-4 py-3 text-left">Employee</th>
+                <th class="w-[18%] px-4 py-3 text-left">Branch</th>
+                <th class="w-[22%] px-4 py-3 text-left">Date Range</th>
+                <th class="w-[24%] px-4 py-3 text-left">Reason</th>
+                <th class="w-[12%] px-4 py-3 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+              {% for travel in travel_orders %}
+              <tr class="hover:bg-gray-50 dark:hover:bg-white/5">
+                <td class="px-4 py-3 font-semibold text-gray-950 dark:text-white">
+                  <div class="max-w-[240px] truncate" title="{{ travel.employee.user.get_full_name|default:travel.employee.user.username }}">
+                    {{ travel.employee.user.get_full_name|default:travel.employee.user.username }}
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-gray-600 dark:text-slate-300">
+                  <div class="max-w-[180px] truncate" title="{{ travel.employee.branch.name }}">{{ travel.employee.branch.name }}</div>
+                </td>
+                <td class="px-4 py-3 text-gray-600 dark:text-slate-300">{{ travel.start_date }} to {{ travel.end_date }}</td>
+                <td class="px-4 py-3 text-gray-600 dark:text-slate-300">
+                  <div class="max-w-[240px] truncate" title="{{ travel.reason|default:'Official Travel' }}">{{ travel.reason|default:"Official Travel" }}</div>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <button type="button" onclick="deleteTravel('{{ travel.id }}')" class="inline-flex items-center justify-center rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600 transition hover:bg-red-500 hover:text-white">
+                    Delete
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-4 grid gap-3 lg:hidden">
+          {% for travel in travel_orders %}
+          <article class="rounded-2xl border border-gray-200 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <h4 class="truncate font-black text-gray-950 dark:text-white">{{ travel.employee.user.get_full_name|default:travel.employee.user.username }}</h4>
+                <p class="mt-1 text-sm text-gray-600 dark:text-slate-300">{{ travel.employee.branch.name }}</p>
+              </div>
+              <button type="button" onclick="deleteTravel('{{ travel.id }}')" class="shrink-0 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600">
+                Delete
+              </button>
+            </div>
+
+            <div class="mt-4 grid gap-3">
+              <div class="rounded-xl bg-blue-500/10 p-3">
+                <p class="text-xs font-bold uppercase text-blue-700 dark:text-blue-300">Date Range</p>
+                <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-200">{{ travel.start_date }} to {{ travel.end_date }}</p>
+              </div>
+
+              <div class="rounded-xl bg-accent/10 p-3">
+                <p class="text-xs font-bold uppercase text-accent">Reason</p>
+                <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-200">{{ travel.reason|default:"Official Travel" }}</p>
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+          No travel orders yet.
+        </p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- ATTENDANCE RECORDS -->
+  <section class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
+    <div class="flex flex-col gap-4 border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div>
+        <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Attendance Records</h2>
+        <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Imported and synced records from your device or files.</p>
+      </div>
+
+      <a href="{% url 'admin_biometrics_sync' %}"
+         class="inline-flex items-center justify-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm font-extrabold text-accent transition hover:bg-accent/20">
+        <iconify-icon icon="ph:arrows-clockwise-duotone"></iconify-icon>
+        Sync Now
+      </a>
+    </div>
+
+    {% if records %}
+      <!-- DESKTOP TABLE -->
+      <div class="hidden overflow-x-auto xl:block">
+        <table class="w-full table-auto text-sm">
+          <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-slate-400">
+            <tr>
+              <th class="w-[15%] px-3 py-3 text-left">Time</th>
+              <th class="w-[10%] px-3 py-3 text-left">Person ID</th>
+              <th class="w-[18%] px-3 py-3 text-left">Name</th>
+              <th class="w-[13%] px-3 py-3 text-left">Department</th>
+              <th class="w-[12%] px-3 py-3 text-left">Branch</th>
+              <th class="w-[14%] px-3 py-3 text-left">Status</th>
+              <th class="w-[18%] px-3 py-3 text-center">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+            {% for row in records %}
+            <tr class="transition hover:bg-gray-50 dark:hover:bg-white/5">
+              <td class="px-3 py-3 text-gray-950 dark:text-white">
+                <div class="max-w-[170px] truncate" title="{{ row.timestamp }}">{{ row.timestamp }}</div>
+              </td>
+
+              <td class="px-3 py-3 font-bold text-gray-950 dark:text-white">{{ row.employee_id }}</td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[210px] truncate" title="{{ row.full_name }}">{{ row.full_name }}</div>
+              </td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[150px] truncate" title="{{ row.department }}">{{ row.department }}</div>
+              </td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[150px] truncate" title="{{ row.branch }}">{{ row.branch }}</div>
+              </td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[150px] truncate" title="{{ row.get_attendance_status_display }}">{{ row.get_attendance_status_display }}</div>
+              </td>
+
+              <td class="px-3 py-3">
+                <div class="flex items-center justify-center gap-2 whitespace-nowrap">
+                  <a href="{% url 'admin_attendance_detail' row.id %}" class="inline-flex min-w-[56px] items-center justify-center rounded-xl bg-accent/10 px-3 py-2 text-xs font-extrabold text-accent transition hover:bg-accent/20">
+                    View
+                  </a>
+                  <a href="{% url 'admin_attendance_update' row.id %}" class="inline-flex min-w-[56px] items-center justify-center rounded-xl bg-blue-500/10 px-3 py-2 text-xs font-extrabold text-blue-700 transition hover:bg-blue-500/20 dark:text-blue-300">
+                    Edit
+                  </a>
+                  <a href="{% url 'admin_attendance_delete' row.id %}" class="inline-flex min-w-[64px] items-center justify-center rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600 transition hover:bg-red-500 hover:text-white dark:text-red-300">
+                    Delete
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- TABLET + PHONE CARDS -->
+      <div class="grid gap-3 p-4 xl:hidden">
+        {% for row in records %}
+        <article class="rounded-2xl border border-gray-200 bg-white/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">Person ID: {{ row.employee_id }}</p>
+              <h3 class="mt-1 truncate text-base font-black text-gray-950 dark:text-white">{{ row.full_name }}</h3>
+              <p class="mt-1 break-words text-sm text-gray-600 dark:text-slate-300">{{ row.timestamp }}</p>
+            </div>
+
+            <span class="shrink-0 rounded-full bg-accent/10 px-3 py-1 text-xs font-extrabold text-accent">
+              {{ row.get_attendance_status_display }}
+            </span>
+          </div>
+
+          <div class="mt-4 grid gap-3 sm:grid-cols-2">
+            <div class="rounded-xl bg-cyan-500/10 p-3">
+              <p class="text-xs font-bold uppercase text-cyan-700 dark:text-cyan-300">Branch</p>
+              <p class="mt-1 break-words text-sm font-semibold text-gray-800 dark:text-slate-200">{{ row.branch }}</p>
+            </div>
+
+            <div class="rounded-xl bg-blue-500/10 p-3">
+              <p class="text-xs font-bold uppercase text-blue-700 dark:text-blue-300">Department</p>
+              <p class="mt-1 break-words text-sm font-semibold text-gray-800 dark:text-slate-200">{{ row.department }}</p>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-3 gap-2">
+            <a href="{% url 'admin_attendance_detail' row.id %}" class="inline-flex items-center justify-center rounded-xl bg-accent/10 px-3 py-2 text-xs font-extrabold text-accent">
+              View
+            </a>
+            <a href="{% url 'admin_attendance_update' row.id %}" class="inline-flex items-center justify-center rounded-xl bg-blue-500/10 px-3 py-2 text-xs font-extrabold text-blue-700 dark:text-blue-300">
+              Edit
+            </a>
+            <a href="{% url 'admin_attendance_delete' row.id %}" class="inline-flex items-center justify-center rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600 dark:text-red-300">
+              Delete
+            </a>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+
+      {% if records.has_other_pages %}
+      <div class="flex flex-col gap-3 border-t border-gray-200/70 px-6 py-4 text-sm text-gray-600 dark:border-white/10 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+        <div>Page {{ records.number }} of {{ records.paginator.num_pages }}</div>
+        <div class="flex gap-2">
+          {% if records.has_previous %}
+            <a href="?page={{ records.previous_page_number }}" class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 font-bold text-accent dark:border-white/10 dark:bg-white/5">Previous</a>
+          {% endif %}
+          {% if records.has_next %}
+            <a href="?page={{ records.next_page_number }}" class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 font-bold text-accent dark:border-white/10 dark:bg-white/5">Next</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+    {% else %}
+      <div class="px-6 py-16 text-center">
+        <iconify-icon icon="ph:fingerprint-simple-duotone" class="text-4xl text-gray-400"></iconify-icon>
+        <h3 class="mt-3 text-sm font-extrabold text-gray-950 dark:text-white">No records found</h3>
+        <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Import attendance data or sync the device to get started.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- HOLIDAY MANAGER + REQUIRED COLUMNS -->
+  <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+
+    <section class="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl xl:col-span-2">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 class="text-lg font-extrabold text-gray-950 dark:text-white">Holiday & Suspension Manager</h3>
+          <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Manage non-working dates that affect attendance and payroll computation.</p>
+        </div>
+
+        <button id="openHolidayModal" type="button"
+                class="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-4 py-2 text-sm font-extrabold text-white shadow-lg transition hover:shadow-glow sm:w-auto">
+          <iconify-icon icon="ph:calendar-plus-duotone"></iconify-icon>
+          Add
+        </button>
+      </div>
+
+      <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="rounded-2xl border border-green-400/30 bg-green-500/10 p-4">
+          <p class="text-xs font-extrabold uppercase text-green-700 dark:text-green-300">Upcoming</p>
+          <p class="mt-2 text-3xl font-black text-green-800 dark:text-green-200">{{ holidays|length|default:"0" }}</p>
+          <p class="mt-1 text-xs text-green-700/80 dark:text-green-300/80">Configured holidays and suspensions</p>
+        </div>
+
+        <div class="rounded-2xl border border-blue-400/30 bg-blue-500/10 p-4">
+          <p class="text-xs font-extrabold uppercase text-blue-700 dark:text-blue-300">Payroll Impact</p>
+          <p class="mt-2 text-sm font-bold text-blue-800 dark:text-blue-200">Source of truth for payroll exclusions</p>
+          <p class="mt-1 text-xs text-blue-700/80 dark:text-blue-300/80">Used to explain non-working dates.</p>
+        </div>
+      </div>
+
+      <div class="mt-5">
+        <label class="mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300">Branch Filter</label>
+        <select id="attendanceBranchFilter"
+                class="w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          <option value="">All Branches</option>
+          {% for val, label in branches %}
+            <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="mt-5 grid max-h-[520px] gap-3 overflow-y-auto pr-2 fancy-scroll sm:grid-cols-2">
+        {% if holidays %}
+          {% for holiday in holidays %}
+          <div class="rounded-2xl border p-4
+            {% if holiday.type == 'holiday' %}border-green-400/30 bg-green-500/10
+            {% elif holiday.type == 'suspension' %}border-red-400/30 bg-red-500/10
+            {% else %}border-amber-400/30 bg-amber-500/10{% endif %}">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h4 class="break-words text-sm font-extrabold text-gray-950 dark:text-white">{{ holiday.name }}</h4>
+                  <span class="rounded-full px-2 py-1 text-xs font-extrabold
+                    {% if holiday.type == 'holiday' %}bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300
+                    {% elif holiday.type == 'suspension' %}bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300
+                    {% else %}bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300{% endif %}">
+                    {{ holiday.get_type_display }}
+                  </span>
+                </div>
+
+                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">{{ holiday.date|date:"M d, Y" }}</p>
+
+                <p class="mt-2 text-xs text-gray-600 dark:text-slate-400">
+                  {% if holiday.scope == 'branch' and holiday.branch %}
+                    {{ holiday.branch.name }}
+                  {% else %}
+                    {{ holiday.get_scope_display }}
+                  {% endif %}
+                </p>
+
+                {% if holiday.notes %}
+                  <p class="mt-2 break-words text-xs text-gray-600 dark:text-slate-400">{{ holiday.notes }}</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <p class="mt-3 text-xs font-extrabold
+              {% if holiday.type == 'holiday' %}text-green-700 dark:text-green-300
+              {% elif holiday.type == 'suspension' %}text-red-700 dark:text-red-300
+              {% else %}text-amber-700 dark:text-amber-300{% endif %}">
+              Impact:
+              {% if holiday.type == 'holiday' %}
+                JO - No Pay, COS - Paid
+              {% elif holiday.type == 'suspension' %}
+                Work suspension affects expected attendance
+              {% else %}
+                Special non-working day behavior
+              {% endif %}
+            </p>
+
+            <div class="mt-4 grid grid-cols-2 gap-2">
+              <button type="button"
+                      class="edit-holiday-btn rounded-xl bg-white/70 px-3 py-2 text-xs font-extrabold text-accent shadow-sm transition hover:bg-white dark:bg-white/5"
+                      data-holiday-id="{{ holiday.id }}"
+                      data-name="{{ holiday.name }}"
+                      data-date="{{ holiday.date|date:'Y-m-d' }}"
+                      data-type="{{ holiday.type }}"
+                      data-scope="{{ holiday.scope }}"
+                      data-branch="{{ holiday.branch_id|default:'' }}"
+                      data-notes="{{ holiday.notes|default:'' }}">
+                Edit
+              </button>
+
+              <button type="button"
+                      class="delete-holiday-btn rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600 transition hover:bg-red-500 hover:text-white"
+                      data-holiday-id="{{ holiday.id }}">
+                Delete
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center dark:border-white/10 dark:bg-white/5 sm:col-span-2">
+            <iconify-icon icon="ph:calendar-blank-duotone" class="text-3xl text-gray-400"></iconify-icon>
+            <p class="mt-2 text-sm text-gray-600 dark:text-slate-400">No holidays or suspensions configured yet.</p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
+      <h3 class="text-lg font-extrabold text-gray-950 dark:text-white">Required Columns</h3>
+
+      <div class="mt-4 rounded-2xl bg-gray-50 p-4 dark:bg-white/5">
+        <code class="break-words text-sm text-gray-700 dark:text-slate-300">
+          Person ID, Name, Department, Time, Attendance Status
+        </code>
+      </div>
+
+      <p class="mt-3 text-sm text-gray-600 dark:text-slate-400">
+        Branch is selected from the dropdown.
+      </p>
+    </section>
   </div>
 </div>
 
-<!-- Holiday Modal -->
-<div id="holidayModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
-  <div class="w-full max-w-lg rounded-2xl glass p-6 shadow-2xl">
+<!-- HOLIDAY MODAL -->
+<div id="holidayModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+  <div class="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-white/20 bg-white/90 p-6 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/90">
     <div class="flex items-center justify-between">
-      <h3 id="holidayModalTitle" class="text-lg font-semibold text-gray-900 dark:text-white">Add Holiday / Suspension</h3>
-      <button type="button" id="closeHolidayModal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400">
+      <h3 id="holidayModalTitle" class="text-lg font-extrabold text-gray-950 dark:text-white">Add Holiday / Suspension</h3>
+      <button type="button" id="closeHolidayModal" class="rounded-2xl border border-gray-200 bg-white/80 p-2 text-gray-500 transition hover:text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
         <iconify-icon icon="ph:x-bold"></iconify-icon>
       </button>
     </div>
@@ -564,22 +747,22 @@
       <input type="hidden" id="holidayId" name="holiday_id">
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+        <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Name</label>
         <input id="holidayName" name="name" type="text" required
-               class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+               class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
+        <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Date</label>
         <input id="holidayDate" name="date" type="date" required
-               class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+               class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
       </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
+          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Type</label>
           <select id="holidayType" name="type"
-                  class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+                  class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
             <option value="holiday">Regular Holiday</option>
             <option value="suspension">Work Suspension</option>
             <option value="special">Special Non-Working Day</option>
@@ -587,9 +770,9 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Scope</label>
+          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Scope</label>
           <select id="holidayScope" name="scope"
-                  class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+                  class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
             <option value="nationwide">Nationwide</option>
             <option value="region">MIMAROPA Region</option>
             <option value="branch">Specific Branch</option>
@@ -598,9 +781,9 @@
       </div>
 
       <div id="holidayBranchWrap">
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Branch</label>
+        <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Branch</label>
         <select id="holidayBranch" name="branch"
-                class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white">
+                class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
           <option value="">Select branch</option>
           {% for val, label in branches %}
             <option value="{{ val }}">{{ label }}</option>
@@ -609,18 +792,18 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
+        <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Notes</label>
         <textarea id="holidayNotes" name="notes" rows="3"
-                  class="mt-1 block w-full rounded-lg border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-900 shadow-sm backdrop-blur-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:bg-slate-800/60 dark:text-white"></textarea>
+                  class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white"></textarea>
       </div>
 
       <div class="flex justify-end gap-3 pt-2">
         <button type="button" id="cancelHolidayModal"
-                class="rounded-lg border border-white/30 bg-white/60 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white/80 dark:bg-slate-800/60 dark:text-gray-300">
+                class="rounded-2xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
           Cancel
         </button>
         <button type="submit"
-                class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-opacity-90">
+                class="rounded-2xl bg-accent px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:shadow-glow">
           Save
         </button>
       </div>
