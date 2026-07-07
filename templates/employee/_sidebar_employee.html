@@ -1,142 +1,159 @@
 {% load static %}
-<aside data-resizable class="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col gap-6 p-6 pr-3 overflow-y-auto fancy-scroll big-scroll">
-  <div class="glass rounded-2xl p-4 shadow-glow text-slate-800 dark:text-slate-100">
+
+<aside data-resizable class="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col p-5 pr-3 overflow-y-auto fancy-scroll big-scroll">
+  <div class="glass rounded-3xl p-4 shadow-glow text-slate-800 dark:text-slate-100">
 
     <!-- Brand -->
-    <div class="flex items-center gap-3 mb-6">
-      <div class="w-12 h-12 rounded-xl gradient-accent text-white flex items-center justify-center font-extrabold shadow-lg">
-        <iconify-icon icon="ph:user-circle-duotone" class="text-2xl"></iconify-icon>
+    <div class="flex items-center gap-3">
+      <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-lg overflow-hidden">
+        <img src="{% static 'web_photos/logo.png' %}"
+             alt="IntelliHRTrack Logo"
+             class="h-full w-full object-cover">
       </div>
-      <div>
-        <h1 class="text-lg font-semibold trackigitng-tight">Employee Portal</h1>
-        <p class="text-xs text-gray-500 dark:text-gray-400">IntelliHRTrack</p>
+
+      <div class="min-w-0">
+        <h1 class="truncate text-lg font-extrabold tracking-tight text-slate-950 dark:text-white">
+          IntelliHRTrack
+        </h1>
+        <p class="truncate text-xs text-slate-500 dark:text-slate-400">
+          Employee Portal
+        </p>
       </div>
     </div>
 
-    
-    <div class="neon-divider"></div>
-
-    <!-- Quick Stats -->
-    <div class="mt-4 grid grid-cols-2 gap-2">
-      <div class="glass rounded-xl p-3 text-center">
-        <div class="text-2xl font-bold text-accent">0</div>
-        <div class="text-xs text-gray-500 dark:text-gray-400">Pending</div>
-      </div>
-      <div class="glass rounded-xl p-3 text-center">
-        <div class="text-2xl font-bold text-accent">0</div>
-        <div class="text-xs text-gray-500 dark:text-gray-400">Approved</div>
-      </div>
-    </div>
-
-    <div class="neon-divider my-4"></div>
+    <div class="neon-divider my-5"></div>
 
     <!-- Navigation -->
-    <nav class="mt-3">
-      <ul class="space-y-1">
+    <nav aria-label="Employee navigation">
+      <ul class="space-y-2">
+
         <li>
           <a href="{% url 'employee_dashboard' %}"
-             class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'dashboard' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:house-duotone" class="text-accent"></iconify-icon>
-            <span class="font-medium">Dashboard</span>
+             class="group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition
+                    {% if current == 'dashboard' %}
+                      bg-accent/15 text-slate-950 ring-1 ring-accent/30 shadow-glow dark:text-white
+                    {% else %}
+                      text-slate-700 hover:bg-white/60 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white
+                    {% endif %}">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent ring-1 ring-accent/15">
+              <iconify-icon icon="ph:house-duotone" class="text-lg"></iconify-icon>
+            </span>
+            <span class="truncate">Dashboard</span>
           </a>
         </li>
 
         <li>
           <a href="{% url 'employee_attendance' %}"
-             class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'attendance' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:fingerprint-duotone" class="text-accent"></iconify-icon>
-            <span>Attendance</span>
-          </a>
-        </li>
-
-        <li>
-          <a href="{% url 'employee_schedule' %}"
-             class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'schedule' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:calendar-check-duotone" class="text-accent"></iconify-icon>
-            <span>Schedule</span>
+             class="group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition
+                    {% if current == 'attendance' %}
+                      bg-accent/15 text-slate-950 ring-1 ring-accent/30 shadow-glow dark:text-white
+                    {% else %}
+                      text-slate-700 hover:bg-white/60 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white
+                    {% endif %}">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent ring-1 ring-accent/15">
+              <iconify-icon icon="ph:fingerprint-duotone" class="text-lg"></iconify-icon>
+            </span>
+            <span class="truncate">Attendance</span>
           </a>
         </li>
 
         <li>
           <a href="{% url 'employee_leave' %}"
-             class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'leave' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:umbrella-duotone" class="text-accent"></iconify-icon>
-            <span>Leave</span>
+             class="group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition
+                    {% if current == 'leave' %}
+                      bg-accent/15 text-slate-950 ring-1 ring-accent/30 shadow-glow dark:text-white
+                    {% else %}
+                      text-slate-700 hover:bg-white/60 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white
+                    {% endif %}">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent ring-1 ring-accent/15">
+              <iconify-icon icon="ph:umbrella-duotone" class="text-lg"></iconify-icon>
+            </span>
+            <span class="truncate">Leave</span>
           </a>
         </li>
 
         <li>
           <a href="{% url 'employee_payroll' %}"
-             class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'payroll' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:money-duotone" class="text-accent"></iconify-icon>
-            <span>Payroll</span>
+             class="group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition
+                    {% if current == 'payroll' %}
+                      bg-accent/15 text-slate-950 ring-1 ring-accent/30 shadow-glow dark:text-white
+                    {% else %}
+                      text-slate-700 hover:bg-white/60 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white
+                    {% endif %}">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent ring-1 ring-accent/15">
+              <iconify-icon icon="ph:money-duotone" class="text-lg"></iconify-icon>
+            </span>
+            <span class="truncate">Payroll</span>
           </a>
         </li>
-
 
         <li>
-          <a href="{% url 'employee_analytics' %}"
-             class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'analytics' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:chart-line-up-duotone" class="text-accent"></iconify-icon>
-            <span>Analytics</span>
-          </a>
-        </li>
-
-       <li>
           <a href="{% url 'employee_notifications' %}"
-             class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'notifications' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:bell-duotone" class="text-accent"></iconify-icon>
-            <span>Notifications</span>
+             class="group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition
+                    {% if current == 'notifications' %}
+                      bg-accent/15 text-slate-950 ring-1 ring-accent/30 shadow-glow dark:text-white
+                    {% else %}
+                      text-slate-700 hover:bg-white/60 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white
+                    {% endif %}">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent ring-1 ring-accent/15">
+              <iconify-icon icon="ph:bell-duotone" class="text-lg"></iconify-icon>
+            </span>
+            <span class="truncate">Notifications</span>
           </a>
         </li>
-
 
         <li>
           <a href="{% url 'employee_profile' %}"
-             class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'profile' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:user-circle-duotone" class="text-accent"></iconify-icon>
-            <span>Profile & Settings</span>
+             class="group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition
+                    {% if current == 'profile' %}
+                      bg-accent/15 text-slate-950 ring-1 ring-accent/30 shadow-glow dark:text-white
+                    {% else %}
+                      text-slate-700 hover:bg-white/60 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white
+                    {% endif %}">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent ring-1 ring-accent/15">
+              <iconify-icon icon="ph:user-circle-duotone" class="text-lg"></iconify-icon>
+            </span>
+            <span class="truncate">Profile & Settings</span>
           </a>
         </li>
+
       </ul>
     </nav>
 
-    <div class="neon-divider my-4"></div>
+    <div class="neon-divider my-5"></div>
 
-    <button id="themeToggle" type="button" class="w-full px-3 py-2 rounded-xl glass flex items-center justify-between">
-  <span>Light / Dark</span>
-  <span>Toggle</span>
-</button>
+    <!-- Theme Toggle -->
+    <button data-theme-toggle type="button"
+            class="flex w-full items-center justify-between rounded-2xl border border-white/40 bg-white/50 px-3 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-white/70 hover:shadow-glow dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10">
+      <span class="flex items-center gap-3">
+        <span class="flex h-9 w-9 items-center justify-center rounded-2xl bg-accent/10 text-accent ring-1 ring-accent/15">
+          <iconify-icon icon="ph:moon-stars-duotone" class="dark:hidden"></iconify-icon>
+          <iconify-icon icon="ph:sun-dim-duotone" class="hidden dark:inline"></iconify-icon>
+        </span>
+        <span>Light / Dark</span>
+      </span>
 
-    <!-- Logout (ADMIN STYLE – SAME COLOR & SIZE) -->
-    <form method="post" action="{% url 'logout' %}">
+      <span class="rounded-full bg-accent/10 px-2 py-1 text-[11px] font-extrabold text-accent ring-1 ring-accent/20">
+        Toggle
+      </span>
+    </button>
+
+    <!-- Logout -->
+    <form method="post" action="{% url 'logout' %}" class="mt-3">
       {% csrf_token %}
-      <button
-        type="submit"
-        class="w-full flex items-center justify-center gap-3 px-3 py-2 rounded-xl
-               bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white
-               transition ring-1 ring-red-500/30 hover:shadow-glow">
+      <button type="submit"
+              class="flex w-full items-center justify-center gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-3 text-sm font-extrabold text-red-600 transition hover:bg-red-500 hover:text-white hover:shadow-glow dark:text-red-400">
         <iconify-icon icon="ph:sign-out-duotone"></iconify-icon>
-        <span class="font-medium">Logout</span>
+        <span>Logout</span>
       </button>
     </form>
 
-    <div class="neon-divider my-4"></div>
+    <div class="neon-divider my-5"></div>
 
     <!-- Footer -->
-    <div class="text-xs text-gray-500 dark:text-gray-400 text-center">
-      <p>Employee Portal v2.0</p>
-      <p class="mt-1 text-xs opacity-60">Powered by IntelliHRTrack</p>
+    <div class="text-center text-xs text-slate-500 dark:text-slate-400">
+      <p class="font-semibold">Employee Portal v2.0</p>
+      <p class="mt-1 opacity-70">Powered by IntelliHRTrack</p>
     </div>
-
   </div>
 </aside>
-
-<!-- Mobile header toggle -->
-<div class="lg:hidden mb-4">
-  <button onclick="document.querySelector('#mobileMenuFab').click()"
-          class="inline-flex items-center gap-2 px-3 py-2 rounded-xl glass shadow-glow hover-lift">
-    <iconify-icon icon="ph:list-duotone"></iconify-icon>
-    <span>Menu</span>
-  </button>
-</div>

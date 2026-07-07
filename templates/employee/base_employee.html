@@ -4,29 +4,39 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <title>{% block title %}Employee Portal{% endblock %} | IntelliHRTrack</title>
 
-  <!-- Fonts + Tailwind output -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Fonts + Local Tailwind output -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/output.css' %}">
 
-
-
-  <!-- Theme persistence -->
+  <!-- Apply theme before page paints -->
   <script>
-    (function(){
-      try{
-        const d = document.documentElement;
-        const theme = localStorage.getItem('ih_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        if(theme === 'dark') d.classList.add('dark'); else d.classList.remove('dark');
+    (function () {
+      try {
+        const root = document.documentElement;
+
+        const savedTheme = localStorage.getItem('ih_theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+
+        root.classList.toggle('dark', theme === 'dark');
+
         let accent = localStorage.getItem('ih_accent');
-        let bg = localStorage.getItem('ih_bg');
-        if(!accent || !bg){
-          try{ const prefs = JSON.parse(localStorage.getItem('ih_prefs')||'{}'); accent = accent || prefs.accent; bg = bg || prefs.bg; }catch{}
+
+        if (!accent) {
+          try {
+            const prefs = JSON.parse(localStorage.getItem('ih_prefs') || '{}');
+            accent = prefs.accent;
+          } catch (_) {}
         }
-        d.setAttribute('data-accent', accent || d.getAttribute('data-accent') || 'teal');
-        d.setAttribute('data-bg', bg || d.getAttribute('data-bg') || 'gradient');
-      }catch(e){}
+
+        root.setAttribute('data-accent', accent || 'teal');
+        root.setAttribute('data-bg', 'gradient');
+      } catch (_) {}
     })();
   </script>
 
@@ -34,784 +44,560 @@
   <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
 
   <style>
-    :root { 
-      --accent:#14b8a6; 
-      --accent-to:#0ea5a0; 
-      --card-bg:rgba(255,255,255,0.6); 
-      --card-border:rgba(255,255,255,0.35);
+    :root {
+      --accent: #14b8a6;
+      --accent-to: #0ea5a0;
+      --card-bg: rgba(255, 255, 255, 0.72);
+      --card-border: rgba(255, 255, 255, 0.65);
       --sidebar: 18rem;
-      --noise:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.035"/></svg>'); 
+      --noise: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.035"/></svg>');
     }
-    
-    html[data-accent="teal"] { --accent:#14b8a6; --accent-to:#0ea5a0; }
-    html[data-accent="purple"] { --accent:#8b5cf6; --accent-to:#7c3aed; }
-    html[data-accent="rose"] { --accent:#f43f5e; --accent-to:#e11d48; }
-    html[data-accent="amber"] { --accent:#f59e0b; --accent-to:#d97706; }
-    
-    html[data-bg="gradient"] body::before { 
-      content:""; 
-      position:fixed; 
-      inset:0; 
-      z-index:-2; 
+
+    html[data-accent="teal"] {
+      --accent: #14b8a6;
+      --accent-to: #0ea5a0;
+    }
+
+    html[data-accent="purple"] {
+      --accent: #8b5cf6;
+      --accent-to: #7c3aed;
+    }
+
+    html[data-accent="rose"] {
+      --accent: #f43f5e;
+      --accent-to: #e11d48;
+    }
+
+    html[data-accent="amber"] {
+      --accent: #f59e0b;
+      --accent-to: #d97706;
+    }
+
+    html.dark {
+      --card-bg: rgba(15, 23, 42, 0.68);
+      --card-border: rgba(255, 255, 255, 0.09);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
       background:
-        radial-gradient(800px 400px at 10% -10%, rgba(59,130,246,0.15), transparent 60%),
-        radial-gradient(600px 300px at 120% 0%, rgba(20,184,166,0.18), transparent 60%),
-        linear-gradient(120deg, rgba(2,6,23,0.03), rgba(2,6,23,0.06)); 
-    }
-    
-    html[data-bg="image"] body::before { 
-      content:""; 
-      position:fixed; 
-      inset:0; 
-      z-index:-2; 
-      background:url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=2100&q=60') center/cover no-repeat fixed; 
-      filter:saturate(1.15) brightness(0.95); 
-    }
-    
-    body::after { 
-      content:""; 
-      position:fixed; 
-      inset:0; 
-      pointer-events:none; 
-      z-index:-1; 
-      background-image:var(--noise); 
-    }
-    
-    .glass { 
-      background: var(--card-bg); 
-      backdrop-filter: blur(10px); 
-      -webkit-backdrop-filter: blur(10px); 
-      border: 1px solid var(--card-border); 
-    }
-    
-    .dark .glass { 
-      background: rgba(15,23,42,0.6); 
-      border-color: rgba(255,255,255,0.08); 
-    }
-    
-    .gradient-accent { 
-      background-image: linear-gradient(135deg, var(--accent), var(--accent-to)); 
-    }
-    
-    .text-accent { 
-      color: var(--accent); 
-    }
-    
-    .bg-accent { 
-      background-color: var(--accent); 
-    }
-    
-    .neon-divider { 
-      height:1px; 
-      background: linear-gradient(90deg, transparent, var(--accent), transparent); 
-      opacity:.6; 
-    }
-    
-    .fancy-scroll::-webkit-scrollbar { 
-      height:10px; 
-      width:10px; 
-    }
-    
-    .fancy-scroll::-webkit-scrollbar-thumb { 
-      background: linear-gradient(180deg, var(--accent), var(--accent-to)); 
-      border-radius:9999px; 
-    }
-    
-    .fancy-scroll::-webkit-scrollbar-track { 
-      background: transparent; 
-    }
-    
-    .big-scroll { 
-      scrollbar-width:auto; 
-      scrollbar-color: var(--accent) transparent; 
-    }
-    
-    .big-scroll::-webkit-scrollbar { 
-      width:16px; 
-      height:16px; 
-    }
-    
-    .big-scroll::-webkit-scrollbar-thumb { 
-      background: linear-gradient(180deg, var(--accent), var(--accent-to)); 
-      border-radius:12px; 
-      border:3px solid transparent; 
-      background-clip: content-box; 
-    }
-    
-    /* Sidebar styling */
-    @media (min-width: 1024px){
-      aside[data-resizable]{ 
-        width: var(--sidebar) !important; 
-      }
-      main[data-shift]{ 
-        margin-left: var(--sidebar) !important; 
-      }
-    }
-    
-    /* Mobile sidebar */
-    @media (max-width: 1023px){
-      #mobileMenuFab { 
-        display: block !important; 
-        box-shadow: 0 12px 28px rgba(2,6,23,.25); 
-      }
-      #mobileMenuFab.hidden { 
-        display: none !important; 
-      }
-    }
-    
-    /* Focus overlay */
-    #focusOverlay { 
-      backdrop-filter: blur(4px); 
-    }
-    
-    /* Toast system */
-    #toastHost { 
-      position: fixed; 
-      top: 16px; 
-      right: 16px; 
-      display: grid; 
-      gap: 10px; 
-      z-index: 80; 
-      pointer-events: none; 
-    }
-    
-    .toast { 
-      pointer-events: auto; 
-      min-width: 220px; 
-      max-width: 360px; 
-      padding: 10px 12px; 
-      border-radius: 12px; 
-      box-shadow: 0 10px 20px rgba(2,6,23,.2); 
-      border: 1px solid rgba(255,255,255,.35); 
-    }
-    
-    .toast.info { 
-      background: var(--card-bg); 
-    }
-    
-    .toast.success { 
-      background: linear-gradient(135deg, rgba(16,185,129,.15), rgba(20,184,166,.25)); 
-    }
-    
-    .toast.warn { 
-      background: linear-gradient(135deg, rgba(245,158,11,.15), rgba(245,158,11,.28)); 
-    }
-    
-    .toast.error { 
-      background: linear-gradient(135deg, rgba(244,63,94,.15), rgba(244,63,94,.28)); 
-    }
-    
-    /* Command palette */
-    #cmdPalette { 
-      backdrop-filter: blur(4px); 
-    }
-    
-    /* Top progress bar */
-    #topProgress { 
-      background-image: linear-gradient(90deg, var(--accent), var(--accent-to)); 
-    }
-    
-    /* Micro-interactions */
-    .hover-lift { 
-      transition: transform 0.2s ease, box-shadow 0.2s ease; 
-    }
-    
-    .hover-lift:hover { 
-      transform: translateY(-2px); 
-      box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow); 
-    }
-    
-    .ripple { 
-      position: relative; 
-      overflow: hidden; 
-    }
-    
-    .ripple::after { 
-      content:''; 
-      position:absolute; 
-      inset:0; 
-      background: radial-gradient(circle, rgba(255,255,255,0.3) 1%, transparent 1%) center/15000%; 
-      opacity:0; 
-      transition: opacity .5s; 
-    }
-    
-    .ripple:active::after { 
-      opacity:1; 
-      background-size:100%; 
-      transition:0s; 
-    }
-    
-    .animate-in { 
-      animation: slideIn .3s ease-out; 
-    }
-    
-    @keyframes slideIn { 
-      from { 
-        opacity:0; 
-        transform: translateY(6px); 
-      } 
-      to { 
-        opacity:1; 
-        transform:none; 
-      } 
-    }
-    
-    *:focus-visible { 
-      outline: 2px solid var(--accent); 
-      outline-offset: 2px; 
-    }
-    
-    /* High contrast */
-    .high-contrast { 
-      --card-bg: rgba(255,255,255,0.95); 
-      --card-border: rgba(0,0,0,0.3); 
-    }
-    
-    /* Reduced motion */
-    html.reduce-motion * { 
-      animation: none !important; 
-      transition-duration: 0.01ms !important; 
-    }
-    
-    /* Density */
-    html[data-density="compact"] body { 
-      font-size: 0.95rem; 
-    }
-    
-    html[data-density="relaxed"] body { 
-      font-size: 1.05rem; 
+        radial-gradient(900px 500px at 0% -10%, rgba(20, 184, 166, 0.18), transparent 60%),
+        radial-gradient(700px 420px at 105% 0%, rgba(59, 130, 246, 0.16), transparent 60%),
+        radial-gradient(650px 380px at 50% 115%, rgba(139, 92, 246, 0.10), transparent 60%),
+        linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.94));
     }
 
-    /* Profile image glow */
+    .dark body::before {
+      background:
+        radial-gradient(900px 500px at 0% -10%, rgba(20, 184, 166, 0.18), transparent 60%),
+        radial-gradient(700px 420px at 105% 0%, rgba(59, 130, 246, 0.14), transparent 60%),
+        radial-gradient(650px 380px at 50% 115%, rgba(139, 92, 246, 0.10), transparent 60%),
+        linear-gradient(135deg, #020617, #0f172a 55%, #020617);
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-image: var(--noise);
+    }
+
+    .glass {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .gradient-accent {
+      background-image: linear-gradient(135deg, var(--accent), var(--accent-to));
+    }
+
+    .text-accent {
+      color: var(--accent);
+    }
+
+    .bg-accent {
+      background-color: var(--accent);
+    }
+
+    .border-accent {
+      border-color: var(--accent);
+    }
+
+    .neon-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.55;
+    }
+
+    .fancy-scroll::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    .fancy-scroll::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--accent), var(--accent-to));
+      border-radius: 9999px;
+    }
+
+    .fancy-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .big-scroll {
+      scrollbar-width: auto;
+      scrollbar-color: var(--accent) transparent;
+    }
+
+    .big-scroll::-webkit-scrollbar {
+      width: 14px;
+      height: 14px;
+    }
+
+    .big-scroll::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--accent), var(--accent-to));
+      border-radius: 12px;
+      border: 3px solid transparent;
+      background-clip: content-box;
+    }
+
+    @media (min-width: 1024px) {
+      aside[data-resizable] {
+        width: var(--sidebar) !important;
+      }
+
+      main[data-shift] {
+        margin-left: var(--sidebar) !important;
+      }
+    }
+
+    .hover-lift {
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .hover-lift:hover {
+      transform: translateY(-2px);
+    }
+
+    .ripple {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ripple::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(255,255,255,0.35) 1%, transparent 1%) center/15000%;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+
+    .ripple:active::after {
+      opacity: 1;
+      background-size: 100%;
+      transition: 0s;
+    }
+
     .profile-glow {
-      box-shadow: 0 0 0 4px rgba(var(--accent-rgb, 20, 184, 166), 0.1),
-                  0 0 20px rgba(var(--accent-rgb, 20, 184, 166), 0.2);
+      box-shadow:
+        0 0 0 4px rgba(20, 184, 166, 0.12),
+        0 0 26px rgba(20, 184, 166, 0.25);
     }
 
-    /* Status indicators */
-    .status-online { background-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); }
-    .status-away { background-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); }
-    .status-offline { background-color: #6b7280; box-shadow: 0 0 0 2px rgba(107, 114, 128, 0.2); }
-
-    /* Badge animations */
-    .badge-pulse {
-      animation: pulse 2s ease-in-out infinite;
+    .status-online {
+      background-color: #10b981;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.22);
     }
 
-    /* Employee specific styles */
-    .clock-card {
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-to) 100%);
-      box-shadow: 0 20px 40px rgba(var(--accent-rgb, 20, 184, 166), 0.2);
+    .status-offline {
+      background-color: #ef4444;
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.22);
+    }
+
+    .toast {
+      pointer-events: auto;
+      min-width: 220px;
+      max-width: 360px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      box-shadow: 0 16px 35px rgba(2, 6, 23, 0.18);
+    }
+
+    .toast.success {
+      background: linear-gradient(135deg, rgba(16,185,129,0.16), rgba(20,184,166,0.26));
+    }
+
+    .toast.info {
+      background: var(--card-bg);
+    }
+
+    .toast.warn {
+      background: linear-gradient(135deg, rgba(245,158,11,0.16), rgba(245,158,11,0.28));
+    }
+
+    .toast.error {
+      background: linear-gradient(135deg, rgba(244,63,94,0.16), rgba(244,63,94,0.28));
+    }
+
+    *:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    html.reduce-motion * {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+
+    html[data-density="compact"] body {
+      font-size: 0.95rem;
+    }
+
+    html[data-density="relaxed"] body {
+      font-size: 1.05rem;
+    }
+
+    .employee-shell {
+      min-height: 100vh;
+    }
+
+    .safe-bottom {
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
     }
   </style>
 
   {% block extra_head %}{% endblock %}
 </head>
 
-<body class="h-full font-sans bg-gray-50/60 dark:bg-slate-950 text-gray-800 dark:text-gray-100">
-  <!-- Decorative blobs -->
-  <div class="pointer-events-none fixed -z-10 inset-0 overflow-hidden">
-    <div class="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-3xl opacity-40 gradient-accent animate-float"></div>
-    <div class="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-30 bg-gradient-to-br from-blue-500 to-indigo-500 animate-float" style="animation-delay:1s"></div>
-  </div>
+<body class="h-full font-sans text-slate-800 antialiased dark:text-slate-100">
 
   <!-- Top Progress Bar -->
-  <div id="topProgress" class="fixed top-0 left-0 h-[3px] w-0 z-[70] opacity-0 transition-[width,opacity] duration-300"></div>
+  <div id="topProgress" class="fixed left-0 top-0 z-[90] h-[3px] w-0 opacity-0 transition-[width,opacity] duration-300 gradient-accent"></div>
 
   <!-- Toast Host -->
-  <div id="toastHost" aria-live="polite"></div>
+  <div id="toastHost" class="fixed right-4 top-4 z-[95] grid gap-3 pointer-events-none" aria-live="polite"></div>
 
-  <div class="min-h-screen flex">
+  <div class="employee-shell flex">
     {% include "employee/_sidebar_employee.html" %}
 
-    <!-- Main content -->
-    <main data-shift class="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
-      <!-- Mobile FAB for sidebar -->
-      <button id="mobileMenuFab" class="lg:hidden fixed bottom-6 left-6 p-4 rounded-full gradient-accent text-white z-[70] hidden" aria-label="Open Menu">
-        <iconify-icon icon="ph:list-duotone" class="text-xl"></iconify-icon>
-      </button>
+    <!-- Mobile Top Bar -->
+    <div class="fixed inset-x-0 top-0 z-50 border-b border-white/30 bg-white/75 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/75 lg:hidden">
+      <div class="flex items-center justify-between gap-3">
+        <button id="mobileMenuButton" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-2xl glass text-slate-800 shadow-lg dark:text-white" aria-label="Open menu">
+          <iconify-icon icon="ph:list-duotone" class="text-2xl"></iconify-icon>
+        </button>
 
-      <!-- Back to Top Button -->
-      <button id="backToTop" class="hidden fixed bottom-6 right-6 px-3 py-2 rounded-xl glass gradient-accent text-white hover:shadow-glow transition">Top</button>
-
-      <!-- Header -->
-      <header class="relative overflow-hidden rounded-3xl glass p-6 shadow-glow">
-        <div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
-        <div class="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">{% block page_title %}Employee Portal{% endblock %}</h1>
-            <p class="mt-1 text-sm md:text-base text-gray-600 dark:text-gray-300">Welcome back, {% firstof user.get_full_name user.username %}</p>
-          </div>
-          <div class="flex items-center gap-3">
-            <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-xl glass text-xs">
-              <span id="netDot" class="inline-block w-2.5 h-2.5 rounded-full bg-green-500" title="Online"></span>
-              <span id="headerClock">--:--:--</span>
-            </div>
-            <div class="relative">
-              <div class="w-10 h-10 rounded-full gradient-accent flex items-center justify-center font-semibold text-white profile-glow">
-                {% firstof user.get_full_name.0|upper user.username.0|upper %}
-              </div>
-              <span class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full status-online border-2 border-white dark:border-slate-900"></span>
-            </div>
-          </div>
+        <div class="min-w-0 flex-1">
+          <div class="truncate text-sm font-extrabold text-slate-900 dark:text-white">IntelliHRTrack</div>
+          <div class="truncate text-xs text-slate-500 dark:text-slate-400">Employee Portal</div>
         </div>
-      </header>
 
+        <button type="button" data-theme-toggle class="inline-flex h-11 w-11 items-center justify-center rounded-2xl glass text-accent shadow-lg" aria-label="Toggle theme">
+          <iconify-icon icon="ph:sun-dim-duotone" class="hidden text-xl dark:inline"></iconify-icon>
+          <iconify-icon icon="ph:moon-stars-duotone" class="text-xl dark:hidden"></iconify-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <main data-shift class="min-w-0 flex-1 px-4 pb-8 pt-20 sm:px-5 md:px-6 lg:px-8 lg:pt-6">
       {% block content %}{% endblock %}
-      
-      <footer class="pb-8 pt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+
+      <footer class="safe-bottom pb-4 pt-8 text-center text-xs text-slate-500 dark:text-slate-400">
         © IntelliHRTrack • Employee Portal • {% now "Y" %}
       </footer>
     </main>
   </div>
 
-  <!-- Settings Modal -->
-  <div id="settingsPanel" class="fixed inset-0 hidden items-center justify-center p-4 z-50">
-    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"></div>
-    <div class="relative z-10 w-full max-w-lg glass rounded-2xl p-6 shadow-glow">
-      <div class="flex items-center justify-between">
-        <h3 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:sliders-duotone" class="text-accent"></iconify-icon> Customize Layout</h3>
-        <button id="closeSettings" class="p-2 rounded-xl glass hover:shadow-glow"><iconify-icon icon="ph:x-duotone"></iconify-icon></button>
-      </div>
-      <div class="neon-divider my-4"></div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="space-y-2">
-          <div class="text-xs uppercase tracking-wide text-gray-500">Accent color</div>
-          <div class="flex gap-2">
-            <button data-accent="teal" class="w-10 h-10 rounded-xl border-2 border-white/60" style="background:#14b8a6"></button>
-            <button data-accent="purple" class="w-10 h-10 rounded-xl border-2 border-white/60" style="background:#8b5cf6"></button>
-            <button data-accent="rose" class="w-10 h-10 rounded-xl border-2 border-white/60" style="background:#f43f5e"></button>
-            <button data-accent="amber" class="w-10 h-10 rounded-xl border-2 border-white/60" style="background:#f59e0b"></button>
-          </div>
-        </div>
-        <div class="space-y-2">
-          <div class="text-xs uppercase tracking-wide text-gray-500">Background</div>
-          <div class="flex gap-2">
-            <button data-bg="gradient" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Gradient</button>
-            <button data-bg="image" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Image</button>
-          </div>
-        </div>
-        <div class="space-y-2">
-          <div class="text-xs uppercase tracking-wide text-gray-500">Density</div>
-          <div class="flex gap-2">
-            <button data-density="comfortable" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Comfortable</button>
-            <button data-density="compact" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Compact</button>
-            <button data-density="relaxed" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Relaxed</button>
-          </div>
-        </div>
-        <div class="space-y-2">
-          <div class="text-xs uppercase tracking-wide text-gray-500">Motion</div>
-          <label class="flex items-center gap-2 text-sm"><input id="motionToggle" type="checkbox" class="w-4 h-4"> Reduce motion</label>
-        </div>
-        <div class="space-y-2">
-          <div class="text-xs uppercase tracking-wide text-gray-500">Glass intensity</div>
-          <input id="glassIntensity" type="range" min="0.3" max="0.9" step="0.05" value="0.6" class="w-full" />
-          <div class="text-xs text-gray-500">Adjust card transparency</div>
-        </div>
-        <div class="space-y-2">
-          <div class="text-xs uppercase tracking-wide text-gray-500">Sidebar width</div>
-          <div class="flex gap-2 flex-wrap">
-            <button data-sidebar="narrow" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Narrow</button>
-            <button data-sidebar="default" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Default</button>
-            <button data-sidebar="wide" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Wide</button>
-          </div>
-        </div>
-        <div class="space-y-2">
-          <div class="text-xs uppercase tracking-wide text-gray-500">High contrast</div>
-          <label class="flex items-center gap-2 text-sm"><input id="contrastToggle" type="checkbox" class="w-4 h-4"> Enable high contrast</label>
-        </div>
-        <div class="space-y-2">
-          <div class="text-xs uppercase tracking-wide text-gray-500">Font size</div>
-          <div class="flex gap-2">
-            <button data-font="small" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Small</button>
-            <button data-font="base" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Base</button>
-            <button data-font="large" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Large</button>
-          </div>
-        </div>
-      </div>
-      <div class="mt-4">
-        <div class="text-xs uppercase tracking-wide text-gray-500 mb-2">Preferences</div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <button id="exportPrefs" class="px-3 py-2 rounded-xl glass hover:shadow-glow flex items-center gap-2"><iconify-icon icon="ph:arrow-square-out-duotone"></iconify-icon> Export</button>
-          <button id="importPrefsBtn" class="px-3 py-2 rounded-xl glass hover:shadow-glow flex items-center gap-2"><iconify-icon icon="ph:arrow-square-in-duotone"></iconify-icon> Import</button>
-          <input id="prefsFile" type="file" accept="application/json" class="hidden" />
-        </div>
-      </div>
-      <div class="mt-6 flex justify-end gap-2">
-        <button id="resetSettings" class="px-3 py-2 rounded-xl glass hover:shadow-glow">Reset</button>
-        <button id="saveSettings" class="px-3 py-2 rounded-xl text-white bg-accent hover:shadow-glow">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Focus Overlay -->
-  <div id="focusOverlay" class="fixed inset-0 hidden items-center justify-center p-6 z-40 bg-slate-900/60">
-    <div class="absolute inset-0" id="focusBackdrop"></div>
-    <div id="focusContainer" class="relative w-full max-w-6xl glass rounded-3xl p-6 shadow-glow overflow-auto max-h-[85vh]"></div>
-    <button id="closeFocus" class="absolute top-4 right-6 p-2 rounded-xl glass text-white"><iconify-icon icon="ph:x-duotone"></iconify-icon></button>
-  </div>
-
-  <!-- Command Palette -->
-  <div id="cmdPalette" class="fixed inset-0 hidden items-start justify-center p-6 z-[75]">
-    <div class="absolute inset-0 bg-slate-900/50"></div>
-    <div class="relative z-10 w-full max-w-2xl glass rounded-2xl p-4">
-      <div class="flex items-center gap-2">
-        <iconify-icon icon="ph:magnifying-glass-duotone" class="text-accent"></iconify-icon>
-        <input id="cmdInput" type="text" placeholder="Type a command (e.g., Clock In, Request Leave)" class="w-full bg-transparent outline-none text-sm" />
-        <button id="closeCmd" class="p-2 rounded-lg glass"><iconify-icon icon="ph:x-duotone"></iconify-icon></button>
-      </div>
-      <div class="neon-divider my-3"></div>
-      <ul id="cmdList" class="max-h-80 overflow-auto fancy-scroll text-sm"></ul>
-    </div>
-  </div>
-
-  <!-- Shortcuts Cheatsheet -->
-  <div id="shortcutsModal" class="fixed inset-0 hidden items-center justify-center p-6 z-[76]">
-    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"></div>
-    <div class="relative z-10 w-full max-w-xl glass rounded-2xl p-6">
-      <div class="flex items-center justify-between">
-        <h3 class="font-semibold flex items-center gap-2"><iconify-icon icon="ph:keyboard-duotone" class="text-accent"></iconify-icon> Keyboard Shortcuts</h3>
-        <button id="closeShortcuts" class="p-2 rounded-xl glass"><iconify-icon icon="ph:x-duotone"></iconify-icon></button>
-      </div>
-      <div class="neon-divider my-4"></div>
-      <ul class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-        <li class="glass rounded-xl p-3"><strong>Ctrl + K</strong> — Command Palette</li>
-        <li class="glass rounded-xl p-3"><strong>S</strong> — Open Settings</li>
-        <li class="glass rounded-xl p-3"><strong>T</strong> — Toggle Theme</li>
-        <li class="glass rounded-xl p-3"><strong>?</strong> — This Cheatsheet</li>
-        <li class="glass rounded-xl p-3"><strong>C</strong> — Clock In/Out</li>
-        <li class="glass rounded-xl p-3"><strong>L</strong> — Leave Request</li>
-      </ul>
-    </div>
-  </div>
-
-  <!-- Mobile Sidebar -->
+  <!-- Mobile Sidebar Drawer -->
   <div id="mobileSidebar" class="fixed inset-0 z-[85] hidden">
-    <div id="mobileBackdrop" class="absolute inset-0 bg-slate-900/50"></div>
-    <aside id="mobilePanel" class="absolute left-0 top-0 h-full w-72 p-4 pr-3 glass overflow-y-auto transform -translate-x-full transition-transform duration-300">
-      <div class="flex items-center justify-between mb-3">
-        <div class="font-semibold">Menu</div>
-        <button id="closeMobile" class="p-2 rounded-xl glass"><iconify-icon icon="ph:x-duotone"></iconify-icon></button>
+    <div id="mobileBackdrop" class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+
+    <aside id="mobilePanel" class="absolute left-0 top-0 h-full w-[86vw] max-w-[22rem] -translate-x-full overflow-y-auto border-r border-white/20 bg-white/85 p-4 shadow-2xl backdrop-blur-2xl transition-transform duration-300 dark:border-white/10 dark:bg-slate-950/90">
+      <div class="mb-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-lg overflow-hidden">
+            <img src="{% static 'web_photos/logo.png' %}"
+                 alt="IntelliHRTrack Logo"
+                 class="h-full w-full object-cover">
+          </div>
+
+          <div>
+            <div class="font-extrabold text-slate-950 dark:text-white">IntelliHRTrack</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">Employee Portal</div>
+          </div>
+        </div>
+
+        <button id="closeMobile" type="button" class="rounded-2xl glass p-2 text-slate-700 dark:text-white" aria-label="Close menu">
+          <iconify-icon icon="ph:x-duotone" class="text-xl"></iconify-icon>
+        </button>
       </div>
-      <div id="mobileNavContent" class="space-y-2"></div>
+
+      <div class="neon-divider mb-4"></div>
+
+      <div id="mobileNavContent" class="space-y-3"></div>
     </aside>
   </div>
 
+  <!-- Settings Modal -->
+  <div id="settingsPanel" class="fixed inset-0 z-[80] hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+
+    <div class="relative z-10 w-full max-w-lg rounded-3xl glass p-6 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="flex items-center gap-2 font-extrabold text-slate-950 dark:text-white">
+          <iconify-icon icon="ph:sliders-duotone" class="text-accent"></iconify-icon>
+          Customize Layout
+        </h3>
+
+        <button id="closeSettings" type="button" class="rounded-2xl glass p-2">
+          <iconify-icon icon="ph:x-duotone"></iconify-icon>
+        </button>
+      </div>
+
+      <div class="neon-divider my-4"></div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Accent color</div>
+          <div class="flex gap-2">
+            <button type="button" data-accent="teal" class="h-10 w-10 rounded-2xl border-2 border-white/70 shadow-sm" style="background:#14b8a6"></button>
+            <button type="button" data-accent="purple" class="h-10 w-10 rounded-2xl border-2 border-white/70 shadow-sm" style="background:#8b5cf6"></button>
+            <button type="button" data-accent="rose" class="h-10 w-10 rounded-2xl border-2 border-white/70 shadow-sm" style="background:#f43f5e"></button>
+            <button type="button" data-accent="amber" class="h-10 w-10 rounded-2xl border-2 border-white/70 shadow-sm" style="background:#f59e0b"></button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Density</div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" data-density="comfortable" class="rounded-2xl glass px-3 py-2 text-sm font-bold">Comfort</button>
+            <button type="button" data-density="compact" class="rounded-2xl glass px-3 py-2 text-sm font-bold">Compact</button>
+            <button type="button" data-density="relaxed" class="rounded-2xl glass px-3 py-2 text-sm font-bold">Relaxed</button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Motion</div>
+          <label class="flex items-center gap-2 text-sm">
+            <input id="motionToggle" type="checkbox" class="h-4 w-4 rounded">
+            Reduce motion
+          </label>
+        </div>
+
+        <div class="space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Glass intensity</div>
+          <input id="glassIntensity" type="range" min="0.45" max="0.9" step="0.05" value="0.72" class="w-full">
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button id="resetSettings" type="button" class="rounded-2xl glass px-4 py-2 text-sm font-bold">Reset</button>
+        <button id="saveSettings" type="button" class="rounded-2xl bg-accent px-4 py-2 text-sm font-bold text-white shadow-glow">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Back to Top Button -->
+  <button id="backToTop" type="button" class="fixed bottom-6 right-6 z-[70] hidden rounded-2xl gradient-accent px-4 py-3 text-sm font-bold text-white shadow-glow">
+    Top
+  </button>
+
   <script>
-    // ---------- THEME TOGGLE ----------
-    const themeToggle = document.getElementById('themeToggle');
-    if (!themeToggle) {
-      // Create theme toggle button if not present
-      const header = document.querySelector('header .relative.z-10');
-      if (header) {
-        const themeBtn = document.createElement('button');
-        themeBtn.id = 'themeToggle';
-        themeBtn.className = 'p-2 rounded-xl glass hover:shadow-glow transition flex items-center gap-2';
-        themeBtn.innerHTML = '<iconify-icon icon="ph:yin-yang-duotone" class="text-accent"></iconify-icon>';
-        header.querySelector('.flex.items-center.gap-3').prepend(themeBtn);
-      }
-    }
-
-    document.addEventListener('click', function(e) {
-      if (e.target.closest('#themeToggle')) {
-        document.documentElement.classList.toggle('dark');
-        localStorage.setItem('ih_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-        showToast('Theme switched', 'success');
-      }
-    });
-
-    // Check for saved theme
-    if (localStorage.getItem('ih_theme') === 'dark') {
-      document.documentElement.classList.add('dark');
-    }
-
     // ---------- TOAST SYSTEM ----------
     const toastHost = document.getElementById('toastHost');
-    function showToast(msg, type='info') {
+
+    function showToast(message, type = 'info') {
       if (!toastHost) return;
-      const item = document.createElement('div');
-      item.className = `toast ${type==='success'?'success':type==='warning'?'warn':type==='error'?'error':'info'} glass`;
-      item.innerHTML = `<div class="flex items-start gap-2">
-        <iconify-icon icon="${type==='success'?'ph:check-circle-duotone':type==='warning'?'ph:warning-duotone':type==='error'?'ph:x-circle-duotone':'ph:info-duotone'}" class="mt-0.5 text-accent"></iconify-icon>
-        <div class="text-sm">${msg}</div>
-      </div>`;
-      toastHost.appendChild(item);
+
+      const toast = document.createElement('div');
+      toast.className = `toast glass ${type === 'success' ? 'success' : type === 'warning' ? 'warn' : type === 'error' ? 'error' : 'info'}`;
+
+      toast.innerHTML = `
+        <div class="flex items-start gap-2">
+          <iconify-icon
+            icon="${type === 'success' ? 'ph:check-circle-duotone' : type === 'warning' ? 'ph:warning-duotone' : type === 'error' ? 'ph:x-circle-duotone' : 'ph:info-duotone'}"
+            class="mt-0.5 text-accent">
+          </iconify-icon>
+          <div class="text-sm font-medium text-slate-800 dark:text-slate-100">${message}</div>
+        </div>
+      `;
+
+      toastHost.appendChild(toast);
+
       setTimeout(() => {
-        item.style.transition = 'opacity .4s ease, transform .4s ease';
-        item.style.opacity = '0';
-        item.style.transform = 'translateY(-6px)';
-      }, 2600);
-      setTimeout(() => item.remove(), 3100);
+        toast.style.transition = 'opacity .35s ease, transform .35s ease';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-6px)';
+      }, 2300);
+
+      setTimeout(() => toast.remove(), 2800);
     }
 
-    // Show welcome toast
-    setTimeout(() => {
-      showToast('Welcome to Employee Portal', 'success');
-    }, 800);
+    // ---------- THEME ----------
+    function applyTheme(theme, notify = false) {
+      const isDark = theme === 'dark';
+      document.documentElement.classList.toggle('dark', isDark);
+      localStorage.setItem('ih_theme', isDark ? 'dark' : 'light');
 
-    // ---------- SETTINGS PANEL ----------
-    const customizeBtn = document.getElementById('customizeLayout');
+      if (notify) {
+        showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled', 'success');
+      }
+    }
+
+    function getTheme() {
+      return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    }
+
+    function toggleTheme() {
+      applyTheme(getTheme() === 'dark' ? 'light' : 'dark', true);
+    }
+
+    document.addEventListener('click', function (event) {
+      const toggle = event.target.closest('[data-theme-toggle], #themeToggle');
+      if (!toggle) return;
+      event.preventDefault();
+      toggleTheme();
+    });
+
+    const savedTheme = localStorage.getItem('ih_theme');
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (savedTheme === 'light') {
+      document.documentElement.classList.remove('dark');
+    }
+
+    // ---------- SETTINGS ----------
     const settingsPanel = document.getElementById('settingsPanel');
+    const customizeLayout = document.getElementById('customizeLayout');
     const closeSettings = document.getElementById('closeSettings');
     const saveSettings = document.getElementById('saveSettings');
     const resetSettings = document.getElementById('resetSettings');
     const motionToggle = document.getElementById('motionToggle');
     const glassIntensity = document.getElementById('glassIntensity');
-    const contrastToggle = document.getElementById('contrastToggle');
 
-    if (!customizeBtn) {
-      // Create customize button if not present
-      const header = document.querySelector('header .relative.z-10');
-      if (header) {
-        const customBtn = document.createElement('button');
-        customBtn.id = 'customizeLayout';
-        customBtn.className = 'px-3 py-2 rounded-xl glass hover:shadow-glow transition flex items-center gap-2';
-        customBtn.innerHTML = '<iconify-icon icon="ph:sliders-duotone"></iconify-icon> <span class="hidden sm:inline">Customize</span>';
-        header.querySelector('.flex.items-center.gap-3').appendChild(customBtn);
-      }
-    }
-
-    if (customizeBtn && settingsPanel) {
-      function openSettings() { 
-        settingsPanel.classList.remove('hidden'); 
-        settingsPanel.classList.add('flex'); 
-      }
-      
-      function closeSettingsFn() { 
-        settingsPanel.classList.add('hidden'); 
-        settingsPanel.classList.remove('flex'); 
-      }
-      
-      customizeBtn.addEventListener('click', openSettings);
-      closeSettings.addEventListener('click', closeSettingsFn);
-      settingsPanel.addEventListener('click', (e) => { 
-        if (e.target === settingsPanel) closeSettingsFn(); 
-      });
-    }
-
-    // ---------- PREFERENCES MANAGEMENT ----------
     function getPrefs() {
       try {
-        return JSON.parse(localStorage.getItem('ih_prefs')) || {};
-      } catch {
+        return JSON.parse(localStorage.getItem('ih_prefs') || '{}');
+      } catch (_) {
         return {};
       }
     }
 
-    function setPrefs(p) {
-      localStorage.setItem('ih_prefs', JSON.stringify(p));
+    function setPrefs(prefs) {
+      localStorage.setItem('ih_prefs', JSON.stringify(prefs));
     }
 
-    function applyPrefs(p) {
-      if (p.accent) document.documentElement.setAttribute('data-accent', p.accent);
-      if (p.bg) document.documentElement.setAttribute('data-bg', p.bg);
-      document.documentElement.setAttribute('data-density', p.density || 'comfortable');
-      document.documentElement.classList.toggle('reduce-motion', !!p.reduceMotion);
-      
-      // Apply glass intensity
-      if (p.glass) applyGlass(p.glass);
-      
-      // Apply sidebar width
-      if (p.sidebar) applySidebar(p.sidebar);
-      
-      // Apply contrast
-      document.documentElement.classList.toggle('high-contrast', !!p.contrast);
-      
-      // Apply font size
-      if (p.font) applyFont(p.font);
-    }
+    function applyGlass(value) {
+      const alpha = Number.parseFloat(value || '0.72');
+      const isDark = document.documentElement.classList.contains('dark');
 
-    function applyGlass(val) {
-      const alpha = parseFloat(val || '0.6');
-      document.documentElement.style.setProperty('--card-bg', `rgba(255,255,255,${alpha})`);
-      document.documentElement.style.setProperty('--card-border', `rgba(255,255,255,${Math.max(0, Math.min(1, alpha*0.6))})`);
-    }
-
-    function applySidebar(size) {
-      const map = { narrow:'14rem', default:'18rem', wide:'22rem' };
-      const px = map[size] || map.default;
-      document.documentElement.style.setProperty('--sidebar', px);
-    }
-
-    function applyFont(f) {
-      const size = f==='small'? '0.95rem' : f==='large'? '1.05rem' : '1rem';
-      document.documentElement.setAttribute('data-font', f || 'base');
-      document.body.style.fontSize = size;
-    }
-
-    // Initialize preferences
-    const initPrefs = getPrefs();
-    applyPrefs(initPrefs);
-
-    // Settings event listeners
-    const accentBtns = Array.from(document.querySelectorAll('#settingsPanel [data-accent]'));
-    const bgBtns = Array.from(document.querySelectorAll('#settingsPanel [data-bg]'));
-    const densityBtns = Array.from(document.querySelectorAll('#settingsPanel [data-density]'));
-    const sidebarBtns = Array.from(document.querySelectorAll('#settingsPanel [data-sidebar]'));
-    const fontBtns = Array.from(document.querySelectorAll('#settingsPanel [data-font]'));
-
-    accentBtns.forEach(b => b.addEventListener('click', () => 
-      document.documentElement.setAttribute('data-accent', b.dataset.accent)));
-    
-    bgBtns.forEach(b => b.addEventListener('click', () => 
-      document.documentElement.setAttribute('data-bg', b.dataset.bg)));
-    
-    densityBtns.forEach(b => b.addEventListener('click', () => 
-      document.documentElement.setAttribute('data-density', b.dataset.density)));
-    
-    sidebarBtns.forEach(b => b.addEventListener('click', () => 
-      applySidebar(b.dataset.sidebar)));
-    
-    fontBtns.forEach(b => b.addEventListener('click', () => 
-      applyFont(b.dataset.font)));
-
-    if (glassIntensity) {
-      glassIntensity.value = initPrefs.glass || '0.6';
-      glassIntensity.addEventListener('input', () => applyGlass(glassIntensity.value));
-    }
-
-    if (contrastToggle) {
-      contrastToggle.checked = !!initPrefs.contrast;
-      contrastToggle.addEventListener('change', () => 
-        document.documentElement.classList.toggle('high-contrast', contrastToggle.checked));
-    }
-
-    if (saveSettings) {
-      saveSettings.addEventListener('click', () => {
-        const p = {
-          accent: document.documentElement.getAttribute('data-accent'),
-          bg: document.documentElement.getAttribute('data-bg'),
-          density: document.documentElement.getAttribute('data-density'),
-          reduceMotion: motionToggle ? motionToggle.checked : false,
-          glass: glassIntensity ? glassIntensity.value : '0.6',
-          sidebar: initPrefs.sidebar || 'default',
-          contrast: contrastToggle ? contrastToggle.checked : false,
-          font: document.documentElement.getAttribute('data-font') || 'base'
-        };
-        setPrefs(p);
-        showToast('Preferences saved', 'success');
-        closeSettingsFn();
-      });
-    }
-
-    if (resetSettings) {
-      resetSettings.addEventListener('click', () => {
-        const p = {
-          accent: 'teal',
-          bg: 'gradient',
-          density: 'comfortable',
-          reduceMotion: false,
-          glass: '0.6',
-          sidebar: 'default',
-          contrast: false,
-          font: 'base'
-        };
-        setPrefs(p);
-        applyPrefs(p);
-        showToast('Preferences reset to default', 'info');
-      });
-    }
-
-    // ---------- COMMAND PALETTE ----------
-    const cmdPalette = document.getElementById('cmdPalette');
-    const cmdInput = document.getElementById('cmdInput');
-    const cmdList = document.getElementById('cmdList');
-    const closeCmd = document.getElementById('closeCmd');
-
-    if (cmdPalette && cmdInput) {
-      function openCmd() {
-        cmdPalette.classList.remove('hidden');
-        cmdPalette.classList.add('flex');
-        cmdInput.value = '';
-        renderCmd('');
-        setTimeout(() => cmdInput.focus(), 50);
-      }
-      
-      function closeCmdFn() {
-        cmdPalette.classList.add('hidden');
-        cmdPalette.classList.remove('flex');
-      }
-      
-      closeCmd.addEventListener('click', closeCmdFn);
-      cmdPalette.addEventListener('click', (e) => {
-        if (e.target === cmdPalette) closeCmdFn();
-      });
-
-      const commands = [
-        { name: 'Clock In/Out', action: () => showToast('Clock action triggered', 'success') },
-        { name: 'Request Leave', action: () => window.location.href = "{% url 'employee_leave' %}" },
-        { name: 'View Schedule', action: () => window.location.href = "{% url 'employee_schedule' %}" },
-        { name: 'Check Payroll', action: () => window.location.href = "{% url 'employee_payroll' %}" },
-        { name: 'Open Settings', action: () => openSettings() },
-        { name: 'Toggle Theme', action: () => themeToggle.click() },
-      ];
-
-      function renderCmd(q) {
-        const ql = q.trim().toLowerCase();
-        cmdList.innerHTML = '';
-        commands.filter(c => c.name.toLowerCase().includes(ql)).forEach(c => {
-          const li = document.createElement('li');
-          li.className = 'px-3 py-2 rounded-lg hover:shadow-glow hover:ring-1 hover:ring-white/30 cursor-pointer glass mb-2';
-          li.textContent = c.name;
-          li.addEventListener('click', () => {
-            c.action();
-            closeCmdFn();
-          });
-          cmdList.appendChild(li);
-        });
-      }
-
-      cmdInput.addEventListener('input', () => renderCmd(cmdInput.value));
-      
-      // Global keyboard shortcut for command palette
-      document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key.toLowerCase() === 'k') {
-          e.preventDefault();
-          openCmd();
-        }
-        if (e.key === 'Escape') {
-          closeCmdFn();
-          closeSettingsFn();
-          closeShortcutsFn();
-        }
-      });
-    }
-
-    // ---------- SHORTCUTS MODAL ----------
-    const shortcutsModal = document.getElementById('shortcutsModal');
-    const shortcutsBtn = document.getElementById('shortcutsBtn');
-    const closeShortcuts = document.getElementById('closeShortcuts');
-
-    function openShortcuts() {
-      if (shortcutsModal) {
-        shortcutsModal.classList.remove('hidden');
-        shortcutsModal.classList.add('flex');
-      }
-    }
-    
-    function closeShortcutsFn() {
-      if (shortcutsModal) {
-        shortcutsModal.classList.add('hidden');
-        shortcutsModal.classList.remove('flex');
+      if (isDark) {
+        document.documentElement.style.setProperty('--card-bg', `rgba(15,23,42,${Math.max(0.55, alpha - 0.08)})`);
+        document.documentElement.style.setProperty('--card-border', `rgba(255,255,255,0.09)`);
+      } else {
+        document.documentElement.style.setProperty('--card-bg', `rgba(255,255,255,${alpha})`);
+        document.documentElement.style.setProperty('--card-border', `rgba(255,255,255,${Math.min(1, alpha * 0.9)})`);
       }
     }
 
-    if (shortcutsBtn) {
-      shortcutsBtn.addEventListener('click', openShortcuts);
+    function applyPrefs(prefs) {
+      if (prefs.accent) {
+        document.documentElement.setAttribute('data-accent', prefs.accent);
+        localStorage.setItem('ih_accent', prefs.accent);
+      }
+
+      if (prefs.density) {
+        document.documentElement.setAttribute('data-density', prefs.density);
+      }
+
+      document.documentElement.classList.toggle('reduce-motion', !!prefs.reduceMotion);
+
+      if (prefs.glass) {
+        applyGlass(prefs.glass);
+        if (glassIntensity) glassIntensity.value = prefs.glass;
+      }
+
+      if (motionToggle) {
+        motionToggle.checked = !!prefs.reduceMotion;
+      }
     }
-    
-    if (closeShortcuts) {
-      closeShortcuts.addEventListener('click', closeShortcutsFn);
+
+    function openSettings() {
+      if (!settingsPanel) return;
+      settingsPanel.classList.remove('hidden');
+      settingsPanel.classList.add('flex');
     }
-    
-    if (shortcutsModal) {
-      shortcutsModal.addEventListener('click', (e) => {
-        if (e.target === shortcutsModal) closeShortcutsFn();
+
+    function closeSettingsPanel() {
+      if (!settingsPanel) return;
+      settingsPanel.classList.add('hidden');
+      settingsPanel.classList.remove('flex');
+    }
+
+    customizeLayout?.addEventListener('click', openSettings);
+    closeSettings?.addEventListener('click', closeSettingsPanel);
+
+    settingsPanel?.addEventListener('click', function (event) {
+      if (event.target === settingsPanel) closeSettingsPanel();
+    });
+
+    document.querySelectorAll('#settingsPanel [data-accent]').forEach(button => {
+      button.addEventListener('click', function () {
+        document.documentElement.setAttribute('data-accent', this.dataset.accent);
+        localStorage.setItem('ih_accent', this.dataset.accent);
       });
-    }
+    });
+
+    document.querySelectorAll('#settingsPanel [data-density]').forEach(button => {
+      button.addEventListener('click', function () {
+        document.documentElement.setAttribute('data-density', this.dataset.density);
+      });
+    });
+
+    glassIntensity?.addEventListener('input', function () {
+      applyGlass(this.value);
+    });
+
+    saveSettings?.addEventListener('click', function () {
+      const prefs = {
+        accent: document.documentElement.getAttribute('data-accent') || 'teal',
+        density: document.documentElement.getAttribute('data-density') || 'comfortable',
+        reduceMotion: !!motionToggle?.checked,
+        glass: glassIntensity?.value || '0.72'
+      };
+
+      setPrefs(prefs);
+      applyPrefs(prefs);
+      showToast('Preferences saved', 'success');
+      closeSettingsPanel();
+    });
+
+    resetSettings?.addEventListener('click', function () {
+      const prefs = {
+        accent: 'teal',
+        density: 'comfortable',
+        reduceMotion: false,
+        glass: '0.72'
+      };
+
+      setPrefs(prefs);
+      applyPrefs(prefs);
+      showToast('Preferences reset', 'info');
+    });
+
+    applyPrefs(getPrefs());
 
     // ---------- MOBILE SIDEBAR ----------
-    const mobileMenuFab = document.getElementById('mobileMenuFab');
+    const mobileMenuButton = document.getElementById('mobileMenuButton');
     const mobileSidebar = document.getElementById('mobileSidebar');
     const mobilePanel = document.getElementById('mobilePanel');
     const mobileBackdrop = document.getElementById('mobileBackdrop');
@@ -819,252 +605,102 @@
     const mobileNavContent = document.getElementById('mobileNavContent');
 
     function openMobile() {
-      if (mobileSidebar && mobilePanel) {
-        // Clone desktop nav for mobile
-        const desktopNav = document.querySelector('aside nav');
-        if (desktopNav && mobileNavContent) {
-          mobileNavContent.innerHTML = '';
-          const clone = desktopNav.cloneNode(true);
-          mobileNavContent.appendChild(clone);
-        }
-        mobileSidebar.classList.remove('hidden');
-        requestAnimationFrame(() => mobilePanel.classList.remove('-translate-x-full'));
+      if (!mobileSidebar || !mobilePanel) return;
+
+      const desktopNav = document.querySelector('aside[data-resizable] nav');
+
+      if (desktopNav && mobileNavContent) {
+        mobileNavContent.innerHTML = '';
+
+        const clone = desktopNav.cloneNode(true);
+        clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+        clone.querySelectorAll('a').forEach(link => {
+          link.addEventListener('click', closeMobileSidebar);
+        });
+
+        mobileNavContent.appendChild(clone);
       }
+
+      mobileSidebar.classList.remove('hidden');
+
+      requestAnimationFrame(() => {
+        mobilePanel.classList.remove('-translate-x-full');
+      });
     }
 
-    function closeMobileFn() {
-      if (mobilePanel) {
-        mobilePanel.classList.add('-translate-x-full');
-        setTimeout(() => {
-          if (mobileSidebar) mobileSidebar.classList.add('hidden');
-        }, 250);
-      }
+    function closeMobileSidebar() {
+      if (!mobilePanel || !mobileSidebar) return;
+
+      mobilePanel.classList.add('-translate-x-full');
+
+      setTimeout(() => {
+        mobileSidebar.classList.add('hidden');
+      }, 250);
     }
 
-    if (mobileMenuFab) {
-      mobileMenuFab.addEventListener('click', openMobile);
-      // Show FAB on mobile
-      if (window.innerWidth < 1024) {
-        mobileMenuFab.classList.remove('hidden');
-      }
-    }
-
-    if (mobileBackdrop) mobileBackdrop.addEventListener('click', closeMobileFn);
-    if (closeMobile) closeMobile.addEventListener('click', closeMobileFn);
+    mobileMenuButton?.addEventListener('click', openMobile);
+    mobileBackdrop?.addEventListener('click', closeMobileSidebar);
+    closeMobile?.addEventListener('click', closeMobileSidebar);
 
     // ---------- BACK TO TOP ----------
     const backToTop = document.getElementById('backToTop');
-    if (backToTop) {
-      window.addEventListener('scroll', () => {
-        if (window.scrollY > 400) {
-          backToTop.classList.remove('hidden');
-        } else {
-          backToTop.classList.add('hidden');
-        }
-      });
-      
-      backToTop.addEventListener('click', () => 
-        window.scrollTo({ top: 0, behavior: 'smooth' }));
-    }
 
-    // ---------- FOCUS MODE ----------
-    const focusOverlay = document.getElementById('focusOverlay');
-    const focusContainer = document.getElementById('focusContainer');
-    const closeFocus = document.getElementById('closeFocus');
-    const focusBackdrop = document.getElementById('focusBackdrop');
-
-    if (focusOverlay && closeFocus) {
-      function closeFocusFn() {
-        focusOverlay.classList.add('hidden');
-        focusOverlay.classList.remove('flex');
-        focusContainer.innerHTML = '';
-      }
-
-      closeFocus.addEventListener('click', closeFocusFn);
-      if (focusBackdrop) focusBackdrop.addEventListener('click', closeFocusFn);
-    }
-
-    // Wire up focus buttons in content
-    document.addEventListener('click', (e) => {
-      if (e.target.classList.contains('focusBtn')) {
-        const card = e.target.closest('[data-focusable]');
-        if (card && focusOverlay && focusContainer) {
-          focusContainer.innerHTML = '';
-          const clone = card.cloneNode(true);
-          clone.querySelectorAll('.focusBtn').forEach(b => b.remove());
-          focusContainer.appendChild(clone);
-          focusOverlay.classList.remove('hidden');
-          focusOverlay.classList.add('flex');
-        }
-      }
+    window.addEventListener('scroll', function () {
+      if (!backToTop) return;
+      backToTop.classList.toggle('hidden', window.scrollY <= 420);
     });
 
-    // ---------- PREFERENCES EXPORT/IMPORT ----------
-    const exportPrefs = document.getElementById('exportPrefs');
-    const importPrefsBtn = document.getElementById('importPrefsBtn');
-    const prefsFile = document.getElementById('prefsFile');
-
-    function exportPrefsFunc() {
-      const prefs = getPrefs();
-      const blob = new Blob([JSON.stringify(prefs, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'ih_employee_preferences.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast('Preferences exported', 'success');
-    }
-
-    if (exportPrefs) {
-      exportPrefs.addEventListener('click', exportPrefsFunc);
-    }
-
-    if (importPrefsBtn && prefsFile) {
-      importPrefsBtn.addEventListener('click', () => prefsFile.click());
-      
-      prefsFile.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        try {
-          const text = await file.text();
-          const json = JSON.parse(text);
-          setPrefs(json);
-          applyPrefs(json);
-          showToast('Preferences imported successfully', 'success');
-        } catch (err) {
-          showToast('Invalid preferences file', 'error');
-        }
-        
-        // Reset file input
-        prefsFile.value = '';
-      });
-    }
-
-    // ---------- KEYBOARD SHORTCUTS ----------
-    document.addEventListener('keydown', (e) => {
-      if (e.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
-      
-      switch(e.key.toLowerCase()) {
-        case 's':
-          if (!e.ctrlKey && !e.metaKey) {
-            e.preventDefault();
-            openSettings();
-          }
-          break;
-        case 't':
-          e.preventDefault();
-          themeToggle?.click();
-          break;
-        case '?':
-          e.preventDefault();
-          openShortcuts();
-          break;
-        case 'c':
-          e.preventDefault();
-          showToast('Clock action triggered', 'info');
-          break;
-        case 'l':
-          e.preventDefault();
-          window.location.href = "{% url 'employee_leave' %}";
-          break;
-        case 'escape':
-          closeCmdFn();
-          closeSettingsFn();
-          closeShortcutsFn();
-          break;
-      }
+    backToTop?.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    // ---------- CLOCK UPDATE ----------
-    const headerClock = document.getElementById('headerClock');
-    if (headerClock) {
-      function updateClock() {
-        const now = new Date();
-        headerClock.textContent = now.toLocaleTimeString();
-      }
-      updateClock();
-      setInterval(updateClock, 1000);
-    }
-
-    // ---------- NETWORK STATUS ----------
-    const netDot = document.getElementById('netDot');
-    if (netDot) {
-      function updateNetStatus() {
-        const isOnline = navigator.onLine;
-        netDot.classList.toggle('bg-green-500', isOnline);
-        netDot.classList.toggle('bg-red-500', !isOnline);
-        netDot.title = isOnline ? 'Online' : 'Offline';
-      }
-      window.addEventListener('online', updateNetStatus);
-      window.addEventListener('offline', updateNetStatus);
-      updateNetStatus();
-    }
-
-    // ---------- RESIZE HANDLER ----------
-    window.addEventListener('resize', () => {
-      if (mobileMenuFab) {
-        if (window.innerWidth < 1024) {
-          mobileMenuFab.classList.remove('hidden');
-        } else {
-          mobileMenuFab.classList.add('hidden');
-        }
-      }
-    });
-
-    // ---------- ADD MICRO-INTERACTIONS ----------
-    document.addEventListener('DOMContentLoaded', () => {
-      // Add hover-lift to glass cards
-      document.querySelectorAll('.glass').forEach(el => {
-        el.classList.add('hover-lift');
-      });
-      
-      // Add ripple effect to buttons
-      document.querySelectorAll('button').forEach(el => {
-        el.classList.add('ripple');
-      });
-
-      // Add active state to current page link
-      const currentPath = window.location.pathname;
-      document.querySelectorAll('aside nav a[href]').forEach(link => {
-        const href = link.getAttribute('href');
-        if (href && currentPath.includes(href.split('/').filter(Boolean).pop())) {
-          link.classList.add('ring', 'ring-white/30', 'bg-accent/10');
-          link.setAttribute('aria-current', 'page');
-        }
-      });
-    });
-
-    // ---------- TOP PROGRESS BAR ----------
+    // ---------- PROGRESS ----------
     const topProgress = document.getElementById('topProgress');
+
     function progressStart() {
-      topProgress.style.transition = 'width 0.8s ease';
-      topProgress.style.width = '75%';
+      if (!topProgress) return;
+      topProgress.style.width = '72%';
       topProgress.style.opacity = '1';
     }
+
     function progressDone() {
+      if (!topProgress) return;
       topProgress.style.width = '100%';
+
       setTimeout(() => {
         topProgress.style.opacity = '0';
         topProgress.style.width = '0%';
       }, 350);
     }
 
-    // Hook up progress bar to form submissions
-    document.addEventListener('submit', (e) => {
-      if (e.target.tagName === 'FORM') {
-        progressStart();
-        // Simulate progress completion (in real app, this would be on response)
-        setTimeout(progressDone, 1000);
-      }
+    document.addEventListener('submit', function () {
+      progressStart();
+      setTimeout(progressDone, 900);
     });
 
-    // Show progress on page load
     progressStart();
-    setTimeout(progressDone, 800);
+    setTimeout(progressDone, 700);
+
+    // ---------- MICRO INTERACTIONS ----------
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('.glass').forEach(el => el.classList.add('hover-lift'));
+      document.querySelectorAll('button').forEach(el => el.classList.add('ripple'));
+    });
+
+    // ---------- KEYBOARD SHORTCUTS ----------
+    document.addEventListener('keydown', function (event) {
+      if (event.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)) return;
+
+      if (event.key.toLowerCase() === 't') {
+        event.preventDefault();
+        toggleTheme();
+      }
+
+      if (event.key === 'Escape') {
+        closeSettingsPanel();
+        closeMobileSidebar();
+      }
+    });
   </script>
 
   {% block extra_js %}{% endblock %}
