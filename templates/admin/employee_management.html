@@ -3,497 +3,914 @@
 {% block title %}IntelliHRTrack — Employee Management{% endblock %}
 
 {% block extra_head %}
-<style>
-  .status-badge {
-    padding: .25rem .75rem;
-    border-radius: 9999px;
-    font-size: .75rem;
-    font-weight: 600;
-  }
-  .status-pending {
-    background: rgba(245,158,11,.15);
-    color: rgb(202,138,4);
-  }
-  .status-approved {
-    background: rgba(34,197,94,.15);
-    color: rgb(22,163,74);
-  }
-  .pill {
-    padding:.25rem .6rem;
-    border-radius:9999px;
-    font-size:.75rem;
-    font-weight:600;
-  }
-  .pill-cos {
-    background: rgba(59,130,246,.15);
-    color: rgb(37,99,235);
-  }
-  .pill-jo {
-    background: rgba(139,92,246,.15);
-    color: rgb(124,58,237);
-  }
-  .field-label {
-    font-size: .70rem;
-    color: rgb(100,116,139);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-  }
-</style>
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen p-6 space-y-6">
+<div class="space-y-6">
 
-  <!-- HEADER -->
-  <div class="glass rounded-3xl p-6 flex items-center justify-between">
-    <div>
-      <h1 class="text-2xl font-extrabold">Employee Management</h1>
-      <p class="text-sm text-slate-500">
-        Approve accounts, manage employee profiles, and configure payroll rates.
-      </p>
+  <!-- PAGE HERO -->
+  <section class="relative overflow-hidden rounded-3xl border border-gray-200/70 bg-gradient-to-br from-white/95 via-cyan-50/80 to-teal-50/70 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-gradient-to-br dark:from-slate-900/90 dark:via-slate-900/80 dark:to-cyan-950/70 dark:shadow-2xl sm:p-6 lg:p-8">
+    <div class="absolute inset-0 opacity-30 dark:opacity-20"
+         style="background-image:
+         radial-gradient(circle at 18% 20%, rgba(20,184,166,.35), transparent 34%),
+         radial-gradient(circle at 86% 25%, rgba(59,130,246,.25), transparent 30%),
+         radial-gradient(circle at 48% 85%, rgba(168,85,247,.18), transparent 35%);">
     </div>
 
-    <a href="{% url 'signup_ui' %}"
-       class="px-4 py-2 rounded-xl text-white bg-teal-600 hover:bg-teal-700 flex items-center gap-2">
-      <iconify-icon icon="ph:user-plus-duotone"></iconify-icon>
-      Signup Page
-    </a>
-  </div>
+    <div class="relative z-10 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+      <div class="max-w-3xl">
+        <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+          <span class="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
+          Employee Control Center
+        </div>
 
-  <!-- SUMMARY -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div class="glass rounded-xl p-4">
-      <div class="text-xs text-slate-500">Pending</div>
-      <div class="text-2xl font-bold">{{ pending_profiles|length }}</div>
+        <h1 class="text-3xl font-black tracking-tight text-gray-950 dark:text-white md:text-4xl">
+          Employee Management
+        </h1>
+
+        <p class="mt-2 max-w-3xl text-sm leading-6 text-gray-600 dark:text-slate-300 md:text-base">
+          Approve employee accounts, manage profiles, connect biometric IDs, configure payroll rates, and maintain employee contribution settings.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <a href="{% url 'signup_ui' %}"
+           class="inline-flex items-center justify-center gap-2 rounded-2xl bg-accent px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-[1.02] hover:shadow-glow">
+          <iconify-icon icon="ph:user-plus-duotone"></iconify-icon>
+          Signup Page
+        </a>
+
+        <a href="#create-employee"
+           class="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200/70 bg-white/80 px-4 py-3 text-sm font-bold text-gray-800 shadow-sm transition hover:bg-white hover:shadow-lg dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
+          <iconify-icon icon="ph:identification-card-duotone" class="text-accent"></iconify-icon>
+          Create Employee
+        </a>
+      </div>
     </div>
-    <div class="glass rounded-xl p-4">
-      <div class="text-xs text-slate-500">Approved</div>
-      <div class="text-2xl font-bold">{{ approved_profiles|length }}</div>
+  </section>
+
+  <!-- SUMMARY CARDS -->
+  <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div class="rounded-2xl border border-amber-500/20 bg-white/80 p-5 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Pending Accounts</p>
+      <p class="mt-2 text-4xl font-black text-amber-600 dark:text-amber-300">{{ pending_profiles|length }}</p>
+      <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">Need approval or rejection</p>
     </div>
-    <div class="glass rounded-xl p-4">
-      <div class="text-xs text-slate-500">Your Branch</div>
-      <div class="text-lg font-semibold">
+
+    <div class="rounded-2xl border border-emerald-500/20 bg-white/80 p-5 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Approved Employees</p>
+      <p class="mt-2 text-4xl font-black text-emerald-600 dark:text-emerald-300">{{ approved_profiles|length }}</p>
+      <p class="mt-1 text-xs text-emerald-600 dark:text-emerald-400">Active workforce accounts</p>
+    </div>
+
+    <div class="rounded-2xl border border-blue-500/20 bg-white/80 p-5 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80 sm:col-span-2 xl:col-span-1">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Scope</p>
+      <p class="mt-2 text-xl font-black text-gray-950 dark:text-white">
         {% if request.user.is_superuser %}
           All Branches
         {% else %}
           {{ request.user.profile.branch|default:"—" }}
         {% endif %}
+      </p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Management access coverage</p>
+    </div>
+  </section>
+
+  <!-- ACCOUNT APPROVALS -->
+  <section class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
+    <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
+      <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Account Approval Queue</h2>
+          <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">
+            Review new registrations and approved accounts. Search and paginate without reloading the page.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div class="relative">
+            <iconify-icon icon="ph:magnifying-glass-duotone" class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></iconify-icon>
+            <input id="accountSearch"
+                   type="search"
+                   placeholder="Search username, email, branch..."
+                   class="w-full rounded-2xl border border-gray-200 bg-white/80 py-3 pl-11 pr-4 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white sm:w-80">
+          </div>
+
+          <select id="accountPageSize"
+                  class="rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-bold text-gray-700 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-200">
+            <option value="5">5 per page</option>
+            <option value="10">10 per page</option>
+            <option value="15">15 per page</option>
+            <option value="9999">Show all</option>
+          </select>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- PENDING / APPROVED ACCOUNTS -->
-  <div class="glass rounded-2xl p-4 overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead class="text-xs uppercase text-slate-500 border-b">
-        <tr>
-          <th class="px-3 py-2 text-left">Username</th>
-          <th class="px-3 py-2 text-left">Email</th>
-          <th class="px-3 py-2 text-left">Branch</th>
-          <th class="px-3 py-2 text-left">Department</th>
-          <th class="px-3 py-2 text-left">Job Type</th>
-          <th class="px-3 py-2 text-left">Status</th>
-          <th class="px-3 py-2 text-left">Created</th>
-          <th class="px-3 py-2 text-right">Action</th>
-        </tr>
-      </thead>
+    <!-- PENDING ACCOUNTS -->
+    <div class="border-b border-gray-200/70 dark:border-white/10">
+      <div class="flex flex-col gap-3 bg-amber-500/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div>
+          <h3 class="font-black text-amber-700 dark:text-amber-300">Pending Accounts</h3>
+          <p class="text-xs text-amber-700/80 dark:text-amber-300/80">Accounts waiting for admin action.</p>
+        </div>
 
-      <tbody class="divide-y">
-        <tr class="bg-amber-50/40">
-          <td colspan="8" class="px-3 py-2 font-semibold text-amber-700">
-            Pending Accounts
-          </td>
-        </tr>
+        <span id="pendingPageInfo" class="rounded-full border border-amber-500/20 bg-white/60 px-3 py-1 text-xs font-bold text-amber-700 dark:bg-white/5 dark:text-amber-300">
+          Loading...
+        </span>
+      </div>
 
+      <!-- DESKTOP TABLE -->
+      <div class="hidden overflow-x-auto lg:block">
+        <table class="w-full table-auto text-sm">
+          <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-slate-400">
+            <tr>
+              <th class="w-[13%] px-3 py-3 text-left">Username</th>
+              <th class="w-[18%] px-3 py-3 text-left">Email</th>
+              <th class="w-[15%] px-3 py-3 text-left">Branch</th>
+              <th class="w-[15%] px-3 py-3 text-left">Department</th>
+              <th class="w-[10%] px-3 py-3 text-left">Type</th>
+              <th class="w-[11%] px-3 py-3 text-left">Status</th>
+              <th class="w-[13%] px-3 py-3 text-left">Created</th>
+              <th class="w-[15%] px-3 py-3 text-center">Action</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+            {% for p in pending_profiles %}
+            <tr data-paginate="pending"
+                data-view="desktop"
+                data-search="{{ p.user.username }} {{ p.user.email }} {{ p.branch }} {{ p.department }} {{ p.employment_type }}"
+                class="transition hover:bg-gray-50 dark:hover:bg-white/5">
+              <td class="px-3 py-3 font-bold text-gray-950 dark:text-white">
+                <div class="max-w-[150px] truncate" title="{{ p.user.username }}">{{ p.user.username }}</div>
+              </td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[220px] truncate" title="{{ p.user.email|default:'—' }}">{{ p.user.email|default:"—" }}</div>
+              </td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[170px] truncate" title="{{ p.branch|default:'—' }}">{{ p.branch|default:"—" }}</div>
+              </td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[170px] truncate" title="{{ p.department|default:'—' }}">{{ p.department|default:"—" }}</div>
+              </td>
+
+              <td class="px-3 py-3">
+                {% if p.employment_type == "COS" %}
+                  <span class="inline-flex rounded-full bg-blue-500/10 px-3 py-1 text-xs font-extrabold text-blue-700 dark:text-blue-300">COS</span>
+                {% elif p.employment_type == "JO" %}
+                  <span class="inline-flex rounded-full bg-violet-500/10 px-3 py-1 text-xs font-extrabold text-violet-700 dark:text-violet-300">JO</span>
+                {% else %}
+                  <span class="text-gray-400">—</span>
+                {% endif %}
+              </td>
+
+              <td class="px-3 py-3">
+                <span class="inline-flex rounded-full bg-amber-500/10 px-3 py-1 text-xs font-extrabold text-amber-700 dark:text-amber-300">
+                  PENDING
+                </span>
+              </td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[150px] truncate" title="{{ p.created_at|date:'Y-m-d H:i' }}">{{ p.created_at|date:"Y-m-d H:i" }}</div>
+              </td>
+
+              <td class="px-3 py-3">
+                <div class="flex items-center justify-center gap-2 whitespace-nowrap">
+                  <form method="post" action="{% url 'approve_user' p.id %}">
+                    {% csrf_token %}
+                    <button class="inline-flex min-w-[76px] items-center justify-center rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-extrabold text-emerald-700 transition hover:bg-emerald-500 hover:text-white dark:text-emerald-300">
+                      Approve
+                    </button>
+                  </form>
+
+                  <form method="post" action="{% url 'reject_user' p.id %}" onsubmit="return confirm('Reject this account?');">
+                    {% csrf_token %}
+                    <button class="inline-flex min-w-[70px] items-center justify-center rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600 transition hover:bg-red-500 hover:text-white dark:text-red-300">
+                      Reject
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-slate-400">
+                No pending accounts.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- MOBILE CARDS -->
+      <div class="grid gap-3 p-4 lg:hidden">
         {% for p in pending_profiles %}
-        <tr class="hover:bg-slate-50">
-          <td class="px-3 py-2 font-medium">{{ p.user.username }}</td>
-          <td class="px-3 py-2">{{ p.user.email|default:"—" }}</td>
-          <td class="px-3 py-2">{{ p.branch|default:"—" }}</td>
-          <td class="px-3 py-2">{{ p.department|default:"—" }}</td>
-          <td class="px-3 py-2">
-            {% if p.employment_type == "COS" %}
-              <span class="pill pill-cos">COS</span>
-            {% elif p.employment_type == "JO" %}
-              <span class="pill pill-jo">JO</span>
-            {% else %}
-              —
-            {% endif %}
-          </td>
-          <td class="px-3 py-2">
-            <span class="status-badge status-pending">PENDING</span>
-          </td>
-          <td class="px-3 py-2">{{ p.created_at|date:"Y-m-d H:i" }}</td>
-          <td class="px-3 py-2 text-right space-x-2">
-            <form method="post" action="{% url 'approve_user' p.id %}" class="inline">
+        <article data-paginate="pending"
+                 data-view="mobile"
+                 data-search="{{ p.user.username }} {{ p.user.email }} {{ p.branch }} {{ p.department }} {{ p.employment_type }}"
+                 class="rounded-2xl border border-gray-200 bg-white/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h3 class="truncate text-base font-black text-gray-950 dark:text-white">{{ p.user.username }}</h3>
+              <p class="mt-1 truncate text-sm text-gray-600 dark:text-slate-300">{{ p.user.email|default:"No email" }}</p>
+            </div>
+
+            <span class="shrink-0 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-extrabold text-amber-700 dark:text-amber-300">
+              PENDING
+            </span>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 gap-3 text-sm">
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded-xl bg-cyan-500/10 p-3">
+                <p class="text-xs font-bold uppercase text-cyan-700 dark:text-cyan-300">Branch</p>
+                <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ p.branch|default:"—" }}</p>
+              </div>
+
+              <div class="rounded-xl bg-blue-500/10 p-3">
+                <p class="text-xs font-bold uppercase text-blue-700 dark:text-blue-300">Department</p>
+                <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ p.department|default:"—" }}</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded-xl bg-violet-500/10 p-3">
+                <p class="text-xs font-bold uppercase text-violet-700 dark:text-violet-300">Job Type</p>
+                <p class="mt-1 font-semibold text-gray-800 dark:text-slate-200">{{ p.employment_type|default:"—" }}</p>
+              </div>
+
+              <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/5">
+                <p class="text-xs font-bold uppercase text-gray-500 dark:text-slate-400">Created</p>
+                <p class="mt-1 font-semibold text-gray-800 dark:text-slate-200">{{ p.created_at|date:"Y-m-d H:i" }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-2">
+            <form method="post" action="{% url 'approve_user' p.id %}">
               {% csrf_token %}
-              <button class="px-3 py-1 rounded bg-green-600 text-white text-xs">
+              <button class="w-full rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
                 Approve
               </button>
             </form>
 
-            <form method="post"
-                  action="{% url 'reject_user' p.id %}"
-                  class="inline"
-                  onsubmit="return confirm('Reject this account?');">
+            <form method="post" action="{% url 'reject_user' p.id %}" onsubmit="return confirm('Reject this account?');">
               {% csrf_token %}
-              <button class="px-3 py-1 rounded bg-rose-600 text-white text-xs">
+              <button class="w-full rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600 dark:text-red-300">
                 Reject
               </button>
             </form>
-          </td>
-        </tr>
+          </div>
+        </article>
         {% empty %}
-        <tr>
-          <td colspan="8" class="text-center py-6 text-slate-400">
-            No pending accounts.
-          </td>
-        </tr>
+        <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+          No pending accounts.
+        </div>
         {% endfor %}
+      </div>
 
-        <tr class="bg-emerald-50/40">
-          <td colspan="8" class="px-3 py-2 font-semibold text-emerald-700">
-            Approved Employees
-          </td>
-        </tr>
+      <div class="flex flex-col gap-3 border-t border-gray-200/70 px-5 py-4 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div id="pendingResultCount" class="text-sm font-semibold text-gray-500 dark:text-slate-400">Loading...</div>
 
-        {% for p in approved_profiles %}
-        <tr class="hover:bg-slate-50">
-          <td class="px-3 py-2 font-medium">{{ p.user.username }}</td>
-          <td class="px-3 py-2">{{ p.user.email|default:"—" }}</td>
-          <td class="px-3 py-2">{{ p.branch|default:"—" }}</td>
-          <td class="px-3 py-2">{{ p.department|default:"—" }}</td>
-          <td class="px-3 py-2">
-            {% if p.employment_type == "COS" %}
-              <span class="pill pill-cos">COS</span>
-            {% elif p.employment_type == "JO" %}
-              <span class="pill pill-jo">JO</span>
-            {% else %}
-              —
-            {% endif %}
-          </td>
-          <td class="px-3 py-2">
-            <span class="status-badge status-approved">APPROVED</span>
-          </td>
-          <td class="px-3 py-2">{{ p.created_at|date:"Y-m-d H:i" }}</td>
-          <td class="px-3 py-2 text-right text-xs text-slate-400">—</td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="8" class="text-center py-6 text-slate-400">
-            No approved employees.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+        <div class="flex items-center justify-end gap-2">
+          <button id="pendingPrev" type="button"
+                  class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+            Previous
+          </button>
 
-  <!-- EMPLOYEE PROFILES -->
-  <div class="glass rounded-3xl p-6 space-y-5">
-    <div class="flex items-center justify-between">
-      <div>
-        <h2 class="text-xl font-extrabold">Employee Profiles & Payroll Rates</h2>
-        <p class="text-sm text-slate-500">
-          Add, update, and delete employee profiles. Monthly salary and daily rate are used by payroll.
-        </p>
+          <button id="pendingNext" type="button"
+                  class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+            Next
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- CREATE EMPLOYEE -->
-    <div class="rounded-2xl border bg-white/60 p-4">
-      <h3 class="font-bold mb-3">Create Employee</h3>
-
-      <form method="post" action="{% url 'admin_employees' %}" class="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-6 gap-3">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="create_employee">
-
+    <!-- APPROVED EMPLOYEES -->
+    <div>
+      <div class="flex flex-col gap-3 bg-emerald-500/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
-          <label class="field-label">Username</label>
-          <input name="username" class="w-full px-3 py-2 rounded-xl border" required>
+          <h3 class="font-black text-emerald-700 dark:text-emerald-300">Approved Employees</h3>
+          <p class="text-xs text-emerald-700/80 dark:text-emerald-300/80">Employees already allowed to access the system.</p>
+        </div>
+
+        <span id="approvedPageInfo" class="rounded-full border border-emerald-500/20 bg-white/60 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-white/5 dark:text-emerald-300">
+          Loading...
+        </span>
+      </div>
+
+      <!-- DESKTOP TABLE -->
+      <div class="hidden overflow-x-auto lg:block">
+        <table class="w-full table-auto text-sm">
+          <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-slate-400">
+            <tr>
+              <th class="w-[13%] px-3 py-3 text-left">Username</th>
+              <th class="w-[18%] px-3 py-3 text-left">Email</th>
+              <th class="w-[15%] px-3 py-3 text-left">Branch</th>
+              <th class="w-[15%] px-3 py-3 text-left">Department</th>
+              <th class="w-[10%] px-3 py-3 text-left">Type</th>
+              <th class="w-[11%] px-3 py-3 text-left">Status</th>
+              <th class="w-[13%] px-3 py-3 text-left">Created</th>
+              <th class="w-[15%] px-3 py-3 text-center">Action</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+            {% for p in approved_profiles %}
+            <tr data-paginate="approved"
+                data-view="desktop"
+                data-search="{{ p.user.username }} {{ p.user.email }} {{ p.branch }} {{ p.department }} {{ p.employment_type }}"
+                class="transition hover:bg-gray-50 dark:hover:bg-white/5">
+              <td class="px-3 py-3 font-bold text-gray-950 dark:text-white">
+                <div class="max-w-[150px] truncate" title="{{ p.user.username }}">{{ p.user.username }}</div>
+              </td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[220px] truncate" title="{{ p.user.email|default:'—' }}">{{ p.user.email|default:"—" }}</div>
+              </td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[170px] truncate" title="{{ p.branch|default:'—' }}">{{ p.branch|default:"—" }}</div>
+              </td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[170px] truncate" title="{{ p.department|default:'—' }}">{{ p.department|default:"—" }}</div>
+              </td>
+
+              <td class="px-3 py-3">
+                {% if p.employment_type == "COS" %}
+                  <span class="inline-flex rounded-full bg-blue-500/10 px-3 py-1 text-xs font-extrabold text-blue-700 dark:text-blue-300">COS</span>
+                {% elif p.employment_type == "JO" %}
+                  <span class="inline-flex rounded-full bg-violet-500/10 px-3 py-1 text-xs font-extrabold text-violet-700 dark:text-violet-300">JO</span>
+                {% else %}
+                  <span class="text-gray-400">—</span>
+                {% endif %}
+              </td>
+
+              <td class="px-3 py-3">
+                <span class="inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
+                  APPROVED
+                </span>
+              </td>
+
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
+                <div class="max-w-[150px] truncate" title="{{ p.created_at|date:'Y-m-d H:i' }}">{{ p.created_at|date:"Y-m-d H:i" }}</div>
+              </td>
+
+              <td class="px-3 py-3 text-center text-xs font-bold text-gray-400">—</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-slate-400">
+                No approved employees.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- MOBILE CARDS -->
+      <div class="grid gap-3 p-4 lg:hidden">
+        {% for p in approved_profiles %}
+        <article data-paginate="approved"
+                 data-view="mobile"
+                 data-search="{{ p.user.username }} {{ p.user.email }} {{ p.branch }} {{ p.department }} {{ p.employment_type }}"
+                 class="rounded-2xl border border-gray-200 bg-white/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h3 class="truncate text-base font-black text-gray-950 dark:text-white">{{ p.user.username }}</h3>
+              <p class="mt-1 truncate text-sm text-gray-600 dark:text-slate-300">{{ p.user.email|default:"No email" }}</p>
+            </div>
+
+            <span class="shrink-0 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
+              APPROVED
+            </span>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div class="rounded-xl bg-cyan-500/10 p-3">
+              <p class="text-xs font-bold uppercase text-cyan-700 dark:text-cyan-300">Branch</p>
+              <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ p.branch|default:"—" }}</p>
+            </div>
+
+            <div class="rounded-xl bg-blue-500/10 p-3">
+              <p class="text-xs font-bold uppercase text-blue-700 dark:text-blue-300">Department</p>
+              <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ p.department|default:"—" }}</p>
+            </div>
+          </div>
+        </article>
+        {% empty %}
+        <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+          No approved employees.
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="flex flex-col gap-3 border-t border-gray-200/70 px-5 py-4 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div id="approvedResultCount" class="text-sm font-semibold text-gray-500 dark:text-slate-400">Loading...</div>
+
+        <div class="flex items-center justify-end gap-2">
+          <button id="approvedPrev" type="button"
+                  class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+            Previous
+          </button>
+
+          <button id="approvedNext" type="button"
+                  class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CREATE EMPLOYEE -->
+  <section id="create-employee" class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
+    <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
+      <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Create Employee</h2>
+      <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">
+        Create an approved employee account and configure biometric/payroll information.
+      </p>
+    </div>
+
+    <form method="post" action="{% url 'admin_employees' %}" class="p-5 sm:p-6">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_employee">
+
+      <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div>
+          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Username</label>
+          <input name="username" required
+                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
         </div>
 
         <div>
-          <label class="field-label">Email</label>
-          <input name="email" type="email" class="w-full px-3 py-2 rounded-xl border">
+          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Email</label>
+          <input name="email" type="email"
+                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
         </div>
 
         <div>
-          <label class="field-label">Password</label>
-          <input name="password" type="password" class="w-full px-3 py-2 rounded-xl border" required>
+          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Password</label>
+          <input name="password" type="password" required
+                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
         </div>
 
         <div>
-          <label class="field-label">Biometric ID</label>
-          <input name="biometric_employee_id" class="w-full px-3 py-2 rounded-xl border" placeholder="e.g. 3">
+          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Biometric ID</label>
+          <input name="biometric_employee_id" placeholder="e.g. 3"
+                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
         </div>
 
         <div>
-          <label class="field-label">Department</label>
-          <input name="department" class="w-full px-3 py-2 rounded-xl border">
+          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Department</label>
+          <input name="department"
+                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
         </div>
 
         <div>
-          <label class="field-label">Position</label>
-          <input name="position" class="w-full px-3 py-2 rounded-xl border">
+          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Position</label>
+          <input name="position"
+                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
         </div>
 
         <div>
-          <label class="field-label">Job Type</label>
-          <select name="employment_type" class="w-full px-3 py-2 rounded-xl border" required>
+          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Job Type</label>
+          <select name="employment_type" required
+                  class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
             <option value="COS">COS</option>
             <option value="JO">JO</option>
           </select>
         </div>
 
         <div>
-          <label class="field-label">Monthly Salary</label>
-          <input name="monthly_salary" type="number" step="0.01" min="0" value="0.00"
-                 class="w-full px-3 py-2 rounded-xl border">
-        </div>
-
-        <div>
-          <label class="field-label">Daily Rate</label>
-          <input name="daily_rate" type="number" step="0.01" min="0" value="0.00"
-                 class="w-full px-3 py-2 rounded-xl border">
-        </div>
-
-        <div>
-          <label class="field-label">SSS</label>
-          <input name="sss_amount" type="number" step="0.01" min="0" value="760.00"
-                 class="w-full px-3 py-2 rounded-xl border">
-        </div>
-
-        <div>
-          <label class="field-label">Pag-IBIG</label>
-          <input name="pagibig_amount" type="number" step="0.01" min="0" value="400.00"
-                 class="w-full px-3 py-2 rounded-xl border">
-        </div>
-
-        <div>
-          <label class="field-label">PhilHealth Mode</label>
-          <select name="philhealth_mode" class="w-full px-3 py-2 rounded-xl border">
-            <option value="percent">Percent</option>
-            <option value="fixed">Fixed</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="field-label">PhilHealth Value</label>
-          <input name="philhealth_value" type="number" step="0.01" min="0" value="5.00"
-                 class="w-full px-3 py-2 rounded-xl border">
-        </div>
-
-        <div>
-          <label class="field-label">Branch</label>
+          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Branch</label>
           {% if request.user.is_superuser %}
-            <select name="branch_id" class="w-full px-3 py-2 rounded-xl border" required>
+            <select name="branch_id" required
+                    class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
               <option value="">Select branch</option>
               {% for b in branches %}
                 <option value="{{ b.id }}">{{ b.name }}</option>
               {% endfor %}
             </select>
           {% else %}
-            <input class="w-full px-3 py-2 rounded-xl border bg-slate-50"
-                   value="{{ request.user.profile.branch }}"
-                   disabled>
+            <input value="{{ request.user.profile.branch }}" disabled
+                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
           {% endif %}
         </div>
+      </div>
 
-        <div class="flex items-end">
-          <label class="flex items-center gap-2 px-3 py-2 rounded-xl border bg-white w-full">
-            <input type="checkbox" name="has_premium" value="1">
-            <span class="text-sm font-semibold">Premium?</span>
-          </label>
-        </div>
+      <div class="mt-6 rounded-3xl border border-gray-200/70 bg-gray-50/70 p-5 dark:border-white/10 dark:bg-white/5">
+        <h3 class="text-sm font-black text-gray-950 dark:text-white">Payroll Setup</h3>
 
-        <div class="md:col-span-4 xl:col-span-6 flex justify-end">
-          <button class="px-4 py-2 rounded-xl bg-teal-600 text-white hover:bg-teal-700">
-            Create Employee
-          </button>
+        <div class="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Monthly Salary</label>
+            <input name="monthly_salary" type="number" step="0.01" min="0" value="0.00"
+                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          </div>
+
+          <div>
+            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Daily Rate</label>
+            <input name="daily_rate" type="number" step="0.01" min="0" value="0.00"
+                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          </div>
+
+          <div>
+            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">SSS</label>
+            <input name="sss_amount" type="number" step="0.01" min="0" value="760.00"
+                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          </div>
+
+          <div>
+            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Pag-IBIG</label>
+            <input name="pagibig_amount" type="number" step="0.01" min="0" value="400.00"
+                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          </div>
+
+          <div>
+            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">PhilHealth Mode</label>
+            <select name="philhealth_mode"
+                    class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+              <option value="percent">Percent</option>
+              <option value="fixed">Fixed</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">PhilHealth Value</label>
+            <input name="philhealth_value" type="number" step="0.01" min="0" value="5.00"
+                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          </div>
+
+          <div class="flex items-end">
+            <label class="flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-bold text-gray-700 dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-200">
+              <input type="checkbox" name="has_premium" value="1" class="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent">
+              Premium?
+            </label>
+          </div>
         </div>
-      </form>
+      </div>
+
+      <div class="mt-6 flex justify-end">
+        <button class="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3 text-sm font-extrabold text-white shadow-lg transition hover:scale-[1.01] hover:shadow-glow sm:w-auto">
+          <iconify-icon icon="ph:plus-circle-duotone"></iconify-icon>
+          Create Employee
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- EMPLOYEE PROFILES -->
+  <section class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
+    <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
+      <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Employee Profiles & Payroll Rates</h2>
+      <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">
+        Update employee details, biometric IDs, payroll rates, deductions, and employment status.
+      </p>
     </div>
 
-    <!-- EMPLOYEE PROFILE TABLE -->
-    <div class="overflow-x-auto rounded-2xl border bg-white/60">
-      <table class="w-full text-sm min-w-[1600px]">
-        <thead class="text-xs uppercase text-slate-500 border-b bg-slate-50">
-          <tr>
-            <th class="px-3 py-2 text-left">Username</th>
-            <th class="px-3 py-2 text-left">Email</th>
-            <th class="px-3 py-2 text-left">Branch</th>
-            <th class="px-3 py-2 text-left">Bio ID</th>
-            <th class="px-3 py-2 text-left">Department</th>
-            <th class="px-3 py-2 text-left">Position</th>
-            <th class="px-3 py-2 text-left">Type</th>
-            <th class="px-3 py-2 text-left">Monthly Salary</th>
-            <th class="px-3 py-2 text-left">Daily Rate</th>
-            <th class="px-3 py-2 text-left">Premium</th>
-            <th class="px-3 py-2 text-left">SSS</th>
-            <th class="px-3 py-2 text-left">Pag-IBIG</th>
-            <th class="px-3 py-2 text-left">PhilHealth</th>
-            <th class="px-3 py-2 text-left">Status</th>
-            <th class="px-3 py-2 text-right">Actions</th>
-          </tr>
-        </thead>
+    {% if employee_profiles %}
+      <div class="grid gap-4 p-4 sm:p-5 xl:grid-cols-2">
+        {% for p in employee_profiles %}
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-5">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="truncate text-lg font-black text-gray-950 dark:text-white">{{ p.user.username }}</h3>
 
-        <tbody class="divide-y">
-          {% for p in employee_profiles %}
-          <tr class="hover:bg-slate-50 align-top">
-            <form method="post" action="{% url 'admin_employees' %}">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="update_employee">
-              <input type="hidden" name="profile_id" value="{{ p.id }}">
+                {% if p.is_approved %}
+                  <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
+                    APPROVED
+                  </span>
+                {% else %}
+                  <span class="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-extrabold text-amber-700 dark:text-amber-300">
+                    PENDING
+                  </span>
+                {% endif %}
 
-              <td class="px-3 py-2 font-medium">
-                {{ p.user.username }}
-              </td>
+                {% if p.employment_type == "COS" %}
+                  <span class="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-extrabold text-blue-700 dark:text-blue-300">COS</span>
+                {% elif p.employment_type == "JO" %}
+                  <span class="rounded-full bg-violet-500/10 px-3 py-1 text-xs font-extrabold text-violet-700 dark:text-violet-300">JO</span>
+                {% endif %}
+              </div>
 
-              <td class="px-3 py-2">
-                <input name="email" value="{{ p.user.email }}" class="w-40 px-2 py-1 rounded border">
-              </td>
+              <p class="mt-1 truncate text-sm text-gray-600 dark:text-slate-300">
+                {{ p.user.email|default:"No email" }}
+              </p>
 
-              <td class="px-3 py-2">
+              <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                Branch: {{ p.branch|default:"—" }} • Bio ID: {{ p.biometric_employee_id|default:"—" }}
+              </p>
+            </div>
+          </div>
+
+          <form method="post" action="{% url 'admin_employees' %}" class="mt-5">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_employee">
+            <input type="hidden" name="profile_id" value="{{ p.id }}">
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Email</label>
+                <input name="email" value="{{ p.user.email }}"
+                       class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+              </div>
+
+              <div>
+                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Branch</label>
                 {% if request.user.is_superuser %}
-                  <select name="branch_id" class="w-44 px-2 py-1 rounded border">
+                  <select name="branch_id"
+                          class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
                     {% for b in branches %}
-                      <option value="{{ b.id }}" {% if p.branch_id == b.id %}selected{% endif %}>
-                        {{ b.name }}
-                      </option>
+                      <option value="{{ b.id }}" {% if p.branch_id == b.id %}selected{% endif %}>{{ b.name }}</option>
                     {% endfor %}
                   </select>
                 {% else %}
-                  <span class="text-xs">{{ p.branch|default:"—" }}</span>
+                  <div class="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                    {{ p.branch|default:"—" }}
+                  </div>
                 {% endif %}
-              </td>
+              </div>
 
-              <td class="px-3 py-2">
-                <input name="biometric_employee_id"
-                       value="{{ p.biometric_employee_id }}"
-                       class="w-24 px-2 py-1 rounded border"
-                       placeholder="Bio ID">
-              </td>
+              <div>
+                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Biometric ID</label>
+                <input name="biometric_employee_id" value="{{ p.biometric_employee_id }}" placeholder="Bio ID"
+                       class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+              </div>
 
-              <td class="px-3 py-2">
-                <input name="department" value="{{ p.department }}" class="w-36 px-2 py-1 rounded border">
-              </td>
+              <div>
+                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Department</label>
+                <input name="department" value="{{ p.department }}"
+                       class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+              </div>
 
-              <td class="px-3 py-2">
-                <input name="position" value="{{ p.position }}" class="w-36 px-2 py-1 rounded border">
-              </td>
+              <div>
+                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Position</label>
+                <input name="position" value="{{ p.position }}"
+                       class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+              </div>
 
-              <td class="px-3 py-2">
-                <select name="employment_type" class="w-24 px-2 py-1 rounded border">
+              <div>
+                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Employment Type</label>
+                <select name="employment_type"
+                        class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
                   <option value="COS" {% if p.employment_type == "COS" %}selected{% endif %}>COS</option>
                   <option value="JO" {% if p.employment_type == "JO" %}selected{% endif %}>JO</option>
                 </select>
-              </td>
+              </div>
+            </div>
 
-              <td class="px-3 py-2">
-                <input name="monthly_salary"
-                       type="number"
-                       step="0.01"
-                       min="0"
-                       value="{{ p.monthly_salary }}"
-                       class="w-32 px-2 py-1 rounded border">
-              </td>
+            <div class="mt-5 rounded-3xl border border-gray-200/70 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+              <h4 class="text-sm font-black text-gray-950 dark:text-white">Payroll & Contributions</h4>
 
-              <td class="px-3 py-2">
-                <input name="daily_rate"
-                       type="number"
-                       step="0.01"
-                       min="0"
-                       value="{{ p.daily_rate }}"
-                       class="w-32 px-2 py-1 rounded border">
-              </td>
+              <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div>
+                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Monthly Salary</label>
+                  <input name="monthly_salary" type="number" step="0.01" min="0" value="{{ p.monthly_salary }}"
+                         class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                </div>
 
-              <td class="px-3 py-2">
-                <label class="flex items-center gap-2">
-                  <input type="checkbox" name="has_premium" value="1" {% if p.has_premium %}checked{% endif %}>
-                  <span class="text-xs">Yes</span>
-                </label>
-              </td>
+                <div>
+                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Daily Rate</label>
+                  <input name="daily_rate" type="number" step="0.01" min="0" value="{{ p.daily_rate }}"
+                         class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                </div>
 
-              <td class="px-3 py-2">
-                <input name="sss_amount"
-                       type="number"
-                       step="0.01"
-                       min="0"
-                       value="{{ p.contrib.sss_amount }}"
-                       class="w-28 px-2 py-1 rounded border">
-              </td>
+                <div>
+                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">SSS</label>
+                  <input name="sss_amount" type="number" step="0.01" min="0" value="{{ p.contrib.sss_amount }}"
+                         class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                </div>
 
-              <td class="px-3 py-2">
-                <input name="pagibig_amount"
-                       type="number"
-                       step="0.01"
-                       min="0"
-                       value="{{ p.contrib.pagibig_amount }}"
-                       class="w-28 px-2 py-1 rounded border">
-              </td>
+                <div>
+                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Pag-IBIG</label>
+                  <input name="pagibig_amount" type="number" step="0.01" min="0" value="{{ p.contrib.pagibig_amount }}"
+                         class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                </div>
 
-              <td class="px-3 py-2">
-                <div class="flex gap-1">
-                  <select name="philhealth_mode" class="w-24 px-2 py-1 rounded border">
-                    <option value="percent" {% if p.contrib.philhealth_mode == "percent" %}selected{% endif %}>%</option>
+                <div>
+                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">PhilHealth Mode</label>
+                  <select name="philhealth_mode"
+                          class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                    <option value="percent" {% if p.contrib.philhealth_mode == "percent" %}selected{% endif %}>Percent</option>
                     <option value="fixed" {% if p.contrib.philhealth_mode == "fixed" %}selected{% endif %}>Fixed</option>
                   </select>
-
-                  <input name="philhealth_value"
-                         type="number"
-                         step="0.01"
-                         min="0"
-                         value="{{ p.contrib.philhealth_value }}"
-                         class="w-24 px-2 py-1 rounded border">
                 </div>
-              </td>
 
-              <td class="px-3 py-2">
-                {% if p.is_approved %}
-                  <span class="status-badge status-approved">APPROVED</span>
-                {% else %}
-                  <span class="status-badge status-pending">PENDING</span>
-                {% endif %}
-              </td>
+                <div>
+                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">PhilHealth Value</label>
+                  <input name="philhealth_value" type="number" step="0.01" min="0" value="{{ p.contrib.philhealth_value }}"
+                         class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                </div>
 
-              <td class="px-3 py-2 text-right space-x-2 whitespace-nowrap">
-                <button class="px-3 py-1 rounded bg-indigo-600 text-white text-xs">
-                  Update
-                </button>
-            </form>
+                <div class="sm:col-span-2 xl:col-span-3">
+                  <label class="flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-bold text-gray-700 dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-200">
+                    <input type="checkbox" name="has_premium" value="1" {% if p.has_premium %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent">
+                    Premium employee?
+                  </label>
+                </div>
+              </div>
+            </div>
 
-                <form method="post"
-                      action="{% url 'admin_employees' %}"
-                      class="inline"
-                      onsubmit="return confirm('Delete this employee?');">
-                  {% csrf_token %}
-                  <input type="hidden" name="action" value="delete_employee">
-                  <input type="hidden" name="profile_id" value="{{ p.id }}">
-                  <button class="px-3 py-1 rounded bg-rose-600 text-white text-xs">
-                    Delete
-                  </button>
-                </form>
-              </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="15" class="text-center py-6 text-slate-400">
-              No employee profiles found.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+            <div class="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button class="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-extrabold text-white shadow-lg transition hover:bg-indigo-500">
+                <iconify-icon icon="ph:floppy-disk-duotone"></iconify-icon>
+                Update
+              </button>
+            </div>
+          </form>
+
+          <form method="post" action="{% url 'admin_employees' %}" class="mt-2 flex justify-end" onsubmit="return confirm('Delete this employee?');">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_employee">
+            <input type="hidden" name="profile_id" value="{{ p.id }}">
+
+            <button class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-3 text-sm font-extrabold text-red-600 transition hover:bg-red-500 hover:text-white dark:text-red-300 sm:w-auto">
+              <iconify-icon icon="ph:trash-duotone"></iconify-icon>
+              Delete
+            </button>
+          </form>
+        </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="px-6 py-16 text-center">
+        <iconify-icon icon="ph:users-three-duotone" class="text-4xl text-gray-400"></iconify-icon>
+        <h3 class="mt-3 text-sm font-extrabold text-gray-950 dark:text-white">No employee profiles found</h3>
+        <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Create an employee profile to begin managing payroll and biometric IDs.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- PAYROLL NOTE -->
+  <section class="rounded-3xl border border-teal-400/30 bg-teal-500/10 p-5 shadow-lg">
+    <div class="flex items-start gap-4">
+      <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-500/10 text-teal-700 ring-1 ring-teal-500/20 dark:text-teal-300">
+        <iconify-icon icon="ph:info-duotone" class="text-xl"></iconify-icon>
+      </div>
+
+      <div>
+        <h3 class="font-extrabold text-teal-800 dark:text-teal-200">Payroll note</h3>
+        <p class="mt-1 text-sm leading-6 text-teal-800/80 dark:text-teal-200/80">
+          COS employees should usually have a monthly salary. JO employees can use daily rate for no-work-no-pay computation.
+          Biometric ID must match the Hikvision Employee ID.
+        </p>
+      </div>
     </div>
-
-    <div class="rounded-2xl border border-teal-200 bg-teal-50/60 p-4 text-sm text-slate-700">
-      <strong class="text-teal-700">Payroll note:</strong>
-      COS employees should usually have a Monthly Salary. JO employees can use Daily Rate for no-work-no-pay computation.
-      Biometric ID must match the Hikvision Employee ID.
-    </div>
-  </div>
+  </section>
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('accountSearch');
+    const pageSizeSelect = document.getElementById('accountPageSize');
+
+    const pagers = {
+      pending: {
+        page: 1,
+        prevBtn: document.getElementById('pendingPrev'),
+        nextBtn: document.getElementById('pendingNext'),
+        pageInfo: document.getElementById('pendingPageInfo'),
+        resultCount: document.getElementById('pendingResultCount')
+      },
+      approved: {
+        page: 1,
+        prevBtn: document.getElementById('approvedPrev'),
+        nextBtn: document.getElementById('approvedNext'),
+        pageInfo: document.getElementById('approvedPageInfo'),
+        resultCount: document.getElementById('approvedResultCount')
+      }
+    };
+
+    function getPageSize() {
+      const value = Number.parseInt(pageSizeSelect?.value || '5', 10);
+      return Number.isNaN(value) ? 5 : value;
+    }
+
+    function getSearchTerm() {
+      return (searchInput?.value || '').trim().toLowerCase();
+    }
+
+    function getItems(group, view) {
+      return Array.from(document.querySelectorAll(`[data-paginate="${group}"][data-view="${view}"]`));
+    }
+
+    function getFilteredItems(group, view) {
+      const term = getSearchTerm();
+
+      return getItems(group, view).filter(item => {
+        const text = (item.dataset.search || '').toLowerCase();
+        return !term || text.includes(term);
+      });
+    }
+
+    function hideAll(group, view) {
+      getItems(group, view).forEach(item => {
+        item.style.display = 'none';
+      });
+    }
+
+    function renderGroup(group) {
+      const pager = pagers[group];
+      if (!pager) return;
+
+      const pageSize = getPageSize();
+      const desktopFiltered = getFilteredItems(group, 'desktop');
+      const mobileFiltered = getFilteredItems(group, 'mobile');
+
+      const total = Math.max(desktopFiltered.length, mobileFiltered.length);
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+      if (pager.page > totalPages) pager.page = totalPages;
+      if (pager.page < 1) pager.page = 1;
+
+      const start = (pager.page - 1) * pageSize;
+      const end = start + pageSize;
+
+      hideAll(group, 'desktop');
+      hideAll(group, 'mobile');
+
+      desktopFiltered.forEach((item, index) => {
+        item.style.display = index >= start && index < end ? '' : 'none';
+      });
+
+      mobileFiltered.forEach((item, index) => {
+        item.style.display = index >= start && index < end ? '' : 'none';
+      });
+
+      const showingStart = total === 0 ? 0 : start + 1;
+      const showingEnd = Math.min(end, total);
+
+      if (pager.pageInfo) {
+        pager.pageInfo.textContent = total === 0
+          ? 'No results'
+          : `Page ${pager.page} of ${totalPages}`;
+      }
+
+      if (pager.resultCount) {
+        pager.resultCount.textContent = total === 0
+          ? 'No matching accounts'
+          : `Showing ${showingStart}-${showingEnd} of ${total} account(s)`;
+      }
+
+      if (pager.prevBtn) {
+        pager.prevBtn.disabled = pager.page <= 1 || total === 0;
+      }
+
+      if (pager.nextBtn) {
+        pager.nextBtn.disabled = pager.page >= totalPages || total === 0;
+      }
+    }
+
+    function renderAll() {
+      renderGroup('pending');
+      renderGroup('approved');
+    }
+
+    pagers.pending.prevBtn?.addEventListener('click', function () {
+      pagers.pending.page -= 1;
+      renderGroup('pending');
+    });
+
+    pagers.pending.nextBtn?.addEventListener('click', function () {
+      pagers.pending.page += 1;
+      renderGroup('pending');
+    });
+
+    pagers.approved.prevBtn?.addEventListener('click', function () {
+      pagers.approved.page -= 1;
+      renderGroup('approved');
+    });
+
+    pagers.approved.nextBtn?.addEventListener('click', function () {
+      pagers.approved.page += 1;
+      renderGroup('approved');
+    });
+
+    searchInput?.addEventListener('input', function () {
+      pagers.pending.page = 1;
+      pagers.approved.page = 1;
+      renderAll();
+    });
+
+    pageSizeSelect?.addEventListener('change', function () {
+      pagers.pending.page = 1;
+      pagers.approved.page = 1;
+      renderAll();
+    });
+
+    renderAll();
+  });
+</script>
 {% endblock %}
