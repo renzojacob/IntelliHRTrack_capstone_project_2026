@@ -184,7 +184,7 @@
           </div>
 
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            JO & COS Employees · Automatic deductions · Branch-scoped computation
+            JO, COS & Permanent Employees · Automatic deductions · Branch-scoped computation          
           </p>
 
           <div class="mt-3 flex flex-wrap gap-2">
@@ -287,13 +287,21 @@
           <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
             Employee Type
           </label>
-
-          <select name="type"
-                  class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60">
-            <option value="ALL" {% if request.GET.type == "ALL" or not request.GET.type %}selected{% endif %}>All (JO + COS)</option>
-            <option value="JO" {% if request.GET.type == "JO" %}selected{% endif %}>Job Order (JO)</option>
-            <option value="COS" {% if request.GET.type == "COS" %}selected{% endif %}>Contract of Service (COS)</option>
-          </select>
+            <select name="type"
+                    class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60">
+              <option value="ALL" {% if selected_emp_type == "ALL" or request.GET.type == "ALL" or not request.GET.type %}selected{% endif %}>
+                All Employee Types
+              </option>
+              <option value="JO" {% if selected_emp_type == "JO" or request.GET.type == "JO" %}selected{% endif %}>
+                Job Order (JO)
+              </option>
+              <option value="COS" {% if selected_emp_type == "COS" or request.GET.type == "COS" %}selected{% endif %}>
+                Contract of Service (COS)
+              </option>
+              <option value="PERMANENT" {% if selected_emp_type == "PERMANENT" or request.GET.type == "PERMANENT" %}selected{% endif %}>
+                Permanent
+              </option>
+            </select>
         </div>
 
         <div>
@@ -406,7 +414,7 @@
               data-target="{{ employees|length|default:'0' }}">0</span>
       </div>
 
-      <div class="text-xs text-gray-400 mt-2">JO/COS only</div>
+        <div class="text-xs text-gray-400 mt-2">JO / COS / Permanent</div>
     </div>
 
     <div class="glass-premium rounded-2xl p-5 card-hover-effect">
@@ -441,7 +449,7 @@
               data-target="{{ gov_contributions|default:'0' }}">₱0.00</span>
       </div>
 
-      <div class="text-xs text-gray-400 mt-2">SSS / PhilHealth / Pag-IBIG</div>
+<div class="text-xs text-gray-400 mt-2">SSS / GSIS / PhilHealth / Pag-IBIG</div>
     </div>
 
     <div class="glass-premium rounded-2xl p-5 card-hover-effect">
@@ -543,211 +551,282 @@
     </div>
   </div>
 
-  <!-- Employee Payroll Table -->
-  <div class="glass-premium rounded-2xl p-5 border border-white/30 overflow-hidden">
-    <div class="flex justify-between items-center flex-wrap gap-3 mb-4">
-      <h2 class="text-lg font-semibold flex items-center gap-2">
-        <iconify-icon icon="ph:table-duotone" class="text-accent"></iconify-icon>
-        Employee Payroll Summary
-      </h2>
+<!-- Employee Payroll Table -->
+<div class="glass-premium rounded-2xl p-5 border border-white/30 overflow-hidden">
+  <div class="flex justify-between items-center flex-wrap gap-3 mb-4">
+    <h2 class="text-lg font-semibold flex items-center gap-2">
+      <iconify-icon icon="ph:table-duotone" class="text-accent"></iconify-icon>
+      Employee Payroll Summary
+    </h2>
 
-      <span class="text-xs bg-accent/10 px-3 py-1 rounded-full">JO / COS only</span>
-    </div>
-
-    <div class="overflow-x-auto payroll-scroll">
-      <table class="w-full min-w-[1600px] text-sm" id="payrollTable">
-        <thead class="sticky top-0 z-10 glass-premium backdrop-blur-md">
-          <tr class="text-left text-gray-600 dark:text-gray-300 border-b border-white/20">
-            <th class="py-3 pr-3 font-semibold">Details</th>
-            <th class="py-3 pr-3 font-semibold">Employee</th>
-            <th class="py-3 pr-3 font-semibold">Type</th>
-            <th class="py-3 pr-3 font-semibold">Branch</th>
-            <th class="py-3 pr-3 font-semibold">Present</th>
-            <th class="py-3 pr-3 font-semibold">Travel</th>
-            <th class="py-3 pr-3 font-semibold">Holiday/Susp.</th>
-            <th class="py-3 pr-3 font-semibold">Late</th>
-            <th class="py-3 pr-3 font-semibold">Undertime</th>
-            <th class="py-3 pr-3 font-semibold">Absences</th>
-            <th class="py-3 pr-3 font-semibold">Base Pay</th>
-            <th class="py-3 pr-3 font-semibold">Premium</th>
-            <th class="py-3 pr-3 font-semibold">OT Pay</th>
-            <th class="py-3 pr-3 font-semibold">Gov</th>
-            <th class="py-3 pr-3 font-semibold">Tax</th>
-            <th class="py-3 pr-3 font-semibold">Deductions</th>
-            <th class="py-3 pr-3 font-semibold">Net Pay</th>
-            <th class="py-3 pr-3 font-semibold">Issues</th>
-            <th class="py-3 pr-3 font-semibold">Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {% for employee in employees %}
-          <tr class="border-b border-white/10 hover:bg-white/10 dark:hover:bg-slate-800/40 transition-all duration-150 payroll-row"
-              data-employee-id="{{ employee.id }}">
-
-            <td class="py-3 pr-3">
-              <button type="button"
-                      class="expand-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
-                      aria-expanded="false"
-                      data-target="{{ employee.id }}">
-                <iconify-icon icon="ph:caret-down-bold" class="text-accent transition-transform"></iconify-icon>
-              </button>
-            </td>
-
-            <td class="py-3 pr-3 font-medium">
-              {{ employee.name|default:employee.full_name|default:employee.user.username }}
-              <div class="text-xs text-gray-400">ID: {{ employee.employee_id|default:employee.id }}</div>
-            </td>
-
-            <td class="py-3 pr-3">
-              <span class="status-chip {% if employee.employment_type == 'JO' or employee.emp_type == 'JO' or employee.type == 'JO' %}amber{% else %}green{% endif %}">
-                {{ employee.employment_type|default:employee.emp_type|default:employee.type }}
-              </span>
-            </td>
-
-            <td class="py-3 pr-3">
-              {{ employee.branch_name|default:employee.branch.name }}
-            </td>
-
-            <td class="py-3 pr-3">{{ employee.attendance_summary.days_present|default:employee.days_present|default:0 }}</td>
-            <td class="py-3 pr-3">{{ employee.travel_days|default:0 }}</td>
-            <td class="py-3 pr-3">{{ employee.holidays_suspensions|default:0 }}</td>
-
-            <td class="py-3 pr-3 {% if employee.attendance_summary.total_late_minutes > 0 or employee.late_minutes > 0 %}text-rose-400 font-medium{% endif %}">
-              {{ employee.attendance_summary.total_late_minutes|default:employee.late_minutes|default:0 }}
-            </td>
-
-            <td class="py-3 pr-3 {% if employee.attendance_summary.total_undertime_minutes > 0 or employee.undertime_minutes > 0 %}text-orange-400 font-medium{% endif %}">
-              {{ employee.attendance_summary.total_undertime_minutes|default:employee.undertime_minutes|default:0 }}
-            </td>
-
-            <td class="py-3 pr-3">{{ employee.attendance_summary.days_absent|default:employee.absences|default:0 }}</td>
-
-            <td class="py-3 pr-3">₱{{ employee.base_pay|default:employee.computed_payroll.base|default:"0.00" }}</td>
-            <td class="py-3 pr-3">₱{{ employee.premium|default:employee.computed_payroll.premium|default:"0.00" }}</td>
-            <td class="py-3 pr-3">₱{{ employee.ot_pay|default:employee.computed_payroll.ot|default:"0.00" }}</td>
-            <td class="py-3 pr-3">₱{{ employee.gov_contributions|default:employee.gov_contributions_total|default:"0.00" }}</td>
-            <td class="py-3 pr-3">₱{{ employee.tax|default:employee.tax_total|default:"0.00" }}</td>
-            <td class="py-3 pr-3">₱{{ employee.deductions|default:employee.deductions_total|default:"0.00" }}</td>
-
-            <td class="py-3 pr-3 font-bold text-accent" title="Base + OT + Premium - deductions">
-              ₱{{ employee.net_pay|default:employee.computed_payroll.net|default:"0.00" }}
-            </td>
-
-            <td class="py-3 pr-3">
-              {% if employee.issues %}
-                <span class="inline-flex items-center gap-1 text-amber-400" title="{{ employee.issues }}">
-                  <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
-                </span>
-              {% elif employee.attendance_summary.has_missing_logs %}
-                <span class="inline-flex items-center gap-1 text-amber-400" title="Missing attendance logs">
-                  <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
-                </span>
-              {% else %}
-                <iconify-icon icon="ph:check-circle-duotone" class="text-emerald-400"></iconify-icon>
-              {% endif %}
-            </td>
-
-            <td class="py-3 pr-3">
-                <div class="flex gap-2">
-                  <!-- View DTR in modal -->
-                  <button type="button"
-                          class="view-dtr-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
-                          title="View DTR details"
-                          data-employee-id="{{ employee.id }}"
-                          data-employee-name="{{ employee.name|default:employee.full_name|default:employee.user.username }}"
-                          data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escapejs }}'>
-                    <iconify-icon icon="ph:calendar-check-duotone" class="text-accent text-lg"></iconify-icon>
-                  </button>
-
-                  <!-- Print saved Civil Service Form No. 48 DTR -->
-                  {% if employee.payroll_item_id %}
-                    <a href="{% url 'admin_payroll_item_dtr_print' employee.payroll_item_id %}"
-                      target="_blank"
-                      class="p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition inline-flex items-center justify-center"
-                      title="Print saved Civil Service Form No. 48 DTR">
-                      <iconify-icon icon="ph:printer-duotone" class="text-accent text-lg"></iconify-icon>
-                    </a>
-                  {% else %}
-                    <button type="button"
-                            class="p-1.5 rounded-lg bg-slate-100 text-slate-400 cursor-not-allowed inline-flex items-center justify-center"
-                            title="Process payroll first before printing saved DTR"
-                            disabled>
-                      <iconify-icon icon="ph:printer-duotone" class="text-lg"></iconify-icon>
-                    </button>
-                  {% endif %}
-                </div>
-              </td>
-
-              <td class="py-3 pr-3">
-              <div class="flex gap-2">
-                <!-- View DTR in modal -->
-                <button type="button"
-                        class="view-dtr-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
-                        title="View DTR details"
-                        data-employee-id="{{ employee.id }}"
-                        data-employee-name="{{ employee.name|default:employee.full_name|default:employee.user.username }}"
-                        data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escapejs }}'>
-                  <iconify-icon icon="ph:calendar-check-duotone" class="text-accent text-lg"></iconify-icon>
-                </button>
-
-                <!-- View / Print Payslip -->
-      <a href="{% url 'admin_payslip' employee.profile_id selected_period.id %}"
-        target="_blank"
-        class="p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition inline-flex items-center justify-center"
-        title="View / Print Payslip">
-        <iconify-icon icon="ph:receipt-duotone" class="text-accent text-lg"></iconify-icon>
-      </a>
-
-          </tr>
-
-          <tr class="expand-detail-row hidden" data-detail-for="{{ employee.id }}">
-            <td colspan="19" class="p-4">
-              <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
-                <div class="glass-premium p-3 rounded-lg">
-                  <span class="text-gray-500">Daily Rate</span>
-                  <strong class="block mt-1">₱{{ employee.daily_rate|default:"0.00" }}</strong>
-                </div>
-
-                <div class="glass-premium p-3 rounded-lg">
-                  <span class="text-gray-500">Hourly Rate</span>
-                  <strong class="block mt-1">₱{{ employee.hourly_rate|default:"0.00" }}</strong>
-                </div>
-
-                <div class="glass-premium p-3 rounded-lg">
-                  <span class="text-gray-500">Per-Minute Rate</span>
-                  <strong class="block mt-1">₱{{ employee.per_minute_rate|default:"0.00" }}</strong>
-                </div>
-
-                <div class="glass-premium p-3 rounded-lg">
-                  <span class="text-gray-500">Late Deduction</span>
-                  <strong class="block mt-1 text-rose-400">₱{{ employee.late_deduction|default:"0.00" }}</strong>
-                </div>
-
-                <div class="glass-premium p-3 rounded-lg">
-                  <span class="text-gray-500">Undertime Deduction</span>
-                  <strong class="block mt-1 text-orange-400">₱{{ employee.undertime_deduction|default:"0.00" }}</strong>
-                </div>
-
-                <div class="glass-premium p-3 rounded-lg">
-                  <span class="text-gray-500">OT Eligibility</span>
-                  <strong class="block mt-1">{{ employee.ot_status|default:"Computed by backend" }}</strong>
-                </div>
-              </div>
-            </td>
-          </tr>
-
-          {% empty %}
-          <tr>
-            <td colspan="19" class="text-center py-10 text-gray-400">
-              No JO/COS employees match the selected filters.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <span class="text-xs bg-accent/10 px-3 py-1 rounded-full">
+      JO / COS / Permanent
+    </span>
   </div>
+
+  <div class="overflow-x-auto payroll-scroll">
+    <table class="w-full min-w-[1750px] text-sm" id="payrollTable">
+      <thead class="sticky top-0 z-10 glass-premium backdrop-blur-md">
+        <tr class="text-left text-gray-600 dark:text-gray-300 border-b border-white/20">
+          <th class="py-3 pr-3 font-semibold">Details</th>
+          <th class="py-3 pr-3 font-semibold">Employee</th>
+          <th class="py-3 pr-3 font-semibold">Type</th>
+          <th class="py-3 pr-3 font-semibold">Branch</th>
+          <th class="py-3 pr-3 font-semibold">Present</th>
+          <th class="py-3 pr-3 font-semibold">Travel</th>
+          <th class="py-3 pr-3 font-semibold">Holiday/Susp.</th>
+          <th class="py-3 pr-3 font-semibold">Late</th>
+          <th class="py-3 pr-3 font-semibold">Undertime</th>
+          <th class="py-3 pr-3 font-semibold">Absences</th>
+          <th class="py-3 pr-3 font-semibold">Base / Basic</th>
+          <th class="py-3 pr-3 font-semibold">PERA / Premium</th>
+          <th class="py-3 pr-3 font-semibold">OT Pay</th>
+          <th class="py-3 pr-3 font-semibold">Gov / GSIS</th>
+          <th class="py-3 pr-3 font-semibold">Tax / WTAX</th>
+          <th class="py-3 pr-3 font-semibold">Deductions</th>
+          <th class="py-3 pr-3 font-semibold">Net Pay</th>
+          <th class="py-3 pr-3 font-semibold">Issues</th>
+          <th class="py-3 pr-3 font-semibold">Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for employee in employees %}
+        <tr class="border-b border-white/10 hover:bg-white/10 dark:hover:bg-slate-800/40 transition-all duration-150 payroll-row"
+            data-employee-id="{{ employee.id }}">
+
+          <td class="py-3 pr-3">
+            <button type="button"
+                    class="expand-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
+                    aria-expanded="false"
+                    data-target="{{ employee.id }}">
+              <iconify-icon icon="ph:caret-down-bold" class="text-accent transition-transform"></iconify-icon>
+            </button>
+          </td>
+
+          <td class="py-3 pr-3 font-medium">
+            {{ employee.name|default:employee.full_name|default:employee.user.username }}
+            <div class="text-xs text-gray-400">
+              ID: {{ employee.employee_id|default:employee.id }}
+            </div>
+          </td>
+
+          <td class="py-3 pr-3">
+            {% if employee.employment_type == "JO" or employee.emp_type == "JO" or employee.type == "JO" %}
+              <span class="status-chip amber">JO</span>
+            {% elif employee.employment_type == "COS" or employee.emp_type == "COS" or employee.type == "COS" %}
+              <span class="status-chip green">COS</span>
+            {% elif employee.employment_type == "PERMANENT" or employee.emp_type == "PERMANENT" or employee.type == "PERMANENT" %}
+              <span class="status-chip purple">PERMANENT</span>
+            {% else %}
+              <span class="status-chip gray">{{ employee.employment_type|default:employee.emp_type|default:employee.type|default:"—" }}</span>
+            {% endif %}
+          </td>
+
+          <td class="py-3 pr-3">
+            {{ employee.branch_name|default:employee.branch.name }}
+          </td>
+
+          <td class="py-3 pr-3">
+            {{ employee.attendance_summary.days_present|default:employee.days_present|default:0 }}
+          </td>
+
+          <td class="py-3 pr-3">
+            {{ employee.travel_days|default:0 }}
+          </td>
+
+          <td class="py-3 pr-3">
+            {{ employee.holidays_suspensions|default:employee.holiday_days|default:0 }}
+          </td>
+
+          <td class="py-3 pr-3 {% if employee.attendance_summary.total_late_minutes > 0 or employee.late_minutes > 0 %}text-rose-400 font-medium{% endif %}">
+            {{ employee.attendance_summary.total_late_minutes|default:employee.late_minutes|default:0 }}
+          </td>
+
+          <td class="py-3 pr-3 {% if employee.attendance_summary.total_undertime_minutes > 0 or employee.undertime_minutes > 0 %}text-orange-400 font-medium{% endif %}">
+            {{ employee.attendance_summary.total_undertime_minutes|default:employee.undertime_minutes|default:0 }}
+          </td>
+
+          <td class="py-3 pr-3">
+            {{ employee.attendance_summary.days_absent|default:employee.absences|default:0 }}
+          </td>
+
+          <td class="py-3 pr-3">
+            ₱{{ employee.base_pay|default:employee.basic_salary|default:employee.computed_payroll.base|default:"0.00" }}
+          </td>
+
+          <td class="py-3 pr-3">
+            {% if employee.employment_type == "PERMANENT" or employee.emp_type == "PERMANENT" or employee.type == "PERMANENT" %}
+              ₱{{ employee.pera|default:"0.00" }}
+              <div class="text-[10px] text-gray-400">PERA</div>
+            {% else %}
+              ₱{{ employee.premium|default:employee.computed_payroll.premium|default:"0.00" }}
+              <div class="text-[10px] text-gray-400">Premium</div>
+            {% endif %}
+          </td>
+
+          <td class="py-3 pr-3">
+            ₱{{ employee.ot_pay|default:employee.computed_payroll.ot|default:"0.00" }}
+          </td>
+
+          <td class="py-3 pr-3">
+            ₱{{ employee.gov_contributions|default:employee.gov_contributions_total|default:"0.00" }}
+            {% if employee.employment_type == "PERMANENT" or employee.emp_type == "PERMANENT" or employee.type == "PERMANENT" %}
+              <div class="text-[10px] text-gray-400">GSIS/PhilHealth/Pag-IBIG</div>
+            {% else %}
+              <div class="text-[10px] text-gray-400">SSS/PhilHealth/Pag-IBIG</div>
+            {% endif %}
+          </td>
+
+          <td class="py-3 pr-3">
+            ₱{{ employee.tax|default:employee.tax_total|default:"0.00" }}
+            {% if employee.employment_type == "PERMANENT" or employee.emp_type == "PERMANENT" or employee.type == "PERMANENT" %}
+              <div class="text-[10px] text-gray-400">WTAX</div>
+            {% else %}
+              <div class="text-[10px] text-gray-400">Tax</div>
+            {% endif %}
+          </td>
+
+          <td class="py-3 pr-3">
+            ₱{{ employee.deductions|default:employee.deductions_total|default:"0.00" }}
+          </td>
+
+          <td class="py-3 pr-3 font-bold text-accent" title="Gross earnings minus deductions">
+            ₱{{ employee.net_pay|default:employee.computed_payroll.net|default:"0.00" }}
+          </td>
+
+          <td class="py-3 pr-3">
+            {% if employee.issues %}
+              <span class="inline-flex items-center gap-1 text-amber-400" title="{{ employee.issues }}">
+                <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
+              </span>
+            {% elif employee.attendance_summary.has_missing_logs %}
+              <span class="inline-flex items-center gap-1 text-amber-400" title="Missing attendance logs">
+                <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
+              </span>
+            {% else %}
+              <iconify-icon icon="ph:check-circle-duotone" class="text-emerald-400"></iconify-icon>
+            {% endif %}
+          </td>
+
+          <td class="py-3 pr-3">
+            <div class="flex gap-2">
+              <button type="button"
+                      class="view-dtr-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
+                      title="View DTR details"
+                      data-employee-id="{{ employee.id }}"
+                      data-employee-name="{{ employee.name|default:employee.full_name|default:employee.user.username }}"
+                      data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escapejs }}'>
+                <iconify-icon icon="ph:calendar-check-duotone" class="text-accent text-lg"></iconify-icon>
+              </button>
+
+              {% if employee.payroll_item_id %}
+                <a href="{% url 'admin_payroll_item_dtr_print' employee.payroll_item_id %}"
+                   target="_blank"
+                   class="p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition inline-flex items-center justify-center"
+                   title="Print saved Civil Service Form No. 48 DTR">
+                  <iconify-icon icon="ph:printer-duotone" class="text-accent text-lg"></iconify-icon>
+                </a>
+              {% else %}
+                <button type="button"
+                        class="p-1.5 rounded-lg bg-slate-100 text-slate-400 cursor-not-allowed inline-flex items-center justify-center"
+                        title="Process payroll first before printing saved DTR"
+                        disabled>
+                  <iconify-icon icon="ph:printer-duotone" class="text-lg"></iconify-icon>
+                </button>
+              {% endif %}
+
+              <a href="{% url 'admin_payslip' employee.profile_id selected_period.id %}"
+                 target="_blank"
+                 class="p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition inline-flex items-center justify-center"
+                 title="View / Print Payslip">
+                <iconify-icon icon="ph:receipt-duotone" class="text-accent text-lg"></iconify-icon>
+              </a>
+            </div>
+          </td>
+        </tr>
+
+        <tr class="expand-detail-row hidden" data-detail-for="{{ employee.id }}">
+          <td colspan="19" class="p-4">
+            <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">Daily Rate</span>
+                <strong class="block mt-1">₱{{ employee.daily_rate|default:"0.00" }}</strong>
+              </div>
+
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">Hourly Rate</span>
+                <strong class="block mt-1">₱{{ employee.hourly_rate|default:"0.00" }}</strong>
+              </div>
+
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">Per-Minute Rate</span>
+                <strong class="block mt-1">₱{{ employee.per_minute_rate|default:"0.00" }}</strong>
+              </div>
+
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">Late Deduction</span>
+                <strong class="block mt-1 text-rose-400">₱{{ employee.late_deduction|default:"0.00" }}</strong>
+              </div>
+
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">Undertime Deduction</span>
+                <strong class="block mt-1 text-orange-400">₱{{ employee.undertime_deduction|default:"0.00" }}</strong>
+              </div>
+
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">Other Earnings</span>
+                <strong class="block mt-1">₱{{ employee.other_earnings|default:"0.00" }}</strong>
+              </div>
+
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">WTAX</span>
+                <strong class="block mt-1 text-rose-400">₱{{ employee.wtax|default:"0.00" }}</strong>
+              </div>
+
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">GSIS Employee Share</span>
+                <strong class="block mt-1 text-rose-400">₱{{ employee.gsis_employee|default:"0.00" }}</strong>
+              </div>
+
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">GSIS Employer Share</span>
+                <strong class="block mt-1 text-blue-400">₱{{ employee.gsis_employer|default:"0.00" }}</strong>
+              </div>
+
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">Loan Deduction</span>
+                <strong class="block mt-1 text-rose-400">₱{{ employee.loan_deduction|default:"0.00" }}</strong>
+              </div>
+
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">Other Deduction</span>
+                <strong class="block mt-1 text-rose-400">₱{{ employee.other_deduction|default:"0.00" }}</strong>
+              </div>
+
+              <div class="glass-premium p-3 rounded-lg">
+                <span class="text-gray-500">Employer Contributions</span>
+                <strong class="block mt-1 text-blue-400">₱{{ employee.employer_contributions_total|default:"0.00" }}</strong>
+              </div>
+            </div>
+
+            <div class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              For permanent employees, employer contributions are shown for records/costing only and are not deducted from net pay.
+            </div>
+          </td>
+        </tr>
+
+        {% empty %}
+        <tr>
+          <td colspan="19" class="text-center py-10 text-gray-400">
+            No employees match the selected filters.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 
   <!-- DTR Modal -->
   <div id="dtrModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 backdrop-blur-md transition-all duration-300">
@@ -816,6 +895,7 @@
             <th class="pb-2">Batch Name</th>
             <th>Branch</th>
             <th>Period</th>
+            <th>Scope</th>
             <th>Status</th>
             <th>Processed By</th>
             <th>Processed At</th>
@@ -831,7 +911,12 @@
             <td>{{ batch.branch.name|default:batch.branch_name }}</td>
             <td>{{ batch.period.name|default:batch.period_name }}</td>
             <td>
-              <span class="status-chip {% if batch.status == 'completed' or batch.status == 'Completed' %}green{% else %}amber{% endif %}">
+              <span class="status-chip blue">
+                {{ batch.employee_type_scope|default:"ALL" }}
+              </span>
+            </td>
+            <td>
+  <span class="status-chip {% if batch.status == 'completed' or batch.status == 'Completed' %}green{% else %}amber{% endif %}">
                 {{ batch.status }}
               </span>
             </td>
@@ -846,7 +931,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="8" class="py-6 text-center text-gray-400">No previous batches found.</td>
+          <td colspan="9" class="py-6 text-center text-gray-400">No previous batches found.</td>
           </tr>
           {% endfor %}
         </tbody>

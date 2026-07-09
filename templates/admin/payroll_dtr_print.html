@@ -253,10 +253,77 @@
 
 <body>
 
-  <div class="toolbar">
-    <a href="{% url 'admin_payroll' %}">Back to Payroll</a>
-    <button onclick="window.print()">Print DTR</button>
+<div class="toolbar">
+  <a href="{% url 'admin_payroll' %}?branch={{ branch.id }}&period={{ period.id }}&type={{ employee_type_scope|default:'ALL' }}">
+    Back to Payroll
+  </a>
+
+          {% if dtr_locked %}
+            <span style="background:#065f46;color:white;padding:9px 14px;border-radius:8px;font-size:13px;">
+              LOCKED / FINALIZED
+            </span>
+          {% else %}
+            <form method="post" action="{% url 'admin_finalize_payroll_item_dtr' item.id %}" onsubmit="return confirm('Finalize and lock this DTR?');" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit">Finalize / Lock DTR</button>
+            </form>
+          {% endif %}
+
+          {% if dtr_locked and finalized_dtr %}
+            <form method="post" action="{% url 'admin_unlock_finalized_dtr' finalized_dtr.id %}" onsubmit="return confirm('Unlock this DTR? This should only be done for corrections.');" style="display:inline-flex;gap:6px;align-items:center;">
+              {% csrf_token %}
+              <input name="unlock_reason"
+                    placeholder="Reason"
+                    required
+                    style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;">
+              <button type="submit" style="background:#b91c1c;">Unlock</button>
+            </form>
+          {% endif %}
+
+          <button onclick="window.print()">Print DTR</button>
+        </div>
+
+        {% if messages %}
+  <div style="max-width:760px;margin:0 auto 12px auto;font-family:Arial,sans-serif;">
+    {% for message in messages %}
+      <div style="padding:10px 12px;border-radius:8px;margin-bottom:6px;background:#ecfdf5;color:#065f46;font-size:13px;">
+        {{ message }}
+      </div>
+    {% endfor %}
   </div>
+{% endif %}
+
+<div style="max-width:760px;margin:0 auto 12px auto;font-family:Arial,sans-serif;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #cbd5e1;font-size:12px;color:#334155;">
+  <strong>DTR Status:</strong>
+  {% if dtr_locked %}
+    Locked / Finalized
+  {% elif finalized_dtr %}
+    Unlocked for correction
+  {% else %}
+    Not yet finalized
+  {% endif %}
+  <br>
+
+  <strong>Source:</strong> {{ dtr_source_label }}
+
+  {% if finalized_dtr and finalized_dtr.finalized_by %}
+    <br>
+    <strong>Finalized by:</strong> {{ finalized_dtr.finalized_by.username }}
+    at {{ finalized_dtr.finalized_at|date:"Y-m-d H:i" }}
+  {% endif %}
+
+  {% if finalized_dtr and finalized_dtr.unlocked_by %}
+    <br>
+    <strong>Last unlocked by:</strong> {{ finalized_dtr.unlocked_by.username }}
+    at {{ finalized_dtr.unlocked_at|date:"Y-m-d H:i" }}
+    <br>
+    <strong>Reason:</strong> {{ finalized_dtr.unlock_reason }}
+  {% endif %}
+</div>
+
+
+
+
 
   <div class="page">
 

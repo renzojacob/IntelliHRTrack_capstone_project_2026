@@ -49,6 +49,7 @@ from .models import (
     HolidaySuspension,
     PayrollBatch,
     PayrollItem,
+    FinalizedDTR,
     TravelOrder,
     OvertimeRequest,
 )
@@ -780,26 +781,41 @@ def admin_employee_management(request):
     - Employee Profiles CRUD
     - Payroll setup per employee:
         biometric_employee_id
+        employment_type: COS / JO / PERMANENT
         monthly_salary
         daily_rate
+        PERA / other earnings for permanent employees
         has_premium
-        EmployeeContribution: SSS, Pag-IBIG, PhilHealth
+        EmployeeContribution:
+            JO/COS: SSS, Pag-IBIG, PhilHealth
+            Permanent: WTAX, PhilHealth, GSIS, Pag-IBIG, loans, other deductions
     """
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
     qs = _scoped_profiles_for_admin(request)
 
+    ALLOWED_EMPLOYMENT_TYPES = (
+        UserProfile.EMP_COS,
+        UserProfile.EMP_JO,
+        UserProfile.EMP_PERMANENT,
+    )
+
     def _to_decimal(value, default="0.00"):
         raw = str(value or "").strip().replace(",", "")
         if not raw:
             return Decimal(default)
+
         try:
             return Decimal(raw)
         except Exception:
             return Decimal(default)
 
     def _get_allowed_branch_from_post():
+        """
+        Superuser can choose branch from POST.
+        Branch admin is forced to their own branch.
+        """
         if request.user.is_superuser:
             bid = (request.POST.get("branch_id") or "").strip()
             if not bid:
@@ -812,13 +828,49 @@ def admin_employee_management(request):
             return None
 
     def _save_employee_contribution(profile):
-        sss_amount = _to_decimal(request.POST.get("sss_amount"), "760.00")
-        pagibig_amount = _to_decimal(request.POST.get("pagibig_amount"), "400.00")
+        """
+        Saves employee-specific contribution/deduction settings.
+
+        JO/COS:
+        - SSS
+        - Pag-IBIG
+        - PhilHealth
+
+        Permanent:
+        - WTAX
+        - PhilHealth
+        - GSIS employee share
+        - GSIS employer share
+        - Pag-IBIG
+        - Loans
+        - Other deductions
+        - Other employer contributions
+        """
+
+        is_permanent = profile.employment_type == UserProfile.EMP_PERMANENT
+
+        # For permanent employees, SSS should normally be 0 because GSIS is used.
+        # Still stored for compatibility, but default is safer as 0.
+        sss_default = "0.00" if is_permanent else "760.00"
+
+        sss_amount = _to_decimal(request.POST.get("sss_amount"), sss_default)
+        pagibig_amount = _to_decimal(request.POST.get("pagibig_amount"), "0.00" if is_permanent else "400.00")
+
         philhealth_mode = (request.POST.get("philhealth_mode") or "percent").strip().lower()
-        philhealth_value = _to_decimal(request.POST.get("philhealth_value"), "5.00")
+        philhealth_value = _to_decimal(request.POST.get("philhealth_value"), "0.00" if is_permanent else "5.00")
 
         if philhealth_mode not in ("percent", "fixed"):
             philhealth_mode = "percent"
+
+        # Permanent employee deduction fields.
+        # These are manual/configurable first because exact official formulas
+        # still need client confirmation.
+        wtax_amount = _to_decimal(request.POST.get("wtax_amount"), "0.00")
+        gsis_employee_share = _to_decimal(request.POST.get("gsis_employee_share"), "0.00")
+        gsis_employer_share = _to_decimal(request.POST.get("gsis_employer_share"), "0.00")
+        loan_deduction_amount = _to_decimal(request.POST.get("loan_deduction_amount"), "0.00")
+        other_deduction_amount = _to_decimal(request.POST.get("other_deduction_amount"), "0.00")
+        other_employer_contribution = _to_decimal(request.POST.get("other_employer_contribution"), "0.00")
 
         EmployeeContribution.objects.update_or_create(
             profile=profile,
@@ -827,7 +879,14 @@ def admin_employee_management(request):
                 "pagibig_amount": pagibig_amount,
                 "philhealth_mode": philhealth_mode,
                 "philhealth_value": philhealth_value,
-            }
+
+                "wtax_amount": wtax_amount,
+                "gsis_employee_share": gsis_employee_share,
+                "gsis_employer_share": gsis_employer_share,
+                "loan_deduction_amount": loan_deduction_amount,
+                "other_deduction_amount": other_deduction_amount,
+                "other_employer_contribution": other_employer_contribution,
+            },
         )
 
     if request.method == "POST":
@@ -847,6 +906,11 @@ def admin_employee_management(request):
 
             monthly_salary = _to_decimal(request.POST.get("monthly_salary"), "0.00")
             daily_rate = _to_decimal(request.POST.get("daily_rate"), "0.00")
+
+            pera_allowance = _to_decimal(request.POST.get("pera_allowance"), "0.00")
+            other_earnings_amount = _to_decimal(request.POST.get("other_earnings_amount"), "0.00")
+
+            manual_deduction_amount = _to_decimal(request.POST.get("manual_deduction_amount"), "0.00")
             has_premium = bool(request.POST.get("has_premium"))
 
             if not username:
@@ -857,8 +921,8 @@ def admin_employee_management(request):
                 messages.error(request, "Branch is required.")
                 return redirect("admin_employees")
 
-            if employment_type not in ("COS", "JO"):
-                messages.error(request, "Employment type must be COS or JO.")
+            if employment_type not in ALLOWED_EMPLOYMENT_TYPES:
+                messages.error(request, "Employment type must be COS, JO, or Permanent.")
                 return redirect("admin_employees")
 
             if not password or len(password) < 8:
@@ -886,6 +950,9 @@ def admin_employee_management(request):
                         biometric_employee_id=biometric_employee_id,
                         monthly_salary=monthly_salary,
                         daily_rate=daily_rate,
+                        pera_allowance=pera_allowance,
+                        other_earnings_amount=other_earnings_amount,
+                        manual_deduction_amount=manual_deduction_amount,
                         has_premium=has_premium,
                         is_approved=True,
                     )
@@ -924,10 +991,15 @@ def admin_employee_management(request):
 
             monthly_salary = _to_decimal(request.POST.get("monthly_salary"), "0.00")
             daily_rate = _to_decimal(request.POST.get("daily_rate"), "0.00")
+
+            pera_allowance = _to_decimal(request.POST.get("pera_allowance"), "0.00")
+            other_earnings_amount = _to_decimal(request.POST.get("other_earnings_amount"), "0.00")
+
+            manual_deduction_amount = _to_decimal(request.POST.get("manual_deduction_amount"), "0.00")
             has_premium = bool(request.POST.get("has_premium"))
 
-            if employment_type not in ("COS", "JO"):
-                messages.error(request, "Employment type must be COS or JO.")
+            if employment_type not in ALLOWED_EMPLOYMENT_TYPES:
+                messages.error(request, "Employment type must be COS, JO, or Permanent.")
                 return redirect("admin_employees")
 
             if request.user.is_superuser:
@@ -937,22 +1009,31 @@ def admin_employee_management(request):
                     if b:
                         prof.branch = b
 
-            prof.department = department
-            prof.position = position
-            prof.employment_type = employment_type
-            prof.biometric_employee_id = biometric_employee_id
-            prof.monthly_salary = monthly_salary
-            prof.daily_rate = daily_rate
-            prof.has_premium = has_premium
-            prof.save()
+            try:
+                with transaction.atomic():
+                    prof.department = department
+                    prof.position = position
+                    prof.employment_type = employment_type
+                    prof.biometric_employee_id = biometric_employee_id
+                    prof.monthly_salary = monthly_salary
+                    prof.daily_rate = daily_rate
+                    prof.pera_allowance = pera_allowance
+                    prof.other_earnings_amount = other_earnings_amount
+                    prof.manual_deduction_amount = manual_deduction_amount
+                    prof.has_premium = has_premium
+                    prof.save()
 
-            if email != prof.user.email:
-                prof.user.email = email
-                prof.user.save(update_fields=["email"])
+                    if email != prof.user.email:
+                        prof.user.email = email
+                        prof.user.save(update_fields=["email"])
 
-            _save_employee_contribution(prof)
+                    _save_employee_contribution(prof)
 
-            messages.success(request, f"Updated: {prof.user.username}")
+                messages.success(request, f"Updated: {prof.user.username}")
+
+            except Exception as e:
+                messages.error(request, f"Update failed: {e}")
+
             return redirect("admin_employees")
 
         elif action == "delete_employee":
@@ -991,23 +1072,31 @@ def admin_employee_management(request):
             user__is_superuser=False,
         )
         .select_related("user", "branch")
-        .prefetch_related("contrib")
         .order_by("user__username")
     )
 
     # Ensure every employee has contribution row for display.
     for prof in employee_profiles:
+        is_permanent = prof.employment_type == UserProfile.EMP_PERMANENT
+
         EmployeeContribution.objects.get_or_create(
             profile=prof,
             defaults={
-                "sss_amount": Decimal("760.00"),
-                "pagibig_amount": Decimal("400.00"),
+                "sss_amount": Decimal("0.00") if is_permanent else Decimal("760.00"),
+                "pagibig_amount": Decimal("0.00") if is_permanent else Decimal("400.00"),
                 "philhealth_mode": "percent",
-                "philhealth_value": Decimal("5.00"),
-            }
+                "philhealth_value": Decimal("0.00") if is_permanent else Decimal("5.00"),
+
+                "wtax_amount": Decimal("0.00"),
+                "gsis_employee_share": Decimal("0.00"),
+                "gsis_employer_share": Decimal("0.00"),
+                "loan_deduction_amount": Decimal("0.00"),
+                "other_deduction_amount": Decimal("0.00"),
+                "other_employer_contribution": Decimal("0.00"),
+            },
         )
 
-    branches = Branch.objects.all().order_by("name")
+    branches = _scoped_branch_queryset_for_admin(request)
 
     return render(
         request,
@@ -1018,6 +1107,7 @@ def admin_employee_management(request):
             "approved_profiles": approved_profiles,
             "employee_profiles": employee_profiles,
             "branches": branches,
+            "employment_type_choices": UserProfile.EMPLOYMENT_TYPE_CHOICES,
         },
     )
 
@@ -2077,6 +2167,262 @@ def _get_from_meta(meta, *keys, default=None):
             return meta.get(key)
 
     return default
+def _get_from_nested_meta(meta, section, key, default=None):
+    """
+    Safely read nested values from PayrollItem.meta.
+    Example:
+        meta["permanent_breakdown"]["gsis_employee"]
+    """
+    if not isinstance(meta, dict):
+        return default
+
+    nested = meta.get(section, {})
+    if not isinstance(nested, dict):
+        return default
+
+    return nested.get(key, default)
+
+
+def _build_payslip_data(profile, period, branch, rules, generated_by_user, saved_item=None):
+    """
+    Builds one payslip dictionary for both:
+    - Admin payslip page
+    - Employee payslip print page
+
+    Supports:
+    - JO
+    - COS
+    - PERMANENT
+    """
+
+    live_result = _compute_payroll(profile, branch, period, rules)
+
+    rates = live_result.get("rates", {})
+    summary = live_result.get("attendance_summary", {})
+    computed = live_result.get("computed_payroll", {})
+    gov = live_result.get("gov", {})
+    dtr_rows = live_result.get("dtr_rows", [])
+    issues = live_result.get("issues", "")
+
+    meta = {}
+    source_label = "Live Payroll Preview"
+    processed_batch = None
+
+    # -------------------------
+    # Start with live values
+    # -------------------------
+    base_pay = _payslip_money(computed.get("base", Decimal("0.00")))
+    basic_salary = _payslip_money(computed.get("basic_salary", base_pay))
+    pera = _payslip_money(computed.get("pera", Decimal("0.00")))
+    other_earnings = _payslip_money(computed.get("other_earnings", Decimal("0.00")))
+
+    premium_pay = _payslip_money(computed.get("premium", Decimal("0.00")))
+    overtime_hours = _safe_decimal(computed.get("overtime_hours", Decimal("0.00")))
+    overtime_pay = _payslip_money(computed.get("ot", Decimal("0.00")))
+
+    gross_pay = _payslip_money(computed.get("gross", base_pay + pera + other_earnings + premium_pay + overtime_pay))
+
+    late_minutes = int(computed.get("late_minutes", 0) or 0)
+    undertime_minutes = int(computed.get("undertime_minutes", 0) or 0)
+    absences = int(computed.get("absences", 0) or 0)
+
+    late_deduction = _payslip_money(computed.get("late_deduction", Decimal("0.00")))
+    undertime_deduction = _payslip_money(computed.get("undertime_deduction", Decimal("0.00")))
+    absence_deduction = _payslip_money(computed.get("absence_deduction", Decimal("0.00")))
+    attendance_deduction = _payslip_money(computed.get("attendance_deduction", late_deduction + undertime_deduction + absence_deduction))
+
+    manual_deduction = _payslip_money(computed.get("manual_deduction", Decimal("0.00")))
+    loan_deduction = _payslip_money(computed.get("loan_deduction", Decimal("0.00")))
+    other_deduction = _payslip_money(computed.get("other_deduction", Decimal("0.00")))
+
+    deductions_total = _payslip_money(computed.get("deductions", Decimal("0.00")))
+    net_pay = _payslip_money(computed.get("net", Decimal("0.00")))
+
+    sss = _payslip_money(gov.get("sss", Decimal("0.00")))
+    philhealth = _payslip_money(gov.get("philhealth", Decimal("0.00")))
+    pagibig = _payslip_money(gov.get("pagibig", Decimal("0.00")))
+    gov_total = _payslip_money(gov.get("gov_total", Decimal("0.00")))
+    tax = _payslip_money(gov.get("tax", Decimal("0.00")))
+
+    wtax = _payslip_money(gov.get("wtax", tax))
+    gsis_employee = _payslip_money(gov.get("gsis_employee", Decimal("0.00")))
+    gsis_employer = _payslip_money(gov.get("gsis_employer", Decimal("0.00")))
+    other_employer_contribution = _payslip_money(gov.get("other_employer_contribution", Decimal("0.00")))
+    employer_contributions_total = _payslip_money(gov.get("employer_contributions_total", Decimal("0.00")))
+
+    # -------------------------
+    # If processed payroll exists, use saved values as official values
+    # -------------------------
+    if saved_item:
+        source_label = "Processed Payroll Record"
+        processed_batch = saved_item.batch
+        meta = saved_item.meta or {}
+
+        base_pay = _payslip_money(saved_item.base_pay)
+        basic_salary = _payslip_money(
+            _get_from_nested_meta(meta, "permanent_breakdown", "basic_salary", default=basic_salary)
+        )
+
+        pera = _payslip_money(
+            _get_from_nested_meta(meta, "permanent_breakdown", "pera", default=pera)
+        )
+
+        other_earnings = _payslip_money(
+            _get_from_nested_meta(meta, "permanent_breakdown", "other_earnings", default=other_earnings)
+        )
+
+        premium_pay = _payslip_money(saved_item.premium_pay)
+        overtime_hours = _safe_decimal(saved_item.overtime_hours)
+        overtime_pay = _payslip_money(saved_item.overtime_pay)
+
+        late_minutes = int(saved_item.late_minutes or 0)
+        undertime_minutes = int(saved_item.undertime_minutes or 0)
+        absences = int(saved_item.absences or 0)
+
+        manual_deduction = _payslip_money(saved_item.manual_deduction)
+        gov_total = _payslip_money(saved_item.gov_contributions_total)
+        tax = _payslip_money(saved_item.tax_total)
+        deductions_total = _payslip_money(saved_item.deductions_total)
+        net_pay = _payslip_money(saved_item.net_pay)
+
+        issues = saved_item.issues or issues
+
+        sss = _payslip_money(_get_from_meta(meta, "sss", "sss_amount", default=sss))
+        pagibig = _payslip_money(_get_from_meta(meta, "pagibig", "pagibig_amount", default=pagibig))
+        philhealth = _payslip_money(_get_from_meta(meta, "philhealth", "philhealth_amount", default=philhealth))
+
+        wtax = _payslip_money(
+            _get_from_nested_meta(meta, "permanent_breakdown", "wtax", default=wtax)
+        )
+
+        gsis_employee = _payslip_money(
+            _get_from_nested_meta(meta, "permanent_breakdown", "gsis_employee", default=gsis_employee)
+        )
+
+        gsis_employer = _payslip_money(
+            _get_from_nested_meta(meta, "permanent_breakdown", "gsis_employer", default=gsis_employer)
+        )
+
+        loan_deduction = _payslip_money(
+            _get_from_nested_meta(meta, "permanent_breakdown", "loan_deduction", default=loan_deduction)
+        )
+
+        other_deduction = _payslip_money(
+            _get_from_nested_meta(meta, "permanent_breakdown", "other_deduction", default=other_deduction)
+        )
+
+        other_employer_contribution = _payslip_money(
+            _get_from_nested_meta(meta, "permanent_breakdown", "other_employer_contribution", default=other_employer_contribution)
+        )
+
+        employer_contributions_total = _payslip_money(
+            _get_from_nested_meta(meta, "permanent_breakdown", "employer_contributions_total", default=employer_contributions_total)
+        )
+
+        late_deduction = _payslip_money(_get_from_meta(meta, "late_deduction", default=late_deduction))
+        undertime_deduction = _payslip_money(_get_from_meta(meta, "undertime_deduction", default=undertime_deduction))
+        absence_deduction = _payslip_money(_get_from_meta(meta, "absence_deduction", default=absence_deduction))
+
+        attendance_deduction = _payslip_money(
+            _get_from_meta(
+                meta,
+                "attendance_deduction",
+                default=late_deduction + undertime_deduction + absence_deduction,
+            )
+        )
+
+        meta_dtr_rows = _get_from_meta(meta, "dtr_rows", "dtr", default=None)
+        if meta_dtr_rows:
+            dtr_rows = meta_dtr_rows
+
+        # Rebuild gross from saved official line items.
+        gross_pay = _money(base_pay + pera + other_earnings + premium_pay + overtime_pay)
+
+    is_permanent = profile.employment_type == UserProfile.EMP_PERMANENT
+
+    reference_code = f"ITHR-{period.id}-{profile.id}-{timezone.now().strftime('%Y%m%d%H%M')}"
+
+    payslip = {
+        "reference_code": reference_code,
+        "source_label": source_label,
+
+        "employee_name": profile.user.get_full_name() or profile.user.username,
+        "employee_username": profile.user.username,
+        "employee_id": live_result.get("picked_employee_id") or profile.biometric_employee_id or profile.user.id,
+        "branch": branch.name if branch else "—",
+        "department": profile.department or "—",
+        "position": profile.position or "—",
+        "employment_type": profile.employment_type,
+        "is_permanent": is_permanent,
+
+        "period_name": period.name,
+        "period_start": period.start_date,
+        "period_end": period.end_date,
+        "pay_mode": period.get_pay_mode_display() if hasattr(period, "get_pay_mode_display") else period.pay_mode,
+
+        "date_generated": timezone.now(),
+        "generated_by": generated_by_user.get_full_name() or generated_by_user.username,
+
+        "daily_rate": _payslip_money(rates.get("daily")),
+        "hourly_rate": _payslip_money(rates.get("hourly")),
+        "per_minute_rate": _payslip_money(rates.get("per_minute")),
+
+        # Earnings
+        "base_pay": _money(base_pay),
+        "basic_salary": _money(basic_salary),
+        "pera": _money(pera),
+        "other_earnings": _money(other_earnings),
+        "premium_pay": _money(premium_pay),
+        "overtime_hours": overtime_hours,
+        "overtime_pay": _money(overtime_pay),
+        "gross_pay": _money(gross_pay),
+
+        # Attendance basis
+        "days_present": summary.get("present_days", summary.get("days_present", 0)),
+        "travel_days": summary.get("travel_days", 0),
+        "holiday_days": summary.get("holiday_days", 0),
+        "absences": absences,
+        "missing_logs": summary.get("missing_logs", 0),
+        "late_minutes": late_minutes,
+        "undertime_minutes": undertime_minutes,
+
+        # Attendance deductions
+        "late_deduction": _money(late_deduction),
+        "undertime_deduction": _money(undertime_deduction),
+        "absence_deduction": _money(absence_deduction),
+        "attendance_deduction": _money(attendance_deduction),
+
+        # JO/COS deductions
+        "sss": _money(sss),
+        "philhealth": _money(philhealth),
+        "pagibig": _money(pagibig),
+        "tax": _money(tax),
+
+        # Permanent deductions
+        "wtax": _money(wtax),
+        "gsis_employee": _money(gsis_employee),
+        "gsis_employer": _money(gsis_employer),
+        "loan_deduction": _money(loan_deduction),
+        "other_deduction": _money(other_deduction),
+        "other_employer_contribution": _money(other_employer_contribution),
+        "employer_contributions_total": _money(employer_contributions_total),
+
+        # Totals
+        "gov_total": _money(gov_total),
+        "manual_deduction": _money(manual_deduction),
+        "total_deductions": _money(deductions_total),
+        "net_pay": _money(net_pay),
+
+        "issues": issues,
+    }
+
+    return {
+        "payslip": payslip,
+        "dtr_rows": dtr_rows,
+        "saved_item": saved_item,
+        "processed_batch": processed_batch,
+        "meta": meta,
+    }
 
 @login_required
 @never_cache
@@ -2085,6 +2431,11 @@ def employee_payslip_print(request, item_id):
     Printable employee payslip.
     Security rule:
     Employee can only open PayrollItem where PayrollItem.profile == request.user.profile.
+
+    Supports:
+    - JO
+    - COS
+    - PERMANENT
     """
 
     if request.user.is_staff or request.user.is_superuser:
@@ -2097,28 +2448,51 @@ def employee_payslip_print(request, item_id):
         return redirect("login_ui")
 
     item = get_object_or_404(
-        PayrollItem.objects.select_related("batch", "batch__period", "batch__branch", "profile", "profile__user"),
+        PayrollItem.objects.select_related(
+            "batch",
+            "batch__period",
+            "batch__branch",
+            "profile",
+            "profile__user",
+            "profile__branch",
+        ),
         id=item_id,
         profile=profile,
     )
 
-    meta = item.meta or {}
-    dtr_rows = meta.get("dtr_rows", [])
+    branch = item.batch.branch or profile.branch
+    period = item.batch.period
+
+    if not branch:
+        messages.error(request, "No branch found for this payroll item.")
+        return redirect("employee_payroll")
+
+    rules = _get_or_create_rules(branch)
+
+    payslip_data = _build_payslip_data(
+        profile=profile,
+        period=period,
+        branch=branch,
+        rules=rules,
+        generated_by_user=request.user,
+        saved_item=item,
+    )
 
     context = {
         "item": item,
         "profile": profile,
         "employee_name": request.user.get_full_name() or request.user.username,
-        "period": item.batch.period,
+        "period": period,
         "batch": item.batch,
-        "meta": meta,
-        "dtr_rows": dtr_rows,
+        "branch": branch,
+        "payslip": payslip_data["payslip"],
+        "meta": payslip_data["meta"],
+        "dtr_rows": payslip_data["dtr_rows"],
         "today": timezone.localdate(),
     }
 
     return render(request, "employee/payslip_print.html", context)
-
-
+    
 
 @login_required
 @never_cache
@@ -3801,42 +4175,58 @@ def _build_dtr_and_summary(profile, branch, period, rules):
     
 def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod, rules: PayrollRule):
     """
-    STEP 2/3 payroll computation.
+    Safe payroll computation for:
+    - Job Order (JO)
+    - Contract of Service (COS)
+    - Permanent employees
 
-    Current supported:
-    - Attendance matching from biometric_employee_id
-    - JO no work, no pay
-    - COS monthly/semi-monthly base
-    - Holidays/suspensions not counted as absences
-    - Travel counted as paid present day
-    - Automatic late and undertime deduction
-    - SSS, Pag-IBIG, PhilHealth, tax
-    - Premium pay
-    - Approved overtime
-    - DTR rows for print preparation
+    Main rule:
+    JO:
+        No work, no pay.
+
+    COS:
+        Monthly or semi-monthly base pay.
+        Existing JO/COS behavior is preserved as much as possible.
+
+    PERMANENT:
+        Gross = basic salary + PERA + other earnings + approved overtime
+        Deductions = WTAX + PhilHealth + GSIS employee share + Pag-IBIG
+                     + loans + other deductions + attendance deductions if policy applies
+        Employer contributions are tracked but NOT deducted from net pay.
     """
 
     issues = []
 
     dtr = _build_dtr_and_summary(profile, branch, period, rules)
-
     issues.extend(dtr.get("issues", []))
+
+    emp_type = str(profile.employment_type or "").upper()
+
+    # -------------------------
+    # Money helper inside function
+    # -------------------------
+    def D(value, default="0.00"):
+        try:
+            return Decimal(value or default)
+        except Exception:
+            return Decimal(default)
 
     # -------------------------
     # Rates
     # -------------------------
-    monthly_salary = Decimal(profile.monthly_salary or 0)
-    daily_rate_profile = Decimal(profile.daily_rate or 0)
+    monthly_salary = D(profile.monthly_salary)
+    daily_rate_profile = D(profile.daily_rate)
 
-    salary_divisor = Decimal(rules.salary_divisor or 22)
+    salary_divisor = D(rules.salary_divisor, "22")
     if salary_divisor <= 0:
         salary_divisor = Decimal("22")
 
-    daily_required_hours = Decimal(rules.daily_hours_required or 8)
+    daily_required_hours = D(rules.daily_hours_required, "8")
     if daily_required_hours <= 0:
         daily_required_hours = Decimal("8")
 
     # Daily Rate = Monthly Salary / Salary Divisor
+    # For permanent employees, monthly_salary is treated as basic salary.
     if monthly_salary > 0:
         daily_rate = monthly_salary / salary_divisor
     else:
@@ -3851,29 +4241,35 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     # -------------------------
     # Attendance summary
     # -------------------------
-    present_days = int(dtr["days_present"])
-    travel_days = int(dtr["travel_days"])
-    holiday_days = int(dtr["holiday_days"])
-    absences = int(dtr["absences"])
-    late_minutes = int(dtr["late_minutes"])
-    undertime_minutes = int(dtr["undertime_minutes"])
+    present_days = int(dtr.get("days_present", 0) or 0)
+    travel_days = int(dtr.get("travel_days", 0) or 0)
+    holiday_days = int(dtr.get("holiday_days", 0) or 0)
+    absences = int(dtr.get("absences", 0) or 0)
+    late_minutes = int(dtr.get("late_minutes", 0) or 0)
+    undertime_minutes = int(dtr.get("undertime_minutes", 0) or 0)
 
+    # In your current DTR builder, official travel is already treated as a paid status.
+    # So we use present_days as the paid basis to avoid double-counting travel.
     paid_attendance_days = present_days
 
     # -------------------------
     # Base pay
     # -------------------------
-    emp_type = str(profile.employment_type or "").upper()
+    pera_allowance = D(getattr(profile, "pera_allowance", Decimal("0.00")))
+    other_earnings_amount = D(getattr(profile, "other_earnings_amount", Decimal("0.00")))
+
+    pera_for_period = Decimal("0.00")
+    other_earnings_for_period = Decimal("0.00")
+    base_pay = Decimal("0.00")
 
     if emp_type == UserProfile.EMP_JO:
         # JO = no work, no pay.
-        # Holidays are not paid unless they actually have attendance/travel.
+        # Gross basic pay is based only on actual paid attendance days.
         base_pay = daily_rate * Decimal(paid_attendance_days)
 
-    else:
-        # COS = monthly/semi-monthly salary.
-        # Holidays/suspensions are not deducted because _build_dtr_and_summary
-        # does not count them as absences.
+    elif emp_type == UserProfile.EMP_COS:
+        # COS = fixed monthly/semi-monthly base.
+        # This preserves your current behavior.
         if monthly_salary > 0:
             if period.pay_mode == PayrollPeriod.PAY_MONTHLY:
                 base_pay = monthly_salary
@@ -3882,29 +4278,67 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
         else:
             # Fallback if COS has no monthly salary but has daily rate.
             working_days = 0
-            for row in dtr["rows"]:
-                if row["status"] not in ["Weekend", "Holiday/Suspension"]:
+            for row in dtr.get("rows", []):
+                if row.get("status") not in ["Weekend", "Holiday/Suspension"]:
                     working_days += 1
 
             base_pay = daily_rate * Decimal(max(0, working_days - absences))
 
+    elif emp_type == UserProfile.EMP_PERMANENT:
+        # Permanent = basic salary for the period.
+        # PERA and other earnings are added to gross.
+        if monthly_salary > 0:
+            if period.pay_mode == PayrollPeriod.PAY_MONTHLY:
+                base_pay = monthly_salary
+                pera_for_period = pera_allowance
+                other_earnings_for_period = other_earnings_amount
+            else:
+                base_pay = monthly_salary / Decimal("2")
+                pera_for_period = pera_allowance / Decimal("2")
+                other_earnings_for_period = other_earnings_amount / Decimal("2")
+        else:
+            base_pay = Decimal("0.00")
+            issues.append("Permanent employee has no basic/monthly salary configured")
+
+    else:
+        base_pay = Decimal("0.00")
+        issues.append(f"Unknown employment type: {emp_type or 'blank'}")
+
     base_pay = _money(base_pay)
+    pera_for_period = _money(pera_for_period)
+    other_earnings_for_period = _money(other_earnings_for_period)
 
     # -------------------------
-    # Late and undertime deductions
+    # Attendance deductions
     # -------------------------
     late_deduction = _money(Decimal(late_minutes) * per_minute_rate)
     undertime_deduction = _money(Decimal(undertime_minutes) * per_minute_rate)
 
-    attendance_deduction = _money(late_deduction + undertime_deduction)
+    # Do not add absence deduction yet.
+    # Reason: client policy for permanent/COS unpaid absences must be confirmed first.
+    # JO already follows no-work-no-pay through base pay.
+    absence_deduction = Decimal("0.00")
+
+    attendance_deduction = _money(
+        late_deduction
+        + undertime_deduction
+        + absence_deduction
+    )
 
     # -------------------------
-    # Premium pay
+    # Premium
     # -------------------------
     premium_pay = Decimal("0.00")
-    if profile.has_premium:
-        premium_rate = Decimal(rules.premium_rate_percent or 0) / Decimal("100")
-        premium_pay = _money(base_pay * premium_rate)
+
+    if emp_type in [UserProfile.EMP_JO, UserProfile.EMP_COS]:
+        if profile.has_premium:
+            premium_rate = D(rules.premium_rate_percent) / Decimal("100")
+            premium_pay = _money(base_pay * premium_rate)
+
+    # Permanent employees normally do not use the JO/COS premium.
+    # If the client later allows a permanent premium, we can add a separate rule.
+    if emp_type == UserProfile.EMP_PERMANENT and profile.has_premium:
+        issues.append("Premium flag ignored for Permanent employee unless client policy allows it")
 
     # -------------------------
     # Overtime
@@ -3920,67 +4354,129 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
         )
 
         for ot in ot_qs:
-            # Rule: if late that day, OT is disqualified.
             matching_dtr_row = None
-            for row in dtr["rows"]:
-                if row["date"] == ot.date.isoformat():
+
+            for row in dtr.get("rows", []):
+                if row.get("date") == ot.date.isoformat():
                     matching_dtr_row = row
                     break
 
-            if matching_dtr_row and int(matching_dtr_row.get("late", 0)) > 0:
+            # Rule: if late that day, OT is disqualified.
+            if matching_dtr_row and int(matching_dtr_row.get("late", 0) or 0) > 0:
                 issues.append(f"OT disqualified on {ot.date}: employee was late")
                 continue
 
-            ot_hours += Decimal(ot.hours or 0)
+            ot_hours += D(ot.hours)
 
     except Exception:
         ot_hours = Decimal("0.00")
 
-    ot_multiplier = Decimal(rules.ot_multiplier or Decimal("1.25"))
+    ot_multiplier = D(rules.ot_multiplier, "1.25")
     overtime_pay = _money(ot_hours * hourly_rate * ot_multiplier)
 
     # -------------------------
-    # Government contributions
+    # Employee contribution/deduction profile
     # -------------------------
     contrib, _ = EmployeeContribution.objects.get_or_create(
         profile=profile,
         defaults={
-            "sss_amount": rules.sss_minimum or Decimal("760"),
-            "pagibig_amount": rules.pagibig_minimum or Decimal("400"),
-            "philhealth_mode": rules.philhealth_default_mode or EmployeeContribution.PHILHEALTH_PERCENT,
-            "philhealth_value": rules.philhealth_default_value or Decimal("5"),
-        }
+            "sss_amount": Decimal("0.00") if emp_type == UserProfile.EMP_PERMANENT else D(rules.sss_minimum, "760.00"),
+            "pagibig_amount": Decimal("0.00") if emp_type == UserProfile.EMP_PERMANENT else D(rules.pagibig_minimum, "400.00"),
+            "philhealth_mode": getattr(rules, "philhealth_default_mode", EmployeeContribution.PHILHEALTH_PERCENT) or EmployeeContribution.PHILHEALTH_PERCENT,
+            "philhealth_value": Decimal("0.00") if emp_type == UserProfile.EMP_PERMANENT else D(rules.philhealth_default_value, "5.00"),
+        },
     )
 
-    sss = Decimal(contrib.sss_amount or 0)
-    pagibig = Decimal(contrib.pagibig_amount or 0)
+    gross_before_deductions = _money(
+        base_pay
+        + pera_for_period
+        + other_earnings_for_period
+        + premium_pay
+        + overtime_pay
+    )
 
-    # Enforce minimums
-    if sss < Decimal(rules.sss_minimum or 0):
-        sss = Decimal(rules.sss_minimum or 0)
-
-    if pagibig < Decimal(rules.pagibig_minimum or 0):
-        pagibig = Decimal(rules.pagibig_minimum or 0)
-
-    gross_before_deductions = _money(base_pay + premium_pay + overtime_pay)
-
+    # -------------------------
+    # PhilHealth
+    # -------------------------
     philhealth = Decimal("0.00")
 
     if contrib.philhealth_mode == EmployeeContribution.PHILHEALTH_FIXED:
-        philhealth = Decimal(contrib.philhealth_value or 0)
+        philhealth = D(contrib.philhealth_value)
     else:
-        philhealth_rate = Decimal(contrib.philhealth_value or 0) / Decimal("100")
+        philhealth_rate = D(contrib.philhealth_value) / Decimal("100")
         philhealth = gross_before_deductions * philhealth_rate
 
     philhealth = _money(philhealth)
 
-    gov_total = _money(sss + pagibig + philhealth)
+    # -------------------------
+    # JO/COS deductions
+    # -------------------------
+    sss = Decimal("0.00")
+    pagibig = Decimal("0.00")
+    tax_total = Decimal("0.00")
 
     # -------------------------
-    # Tax
+    # Permanent deductions
     # -------------------------
-    tax_rate = Decimal(rules.tax_rate_percent or 0) / Decimal("100")
-    tax_total = _money(gross_before_deductions * tax_rate)
+    wtax_amount = Decimal("0.00")
+    gsis_employee_share = Decimal("0.00")
+    gsis_employer_share = Decimal("0.00")
+    loan_deduction_amount = Decimal("0.00")
+    other_deduction_amount = Decimal("0.00")
+    other_employer_contribution = Decimal("0.00")
+
+    if emp_type == UserProfile.EMP_PERMANENT:
+        # Permanent employees use GSIS, WTAX, PhilHealth, Pag-IBIG, loans, and other deductions.
+        sss = Decimal("0.00")
+
+        pagibig = _money(D(contrib.pagibig_amount))
+        wtax_amount = _money(D(getattr(contrib, "wtax_amount", Decimal("0.00"))))
+        gsis_employee_share = _money(D(getattr(contrib, "gsis_employee_share", Decimal("0.00"))))
+        gsis_employer_share = _money(D(getattr(contrib, "gsis_employer_share", Decimal("0.00"))))
+        loan_deduction_amount = _money(D(getattr(contrib, "loan_deduction_amount", Decimal("0.00"))))
+        other_deduction_amount = _money(D(getattr(contrib, "other_deduction_amount", Decimal("0.00"))))
+        other_employer_contribution = _money(D(getattr(contrib, "other_employer_contribution", Decimal("0.00"))))
+
+        tax_total = wtax_amount
+
+        gov_total = _money(
+            philhealth
+            + pagibig
+            + gsis_employee_share
+        )
+
+        employer_contributions_total = _money(
+            gsis_employer_share
+            + other_employer_contribution
+        )
+
+        if monthly_salary <= 0:
+            issues.append("Permanent basic salary missing")
+
+        if gov_total <= 0 and tax_total <= 0 and loan_deduction_amount <= 0:
+            issues.append("Permanent deductions not configured yet")
+
+    else:
+        # JO/COS keep the old logic: SSS, Pag-IBIG, PhilHealth, tax.
+        sss = D(contrib.sss_amount)
+        pagibig = D(contrib.pagibig_amount)
+
+        # Enforce minimums for JO/COS only.
+        if sss < D(rules.sss_minimum):
+            sss = D(rules.sss_minimum)
+
+        if pagibig < D(rules.pagibig_minimum):
+            pagibig = D(rules.pagibig_minimum)
+
+        sss = _money(sss)
+        pagibig = _money(pagibig)
+
+        gov_total = _money(sss + pagibig + philhealth)
+
+        tax_rate = D(rules.tax_rate_percent) / Decimal("100")
+        tax_total = _money(gross_before_deductions * tax_rate)
+
+        employer_contributions_total = Decimal("0.00")
 
     # -------------------------
     # Manual deduction
@@ -3995,6 +4491,8 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
         + gov_total
         + tax_total
         + manual_deduction
+        + loan_deduction_amount
+        + other_deduction_amount
     )
 
     net_pay = _money(gross_before_deductions - deductions_total)
@@ -4005,28 +4503,29 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     # -------------------------
     # Issue flags
     # -------------------------
-    if dtr["records_found"] == 0:
+    if dtr.get("records_found", 0) == 0:
         issues.append("No attendance records found for biometric ID in selected period")
 
-    if dtr["missing_logs"] > 0:
-        issues.append(f"{dtr['missing_logs']} day(s) with missing attendance logs")
+    if dtr.get("missing_logs", 0) > 0:
+        issues.append(f"{dtr.get('missing_logs', 0)} day(s) with missing attendance logs")
 
-    if sss <= 0 or pagibig <= 0:
-        issues.append("Contribution missing")
+    if emp_type in [UserProfile.EMP_JO, UserProfile.EMP_COS]:
+        if sss <= 0 or pagibig <= 0:
+            issues.append("Contribution missing")
 
     issues_text = ", ".join(dict.fromkeys([i for i in issues if i]))
 
     return {
-        "picked_employee_id": dtr["employee_id_used"],
+        "picked_employee_id": dtr.get("employee_id_used"),
 
         "attendance_summary": {
             "present_days": present_days,
             "travel_days": travel_days,
             "holiday_days": holiday_days,
             "absences": absences,
-            "missing_logs": int(dtr["missing_logs"]),
-            "records_found": int(dtr["records_found"]),
-            "records_used": int(dtr["records_used"]),
+            "missing_logs": int(dtr.get("missing_logs", 0) or 0),
+            "records_found": int(dtr.get("records_found", 0) or 0),
+            "records_used": int(dtr.get("records_used", 0) or 0),
         },
 
         "rates": {
@@ -4037,6 +4536,10 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
 
         "computed_payroll": {
             "base": _money(base_pay),
+            "basic_salary": _money(base_pay),
+            "pera": _money(pera_for_period),
+            "other_earnings": _money(other_earnings_for_period),
+
             "premium": _money(premium_pay),
             "overtime_hours": _money(ot_hours),
             "ot": _money(overtime_pay),
@@ -4048,23 +4551,39 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
 
             "late_deduction": _money(late_deduction),
             "undertime_deduction": _money(undertime_deduction),
+            "absence_deduction": _money(absence_deduction),
             "attendance_deduction": _money(attendance_deduction),
 
             "manual_deduction": _money(manual_deduction),
+            "loan_deduction": _money(loan_deduction_amount),
+            "other_deduction": _money(other_deduction_amount),
+
             "deductions": _money(deductions_total),
             "net": _money(net_pay),
         },
 
         "gov": {
+            # JO/COS
             "sss": _money(sss),
+
+            # Common
             "pagibig": _money(pagibig),
             "philhealth": _money(philhealth),
             "gov_total": _money(gov_total),
             "tax": _money(tax_total),
+
+            # Permanent-specific
+            "wtax": _money(wtax_amount),
+            "gsis_employee": _money(gsis_employee_share),
+            "gsis_employer": _money(gsis_employer_share),
+            "loan_deduction": _money(loan_deduction_amount),
+            "other_deduction": _money(other_deduction_amount),
+            "other_employer_contribution": _money(other_employer_contribution),
+            "employer_contributions_total": _money(employer_contributions_total),
         },
 
         "issues": issues_text,
-        "dtr_rows": dtr["rows"],
+        "dtr_rows": dtr.get("rows", []),
     }
     
 # =========================================================
@@ -5291,8 +5810,16 @@ def admin_payroll(request):
     payroll_rules = _get_or_create_rules(branch_obj)
 
     emp_type = (request.GET.get("emp_type") or request.GET.get("type") or "ALL").upper()
-    if emp_type == "ALL":
-        emp_type = "all"
+
+    valid_emp_types = {
+        "ALL",
+        UserProfile.EMP_JO,
+        UserProfile.EMP_COS,
+        UserProfile.EMP_PERMANENT,
+    }
+
+    if emp_type not in valid_emp_types:
+        emp_type = "ALL"
 
     prof_qs = UserProfile.objects.select_related("user", "branch").filter(
         is_approved=True,
@@ -5301,7 +5828,7 @@ def admin_payroll(request):
         user__is_superuser=False,
     )
 
-    if emp_type in ("JO", "COS"):
+    if emp_type != "ALL":
         prof_qs = prof_qs.filter(employment_type=emp_type)
 
     employees = []
@@ -5454,15 +5981,35 @@ def admin_payroll(request):
             "issues": issues_text,
             "dtr_records_json": json.dumps(result.get("dtr_rows", []), default=str),
 
-            
+            "basic_salary": p.get("basic_salary", p.get("base", Decimal("0.00"))),
+            "pera": p.get("pera", Decimal("0.00")),
+            "other_earnings": p.get("other_earnings", Decimal("0.00")),
+
+            "wtax": gov.get("wtax", gov.get("tax", Decimal("0.00"))),
+            "gsis_employee": gov.get("gsis_employee", Decimal("0.00")),
+            "gsis_employer": gov.get("gsis_employer", Decimal("0.00")),
+            "loan_deduction": gov.get("loan_deduction", Decimal("0.00")),
+            "other_deduction": gov.get("other_deduction", Decimal("0.00")),
+            "other_employer_contribution": gov.get("other_employer_contribution", Decimal("0.00")),
+            "employer_contributions_total": gov.get("employer_contributions_total", Decimal("0.00")),
+
+                        
         })
 
-    payroll_batches = (
-        PayrollBatch.objects
-        .select_related("branch", "period", "processed_by")
-        .filter(branch=branch_obj)
-        .order_by("-created_at")[:20]
+    batch_qs = (
+    PayrollBatch.objects
+    .select_related("branch", "period", "processed_by")
+    .order_by("-processed_at", "-created_at")
     )
+
+    if branch_obj:
+        batch_qs = batch_qs.filter(branch=branch_obj)
+
+    if emp_type != "ALL":
+        batch_qs = batch_qs.filter(employee_type_scope=emp_type)
+
+    payroll_batches = batch_qs[:10]
+
 
     formatted_batches = []
     for b in payroll_batches:
@@ -5471,6 +6018,7 @@ def admin_payroll(request):
             "name": b.name,
             "branch_name": b.branch.name,
             "period_name": b.period.name,
+            "employee_type_scope": getattr(b, "employee_type_scope", "ALL"),
             "status": b.get_status_display() if hasattr(b, "get_status_display") else b.status,
             "processed_by": b.processed_by.username if b.processed_by else "—",
             "processed_at": b.processed_at,
@@ -5503,6 +6051,9 @@ def admin_payroll(request):
 
         "salary_divisor": payroll_rules.salary_divisor,
         "ot_multiplier": payroll_rules.ot_multiplier,
+
+        "selected_emp_type": emp_type,
+        "missing_contribution_count": contribution_missing_count,
     }
 
     return render(request, "admin/payroll.html", context)
@@ -5511,12 +6062,10 @@ def admin_payslip(request, profile_id, period_id):
     """
     Admin-side printable payslip.
 
-    Behavior:
-    - Staff/superuser only.
-    - Branch admin can only view payslips from their assigned branch.
-    - Superadmin can view all branches.
-    - If PayrollItem exists, use saved processed data.
-    - If no PayrollItem exists yet, generate live preview using _compute_payroll().
+    Supports:
+    - JO
+    - COS
+    - PERMANENT
     """
 
     if not (request.user.is_staff or request.user.is_superuser):
@@ -5531,10 +6080,6 @@ def admin_payslip(request, profile_id, period_id):
     )
 
     period = get_object_or_404(PayrollPeriod, id=period_id)
-
-    if profile.employment_type not in [UserProfile.EMP_JO, UserProfile.EMP_COS]:
-        messages.error(request, "Payslip generation is only available for JO and COS employees.")
-        return redirect("admin_payroll")
 
     # Branch restriction
     if not request.user.is_superuser:
@@ -5552,176 +6097,40 @@ def admin_payslip(request, profile_id, period_id):
 
     rules = _get_or_create_rules(branch)
 
-    # Always compute live data so the DTR basis is available.
-    live_result = _compute_payroll(profile, branch, period, rules)
-    rates = live_result.get("rates", {})
-    summary = live_result.get("attendance_summary", {})
-    computed = live_result.get("computed_payroll", {})
-    gov = live_result.get("gov", {})
-    dtr_rows = live_result.get("dtr_rows", [])
-    live_issues = live_result.get("issues", "")
-
     saved_item = (
         PayrollItem.objects
         .select_related("batch", "batch__period", "batch__branch", "batch__processed_by")
         .filter(
-            batch__branch=branch,
-            batch__period=period,
             profile=profile,
+            batch__period=period,
+            batch__branch=branch,
         )
-        .order_by("-batch__processed_at", "-id")
+        .order_by("-batch__processed_at", "-batch__created_at", "-id")
         .first()
     )
 
-    source_label = "Preview / Live Computation"
-    processed_batch = None
-
-    # Defaults from live computation
-    base_pay = _payslip_money(computed.get("base"))
-    premium_pay = _payslip_money(computed.get("premium"))
-    overtime_hours = _safe_decimal(computed.get("overtime_hours"))
-    overtime_pay = _payslip_money(computed.get("ot"))
-
-    late_minutes = int(computed.get("late_minutes") or 0)
-    undertime_minutes = int(computed.get("undertime_minutes") or 0)
-    absences = int(computed.get("absences") or summary.get("absences") or 0)
-
-    late_deduction = _payslip_money(computed.get("late_deduction"))
-    undertime_deduction = _payslip_money(computed.get("undertime_deduction"))
-    attendance_deduction = _payslip_money(computed.get("attendance_deduction"))
-
-    sss = _payslip_money(gov.get("sss"))
-    pagibig = _payslip_money(gov.get("pagibig"))
-    philhealth = _payslip_money(gov.get("philhealth"))
-    tax = _payslip_money(gov.get("tax"))
-
-    manual_deduction = _payslip_money(profile.manual_deduction_amount)
-    gov_total = _payslip_money(gov.get("gov_total"))
-    deductions_total = _payslip_money(computed.get("deductions"))
-    net_pay = _payslip_money(computed.get("net"))
-
-    issues = live_issues
-
-    if saved_item:
-        source_label = "Processed Payroll Record"
-        processed_batch = saved_item.batch
-
-        meta = saved_item.meta or {}
-
-        base_pay = _payslip_money(saved_item.base_pay)
-        premium_pay = _payslip_money(saved_item.premium_pay)
-        overtime_hours = _safe_decimal(saved_item.overtime_hours)
-        overtime_pay = _payslip_money(saved_item.overtime_pay)
-
-        late_minutes = int(saved_item.late_minutes or 0)
-        undertime_minutes = int(saved_item.undertime_minutes or 0)
-        absences = int(saved_item.absences or 0)
-
-        manual_deduction = _payslip_money(saved_item.manual_deduction)
-        gov_total = _payslip_money(saved_item.gov_contributions_total)
-        tax = _payslip_money(saved_item.tax_total)
-        deductions_total = _payslip_money(saved_item.deductions_total)
-        net_pay = _payslip_money(saved_item.net_pay)
-
-        issues = saved_item.issues or live_issues
-
-        # If your PayrollItem.meta saved detailed values, use them.
-        sss = _payslip_money(_get_from_meta(meta, "sss", "sss_amount", default=sss))
-        pagibig = _payslip_money(_get_from_meta(meta, "pagibig", "pagibig_amount", default=pagibig))
-        philhealth = _payslip_money(_get_from_meta(meta, "philhealth", "philhealth_amount", default=philhealth))
-
-        late_deduction = _payslip_money(_get_from_meta(meta, "late_deduction", default=late_deduction))
-        undertime_deduction = _payslip_money(_get_from_meta(meta, "undertime_deduction", default=undertime_deduction))
-        attendance_deduction = _payslip_money(
-            _get_from_meta(
-                meta,
-                "attendance_deduction",
-                default=late_deduction + undertime_deduction,
-            )
-        )
-
-        # If saved meta contains DTR rows, prefer it.
-        meta_dtr_rows = _get_from_meta(meta, "dtr_rows", "dtr", default=None)
-        if meta_dtr_rows:
-            dtr_rows = meta_dtr_rows
-
-    gross_pay = _money(base_pay + premium_pay + overtime_pay)
-
-    reference_code = f"ITHR-{period.id}-{profile.id}-{timezone.now().strftime('%Y%m%d%H%M')}"
-
-    payslip = {
-        "reference_code": reference_code,
-        "source_label": source_label,
-
-        "employee_name": profile.user.get_full_name() or profile.user.username,
-        "employee_username": profile.user.username,
-        "employee_id": live_result.get("picked_employee_id") or profile.biometric_employee_id or profile.user.id,
-        "branch": branch.name if branch else "—",
-        "department": profile.department or "—",
-        "position": profile.position or "—",
-        "employment_type": profile.employment_type,
-
-        "period_name": period.name,
-        "period_start": period.start_date,
-        "period_end": period.end_date,
-        "pay_mode": period.get_pay_mode_display() if hasattr(period, "get_pay_mode_display") else period.pay_mode,
-
-        "date_generated": timezone.now(),
-        "generated_by": request.user.get_full_name() or request.user.username,
-
-        "daily_rate": _payslip_money(rates.get("daily")),
-        "hourly_rate": _payslip_money(rates.get("hourly")),
-        "per_minute_rate": _payslip_money(rates.get("per_minute")),
-
-        "days_present": int(summary.get("present_days") or 0),
-        "travel_days": int(summary.get("travel_days") or 0),
-        "holiday_days": int(summary.get("holiday_days") or 0),
-        "missing_logs": int(summary.get("missing_logs") or 0),
-        "records_found": int(summary.get("records_found") or 0),
-        "records_used": int(summary.get("records_used") or 0),
-
-        "base_pay": base_pay,
-        "premium_pay": premium_pay,
-        "overtime_hours": overtime_hours,
-        "overtime_pay": overtime_pay,
-        "gross_pay": gross_pay,
-
-        "late_minutes": late_minutes,
-        "late_deduction": late_deduction,
-        "undertime_minutes": undertime_minutes,
-        "undertime_deduction": undertime_deduction,
-        "attendance_deduction": attendance_deduction,
-        "absences": absences,
-        "absence_deduction": Decimal("0.00"),
-
-        "sss": sss,
-        "philhealth": philhealth,
-        "pagibig": pagibig,
-        "gov_total": gov_total,
-        "tax": tax,
-        "manual_deduction": manual_deduction,
-        "total_deductions": deductions_total,
-        "net_pay": net_pay,
-
-        "issues": issues or "No issues found.",
-    }
-
-    back_url = f"{request.path.rsplit('/payroll/', 1)[0]}/payroll/?branch={branch.id}&period={period.id}"
+    payslip_data = _build_payslip_data(
+        profile=profile,
+        period=period,
+        branch=branch,
+        rules=rules,
+        generated_by_user=request.user,
+        saved_item=saved_item,
+    )
 
     context = {
-        "current": "payroll",
         "profile": profile,
         "period": period,
         "branch": branch,
-        "rules": rules,
-        "payslip": payslip,
-        "dtr_rows": dtr_rows,
+        "payslip": payslip_data["payslip"],
+        "dtr_rows": payslip_data["dtr_rows"],
         "saved_item": saved_item,
-        "processed_batch": processed_batch,
-        "back_url": back_url,
+        "processed_batch": payslip_data["processed_batch"],
+        "meta": payslip_data["meta"],
     }
 
     return render(request, "admin/payslip.html", context)
+    
 
 
 @login_required
@@ -5758,9 +6167,18 @@ def admin_payroll_preview_api(request):
         user__is_superuser=False,
     )
 
-    if emp_type in ("JO", "COS"):
-        prof_qs = prof_qs.filter(employment_type=emp_type)
+    valid_emp_types = {
+    "ALL",
+    UserProfile.EMP_JO,
+    UserProfile.EMP_COS,
+    UserProfile.EMP_PERMANENT,
+    }
 
+    if emp_type not in valid_emp_types:
+        emp_type = "ALL"
+
+    if emp_type != "ALL":
+        prof_qs = prof_qs.filter(employment_type=emp_type)
     rows = []
     total_base = Decimal("0.00")
     total_premium = Decimal("0.00")
@@ -5913,22 +6331,136 @@ def admin_employee_dtr_api(request, profile_id: int):
         "period": {"id": period.id, "name": period.name},
         "rows": result["dtr_rows"],
     })
+def _admin_can_access_profile(request, profile):
+    """
+    Superuser can access all branches.
+    Staff admin can access only employees in their branch.
+    """
+    if request.user.is_superuser:
+        return True
+
+    try:
+        admin_branch = request.user.profile.branch
+    except UserProfile.DoesNotExist:
+        return False
+
+    return admin_branch and profile.branch_id == admin_branch.id
+
+
+def _safe_json_snapshot(value, default):
+    """
+    Converts Decimals/dates safely into JSON-compatible data.
+    """
+    try:
+        return json.loads(json.dumps(value, default=str))
+    except Exception:
+        return default
+
+
+def _get_item_dtr_rows(item):
+    meta = item.meta or {}
+
+    rows = meta.get("dtr_rows")
+    if rows:
+        return rows
+
+    rows = meta.get("dtr")
+    if rows:
+        return rows
+
+    return []
+
+
+def _get_item_dtr_summary(item):
+    meta = item.meta or {}
+
+    summary = meta.get("attendance_summary")
+    if isinstance(summary, dict):
+        return summary
+
+    computed = meta.get("computed_payroll")
+    if isinstance(computed, dict):
+        return {
+            "late_minutes": computed.get("late_minutes", 0),
+            "undertime_minutes": computed.get("undertime_minutes", 0),
+            "absences": computed.get("absences", 0),
+        }
+
+    return {}
+
+
+def _normalize_dtr_rows_for_print(rows):
+    """
+    Ensures each DTR row has a day value for Civil Service Form No. 48.
+    """
+    normalized = []
+
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+
+        item = dict(row)
+
+        if not item.get("day"):
+            raw_date = str(item.get("date") or "").strip()
+
+            try:
+                parsed = datetime.strptime(raw_date[:10], "%Y-%m-%d").date()
+                item["day"] = parsed.day
+            except Exception:
+                item["day"] = ""
+
+        item.setdefault("am_in", "")
+        item.setdefault("am_out", "")
+        item.setdefault("pm_in", "")
+        item.setdefault("pm_out", "")
+        item.setdefault("total_hours", "0.00")
+        item.setdefault("late", 0)
+        item.setdefault("undertime", 0)
+        item.setdefault("status", "")
+        item.setdefault("remarks", "")
+
+        normalized.append(item)
+
+    return normalized
+
+
+def _dtr_totals(rows):
+    total_undertime = 0
+
+    for row in rows or []:
+        try:
+            total_undertime += int(row.get("undertime", 0) or 0)
+        except Exception:
+            pass
+
+    return {
+        "total_undertime_hours": total_undertime // 60,
+        "total_undertime_minutes": total_undertime % 60,
+    }
+
 
 @login_required
-def admin_payroll_item_dtr_print(request, item_id: int):
+def admin_payroll_item_dtr_print(request, item_id):
     """
-    Civil Service Form No. 48 style DTR print page.
-    Uses SAVED PayrollItem.meta["dtr_rows"] from processed payroll.
-    This is better than live recomputation because printed DTR should match finalized payroll.
+    Print saved Civil Service Form No. 48 DTR.
+
+    If FinalizedDTR exists and is locked:
+        use locked DTR rows.
+
+    If no locked FinalizedDTR exists:
+        use PayrollItem.meta DTR snapshot.
     """
+
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
     item = get_object_or_404(
         PayrollItem.objects.select_related(
             "batch",
-            "batch__branch",
             "batch__period",
+            "batch__branch",
+            "batch__processed_by",
             "profile",
             "profile__user",
             "profile__branch",
@@ -5936,59 +6468,77 @@ def admin_payroll_item_dtr_print(request, item_id: int):
         id=item_id,
     )
 
-    # Branch security
-    admin_branch = _get_admin_branch(request)
-    if admin_branch and item.batch.branch_id != admin_branch.id:
-        messages.error(request, "You are not allowed to view DTR from another branch.")
-        return redirect("admin_payroll")
-
     profile = item.profile
-    user = profile.user
     batch = item.batch
     period = batch.period
+    branch = batch.branch or profile.branch
+
+    if not _admin_can_access_profile(request, profile):
+        raise PermissionDenied("You are not allowed to print DTR outside your assigned branch.")
+
+    finalized_dtr = (
+        FinalizedDTR.objects
+        .select_related("profile", "period", "branch", "finalized_by", "unlocked_by", "payroll_item")
+        .filter(profile=profile, period=period)
+        .first()
+    )
+
+    if finalized_dtr and finalized_dtr.is_locked:
+        dtr_rows = _normalize_dtr_rows_for_print(finalized_dtr.rows)
+        dtr_summary = finalized_dtr.summary or {}
+        dtr_source_label = "Locked / Finalized DTR"
+        dtr_locked = True
+    else:
+        dtr_rows = _normalize_dtr_rows_for_print(_get_item_dtr_rows(item))
+        dtr_summary = _get_item_dtr_summary(item)
+        dtr_source_label = "Processed Payroll Snapshot"
+        dtr_locked = False
+
+    totals = _dtr_totals(dtr_rows)
 
     meta = item.meta or {}
-    dtr_rows = meta.get("dtr_rows", [])
+    employee_meta = meta.get("employee", {}) if isinstance(meta.get("employee", {}), dict) else {}
 
-    # Fallback if old PayrollItem has no saved DTR rows
-    if not dtr_rows:
-        rules = _get_or_create_rules(batch.branch)
-        result = _compute_payroll(profile, batch.branch, period, rules)
-        dtr_rows = result.get("dtr_rows", [])
+    employee_name = (
+        employee_meta.get("full_name")
+        or profile.user.get_full_name()
+        or profile.user.username
+    )
 
-    # Totals
-    total_undertime_hours = 0
-    total_undertime_minutes = 0
+    biometric_employee_id = (
+        employee_meta.get("biometric_employee_id")
+        or profile.biometric_employee_id
+        or ""
+    )
 
-    for row in dtr_rows:
-        total_undertime_hours += int(row.get("undertime_hour", 0) or 0)
-        total_undertime_minutes += int(row.get("undertime_minute", 0) or 0)
-
-    # Convert excess minutes to hours
-    extra_hours = total_undertime_minutes // 60
-    total_undertime_hours += extra_hours
-    total_undertime_minutes = total_undertime_minutes % 60
-
-    month_label = f"{period.start_date.strftime('%B')} {period.start_date.day}-{period.end_date.day}, {period.end_date.year}"
+    division = (
+        employee_meta.get("department")
+        or profile.department
+        or "—"
+    )
 
     context = {
         "item": item,
         "batch": batch,
         "period": period,
+        "branch": branch,
         "profile": profile,
-        "employee": user,
 
-        "employee_name": user.get_full_name() or user.username,
-        "biometric_employee_id": profile.biometric_employee_id or meta.get("employee", {}).get("employee_id_used", ""),
-        "department": profile.department or "Department of Agriculture RFO - MIMAROPA",
-        "division": profile.department or "Department of Agriculture RFO - MiMaRoPa",
-        "branch_name": batch.branch.name if batch.branch else "—",
+        "employee_name": employee_name,
+        "biometric_employee_id": biometric_employee_id,
+        "division": division,
+        "employee_type_scope": getattr(batch, "employee_type_scope", "ALL"),
 
-        "month_label": month_label,
+        "month_label": f"{period.start_date.strftime('%B %d, %Y')} - {period.end_date.strftime('%B %d, %Y')}",
         "dtr_rows": dtr_rows,
+        "dtr_summary": dtr_summary,
 
-        "total_undertime_hours": total_undertime_hours,
-        "total_undertime_minutes": total_undertime_minutes,
+        "total_undertime_hours": totals["total_undertime_hours"],
+        "total_undertime_minutes": totals["total_undertime_minutes"],
+
+        "finalized_dtr": finalized_dtr,
+        "dtr_locked": dtr_locked,
+        "dtr_source_label": dtr_source_label,
 
         "printed_by": request.user.get_full_name() or request.user.username,
         "printed_at": timezone.localtime(timezone.now()),
@@ -5996,61 +6546,261 @@ def admin_payroll_item_dtr_print(request, item_id: int):
 
     return render(request, "admin/payroll_dtr_print.html", context)
 
+@login_required
+@require_POST
+def admin_finalize_payroll_item_dtr(request, item_id):
+    """
+    Finalize and lock DTR from a processed PayrollItem snapshot.
+    """
+
+    if not (request.user.is_staff or request.user.is_superuser):
+        return redirect("login_ui")
+
+    item = get_object_or_404(
+        PayrollItem.objects.select_related(
+            "batch",
+            "batch__period",
+            "batch__branch",
+            "profile",
+            "profile__user",
+            "profile__branch",
+        ),
+        id=item_id,
+    )
+
+    profile = item.profile
+    batch = item.batch
+    period = batch.period
+    branch = batch.branch or profile.branch
+
+    if not _admin_can_access_profile(request, profile):
+        raise PermissionDenied("You are not allowed to finalize DTR outside your assigned branch.")
+
+    rows = _safe_json_snapshot(_get_item_dtr_rows(item), [])
+    summary = _safe_json_snapshot(_get_item_dtr_summary(item), {})
+
+    if not rows:
+        messages.error(request, "Cannot finalize DTR because this payroll item has no saved DTR rows.")
+        return redirect("admin_payroll_item_dtr_print", item_id=item.id)
+
+    source_meta = {
+        "payroll_item_id": item.id,
+        "batch_id": batch.id,
+        "batch_name": batch.name,
+        "employee_type_scope": getattr(batch, "employee_type_scope", "ALL"),
+        "processed_at": str(batch.processed_at or ""),
+        "processed_by": batch.processed_by.username if batch.processed_by else "",
+    }
+
+    with transaction.atomic():
+        finalized_dtr, created = FinalizedDTR.objects.select_for_update().get_or_create(
+            profile=profile,
+            period=period,
+            defaults={
+                "branch": branch,
+                "payroll_item": item,
+                "rows": rows,
+                "summary": summary,
+                "source_meta": source_meta,
+                "is_locked": True,
+                "finalized_by": request.user,
+                "finalized_at": timezone.now(),
+            },
+        )
+
+        if finalized_dtr.is_locked and not created:
+            messages.info(request, "This DTR is already finalized and locked.")
+            return redirect("admin_payroll_item_dtr_print", item_id=item.id)
+
+        finalized_dtr.branch = branch
+        finalized_dtr.payroll_item = item
+        finalized_dtr.rows = rows
+        finalized_dtr.summary = summary
+        finalized_dtr.source_meta = source_meta
+        finalized_dtr.is_locked = True
+        finalized_dtr.finalized_by = request.user
+        finalized_dtr.finalized_at = timezone.now()
+        finalized_dtr.unlocked_by = None
+        finalized_dtr.unlocked_at = None
+        finalized_dtr.unlock_reason = ""
+        finalized_dtr.save()
+
+    messages.success(request, "DTR finalized and locked successfully.")
+    return redirect("admin_payroll_item_dtr_print", item_id=item.id)
+
+
+@login_required
+@require_POST
+def admin_unlock_finalized_dtr(request, dtr_id):
+    """
+    Unlock a finalized DTR so payroll/DTR can be corrected.
+
+    This keeps the audit trail:
+    - who unlocked
+    - when unlocked
+    - reason
+    """
+
+    if not (request.user.is_staff or request.user.is_superuser):
+        return redirect("login_ui")
+
+    finalized_dtr = get_object_or_404(
+        FinalizedDTR.objects.select_related(
+            "profile",
+            "profile__user",
+            "profile__branch",
+            "period",
+            "branch",
+            "payroll_item",
+        ),
+        id=dtr_id,
+    )
+
+    if not _admin_can_access_profile(request, finalized_dtr.profile):
+        raise PermissionDenied("You are not allowed to unlock DTR outside your assigned branch.")
+
+    reason = (request.POST.get("unlock_reason") or "").strip()
+
+    if len(reason) < 5:
+        messages.error(request, "Unlock reason is required and must be at least 5 characters.")
+        if finalized_dtr.payroll_item_id:
+            return redirect("admin_payroll_item_dtr_print", item_id=finalized_dtr.payroll_item_id)
+        return redirect("admin_payroll")
+
+    finalized_dtr.is_locked = False
+    finalized_dtr.unlocked_by = request.user
+    finalized_dtr.unlocked_at = timezone.now()
+    finalized_dtr.unlock_reason = reason
+    finalized_dtr.save(update_fields=["is_locked", "unlocked_by", "unlocked_at", "unlock_reason", "updated_at"])
+
+    messages.success(request, "DTR unlocked. You may now correct attendance/payroll and re-finalize.")
+    if finalized_dtr.payroll_item_id:
+        return redirect("admin_payroll_item_dtr_print", item_id=finalized_dtr.payroll_item_id)
+
+    return redirect("admin_payroll")
+
 
 @login_required
 @require_POST
 def admin_payroll_process_batch(request):
     """
-    STEP 3.3:
-    Process payroll and save computed results into PayrollBatch + PayrollItem.
+    Safely process payroll by branch + period + employee_type_scope.
 
-    Saves:
-    - base pay
-    - premium pay
-    - overtime hours/pay
-    - late minutes
-    - undertime minutes
-    - absences
-    - manual deduction
-    - government contributions
-    - tax
-    - total deductions
-    - net pay
-    - issues
-    - DTR rows and computation snapshot inside meta
+    This prevents this problem:
+    - Process JO for May 1-15
+    - Then process PERMANENT for May 1-15
+    - Permanent processing accidentally deletes JO payroll items
+
+    Scope values:
+    - ALL
+    - JO
+    - COS
+    - PERMANENT
     """
+
     if not (request.user.is_staff or request.user.is_superuser):
-        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=403)
+        return JsonResponse({"ok": False, "error": "Unauthorized."}, status=403)
 
-    branch_id = (request.POST.get("branch") or "").strip()
-    period_id = (request.POST.get("period") or "").strip()
-    emp_type = (request.POST.get("type") or request.POST.get("emp_type") or "ALL").upper()
+    period_id = (request.POST.get("period") or request.POST.get("period_id") or "").strip()
+    branch_id = (request.POST.get("branch") or request.POST.get("branch_id") or "").strip()
+    emp_type = (request.POST.get("type") or request.POST.get("emp_type") or "ALL").strip().upper()
+    search = (request.POST.get("search") or "").strip()
 
-    branch_obj = _scoped_branch_for_admin_or_404(request, branch_id)
-    if not branch_obj:
-        return JsonResponse({"ok": False, "error": "Invalid or unauthorized branch."}, status=400)
+    valid_emp_types = {
+        PayrollBatch.SCOPE_ALL,
+        PayrollBatch.SCOPE_JO,
+        PayrollBatch.SCOPE_COS,
+        PayrollBatch.SCOPE_PERMANENT,
+    }
 
-    period = PayrollPeriod.objects.filter(id=period_id).first() if period_id.isdigit() else None
+    if emp_type not in valid_emp_types:
+        emp_type = PayrollBatch.SCOPE_ALL
+
+    if not period_id:
+        return JsonResponse({"ok": False, "error": "Payroll period is required."}, status=400)
+
+    period = PayrollPeriod.objects.filter(id=period_id).first()
     if not period:
         return JsonResponse({"ok": False, "error": "Invalid payroll period."}, status=400)
 
+    # -------------------------
+    # Branch scope
+    # -------------------------
+    if request.user.is_superuser:
+        if not branch_id:
+            return JsonResponse({"ok": False, "error": "Branch is required."}, status=400)
+
+        branch_obj = Branch.objects.filter(id=branch_id).first()
+        if not branch_obj:
+            return JsonResponse({"ok": False, "error": "Invalid branch."}, status=400)
+
+    else:
+        branch_obj = _get_admin_branch(request)
+        if not branch_obj:
+            return JsonResponse({"ok": False, "error": "Admin has no assigned branch."}, status=400)
+
     rules = _get_or_create_rules(branch_obj)
 
-    prof_qs = UserProfile.objects.select_related("user", "branch").filter(
-        is_approved=True,
-        branch=branch_obj,
-        user__is_staff=False,
-        user__is_superuser=False,
+    # -------------------------
+    # Employees included
+    # -------------------------
+    prof_qs = (
+        UserProfile.objects
+        .select_related("user", "branch")
+        .filter(
+            branch=branch_obj,
+            is_approved=True,
+            user__is_staff=False,
+            user__is_superuser=False,
+        )
     )
 
-    if emp_type in ("JO", "COS"):
+    if emp_type != PayrollBatch.SCOPE_ALL:
         prof_qs = prof_qs.filter(employment_type=emp_type)
 
+    if search:
+        prof_qs = prof_qs.filter(
+            Q(user__username__icontains=search)
+            | Q(user__first_name__icontains=search)
+            | Q(user__last_name__icontains=search)
+            | Q(biometric_employee_id__icontains=search)
+            | Q(department__icontains=search)
+            | Q(position__icontains=search)
+        )
+
     if not prof_qs.exists():
-        return JsonResponse({
-            "ok": False,
-            "error": "No approved JO/COS employees found for this branch and filter."
-        }, status=400)
+        return JsonResponse(
+            {"ok": False, "error": "No approved employees found for this branch and filter."},
+            status=400,
+        )
+    locked_dtrs = (
+        FinalizedDTR.objects
+        .select_related("profile", "profile__user")
+        .filter(
+            profile__in=prof_qs,
+            period=period,
+            is_locked=True,
+        )
+    )
+
+    if locked_dtrs.exists():
+        locked_names = [
+            d.profile.user.get_full_name() or d.profile.user.username
+            for d in locked_dtrs[:5]
+        ]
+
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": (
+                    "Payroll cannot be reprocessed because some DTRs are finalized/locked: "
+                    + ", ".join(locked_names)
+                    + ". Unlock the DTR first if correction is required."
+                ),
+            },
+            status=400,
+        )
+        
 
     totals_net = Decimal("0.00")
     totals_deductions = Decimal("0.00")
@@ -6060,15 +6810,28 @@ def admin_payroll_process_batch(request):
         batch, created = PayrollBatch.objects.get_or_create(
             branch=branch_obj,
             period=period,
+            employee_type_scope=emp_type,
             defaults={
-                "name": f"Payroll {branch_obj.name} - {period.name}",
+                "name": f"Payroll {branch_obj.name} - {period.name} - {emp_type}",
                 "status": PayrollBatch.STATUS_DRAFT,
                 "processed_by": request.user,
                 "processed_at": timezone.now(),
-            }
+            },
         )
 
-        # Re-process safely: remove old items from this batch.
+        # Lock this batch row during processing.
+        batch = PayrollBatch.objects.select_for_update().get(id=batch.id)
+
+        batch.name = f"Payroll {branch_obj.name} - {period.name} - {emp_type}"
+        batch.status = PayrollBatch.STATUS_DRAFT
+        batch.processed_by = request.user
+        batch.processed_at = timezone.now()
+        batch.save(update_fields=["name", "status", "processed_by", "processed_at"])
+
+        # Safe deletion:
+        # Only delete items inside this exact scoped batch.
+        # JO batch will not delete PERMANENT batch.
+        # COS batch will not delete JO batch.
         PayrollItem.objects.filter(batch=batch).delete()
 
         for prof in prof_qs.order_by("user__username"):
@@ -6089,14 +6852,15 @@ def admin_payroll_process_batch(request):
             undertime_minutes = int(p.get("undertime_minutes", 0) or 0)
             absences = int(p.get("absences", 0) or 0)
 
-            manual_deduction = _money(prof.manual_deduction_amount or Decimal("0.00"))
+            manual_deduction = _money(p.get("manual_deduction", prof.manual_deduction_amount or Decimal("0.00")))
             deductions_total = _money(p.get("deductions", Decimal("0.00")))
-
             gov_contributions_total = _money(gov.get("gov_total", Decimal("0.00")))
             tax_total = _money(gov.get("tax", Decimal("0.00")))
             net_pay = _money(p.get("net", Decimal("0.00")))
 
             issues_text = res.get("issues", "") or ""
+
+            safe_dtr_rows = json.loads(json.dumps(dtr_rows, default=str))
 
             PayrollItem.objects.create(
                 batch=batch,
@@ -6125,6 +6889,11 @@ def admin_payroll_process_batch(request):
                     "processed_snapshot": {
                         "processed_at": str(timezone.localtime(timezone.now())),
                         "processed_by": request.user.username,
+                        "branch_id": branch_obj.id,
+                        "branch_name": branch_obj.name,
+                        "period_id": period.id,
+                        "period_name": period.name,
+                        "employee_type_scope": emp_type,
                     },
 
                     "employee": {
@@ -6137,131 +6906,115 @@ def admin_payroll_process_batch(request):
                         "department": prof.department or "",
                         "position": prof.position or "",
                         "biometric_employee_id": prof.biometric_employee_id or "",
-                        "employee_id_used": res.get("picked_employee_id", ""),
-                    },
-
-                    "period": {
-                        "id": period.id,
-                        "name": period.name,
-                        "start": str(period.start_date),
-                        "end": str(period.end_date),
-                        "pay_mode": period.pay_mode,
-                    },
-
-                    "rules": {
-                        "salary_divisor": str(rules.salary_divisor),
-                        "tax_rate_percent": str(rules.tax_rate_percent),
-                        "premium_rate_percent": str(rules.premium_rate_percent),
-                        "philhealth_default_mode": rules.philhealth_default_mode,
-                        "philhealth_default_value": str(rules.philhealth_default_value),
-                        "sss_minimum": str(rules.sss_minimum),
-                        "pagibig_minimum": str(rules.pagibig_minimum),
-                        "ot_multiplier": str(rules.ot_multiplier),
-                        "grace_minutes_normal": rules.grace_minutes_normal,
-                        "flag_ceremony_cutoff_time": str(rules.flag_ceremony_cutoff_time),
-                        "daily_hours_required": str(rules.daily_hours_required),
-                        "work_start_time": str(rules.work_start_time),
-                        "work_end_time": str(rules.work_end_time),
+                        "employee_id_used": res.get("picked_employee_id") or "",
                     },
 
                     "rates": {
-                        "monthly_salary": str(prof.monthly_salary or Decimal("0.00")),
-                        "daily_rate_profile": str(prof.daily_rate or Decimal("0.00")),
-                        "computed_daily_rate": str(rates.get("daily", Decimal("0.00"))),
-                        "computed_hourly_rate": str(rates.get("hourly", Decimal("0.00"))),
-                        "computed_per_minute_rate": str(rates.get("per_minute", Decimal("0.00"))),
+                        "daily": str(rates.get("daily", Decimal("0.00"))),
+                        "hourly": str(rates.get("hourly", Decimal("0.00"))),
+                        "per_minute": str(rates.get("per_minute", Decimal("0.00"))),
                     },
 
                     "attendance_summary": attendance_summary,
 
-                    "payroll": {
-                        "base_pay": str(base_pay),
-                        "premium_pay": str(premium_pay),
-                        "overtime_hours": str(overtime_hours),
-                        "overtime_pay": str(overtime_pay),
+                    "computed_payroll": {
+                        "base": str(p.get("base", Decimal("0.00"))),
+                        "basic_salary": str(p.get("basic_salary", p.get("base", Decimal("0.00")))),
+                        "pera": str(p.get("pera", Decimal("0.00"))),
+                        "other_earnings": str(p.get("other_earnings", Decimal("0.00"))),
+
+                        "premium": str(p.get("premium", Decimal("0.00"))),
+                        "overtime_hours": str(p.get("overtime_hours", Decimal("0.00"))),
+                        "ot": str(p.get("ot", Decimal("0.00"))),
+                        "gross": str(p.get("gross", Decimal("0.00"))),
+
                         "late_minutes": late_minutes,
                         "undertime_minutes": undertime_minutes,
                         "absences": absences,
+
+                        "late_deduction": str(p.get("late_deduction", Decimal("0.00"))),
+                        "undertime_deduction": str(p.get("undertime_deduction", Decimal("0.00"))),
+                        "absence_deduction": str(p.get("absence_deduction", Decimal("0.00"))),
+                        "attendance_deduction": str(p.get("attendance_deduction", Decimal("0.00"))),
+
                         "manual_deduction": str(manual_deduction),
-                        "deductions_total": str(deductions_total),
-                        "gov_contributions_total": str(gov_contributions_total),
-                        "tax_total": str(tax_total),
-                        "net_pay": str(net_pay),
+                        "loan_deduction": str(p.get("loan_deduction", Decimal("0.00"))),
+                        "other_deduction": str(p.get("other_deduction", Decimal("0.00"))),
+
+                        "deductions": str(deductions_total),
+                        "net": str(net_pay),
+                    },
+
+                    # Flat keys used by payslip helpers.
+                    "sss_amount": str(gov.get("sss", Decimal("0.00"))),
+                    "philhealth_amount": str(gov.get("philhealth", Decimal("0.00"))),
+                    "pagibig_amount": str(gov.get("pagibig", Decimal("0.00"))),
+                    "tax_amount": str(gov.get("tax", Decimal("0.00"))),
+
+                    "late_deduction": str(p.get("late_deduction", Decimal("0.00"))),
+                    "undertime_deduction": str(p.get("undertime_deduction", Decimal("0.00"))),
+                    "absence_deduction": str(p.get("absence_deduction", Decimal("0.00"))),
+                    "attendance_deduction": str(p.get("attendance_deduction", Decimal("0.00"))),
+
+                    # Permanent-specific snapshot.
+                    "permanent_breakdown": {
+                        "basic_salary": str(p.get("basic_salary", p.get("base", Decimal("0.00")))),
+                        "pera": str(p.get("pera", Decimal("0.00"))),
+                        "other_earnings": str(p.get("other_earnings", Decimal("0.00"))),
+
+                        "wtax": str(gov.get("wtax", gov.get("tax", Decimal("0.00")))),
+                        "gsis_employee": str(gov.get("gsis_employee", Decimal("0.00"))),
+                        "gsis_employer": str(gov.get("gsis_employer", Decimal("0.00"))),
+
+                        "loan_deduction": str(gov.get("loan_deduction", Decimal("0.00"))),
+                        "other_deduction": str(gov.get("other_deduction", Decimal("0.00"))),
+
+                        "other_employer_contribution": str(gov.get("other_employer_contribution", Decimal("0.00"))),
+                        "employer_contributions_total": str(gov.get("employer_contributions_total", Decimal("0.00"))),
                     },
 
                     "gov": {
                         "sss": str(gov.get("sss", Decimal("0.00"))),
-                        "pagibig": str(gov.get("pagibig", Decimal("0.00"))),
                         "philhealth": str(gov.get("philhealth", Decimal("0.00"))),
-                        "gov_total": str(gov_contributions_total),
-                        "tax": str(tax_total),
+                        "pagibig": str(gov.get("pagibig", Decimal("0.00"))),
+                        "gov_total": str(gov.get("gov_total", Decimal("0.00"))),
+                        "tax": str(gov.get("tax", Decimal("0.00"))),
+
+                        "wtax": str(gov.get("wtax", Decimal("0.00"))),
+                        "gsis_employee": str(gov.get("gsis_employee", Decimal("0.00"))),
+                        "gsis_employer": str(gov.get("gsis_employer", Decimal("0.00"))),
+                        "employer_contributions_total": str(gov.get("employer_contributions_total", Decimal("0.00"))),
                     },
 
-                    "dtr_rows": dtr_rows,
-                }
+                    "dtr_rows": safe_dtr_rows,
+                },
             )
 
             totals_net += net_pay
             totals_deductions += deductions_total
             total_items += 1
 
-        batch.name = f"Payroll {branch_obj.name} - {period.name}"
         batch.totals_net = _money(totals_net)
         batch.totals_deductions = _money(totals_deductions)
         batch.status = PayrollBatch.STATUS_COMPLETED
         batch.processed_by = request.user
         batch.processed_at = timezone.now()
-        batch.save()
+        batch.save(
+            update_fields=[
+                "totals_net",
+                "totals_deductions",
+                "status",
+                "processed_by",
+                "processed_at",
+            ]
+        )
 
     return JsonResponse({
         "ok": True,
         "message": "Payroll processed successfully.",
-        "batch": {
-            "id": batch.id,
-            "name": batch.name,
-            "status": batch.status,
-            "status_label": batch.get_status_display() if hasattr(batch, "get_status_display") else batch.status,
-        },
-        "totals": {
-            "items": total_items,
-            "net": float(_money(totals_net)),
-            "deductions": float(_money(totals_deductions)),
-        },
+        "batch_id": batch.id,
+        "employee_type_scope": emp_type,
+        "total_items": total_items,
+        "totals_net": str(_money(totals_net)),
+        "totals_deductions": str(_money(totals_deductions)),
     })
-    
-
-#new added 3/3/2026 ======================================================================================
-
-def _pick_attendance_employee_id(user, branch: Branch):
-    """
-    Employee attendance identity.
-
-    IMPORTANT:
-    AttendanceRecord.employee_id must match UserProfile.biometric_employee_id.
-    Example:
-        AttendanceRecord.employee_id = "3"
-        UserProfile.biometric_employee_id = "3"
-
-    This prevents employees from seeing other employees' attendance.
-    """
-    try:
-        profile = user.profile
-    except UserProfile.DoesNotExist:
-        return ""
-
-    biometric_id = str(profile.biometric_employee_id or "").strip()
-
-    if biometric_id:
-        return biometric_id
-
-    # Fallback only for testing/demo if biometric ID is not yet configured.
-    # In production, admins must set biometric_employee_id.
-    return str(user.username).strip()
-
-
-def _fmt_time_ampm(dt):
-    if not dt:
-        return ""
-    if not hasattr(dt, "strftime"):
-        return str(dt)
-    return dt.strftime("%I:%M %p").lstrip("0")

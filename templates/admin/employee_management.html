@@ -3,6 +3,91 @@
 {% block title %}IntelliHRTrack — Employee Management{% endblock %}
 
 {% block extra_head %}
+<style>
+  .form-input {
+    width: 100%;
+    border-radius: 1rem;
+    border: 1px solid rgba(229, 231, 235, 1);
+    background: rgba(255,255,255,0.8);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #111827;
+    outline: none;
+    transition: all .2s ease;
+  }
+
+  .form-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(20,184,166,.18);
+  }
+
+  .dark .form-input {
+    border-color: rgba(255,255,255,.10);
+    background: rgba(2,6,23,.40);
+    color: white;
+  }
+
+  .field-label {
+    display: block;
+    font-size: .75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #6b7280;
+  }
+
+  .dark .field-label {
+    color: #94a3b8;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: .25rem .75rem;
+    font-size: .75rem;
+    font-weight: 800;
+  }
+
+  .badge-cos {
+    background: rgba(59,130,246,.10);
+    color: #1d4ed8;
+  }
+
+  .dark .badge-cos {
+    color: #93c5fd;
+  }
+
+  .badge-jo {
+    background: rgba(139,92,246,.10);
+    color: #6d28d9;
+  }
+
+  .dark .badge-jo {
+    color: #c4b5fd;
+  }
+
+  .badge-permanent {
+    background: rgba(245,158,11,.14);
+    color: #b45309;
+  }
+
+  .dark .badge-permanent {
+    color: #fcd34d;
+  }
+
+  .section-card {
+    border-radius: 1.5rem;
+    border: 1px solid rgba(229,231,235,.7);
+    background: rgba(255,255,255,.8);
+    padding: 1.25rem;
+  }
+
+  .dark .section-card {
+    border-color: rgba(255,255,255,.10);
+    background: rgba(15,23,42,.80);
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -29,7 +114,7 @@
         </h1>
 
         <p class="mt-2 max-w-3xl text-sm leading-6 text-gray-600 dark:text-slate-300 md:text-base">
-          Approve employee accounts, manage profiles, connect biometric IDs, configure payroll rates, and maintain employee contribution settings.
+          Approve accounts, manage employee profiles, connect biometric IDs, and configure payroll settings for JO, COS, and Permanent employees.
         </p>
       </div>
 
@@ -83,7 +168,7 @@
         <div>
           <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Account Approval Queue</h2>
           <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">
-            Review new registrations and approved accounts. Search and paginate without reloading the page.
+            Review new registrations and approved accounts. Permanent employees should be created by admin only.
           </p>
         </div>
 
@@ -93,11 +178,10 @@
             <input id="accountSearch"
                    type="search"
                    placeholder="Search username, email, branch..."
-                   class="w-full rounded-2xl border border-gray-200 bg-white/80 py-3 pl-11 pr-4 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white sm:w-80">
+                   class="form-input pl-11 sm:w-80">
           </div>
 
-          <select id="accountPageSize"
-                  class="rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-bold text-gray-700 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-200">
+          <select id="accountPageSize" class="form-input sm:w-40">
             <option value="5">5 per page</option>
             <option value="10">10 per page</option>
             <option value="15">15 per page</option>
@@ -120,19 +204,18 @@
         </span>
       </div>
 
-      <!-- DESKTOP TABLE -->
       <div class="hidden overflow-x-auto lg:block">
         <table class="w-full table-auto text-sm">
           <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-slate-400">
             <tr>
-              <th class="w-[13%] px-3 py-3 text-left">Username</th>
-              <th class="w-[18%] px-3 py-3 text-left">Email</th>
-              <th class="w-[15%] px-3 py-3 text-left">Branch</th>
-              <th class="w-[15%] px-3 py-3 text-left">Department</th>
-              <th class="w-[10%] px-3 py-3 text-left">Type</th>
-              <th class="w-[11%] px-3 py-3 text-left">Status</th>
-              <th class="w-[13%] px-3 py-3 text-left">Created</th>
-              <th class="w-[15%] px-3 py-3 text-center">Action</th>
+              <th class="px-3 py-3 text-left">Username</th>
+              <th class="px-3 py-3 text-left">Email</th>
+              <th class="px-3 py-3 text-left">Branch</th>
+              <th class="px-3 py-3 text-left">Department</th>
+              <th class="px-3 py-3 text-left">Type</th>
+              <th class="px-3 py-3 text-left">Status</th>
+              <th class="px-3 py-3 text-left">Created</th>
+              <th class="px-3 py-3 text-center">Action</th>
             </tr>
           </thead>
 
@@ -142,41 +225,28 @@
                 data-view="desktop"
                 data-search="{{ p.user.username }} {{ p.user.email }} {{ p.branch }} {{ p.department }} {{ p.employment_type }}"
                 class="transition hover:bg-gray-50 dark:hover:bg-white/5">
-              <td class="px-3 py-3 font-bold text-gray-950 dark:text-white">
-                <div class="max-w-[150px] truncate" title="{{ p.user.username }}">{{ p.user.username }}</div>
-              </td>
-
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[220px] truncate" title="{{ p.user.email|default:'—' }}">{{ p.user.email|default:"—" }}</div>
-              </td>
-
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[170px] truncate" title="{{ p.branch|default:'—' }}">{{ p.branch|default:"—" }}</div>
-              </td>
-
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[170px] truncate" title="{{ p.department|default:'—' }}">{{ p.department|default:"—" }}</div>
-              </td>
+              <td class="px-3 py-3 font-bold text-gray-950 dark:text-white">{{ p.user.username }}</td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">{{ p.user.email|default:"—" }}</td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">{{ p.branch|default:"—" }}</td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">{{ p.department|default:"—" }}</td>
 
               <td class="px-3 py-3">
                 {% if p.employment_type == "COS" %}
-                  <span class="inline-flex rounded-full bg-blue-500/10 px-3 py-1 text-xs font-extrabold text-blue-700 dark:text-blue-300">COS</span>
+                  <span class="badge badge-cos">COS</span>
                 {% elif p.employment_type == "JO" %}
-                  <span class="inline-flex rounded-full bg-violet-500/10 px-3 py-1 text-xs font-extrabold text-violet-700 dark:text-violet-300">JO</span>
+                  <span class="badge badge-jo">JO</span>
+                {% elif p.employment_type == "PERMANENT" %}
+                  <span class="badge badge-permanent">PERMANENT</span>
                 {% else %}
                   <span class="text-gray-400">—</span>
                 {% endif %}
               </td>
 
               <td class="px-3 py-3">
-                <span class="inline-flex rounded-full bg-amber-500/10 px-3 py-1 text-xs font-extrabold text-amber-700 dark:text-amber-300">
-                  PENDING
-                </span>
+                <span class="badge bg-amber-500/10 text-amber-700 dark:text-amber-300">PENDING</span>
               </td>
 
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[150px] truncate" title="{{ p.created_at|date:'Y-m-d H:i' }}">{{ p.created_at|date:"Y-m-d H:i" }}</div>
-              </td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">{{ p.created_at|date:"Y-m-d H:i" }}</td>
 
               <td class="px-3 py-3">
                 <div class="flex items-center justify-center gap-2 whitespace-nowrap">
@@ -207,7 +277,6 @@
         </table>
       </div>
 
-      <!-- MOBILE CARDS -->
       <div class="grid gap-3 p-4 lg:hidden">
         {% for p in pending_profiles %}
         <article data-paginate="pending"
@@ -219,35 +288,18 @@
               <h3 class="truncate text-base font-black text-gray-950 dark:text-white">{{ p.user.username }}</h3>
               <p class="mt-1 truncate text-sm text-gray-600 dark:text-slate-300">{{ p.user.email|default:"No email" }}</p>
             </div>
-
-            <span class="shrink-0 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-extrabold text-amber-700 dark:text-amber-300">
-              PENDING
-            </span>
+            <span class="badge bg-amber-500/10 text-amber-700 dark:text-amber-300">PENDING</span>
           </div>
 
-          <div class="mt-4 grid grid-cols-1 gap-3 text-sm">
-            <div class="grid grid-cols-2 gap-3">
-              <div class="rounded-xl bg-cyan-500/10 p-3">
-                <p class="text-xs font-bold uppercase text-cyan-700 dark:text-cyan-300">Branch</p>
-                <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ p.branch|default:"—" }}</p>
-              </div>
-
-              <div class="rounded-xl bg-blue-500/10 p-3">
-                <p class="text-xs font-bold uppercase text-blue-700 dark:text-blue-300">Department</p>
-                <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ p.department|default:"—" }}</p>
-              </div>
+          <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div class="rounded-xl bg-cyan-500/10 p-3">
+              <p class="text-xs font-bold uppercase text-cyan-700 dark:text-cyan-300">Branch</p>
+              <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ p.branch|default:"—" }}</p>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-              <div class="rounded-xl bg-violet-500/10 p-3">
-                <p class="text-xs font-bold uppercase text-violet-700 dark:text-violet-300">Job Type</p>
-                <p class="mt-1 font-semibold text-gray-800 dark:text-slate-200">{{ p.employment_type|default:"—" }}</p>
-              </div>
-
-              <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/5">
-                <p class="text-xs font-bold uppercase text-gray-500 dark:text-slate-400">Created</p>
-                <p class="mt-1 font-semibold text-gray-800 dark:text-slate-200">{{ p.created_at|date:"Y-m-d H:i" }}</p>
-              </div>
+            <div class="rounded-xl bg-violet-500/10 p-3">
+              <p class="text-xs font-bold uppercase text-violet-700 dark:text-violet-300">Type</p>
+              <p class="mt-1 font-semibold text-gray-800 dark:text-slate-200">{{ p.employment_type|default:"—" }}</p>
             </div>
           </div>
 
@@ -278,13 +330,10 @@
         <div id="pendingResultCount" class="text-sm font-semibold text-gray-500 dark:text-slate-400">Loading...</div>
 
         <div class="flex items-center justify-end gap-2">
-          <button id="pendingPrev" type="button"
-                  class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+          <button id="pendingPrev" type="button" class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
             Previous
           </button>
-
-          <button id="pendingNext" type="button"
-                  class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+          <button id="pendingNext" type="button" class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
             Next
           </button>
         </div>
@@ -304,19 +353,18 @@
         </span>
       </div>
 
-      <!-- DESKTOP TABLE -->
       <div class="hidden overflow-x-auto lg:block">
         <table class="w-full table-auto text-sm">
           <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-slate-400">
             <tr>
-              <th class="w-[13%] px-3 py-3 text-left">Username</th>
-              <th class="w-[18%] px-3 py-3 text-left">Email</th>
-              <th class="w-[15%] px-3 py-3 text-left">Branch</th>
-              <th class="w-[15%] px-3 py-3 text-left">Department</th>
-              <th class="w-[10%] px-3 py-3 text-left">Type</th>
-              <th class="w-[11%] px-3 py-3 text-left">Status</th>
-              <th class="w-[13%] px-3 py-3 text-left">Created</th>
-              <th class="w-[15%] px-3 py-3 text-center">Action</th>
+              <th class="px-3 py-3 text-left">Username</th>
+              <th class="px-3 py-3 text-left">Email</th>
+              <th class="px-3 py-3 text-left">Branch</th>
+              <th class="px-3 py-3 text-left">Department</th>
+              <th class="px-3 py-3 text-left">Type</th>
+              <th class="px-3 py-3 text-left">Status</th>
+              <th class="px-3 py-3 text-left">Created</th>
+              <th class="px-3 py-3 text-center">Action</th>
             </tr>
           </thead>
 
@@ -326,43 +374,29 @@
                 data-view="desktop"
                 data-search="{{ p.user.username }} {{ p.user.email }} {{ p.branch }} {{ p.department }} {{ p.employment_type }}"
                 class="transition hover:bg-gray-50 dark:hover:bg-white/5">
-              <td class="px-3 py-3 font-bold text-gray-950 dark:text-white">
-                <div class="max-w-[150px] truncate" title="{{ p.user.username }}">{{ p.user.username }}</div>
-              </td>
-
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[220px] truncate" title="{{ p.user.email|default:'—' }}">{{ p.user.email|default:"—" }}</div>
-              </td>
-
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[170px] truncate" title="{{ p.branch|default:'—' }}">{{ p.branch|default:"—" }}</div>
-              </td>
-
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[170px] truncate" title="{{ p.department|default:'—' }}">{{ p.department|default:"—" }}</div>
-              </td>
+              <td class="px-3 py-3 font-bold text-gray-950 dark:text-white">{{ p.user.username }}</td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">{{ p.user.email|default:"—" }}</td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">{{ p.branch|default:"—" }}</td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">{{ p.department|default:"—" }}</td>
 
               <td class="px-3 py-3">
                 {% if p.employment_type == "COS" %}
-                  <span class="inline-flex rounded-full bg-blue-500/10 px-3 py-1 text-xs font-extrabold text-blue-700 dark:text-blue-300">COS</span>
+                  <span class="badge badge-cos">COS</span>
                 {% elif p.employment_type == "JO" %}
-                  <span class="inline-flex rounded-full bg-violet-500/10 px-3 py-1 text-xs font-extrabold text-violet-700 dark:text-violet-300">JO</span>
+                  <span class="badge badge-jo">JO</span>
+                {% elif p.employment_type == "PERMANENT" %}
+                  <span class="badge badge-permanent">PERMANENT</span>
                 {% else %}
                   <span class="text-gray-400">—</span>
                 {% endif %}
               </td>
 
               <td class="px-3 py-3">
-                <span class="inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
-                  APPROVED
-                </span>
+                <span class="badge bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">APPROVED</span>
               </td>
 
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[150px] truncate" title="{{ p.created_at|date:'Y-m-d H:i' }}">{{ p.created_at|date:"Y-m-d H:i" }}</div>
-              </td>
-
-              <td class="px-3 py-3 text-center text-xs font-bold text-gray-400">—</td>
+              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">{{ p.created_at|date:"Y-m-d H:i" }}</td>
+              <td class="px-3 py-3 text-center text-xs font-bold text-gray-400">Edit below</td>
             </tr>
             {% empty %}
             <tr>
@@ -375,7 +409,6 @@
         </table>
       </div>
 
-      <!-- MOBILE CARDS -->
       <div class="grid gap-3 p-4 lg:hidden">
         {% for p in approved_profiles %}
         <article data-paginate="approved"
@@ -387,10 +420,7 @@
               <h3 class="truncate text-base font-black text-gray-950 dark:text-white">{{ p.user.username }}</h3>
               <p class="mt-1 truncate text-sm text-gray-600 dark:text-slate-300">{{ p.user.email|default:"No email" }}</p>
             </div>
-
-            <span class="shrink-0 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
-              APPROVED
-            </span>
+            <span class="badge bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">APPROVED</span>
           </div>
 
           <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -399,9 +429,9 @@
               <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ p.branch|default:"—" }}</p>
             </div>
 
-            <div class="rounded-xl bg-blue-500/10 p-3">
-              <p class="text-xs font-bold uppercase text-blue-700 dark:text-blue-300">Department</p>
-              <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ p.department|default:"—" }}</p>
+            <div class="rounded-xl bg-violet-500/10 p-3">
+              <p class="text-xs font-bold uppercase text-violet-700 dark:text-violet-300">Type</p>
+              <p class="mt-1 font-semibold text-gray-800 dark:text-slate-200">{{ p.employment_type|default:"—" }}</p>
             </div>
           </div>
         </article>
@@ -416,13 +446,10 @@
         <div id="approvedResultCount" class="text-sm font-semibold text-gray-500 dark:text-slate-400">Loading...</div>
 
         <div class="flex items-center justify-end gap-2">
-          <button id="approvedPrev" type="button"
-                  class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+          <button id="approvedPrev" type="button" class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
             Previous
           </button>
-
-          <button id="approvedNext" type="button"
-                  class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+          <button id="approvedNext" type="button" class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
             Next
           </button>
         </div>
@@ -435,7 +462,7 @@
     <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
       <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Create Employee</h2>
       <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">
-        Create an approved employee account and configure biometric/payroll information.
+        Create an approved employee account. Permanent employees should be created here, not through public signup.
       </p>
     </div>
 
@@ -445,121 +472,179 @@
 
       <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
         <div>
-          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Username</label>
-          <input name="username" required
-                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          <label class="field-label">Username</label>
+          <input name="username" required class="form-input mt-2">
         </div>
 
         <div>
-          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Email</label>
-          <input name="email" type="email"
-                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          <label class="field-label">Email</label>
+          <input name="email" type="email" class="form-input mt-2">
         </div>
 
         <div>
-          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Password</label>
-          <input name="password" type="password" required
-                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          <label class="field-label">Password</label>
+          <input name="password" type="password" required class="form-input mt-2">
         </div>
 
         <div>
-          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Biometric ID</label>
-          <input name="biometric_employee_id" placeholder="e.g. 3"
-                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          <label class="field-label">Biometric ID</label>
+          <input name="biometric_employee_id" placeholder="e.g. 3" class="form-input mt-2">
         </div>
 
         <div>
-          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Department</label>
-          <input name="department"
-                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          <label class="field-label">Department</label>
+          <input name="department" class="form-input mt-2">
         </div>
 
         <div>
-          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Position</label>
-          <input name="position"
-                 class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+          <label class="field-label">Position</label>
+          <input name="position" class="form-input mt-2">
         </div>
 
         <div>
-          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Job Type</label>
-          <select name="employment_type" required
-                  class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-            <option value="COS">COS</option>
-            <option value="JO">JO</option>
+          <label class="field-label">Employee Type</label>
+          <select name="employment_type" required class="form-input mt-2">
+            <option value="COS">Contract of Service (COS)</option>
+            <option value="JO">Job Order (JO)</option>
+            <option value="PERMANENT">Permanent</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Branch</label>
+          <label class="field-label">Branch</label>
           {% if request.user.is_superuser %}
-            <select name="branch_id" required
-                    class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+            <select name="branch_id" required class="form-input mt-2">
               <option value="">Select branch</option>
               {% for b in branches %}
                 <option value="{{ b.id }}">{{ b.name }}</option>
               {% endfor %}
             </select>
           {% else %}
-            <input value="{{ request.user.profile.branch }}" disabled
-                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+            <div class="form-input mt-2 bg-gray-50 dark:bg-white/5">
+              {{ request.user.profile.branch|default:"Assigned Branch" }}
+            </div>
           {% endif %}
         </div>
       </div>
 
-      <div class="mt-6 rounded-3xl border border-gray-200/70 bg-gray-50/70 p-5 dark:border-white/10 dark:bg-white/5">
-        <h3 class="text-sm font-black text-gray-950 dark:text-white">Payroll Setup</h3>
+      <!-- SALARY / EARNINGS -->
+      <div class="mt-6 section-card">
+        <h3 class="text-base font-extrabold text-gray-950 dark:text-white">Salary and Earnings</h3>
+        <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">
+          JO usually uses daily rate. COS usually uses monthly salary. Permanent uses monthly salary as basic salary plus PERA and other earnings.
+        </p>
 
         <div class="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
           <div>
-            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Monthly Salary</label>
-            <input name="monthly_salary" type="number" step="0.01" min="0" value="0.00"
-                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+            <label class="field-label">Monthly Salary / Basic Salary</label>
+            <input name="monthly_salary" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
 
           <div>
-            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Daily Rate</label>
-            <input name="daily_rate" type="number" step="0.01" min="0" value="0.00"
-                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+            <label class="field-label">Daily Rate</label>
+            <input name="daily_rate" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
 
           <div>
-            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">SSS</label>
-            <input name="sss_amount" type="number" step="0.01" min="0" value="760.00"
-                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+            <label class="field-label">PERA Allowance</label>
+            <input name="pera_allowance" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
 
           <div>
-            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Pag-IBIG</label>
-            <input name="pagibig_amount" type="number" step="0.01" min="0" value="400.00"
-                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+            <label class="field-label">Other Earnings</label>
+            <input name="other_earnings_amount" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
 
           <div>
-            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">PhilHealth Mode</label>
-            <select name="philhealth_mode"
-                    class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-              <option value="percent">Percent</option>
-              <option value="fixed">Fixed</option>
-            </select>
+            <label class="field-label">Manual Deduction</label>
+            <input name="manual_deduction_amount" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
 
-          <div>
-            <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">PhilHealth Value</label>
-            <input name="philhealth_value" type="number" step="0.01" min="0" value="5.00"
-                   class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-          </div>
-
-          <div class="flex items-end">
-            <label class="flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-bold text-gray-700 dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-200">
-              <input type="checkbox" name="has_premium" value="1" class="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent">
-              Premium?
+          <div class="flex items-center gap-3 pt-7">
+            <input id="create_has_premium" name="has_premium" type="checkbox" class="h-5 w-5 rounded border-gray-300 text-accent focus:ring-accent">
+            <label for="create_has_premium" class="text-sm font-bold text-gray-700 dark:text-slate-200">
+              Has 20% premium if allowed
             </label>
           </div>
         </div>
       </div>
 
+      <!-- JO/COS CONTRIBUTIONS -->
+      <div class="mt-6 section-card">
+        <h3 class="text-base font-extrabold text-gray-950 dark:text-white">JO/COS Contributions</h3>
+        <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">
+          These are mainly for Job Order and Contract of Service employees.
+        </p>
+
+        <div class="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <label class="field-label">SSS Amount</label>
+            <input name="sss_amount" type="number" step="0.01" min="0" value="760.00" class="form-input mt-2">
+          </div>
+
+          <div>
+            <label class="field-label">Pag-IBIG Amount</label>
+            <input name="pagibig_amount" type="number" step="0.01" min="0" value="400.00" class="form-input mt-2">
+          </div>
+
+          <div>
+            <label class="field-label">PhilHealth Mode</label>
+            <select name="philhealth_mode" class="form-input mt-2">
+              <option value="percent">Percentage</option>
+              <option value="fixed">Fixed Amount</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="field-label">PhilHealth Value</label>
+            <input name="philhealth_value" type="number" step="0.01" min="0" value="5.00" class="form-input mt-2">
+          </div>
+        </div>
+      </div>
+
+      <!-- PERMANENT DEDUCTIONS -->
+      <div class="mt-6 section-card">
+        <h3 class="text-base font-extrabold text-gray-950 dark:text-white">Permanent Employee Deductions</h3>
+        <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">
+          Use manually confirmed amounts first. Exact government formulas still need client validation.
+        </p>
+
+        <div class="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <label class="field-label">WTAX Amount</label>
+            <input name="wtax_amount" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
+          </div>
+
+          <div>
+            <label class="field-label">GSIS Employee Share</label>
+            <input name="gsis_employee_share" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
+          </div>
+
+          <div>
+            <label class="field-label">GSIS Employer Share</label>
+            <input name="gsis_employer_share" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
+          </div>
+
+          <div>
+            <label class="field-label">Loan Deduction</label>
+            <input name="loan_deduction_amount" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
+          </div>
+
+          <div>
+            <label class="field-label">Other Deduction</label>
+            <input name="other_deduction_amount" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
+          </div>
+
+          <div>
+            <label class="field-label">Other Employer Contribution</label>
+            <input name="other_employer_contribution" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
+          </div>
+        </div>
+      </div>
+
       <div class="mt-6 flex justify-end">
-        <button class="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3 text-sm font-extrabold text-white shadow-lg transition hover:scale-[1.01] hover:shadow-glow sm:w-auto">
+        <button type="submit"
+                class="inline-flex items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3 text-sm font-black text-white shadow-lg transition hover:scale-[1.01] hover:shadow-glow">
           <iconify-icon icon="ph:plus-circle-duotone"></iconify-icon>
           Create Employee
         </button>
@@ -572,7 +657,7 @@
     <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
       <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Employee Profiles & Payroll Rates</h2>
       <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">
-        Update employee details, biometric IDs, payroll rates, deductions, and employment status.
+        Update employee details, biometric IDs, payroll rates, deductions, and employment type.
       </p>
     </div>
 
@@ -586,19 +671,17 @@
                 <h3 class="truncate text-lg font-black text-gray-950 dark:text-white">{{ p.user.username }}</h3>
 
                 {% if p.is_approved %}
-                  <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
-                    APPROVED
-                  </span>
+                  <span class="badge bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">APPROVED</span>
                 {% else %}
-                  <span class="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-extrabold text-amber-700 dark:text-amber-300">
-                    PENDING
-                  </span>
+                  <span class="badge bg-amber-500/10 text-amber-700 dark:text-amber-300">PENDING</span>
                 {% endif %}
 
                 {% if p.employment_type == "COS" %}
-                  <span class="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-extrabold text-blue-700 dark:text-blue-300">COS</span>
+                  <span class="badge badge-cos">COS</span>
                 {% elif p.employment_type == "JO" %}
-                  <span class="rounded-full bg-violet-500/10 px-3 py-1 text-xs font-extrabold text-violet-700 dark:text-violet-300">JO</span>
+                  <span class="badge badge-jo">JO</span>
+                {% elif p.employment_type == "PERMANENT" %}
+                  <span class="badge badge-permanent">PERMANENT</span>
                 {% endif %}
               </div>
 
@@ -619,125 +702,172 @@
 
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Email</label>
-                <input name="email" value="{{ p.user.email }}"
-                       class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                <label class="field-label">Email</label>
+                <input name="email" value="{{ p.user.email }}" class="form-input mt-2">
               </div>
 
               <div>
-                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Branch</label>
+                <label class="field-label">Branch</label>
                 {% if request.user.is_superuser %}
-                  <select name="branch_id"
-                          class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                  <select name="branch_id" class="form-input mt-2">
                     {% for b in branches %}
                       <option value="{{ b.id }}" {% if p.branch_id == b.id %}selected{% endif %}>{{ b.name }}</option>
                     {% endfor %}
                   </select>
                 {% else %}
-                  <div class="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-                    {{ p.branch|default:"—" }}
+                  <div class="form-input mt-2 bg-gray-50 dark:bg-white/5">
+                    {{ p.branch|default:"Assigned Branch" }}
                   </div>
                 {% endif %}
               </div>
 
               <div>
-                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Biometric ID</label>
-                <input name="biometric_employee_id" value="{{ p.biometric_employee_id }}" placeholder="Bio ID"
-                       class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                <label class="field-label">Department</label>
+                <input name="department" value="{{ p.department }}" class="form-input mt-2">
               </div>
 
               <div>
-                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Department</label>
-                <input name="department" value="{{ p.department }}"
-                       class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                <label class="field-label">Position</label>
+                <input name="position" value="{{ p.position }}" class="form-input mt-2">
               </div>
 
               <div>
-                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Position</label>
-                <input name="position" value="{{ p.position }}"
-                       class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                <label class="field-label">Biometric ID</label>
+                <input name="biometric_employee_id" value="{{ p.biometric_employee_id }}" class="form-input mt-2">
               </div>
 
               <div>
-                <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Employment Type</label>
-                <select name="employment_type"
-                        class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-                  <option value="COS" {% if p.employment_type == "COS" %}selected{% endif %}>COS</option>
-                  <option value="JO" {% if p.employment_type == "JO" %}selected{% endif %}>JO</option>
+                <label class="field-label">Employee Type</label>
+                <select name="employment_type" required class="form-input mt-2">
+                  <option value="COS" {% if p.employment_type == "COS" %}selected{% endif %}>Contract of Service (COS)</option>
+                  <option value="JO" {% if p.employment_type == "JO" %}selected{% endif %}>Job Order (JO)</option>
+                  <option value="PERMANENT" {% if p.employment_type == "PERMANENT" %}selected{% endif %}>Permanent</option>
                 </select>
               </div>
             </div>
 
-            <div class="mt-5 rounded-3xl border border-gray-200/70 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-              <h4 class="text-sm font-black text-gray-950 dark:text-white">Payroll & Contributions</h4>
+            <div class="mt-5 section-card">
+              <h4 class="font-extrabold text-gray-950 dark:text-white">Salary and Earnings</h4>
 
-              <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <div>
-                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Monthly Salary</label>
-                  <input name="monthly_salary" type="number" step="0.01" min="0" value="{{ p.monthly_salary }}"
-                         class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                  <label class="field-label">Monthly Salary / Basic Salary</label>
+                  <input name="monthly_salary" type="number" step="0.01" min="0" value="{{ p.monthly_salary|default:'0.00' }}" class="form-input mt-2">
                 </div>
 
                 <div>
-                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Daily Rate</label>
-                  <input name="daily_rate" type="number" step="0.01" min="0" value="{{ p.daily_rate }}"
-                         class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                  <label class="field-label">Daily Rate</label>
+                  <input name="daily_rate" type="number" step="0.01" min="0" value="{{ p.daily_rate|default:'0.00' }}" class="form-input mt-2">
                 </div>
 
                 <div>
-                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">SSS</label>
-                  <input name="sss_amount" type="number" step="0.01" min="0" value="{{ p.contrib.sss_amount }}"
-                         class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                  <label class="field-label">PERA Allowance</label>
+                  <input name="pera_allowance" type="number" step="0.01" min="0" value="{{ p.pera_allowance|default:'0.00' }}" class="form-input mt-2">
                 </div>
 
                 <div>
-                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">Pag-IBIG</label>
-                  <input name="pagibig_amount" type="number" step="0.01" min="0" value="{{ p.contrib.pagibig_amount }}"
-                         class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+                  <label class="field-label">Other Earnings</label>
+                  <input name="other_earnings_amount" type="number" step="0.01" min="0" value="{{ p.other_earnings_amount|default:'0.00' }}" class="form-input mt-2">
                 </div>
 
                 <div>
-                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">PhilHealth Mode</label>
-                  <select name="philhealth_mode"
-                          class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-                    <option value="percent" {% if p.contrib.philhealth_mode == "percent" %}selected{% endif %}>Percent</option>
-                    <option value="fixed" {% if p.contrib.philhealth_mode == "fixed" %}selected{% endif %}>Fixed</option>
-                  </select>
+                  <label class="field-label">Manual Deduction</label>
+                  <input name="manual_deduction_amount" type="number" step="0.01" min="0" value="{{ p.manual_deduction_amount|default:'0.00' }}" class="form-input mt-2">
                 </div>
 
-                <div>
-                  <label class="block text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-slate-400">PhilHealth Value</label>
-                  <input name="philhealth_value" type="number" step="0.01" min="0" value="{{ p.contrib.philhealth_value }}"
-                         class="mt-2 w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-                </div>
-
-                <div class="sm:col-span-2 xl:col-span-3">
-                  <label class="flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-bold text-gray-700 dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-200">
-                    <input type="checkbox" name="has_premium" value="1" {% if p.has_premium %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent">
-                    Premium employee?
+                <div class="flex items-center gap-3 pt-7">
+                  <input id="premium_{{ p.id }}" name="has_premium" type="checkbox" {% if p.has_premium %}checked{% endif %} class="h-5 w-5 rounded border-gray-300 text-accent focus:ring-accent">
+                  <label for="premium_{{ p.id }}" class="text-sm font-bold text-gray-700 dark:text-slate-200">
+                    Has premium
                   </label>
                 </div>
               </div>
             </div>
 
-            <div class="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button class="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-extrabold text-white shadow-lg transition hover:bg-indigo-500">
-                <iconify-icon icon="ph:floppy-disk-duotone"></iconify-icon>
-                Update
-              </button>
+            <div class="mt-5 section-card">
+              <h4 class="font-extrabold text-gray-950 dark:text-white">JO/COS Contributions</h4>
+
+              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div>
+                  <label class="field-label">SSS Amount</label>
+                  <input name="sss_amount" type="number" step="0.01" min="0" value="{{ p.contrib.sss_amount|default:'760.00' }}" class="form-input mt-2">
+                </div>
+
+                <div>
+                  <label class="field-label">Pag-IBIG Amount</label>
+                  <input name="pagibig_amount" type="number" step="0.01" min="0" value="{{ p.contrib.pagibig_amount|default:'400.00' }}" class="form-input mt-2">
+                </div>
+
+                <div>
+                  <label class="field-label">PhilHealth Mode</label>
+                  <select name="philhealth_mode" class="form-input mt-2">
+                    <option value="percent" {% if p.contrib.philhealth_mode == "percent" %}selected{% endif %}>Percentage</option>
+                    <option value="fixed" {% if p.contrib.philhealth_mode == "fixed" %}selected{% endif %}>Fixed Amount</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="field-label">PhilHealth Value</label>
+                  <input name="philhealth_value" type="number" step="0.01" min="0" value="{{ p.contrib.philhealth_value|default:'5.00' }}" class="form-input mt-2">
+                </div>
+              </div>
             </div>
+
+            <div class="mt-5 section-card">
+              <h4 class="font-extrabold text-gray-950 dark:text-white">Permanent Employee Deductions</h4>
+
+              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div>
+                  <label class="field-label">WTAX Amount</label>
+                  <input name="wtax_amount" type="number" step="0.01" min="0" value="{{ p.contrib.wtax_amount|default:'0.00' }}" class="form-input mt-2">
+                </div>
+
+                <div>
+                  <label class="field-label">GSIS Employee Share</label>
+                  <input name="gsis_employee_share" type="number" step="0.01" min="0" value="{{ p.contrib.gsis_employee_share|default:'0.00' }}" class="form-input mt-2">
+                </div>
+
+                <div>
+                  <label class="field-label">GSIS Employer Share</label>
+                  <input name="gsis_employer_share" type="number" step="0.01" min="0" value="{{ p.contrib.gsis_employer_share|default:'0.00' }}" class="form-input mt-2">
+                </div>
+
+                <div>
+                  <label class="field-label">Loan Deduction</label>
+                  <input name="loan_deduction_amount" type="number" step="0.01" min="0" value="{{ p.contrib.loan_deduction_amount|default:'0.00' }}" class="form-input mt-2">
+                </div>
+
+                <div>
+                  <label class="field-label">Other Deduction</label>
+                  <input name="other_deduction_amount" type="number" step="0.01" min="0" value="{{ p.contrib.other_deduction_amount|default:'0.00' }}" class="form-input mt-2">
+                </div>
+
+                <div>
+                  <label class="field-label">Other Employer Contribution</label>
+                  <input name="other_employer_contribution" type="number" step="0.01" min="0" value="{{ p.contrib.other_employer_contribution|default:'0.00' }}" class="form-input mt-2">
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <button type="submit"
+                      class="inline-flex items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3 text-sm font-black text-white shadow-lg transition hover:scale-[1.01] hover:shadow-glow">
+                <iconify-icon icon="ph:floppy-disk-duotone"></iconify-icon>
+                Update Employee
+              </button>
           </form>
 
-          <form method="post" action="{% url 'admin_employees' %}" class="mt-2 flex justify-end" onsubmit="return confirm('Delete this employee?');">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="delete_employee">
-            <input type="hidden" name="profile_id" value="{{ p.id }}">
-
-            <button class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-3 text-sm font-extrabold text-red-600 transition hover:bg-red-500 hover:text-white dark:text-red-300 sm:w-auto">
-              <iconify-icon icon="ph:trash-duotone"></iconify-icon>
-              Delete
-            </button>
-          </form>
+              <form method="post" action="{% url 'admin_employees' %}" onsubmit="return confirm('Delete employee {{ p.user.username }}?');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_employee">
+                <input type="hidden" name="profile_id" value="{{ p.id }}">
+                <button type="submit"
+                        class="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-500/10 px-5 py-3 text-sm font-black text-red-600 transition hover:bg-red-500 hover:text-white dark:text-red-300">
+                  <iconify-icon icon="ph:trash-duotone"></iconify-icon>
+                  Delete Employee
+                </button>
+              </form>
+            </div>
         </article>
         {% endfor %}
       </div>
@@ -760,8 +890,7 @@
       <div>
         <h3 class="font-extrabold text-teal-800 dark:text-teal-200">Payroll note</h3>
         <p class="mt-1 text-sm leading-6 text-teal-800/80 dark:text-teal-200/80">
-          COS employees should usually have a monthly salary. JO employees can use daily rate for no-work-no-pay computation.
-          Biometric ID must match the Hikvision Employee ID.
+          JO employees usually use daily rate for no-work-no-pay computation. COS employees usually use monthly salary or fixed cut-off salary. Permanent employees use basic salary, PERA, WTAX, PhilHealth, GSIS, Pag-IBIG, loans, and other deductions. Biometric ID must match the Hikvision Employee ID.
         </p>
       </div>
     </div>
@@ -821,55 +950,50 @@
       });
     }
 
+    function getCurrentView() {
+      return window.innerWidth >= 1024 ? 'desktop' : 'mobile';
+    }
+
     function renderGroup(group) {
       const pager = pagers[group];
       if (!pager) return;
 
       const pageSize = getPageSize();
-      const desktopFiltered = getFilteredItems(group, 'desktop');
-      const mobileFiltered = getFilteredItems(group, 'mobile');
+      const currentView = getCurrentView();
+      const otherView = currentView === 'desktop' ? 'mobile' : 'desktop';
 
-      const total = Math.max(desktopFiltered.length, mobileFiltered.length);
+      hideAll(group, currentView);
+      hideAll(group, otherView);
+
+      const filtered = getFilteredItems(group, currentView);
+      const total = filtered.length;
       const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-      if (pager.page > totalPages) pager.page = totalPages;
-      if (pager.page < 1) pager.page = 1;
+      if (pager.page > totalPages) {
+        pager.page = totalPages;
+      }
 
-      const start = (pager.page - 1) * pageSize;
-      const end = start + pageSize;
+      const startIndex = (pager.page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
 
-      hideAll(group, 'desktop');
-      hideAll(group, 'mobile');
-
-      desktopFiltered.forEach((item, index) => {
-        item.style.display = index >= start && index < end ? '' : 'none';
+      filtered.slice(startIndex, endIndex).forEach(item => {
+        item.style.display = '';
       });
-
-      mobileFiltered.forEach((item, index) => {
-        item.style.display = index >= start && index < end ? '' : 'none';
-      });
-
-      const showingStart = total === 0 ? 0 : start + 1;
-      const showingEnd = Math.min(end, total);
 
       if (pager.pageInfo) {
-        pager.pageInfo.textContent = total === 0
-          ? 'No results'
-          : `Page ${pager.page} of ${totalPages}`;
+        pager.pageInfo.textContent = total ? `Page ${pager.page} of ${totalPages}` : 'No records';
       }
 
       if (pager.resultCount) {
-        pager.resultCount.textContent = total === 0
-          ? 'No matching accounts'
-          : `Showing ${showingStart}-${showingEnd} of ${total} account(s)`;
+        pager.resultCount.textContent = `${total} result(s)`;
       }
 
       if (pager.prevBtn) {
-        pager.prevBtn.disabled = pager.page <= 1 || total === 0;
+        pager.prevBtn.disabled = pager.page <= 1;
       }
 
       if (pager.nextBtn) {
-        pager.nextBtn.disabled = pager.page >= totalPages || total === 0;
+        pager.nextBtn.disabled = pager.page >= totalPages;
       }
     }
 
@@ -878,37 +1002,29 @@
       renderGroup('approved');
     }
 
-    pagers.pending.prevBtn?.addEventListener('click', function () {
-      pagers.pending.page -= 1;
-      renderGroup('pending');
+    Object.entries(pagers).forEach(([group, pager]) => {
+      pager.prevBtn?.addEventListener('click', () => {
+        pager.page = Math.max(1, pager.page - 1);
+        renderGroup(group);
+      });
+
+      pager.nextBtn?.addEventListener('click', () => {
+        pager.page += 1;
+        renderGroup(group);
+      });
     });
 
-    pagers.pending.nextBtn?.addEventListener('click', function () {
-      pagers.pending.page += 1;
-      renderGroup('pending');
-    });
-
-    pagers.approved.prevBtn?.addEventListener('click', function () {
-      pagers.approved.page -= 1;
-      renderGroup('approved');
-    });
-
-    pagers.approved.nextBtn?.addEventListener('click', function () {
-      pagers.approved.page += 1;
-      renderGroup('approved');
-    });
-
-    searchInput?.addEventListener('input', function () {
-      pagers.pending.page = 1;
-      pagers.approved.page = 1;
+    searchInput?.addEventListener('input', () => {
+      Object.values(pagers).forEach(pager => pager.page = 1);
       renderAll();
     });
 
-    pageSizeSelect?.addEventListener('change', function () {
-      pagers.pending.page = 1;
-      pagers.approved.page = 1;
+    pageSizeSelect?.addEventListener('change', () => {
+      Object.values(pagers).forEach(pager => pager.page = 1);
       renderAll();
     });
+
+    window.addEventListener('resize', renderAll);
 
     renderAll();
   });
