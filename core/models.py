@@ -76,13 +76,18 @@ class AttendanceRecord(models.Model):
 # =========================================================
 # User Profile (Branch + Approval + Payroll fields)
 # =========================================================
+# =========================================================
+# User Profile (Branch + Approval + Payroll fields)
+# =========================================================
 class UserProfile(models.Model):
     EMP_COS = "COS"
     EMP_JO = "JO"
+    EMP_PERMANENT = "PERMANENT"
 
     EMPLOYMENT_TYPE_CHOICES = [
         (EMP_COS, "Contract of Service (COS)"),
         (EMP_JO, "Job Order (JO)"),
+        (EMP_PERMANENT, "Permanent"),
     ]
 
     user = models.OneToOneField(
@@ -110,18 +115,37 @@ class UserProfile(models.Model):
     department = models.CharField(max_length=255, blank=True, default="")
     position = models.CharField(max_length=255, blank=True, default="")
 
-
     biometric_employee_id = models.CharField(
-    max_length=64,
-    blank=True,
-    default="",
-    db_index=True,
-    help_text="Employee ID used by the Hikvision biometric device."
-)
+        max_length=64,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Employee ID used by the Hikvision biometric device.",
+    )
 
     # Base Compensation
+    # JO: usually daily_rate
+    # COS: usually monthly_salary or fixed cut-off salary
+    # PERMANENT: monthly_salary is treated as basic salary for now
     daily_rate = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     monthly_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # Permanent employee earnings
+    # PERA is commonly treated as a standard allowance.
+    # Exact handling per cut-off must still be confirmed by the client.
+    pera_allowance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="PERA or standard allowance for permanent employees.",
+    )
+
+    other_earnings_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Other regular earnings/allowances if approved by client policy.",
+    )
 
     # UI SUPPORT: manual per employee deduction
     manual_deduction_amount = models.DecimalField(
@@ -146,6 +170,26 @@ class UserProfile(models.Model):
         status = "APPROVED" if self.is_approved else "PENDING"
         b = self.branch.name if self.branch else "—"
         return f"{self.user.username} ({b}) - {status}"
+
+    @property
+    def is_job_order(self):
+        return self.employment_type == self.EMP_JO
+
+    @property
+    def is_cos(self):
+        return self.employment_type == self.EMP_COS
+
+    @property
+    def is_permanent(self):
+        return self.employment_type == self.EMP_PERMANENT
+
+    @property
+    def basic_salary(self):
+        """
+        For permanent employees, monthly_salary is treated as basic salary.
+        This avoids adding a separate basic_salary field too early.
+        """
+        return self.monthly_salary or Decimal("0.00")
 
 
 # =========================================================
@@ -312,17 +356,79 @@ class PayrollRule(models.Model):
 
 class EmployeeContribution(models.Model):
     profile = models.OneToOneField(
-        UserProfile, on_delete=models.CASCADE, related_name="contrib"
+        UserProfile,
+        on_delete=models.CASCADE,
+        related_name="contrib",
     )
 
+    # JO/COS common contribution fields
     sss_amount = models.DecimalField(max_digits=10, decimal_places=2, default=760)
     pagibig_amount = models.DecimalField(max_digits=10, decimal_places=2, default=400)
 
     PHILHEALTH_PERCENT = "percent"
     PHILHEALTH_FIXED = "fixed"
 
-    philhealth_mode = models.CharField(max_length=10, default=PHILHEALTH_PERCENT)
-    philhealth_value = models.DecimalField(max_digits=10, decimal_places=2, default=5)
+    PHILHEALTH_MODE_CHOICES = [
+        (PHILHEALTH_PERCENT, "Percentage"),
+        (PHILHEALTH_FIXED, "Fixed Amount"),
+    ]
+
+    philhealth_mode = models.CharField(
+        max_length=10,
+        choices=PHILHEALTH_MODE_CHOICES,
+        default=PHILHEALTH_PERCENT,
+    )
+
+    philhealth_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=5,
+    )
+
+    # Permanent employee deductions
+    # These are manual/configurable first because the uploaded Word file
+    # does not provide exact official formulas.
+    wtax_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Withholding tax amount for permanent employees.",
+    )
+
+    gsis_employee_share = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="GSIS employee share deducted from permanent employee pay.",
+    )
+
+    gsis_employer_share = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="GSIS employer share for records/costing only. Not deducted from employee pay.",
+    )
+
+    loan_deduction_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Total loan deductions such as calamity loan or multi-purpose loan.",
+    )
+
+    other_deduction_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Other authorized deductions.",
+    )
+
+    other_employer_contribution = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Other employer contribution for records/costing only. Not deducted from employee pay.",
+    )
 
     class Meta:
         db_table = "core_employeecontribution"
@@ -382,15 +488,55 @@ class PayrollBatch(models.Model):
         (STATUS_COMPLETED, "Completed"),
     ]
 
-    name = models.CharField(max_length=200)
-    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, related_name="payroll_batches")
-    period = models.ForeignKey(PayrollPeriod, on_delete=models.PROTECT, related_name="payroll_batches")
+    SCOPE_ALL = "ALL"
+    SCOPE_JO = "JO"
+    SCOPE_COS = "COS"
+    SCOPE_PERMANENT = "PERMANENT"
 
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT)
+    EMPLOYEE_TYPE_SCOPE_CHOICES = [
+        (SCOPE_ALL, "All Employee Types"),
+        (SCOPE_JO, "Job Order Only"),
+        (SCOPE_COS, "Contract of Service Only"),
+        (SCOPE_PERMANENT, "Permanent Only"),
+    ]
+
+    name = models.CharField(max_length=200)
+
+    branch = models.ForeignKey(
+        Branch,
+        on_delete=models.PROTECT,
+        related_name="payroll_batches",
+    )
+
+    period = models.ForeignKey(
+        PayrollPeriod,
+        on_delete=models.PROTECT,
+        related_name="payroll_batches",
+    )
+
+    employee_type_scope = models.CharField(
+        max_length=20,
+        choices=EMPLOYEE_TYPE_SCOPE_CHOICES,
+        default=SCOPE_ALL,
+        db_index=True,
+        help_text="Scope of employees included in this payroll batch.",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
+    )
 
     processed_by = models.ForeignKey(
-        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="processed_payroll_batches"
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="processed_payroll_batches",
     )
+    
+
     processed_at = models.DateTimeField(null=True, blank=True)
 
     totals_net = models.DecimalField(max_digits=14, decimal_places=2, default=0)
@@ -401,11 +547,10 @@ class PayrollBatch(models.Model):
     class Meta:
         ordering = ["-created_at"]
         db_table = "core_payrollbatch"
-        unique_together = [("branch", "period")]
+        unique_together = [("branch", "period", "employee_type_scope")]
 
     def __str__(self):
-        return f"{self.name} ({self.branch.name})"
-
+        return f"{self.name} ({self.branch.name}) - {self.employee_type_scope}"
 
 class PayrollItem(models.Model):
     batch = models.ForeignKey(PayrollBatch, on_delete=models.CASCADE, related_name="items")
@@ -438,7 +583,102 @@ class PayrollItem(models.Model):
 
     def __str__(self):
         return f"{self.profile.user.username} - {self.net_pay}"
-    
+class FinalizedDTR(models.Model):
+    """
+    Stores a locked/finalized DTR snapshot for one employee and one payroll period.
+
+    Purpose:
+    - Preserve the DTR used for payroll
+    - Prevent accidental payroll/DTR overwrite
+    - Keep audit trail for finalization and unlocking
+    """
+
+    profile = models.ForeignKey(
+        UserProfile,
+        on_delete=models.PROTECT,
+        related_name="finalized_dtrs",
+    )
+
+    branch = models.ForeignKey(
+        Branch,
+        on_delete=models.PROTECT,
+        related_name="finalized_dtrs",
+    )
+
+    period = models.ForeignKey(
+        PayrollPeriod,
+        on_delete=models.PROTECT,
+        related_name="finalized_dtrs",
+    )
+
+    payroll_item = models.ForeignKey(
+        PayrollItem,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="finalized_dtrs",
+        help_text="PayrollItem used as source when this DTR was finalized.",
+    )
+
+    rows = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Locked DTR rows snapshot.",
+    )
+
+    summary = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Locked DTR summary snapshot.",
+    )
+
+    source_meta = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Extra source information such as batch ID, processor, and scope.",
+    )
+
+    is_locked = models.BooleanField(default=True, db_index=True)
+
+    finalized_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="finalized_dtrs",
+    )
+
+    finalized_at = models.DateTimeField(null=True, blank=True)
+
+    unlocked_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="unlocked_dtrs",
+    )
+
+    unlocked_at = models.DateTimeField(null=True, blank=True)
+
+    unlock_reason = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "core_finalizeddtr"
+        ordering = ["-finalized_at", "-created_at"]
+        unique_together = [("profile", "period")]
+        indexes = [
+            models.Index(fields=["branch", "period"]),
+            models.Index(fields=["profile", "period", "is_locked"]),
+        ]
+
+    def __str__(self):
+        status = "LOCKED" if self.is_locked else "UNLOCKED"
+        return f"{self.profile.user.username} - {self.period.name} ({status})"
+
+        
 class BiometricDevice(models.Model):
     name = models.CharField(max_length=100)
     ip_address = models.GenericIPAddressField()

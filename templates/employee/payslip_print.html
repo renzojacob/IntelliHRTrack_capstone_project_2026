@@ -1,108 +1,303 @@
-<!DOCTYPE html>
+{% load static %}
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Payslip | IntelliHRTrack</title>
+  <meta charset="utf-8">
+  <title>Payslip - {{ payslip.employee_name }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #111827;
+      background: #f3f4f6;
+      margin: 0;
+      padding: 24px;
+    }
+
+    .shell {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 24px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .section {
+      padding: 24px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .box {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 14px;
+      background: #f9fafb;
+    }
+
+    .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #6b7280;
+      font-weight: bold;
+      letter-spacing: .06em;
+    }
+
+    .amount {
+      font-size: 24px;
+      font-weight: 800;
+      margin-top: 6px;
+    }
+
+    .line {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 8px 0;
+      border-bottom: 1px dashed #d1d5db;
+      font-size: 14px;
+    }
+
+    .line:last-child {
+      border-bottom: 0;
+    }
+
+    .strong {
+      font-weight: bold;
+    }
+
+    .green {
+      color: #047857;
+    }
+
+    .red {
+      color: #be123c;
+    }
+
+    .blue {
+      color: #1d4ed8;
+    }
+
+    .no-print {
+      margin: 0 auto 16px auto;
+      max-width: 900px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: #0f766e;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
     @media print {
-      .no-print { display: none !important; }
-      body { background: white !important; }
+      body {
+        background: white;
+        padding: 0;
+      }
+
+      .shell {
+        max-width: none;
+        border-radius: 0;
+        border: 0;
+      }
+
+      .no-print {
+        display: none;
+      }
+
+      @page {
+        size: A4;
+        margin: 12mm;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .grid,
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .header {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-900 p-6">
-  <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow p-8">
 
-    <div class="no-print flex justify-end mb-4">
-      <button onclick="window.print()" class="px-5 py-2 rounded-xl bg-emerald-600 text-white font-semibold">
-        Print Payslip
-      </button>
+<body>
+
+<div class="no-print">
+  <a href="{% url 'employee_payroll' %}" class="btn">Back to Payroll</a>
+  <button onclick="window.print()" class="btn">Print Payslip</button>
+</div>
+
+<div class="shell">
+
+  <div class="header">
+    <div>
+      <div class="label">Department of Agriculture – MIMAROPA</div>
+      <h1 style="margin: 8px 0 4px 0;">IntelliHRTrack</h1>
+      <div style="color:#6b7280;">Payroll & Employee Management System</div>
     </div>
 
-    <div class="text-center border-b pb-5 mb-6">
-      <h1 class="text-2xl font-black">IntelliHRTrack</h1>
-      <p class="text-sm">Department of Agriculture - MIMAROPA</p>
-      <h2 class="text-xl font-bold mt-3">Employee Payslip</h2>
+    <div style="text-align:right;">
+      <div class="label">Payslip</div>
+      <h2 style="margin: 8px 0;">{{ payslip.employment_type }}</h2>
+      <div style="font-size:12px;color:#6b7280;">{{ payslip.source_label }}</div>
+      <div style="font-size:12px;color:#6b7280;">Ref: {{ payslip.reference_code }}</div>
     </div>
-
-    <div class="grid grid-cols-2 gap-4 text-sm mb-6">
-      <div>
-        <p><strong>Employee:</strong> {{ employee_name }}</p>
-        <p><strong>Department:</strong> {{ profile.department|default:"Unassigned" }}</p>
-        <p><strong>Position:</strong> {{ profile.position|default:"Not set" }}</p>
-        <p><strong>Employment Type:</strong> {{ profile.employment_type }}</p>
-      </div>
-      <div>
-        <p><strong>Payroll Period:</strong> {{ period.name }}</p>
-        <p><strong>Coverage:</strong> {{ period.start_date }} to {{ period.end_date }}</p>
-        <p><strong>Batch:</strong> {{ batch.name }}</p>
-        <p><strong>Status:</strong> {{ batch.get_status_display }}</p>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="border rounded-xl p-5">
-        <h3 class="font-bold mb-3">Earnings</h3>
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between">
-            <span>Base Pay</span>
-            <strong>₱{{ item.base_pay }}</strong>
-          </div>
-          <div class="flex justify-between">
-            <span>Premium Pay</span>
-            <strong>₱{{ item.premium_pay }}</strong>
-          </div>
-          <div class="flex justify-between">
-            <span>Overtime Pay</span>
-            <strong>₱{{ item.overtime_pay }}</strong>
-          </div>
-        </div>
-      </div>
-
-      <div class="border rounded-xl p-5">
-        <h3 class="font-bold mb-3">Deductions</h3>
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between">
-            <span>Government Contributions</span>
-            <strong>₱{{ item.gov_contributions_total }}</strong>
-          </div>
-          <div class="flex justify-between">
-            <span>Tax</span>
-            <strong>₱{{ item.tax_total }}</strong>
-          </div>
-          <div class="flex justify-between">
-            <span>Manual / Other Deductions</span>
-            <strong>₱{{ item.manual_deduction }}</strong>
-          </div>
-          <div class="flex justify-between">
-            <span>Total Deductions</span>
-            <strong>₱{{ item.deductions_total }}</strong>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="mt-6 border rounded-xl p-5">
-      <h3 class="font-bold mb-3">Attendance Summary Used</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-        <p><strong>Late Minutes:</strong> {{ item.late_minutes }}</p>
-        <p><strong>Undertime Minutes:</strong> {{ item.undertime_minutes }}</p>
-        <p><strong>Absences:</strong> {{ item.absences }}</p>
-        <p><strong>OT Hours:</strong> {{ item.overtime_hours }}</p>
-      </div>
-    </div>
-
-    <div class="mt-6 rounded-xl bg-emerald-50 border border-emerald-200 p-5 flex justify-between items-center">
-      <span class="text-lg font-bold">Net Pay</span>
-      <span class="text-3xl font-black text-emerald-700">₱{{ item.net_pay }}</span>
-    </div>
-
-    {% if item.issues %}
-    <div class="mt-5 text-sm bg-amber-50 border border-amber-200 rounded-xl p-4">
-      <strong>Notes:</strong> {{ item.issues }}
-    </div>
-    {% endif %}
-
   </div>
+
+  <div class="section grid">
+    <div>
+      <h3>Employee Details</h3>
+      <div class="line"><span>Name</span><strong>{{ payslip.employee_name }}</strong></div>
+      <div class="line"><span>Employee/Biometric ID</span><strong>{{ payslip.employee_id }}</strong></div>
+      <div class="line"><span>Branch</span><strong>{{ payslip.branch }}</strong></div>
+      <div class="line"><span>Department</span><strong>{{ payslip.department }}</strong></div>
+      <div class="line"><span>Position</span><strong>{{ payslip.position }}</strong></div>
+      <div class="line"><span>Employment Type</span><strong>{{ payslip.employment_type }}</strong></div>
+    </div>
+
+    <div>
+      <h3>Payroll Details</h3>
+      <div class="line"><span>Period</span><strong>{{ payslip.period_name }}</strong></div>
+      <div class="line"><span>Start</span><strong>{{ payslip.period_start }}</strong></div>
+      <div class="line"><span>End</span><strong>{{ payslip.period_end }}</strong></div>
+      <div class="line"><span>Pay Mode</span><strong>{{ payslip.pay_mode }}</strong></div>
+      <div class="line"><span>Date Generated</span><strong>{{ payslip.date_generated|date:"Y-m-d h:i A" }}</strong></div>
+    </div>
+  </div>
+
+  <div class="section summary">
+    <div class="box">
+      <div class="label">Gross Earnings</div>
+      <div class="amount green">₱{{ payslip.gross_pay }}</div>
+    </div>
+
+    <div class="box">
+      <div class="label">Total Deductions</div>
+      <div class="amount red">₱{{ payslip.total_deductions }}</div>
+    </div>
+
+    <div class="box">
+      <div class="label">{% if payslip.is_permanent %}Net Due{% else %}Net Pay{% endif %}</div>
+      <div class="amount blue">₱{{ payslip.net_pay }}</div>
+    </div>
+  </div>
+
+  <div class="section grid">
+    <div>
+      <h3>Earnings</h3>
+
+      {% if payslip.is_permanent %}
+        <div class="line"><span>Basic Salary for Period</span><strong>₱{{ payslip.basic_salary }}</strong></div>
+        <div class="line"><span>PERA Allowance</span><strong>₱{{ payslip.pera }}</strong></div>
+        <div class="line"><span>Other Earnings</span><strong>₱{{ payslip.other_earnings }}</strong></div>
+        <div class="line"><span>Overtime Hours</span><strong>{{ payslip.overtime_hours }}</strong></div>
+        <div class="line"><span>Overtime Pay</span><strong>₱{{ payslip.overtime_pay }}</strong></div>
+        <div class="line strong green"><span>Gross Amount</span><strong>₱{{ payslip.gross_pay }}</strong></div>
+      {% else %}
+        <div class="line"><span>Base Pay</span><strong>₱{{ payslip.base_pay }}</strong></div>
+        <div class="line"><span>Daily Rate</span><strong>₱{{ payslip.daily_rate }}</strong></div>
+        <div class="line"><span>Hourly Rate</span><strong>₱{{ payslip.hourly_rate }}</strong></div>
+        <div class="line"><span>Per-Minute Rate</span><strong>₱{{ payslip.per_minute_rate }}</strong></div>
+        <div class="line"><span>Premium Pay</span><strong>₱{{ payslip.premium_pay }}</strong></div>
+        <div class="line"><span>Overtime Pay</span><strong>₱{{ payslip.overtime_pay }}</strong></div>
+        <div class="line strong green"><span>Gross Pay</span><strong>₱{{ payslip.gross_pay }}</strong></div>
+      {% endif %}
+    </div>
+
+    <div>
+      <h3>Deductions</h3>
+
+      <div class="line"><span>Late Deduction</span><strong>₱{{ payslip.late_deduction }}</strong></div>
+      <div class="line"><span>Undertime Deduction</span><strong>₱{{ payslip.undertime_deduction }}</strong></div>
+      <div class="line"><span>Absence Deduction</span><strong>₱{{ payslip.absence_deduction }}</strong></div>
+
+      {% if payslip.is_permanent %}
+        <div class="line"><span>WTAX</span><strong>₱{{ payslip.wtax }}</strong></div>
+        <div class="line"><span>PhilHealth</span><strong>₱{{ payslip.philhealth }}</strong></div>
+        <div class="line"><span>GSIS Employee Share</span><strong>₱{{ payslip.gsis_employee }}</strong></div>
+        <div class="line"><span>Pag-IBIG</span><strong>₱{{ payslip.pagibig }}</strong></div>
+        <div class="line"><span>Loan Deduction</span><strong>₱{{ payslip.loan_deduction }}</strong></div>
+        <div class="line"><span>Other Deduction</span><strong>₱{{ payslip.other_deduction }}</strong></div>
+      {% else %}
+        <div class="line"><span>SSS</span><strong>₱{{ payslip.sss }}</strong></div>
+        <div class="line"><span>PhilHealth</span><strong>₱{{ payslip.philhealth }}</strong></div>
+        <div class="line"><span>Pag-IBIG</span><strong>₱{{ payslip.pagibig }}</strong></div>
+        <div class="line"><span>Tax</span><strong>₱{{ payslip.tax }}</strong></div>
+      {% endif %}
+
+      <div class="line"><span>Manual Deduction</span><strong>₱{{ payslip.manual_deduction }}</strong></div>
+      <div class="line strong red"><span>Total Deductions</span><strong>₱{{ payslip.total_deductions }}</strong></div>
+    </div>
+  </div>
+
+  {% if payslip.is_permanent %}
+  <div class="section">
+    <h3>Employer Contributions</h3>
+    <div class="grid">
+      <div class="line"><span>GSIS Employer Share</span><strong>₱{{ payslip.gsis_employer }}</strong></div>
+      <div class="line"><span>Other Employer Contribution</span><strong>₱{{ payslip.other_employer_contribution }}</strong></div>
+      <div class="line strong blue"><span>Total Employer Contributions</span><strong>₱{{ payslip.employer_contributions_total }}</strong></div>
+    </div>
+    <p style="font-size:12px;color:#6b7280;margin-top:10px;">
+      Employer contributions are for records/costing only and are not deducted from employee net due.
+    </p>
+  </div>
+  {% endif %}
+
+  <div class="section">
+    <h3>Attendance Basis</h3>
+    <div class="grid">
+      <div class="line"><span>Present Days</span><strong>{{ payslip.days_present }}</strong></div>
+      <div class="line"><span>Absences</span><strong>{{ payslip.absences }}</strong></div>
+      <div class="line"><span>Late Minutes</span><strong>{{ payslip.late_minutes }}</strong></div>
+      <div class="line"><span>Undertime Minutes</span><strong>{{ payslip.undertime_minutes }}</strong></div>
+      <div class="line"><span>Travel Days</span><strong>{{ payslip.travel_days }}</strong></div>
+      <div class="line"><span>Holiday/Suspension Days</span><strong>{{ payslip.holiday_days }}</strong></div>
+    </div>
+  </div>
+
+  {% if payslip.issues %}
+  <div class="section">
+    <h3>Notes / Issues</h3>
+    <p style="color:#92400e;">{{ payslip.issues }}</p>
+  </div>
+  {% endif %}
+
+</div>
+
 </body>
 </html>

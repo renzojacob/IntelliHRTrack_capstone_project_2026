@@ -56,6 +56,20 @@ urlpatterns = [
 
     # Saved processed DTR print page
     path("admin-ui/payroll/item/<int:item_id>/dtr/", views.admin_payroll_item_dtr_print, name="admin_payroll_item_dtr_print"),
+    path(
+        "admin-ui/payroll/item/<int:item_id>/dtr/finalize/",
+        views.admin_finalize_payroll_item_dtr,
+        name="admin_finalize_payroll_item_dtr",
+    ),
+
+    path(
+        "admin-ui/payroll/dtr/<int:dtr_id>/unlock/",
+        views.admin_unlock_finalized_dtr,
+        name="admin_unlock_finalized_dtr",
+    ),
+
+
+
 
     path("admin-ui/scheduling/", views.admin_shift_scheduling, name="admin_scheduling"),
     path("admin-ui/reports/", views.admin_reports, name="admin_reports"),
