@@ -28,6 +28,7 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods, require_POST
@@ -5753,6 +5754,642 @@ def _compute_employee_payroll(profile, period, rules):
         "net_pay": net_pay,
     }
 #==============================
+# =========================================================
+# PAYROLL BATCH FINALIZATION HELPERS
+# Place immediately above:
+# @login_required
+# def admin_payroll(request):
+# =========================================================
+
+def _payroll_batch_redirect_url(batch):
+    """
+    Return the admin payroll page for this batch's exact
+    branch, period, and employee scope.
+    """
+    return (
+        f"{reverse('admin_payroll')}"
+        f"?branch={batch.branch_id}"
+        f"&period={batch.period_id}"
+        f"&type={batch.employee_type_scope}"
+    )
+
+
+def _admin_can_access_payroll_batch(request, batch):
+    """
+    Superuser:
+        Can access every payroll batch.
+
+    Staff branch admin:
+        Can access only batches belonging to their assigned branch.
+    """
+    if request.user.is_superuser:
+        return True
+
+    try:
+        admin_branch = request.user.profile.branch
+    except UserProfile.DoesNotExist:
+        return False
+
+    return bool(
+        admin_branch
+        and batch.branch_id == admin_branch.id
+    )
+
+# =========================================================
+# FINAL PAYROLL VALIDATION CHECKLIST
+# Place immediately above:
+# def _get_payroll_batch_finalization_errors(batch):
+# =========================================================
+
+def _build_payroll_batch_validation(batch):
+    """
+    Validate one saved payroll batch before official finalization.
+
+    Returns:
+        {
+            "is_ready": bool,
+            "errors": list[str],
+            "warnings": list[str],
+            "checks": list[dict],
+        }
+    """
+
+    errors = []
+    warnings = []
+    checks = []
+
+    def add_check(label, passed, message=""):
+        checks.append({
+            "label": label,
+            "passed": bool(passed),
+            "message": message,
+        })
+
+    items = list(
+        PayrollItem.objects
+        .select_related(
+            "profile",
+            "profile__user",
+        )
+        .filter(batch=batch)
+    )
+
+       # -------------------------------------------------
+    # 1. Batch status
+    # -------------------------------------------------
+    batch_completed = (
+        batch.status == PayrollBatch.STATUS_COMPLETED
+        or batch.status == PayrollBatch.STATUS_FINALIZED
+    )
+
+    add_check(
+        "Payroll batch is processed",
+        batch_completed,
+        (
+            "Batch status is completed/finalized."
+            if batch_completed
+            else "Process payroll before finalization."
+        ),
+    )
+
+    if not batch_completed:
+        errors.append(
+            "Payroll must be processed and completed before finalization."
+        )
+
+    # -------------------------------------------------
+    # 2. Payroll items exist
+    # -------------------------------------------------
+    has_items = len(items) > 0
+
+    add_check(
+        "Payroll batch contains employees",
+        has_items,
+        (
+            f"{len(items)} payroll item(s) found."
+            if has_items
+            else "No payroll items were found."
+        ),
+    )
+
+    if not has_items:
+        errors.append(
+            "Payroll batch contains no payroll items."
+        )
+
+        return {
+            "is_ready": False,
+            "errors": errors,
+            "warnings": warnings,
+            "checks": checks,
+        }
+
+    profile_ids = [
+        item.profile_id
+        for item in items
+    ]
+
+    # -------------------------------------------------
+    # 3. Every DTR is locked
+    # -------------------------------------------------
+    locked_profile_ids = set(
+        FinalizedDTR.objects
+        .filter(
+            profile_id__in=profile_ids,
+            period=batch.period,
+            is_locked=True,
+        )
+        .values_list(
+            "profile_id",
+            flat=True,
+        )
+    )
+
+    employees_without_locked_dtr = []
+
+    for item in items:
+        if item.profile_id not in locked_profile_ids:
+            employee_name = (
+                item.profile.user.get_full_name()
+                or item.profile.user.username
+            )
+
+            employees_without_locked_dtr.append(
+                employee_name
+            )
+
+    all_dtrs_locked = (
+        len(employees_without_locked_dtr) == 0
+    )
+
+    add_check(
+        "All employee DTRs are locked",
+        all_dtrs_locked,
+        (
+            "Every included employee has a locked DTR."
+            if all_dtrs_locked
+            else (
+                "Not locked: "
+                + ", ".join(
+                    employees_without_locked_dtr[:5]
+                )
+            )
+        ),
+    )
+
+    if not all_dtrs_locked:
+        errors.append(
+            "Every employee must have a locked DTR. "
+            "Not locked: "
+            + ", ".join(
+                employees_without_locked_dtr[:5]
+            )
+            + "."
+        )
+
+    # -------------------------------------------------
+    # 4. Valid employment types
+    # -------------------------------------------------
+    allowed_types = {
+        UserProfile.EMP_JO,
+        UserProfile.EMP_COS,
+        UserProfile.EMP_PERMANENT,
+    }
+
+    invalid_type_names = []
+
+    for item in items:
+        if item.profile.employment_type not in allowed_types:
+            invalid_type_names.append(
+                item.profile.user.get_full_name()
+                or item.profile.user.username
+            )
+
+    valid_types = len(invalid_type_names) == 0
+
+    add_check(
+        "All employee types are valid",
+        valid_types,
+        (
+            "All employees are JO, COS, or Permanent."
+            if valid_types
+            else (
+                "Invalid type: "
+                + ", ".join(
+                    invalid_type_names[:5]
+                )
+            )
+        ),
+    )
+
+    if not valid_types:
+        errors.append(
+            "Invalid employment type found for: "
+            + ", ".join(
+                invalid_type_names[:5]
+            )
+            + "."
+        )
+
+    # -------------------------------------------------
+    # 5. Salary configuration
+    # -------------------------------------------------
+    missing_salary_names = []
+
+    for item in items:
+        profile = item.profile
+
+        has_salary = (
+            Decimal(
+                str(
+                    profile.monthly_salary
+                    or "0.00"
+                )
+            ) > 0
+            or Decimal(
+                str(
+                    profile.daily_rate
+                    or "0.00"
+                )
+            ) > 0
+        )
+
+        if not has_salary:
+            missing_salary_names.append(
+                profile.user.get_full_name()
+                or profile.user.username
+            )
+
+    salaries_complete = (
+        len(missing_salary_names) == 0
+    )
+
+    add_check(
+        "All employees have salary rates",
+        salaries_complete,
+        (
+            "Salary configuration is complete."
+            if salaries_complete
+            else (
+                "Missing salary: "
+                + ", ".join(
+                    missing_salary_names[:5]
+                )
+            )
+        ),
+    )
+
+    if not salaries_complete:
+        errors.append(
+            "Salary is not configured for: "
+            + ", ".join(
+                missing_salary_names[:5]
+            )
+            + "."
+        )
+
+    # -------------------------------------------------
+    # 6. Critical saved payroll issues
+    # -------------------------------------------------
+    critical_issue_phrases = (
+        "no daily/monthly salary configured",
+        "permanent employee has no basic/monthly salary configured",
+        "permanent basic salary missing",
+        "unknown employment type",
+    )
+
+    critical_issue_names = []
+
+    for item in items:
+        issue_text = str(
+            item.issues or ""
+        ).lower()
+
+        if any(
+            phrase in issue_text
+            for phrase in critical_issue_phrases
+        ):
+            critical_issue_names.append(
+                item.profile.user.get_full_name()
+                or item.profile.user.username
+            )
+
+    no_critical_issues = (
+        len(critical_issue_names) == 0
+    )
+
+    add_check(
+        "No critical payroll configuration issues",
+        no_critical_issues,
+        (
+            "No critical configuration issue was found."
+            if no_critical_issues
+            else (
+                "Critical issue: "
+                + ", ".join(
+                    critical_issue_names[:5]
+                )
+            )
+        ),
+    )
+
+    if not no_critical_issues:
+        errors.append(
+            "Critical payroll issues exist for: "
+            + ", ".join(
+                critical_issue_names[:5]
+            )
+            + "."
+        )
+
+    # -------------------------------------------------
+    # 7. Missing attendance logs
+    # -------------------------------------------------
+    employees_with_missing_logs = []
+
+    for item in items:
+        meta = (
+            item.meta
+            if isinstance(item.meta, dict)
+            else {}
+        )
+
+        attendance_summary = meta.get(
+            "attendance_summary",
+            {},
+        )
+
+        if not isinstance(
+            attendance_summary,
+            dict,
+        ):
+            attendance_summary = {}
+
+        missing_logs = int(
+            attendance_summary.get(
+                "missing_logs",
+                0,
+            )
+            or 0
+        )
+
+        if missing_logs > 0:
+            employees_with_missing_logs.append(
+                {
+                    "name": (
+                        item.profile.user.get_full_name()
+                        or item.profile.user.username
+                    ),
+                    "count": missing_logs,
+                }
+            )
+
+    no_missing_logs = (
+        len(employees_with_missing_logs) == 0
+    )
+
+    add_check(
+        "No missing attendance logs",
+        no_missing_logs,
+        (
+            "No missing attendance logs were found."
+            if no_missing_logs
+            else (
+                "Review missing logs for: "
+                + ", ".join(
+                    entry["name"]
+                    for entry
+                    in employees_with_missing_logs[:5]
+                )
+            )
+        ),
+    )
+
+    if not no_missing_logs:
+        warnings.append(
+            "Some employees have missing attendance logs. "
+            "Review them before approving payroll: "
+            + ", ".join(
+                entry["name"]
+                for entry
+                in employees_with_missing_logs[:5]
+            )
+            + "."
+        )
+
+    # -------------------------------------------------
+    # 8. Deductions must not exceed gross pay
+    # -------------------------------------------------
+    deduction_over_gross_names = []
+
+    for item in items:
+        meta = (
+            item.meta
+            if isinstance(item.meta, dict)
+            else {}
+        )
+
+        computed = meta.get(
+            "computed_payroll",
+            {},
+        )
+
+        if not isinstance(computed, dict):
+            computed = {}
+
+        gross_pay = Decimal(
+            str(
+                computed.get(
+                    "gross",
+                    item.base_pay
+                    or "0.00",
+                )
+                or "0.00"
+            )
+        )
+
+        total_deductions = Decimal(
+            str(
+                item.deductions_total
+                or "0.00"
+            )
+        )
+
+        if total_deductions > gross_pay:
+            deduction_over_gross_names.append(
+                item.profile.user.get_full_name()
+                or item.profile.user.username
+            )
+
+    deductions_valid = (
+        len(deduction_over_gross_names) == 0
+    )
+
+    add_check(
+        "Deductions do not exceed gross pay",
+        deductions_valid,
+        (
+            "All employee deductions are within gross pay."
+            if deductions_valid
+            else (
+                "Deductions exceed gross pay: "
+                + ", ".join(
+                    deduction_over_gross_names[:5]
+                )
+            )
+        ),
+    )
+
+    if not deductions_valid:
+        errors.append(
+            "Total deductions exceed gross pay for: "
+            + ", ".join(
+                deduction_over_gross_names[:5]
+            )
+            + "."
+        )
+
+    # -------------------------------------------------
+    # 9. Contribution settings exist
+    # -------------------------------------------------
+    profiles_with_contributions = set(
+        EmployeeContribution.objects
+        .filter(
+            profile_id__in=profile_ids
+        )
+        .values_list(
+            "profile_id",
+            flat=True,
+        )
+    )
+
+    missing_contribution_names = []
+
+    for item in items:
+        if (
+            item.profile_id
+            not in profiles_with_contributions
+        ):
+            missing_contribution_names.append(
+                item.profile.user.get_full_name()
+                or item.profile.user.username
+            )
+
+    contributions_complete = (
+        len(missing_contribution_names) == 0
+    )
+
+    add_check(
+        "Contribution records exist",
+        contributions_complete,
+        (
+            "All employees have contribution settings."
+            if contributions_complete
+            else (
+                "Missing contribution settings: "
+                + ", ".join(
+                    missing_contribution_names[:5]
+                )
+            )
+        ),
+    )
+
+    if not contributions_complete:
+        errors.append(
+            "Contribution settings are missing for: "
+            + ", ".join(
+                missing_contribution_names[:5]
+            )
+            + "."
+        )
+
+    # -------------------------------------------------
+    # 10. Batch totals match PayrollItem totals
+    # -------------------------------------------------
+    calculated_total_net = sum(
+        (
+            Decimal(
+                str(
+                    item.net_pay
+                    or "0.00"
+                )
+            )
+            for item in items
+        ),
+        Decimal("0.00"),
+    )
+
+    calculated_total_deductions = sum(
+        (
+            Decimal(
+                str(
+                    item.deductions_total
+                    or "0.00"
+                )
+            )
+            for item in items
+        ),
+        Decimal("0.00"),
+    )
+
+    saved_total_net = Decimal(
+        str(
+            batch.totals_net
+            or "0.00"
+        )
+    )
+
+    saved_total_deductions = Decimal(
+        str(
+            batch.totals_deductions
+            or "0.00"
+        )
+    )
+
+    totals_match = (
+        _money(calculated_total_net)
+        == _money(saved_total_net)
+        and
+        _money(calculated_total_deductions)
+        == _money(saved_total_deductions)
+    )
+
+    add_check(
+        "Batch totals match employee payroll items",
+        totals_match,
+        (
+            "Saved totals match PayrollItem totals."
+            if totals_match
+            else (
+                "Saved batch totals do not match "
+                "the sum of employee payroll items."
+            )
+        ),
+    )
+
+    if not totals_match:
+        errors.append(
+            "Batch totals do not match the saved employee payroll-item totals. "
+            "Reprocess the batch before finalization."
+        )
+
+    return {
+        "is_ready": len(errors) == 0,
+        "errors": errors,
+        "warnings": warnings,
+        "checks": checks,
+    }
+def _get_payroll_batch_finalization_errors(batch):
+    """
+    Return only the critical errors used by the
+    payroll-batch finalization view.
+    """
+    validation = _build_payroll_batch_validation(
+        batch
+    )
+
+    return validation["errors"]
+
 @login_required
 def admin_payroll(request):
     if not (request.user.is_staff or request.user.is_superuser):
@@ -5843,6 +6480,27 @@ def admin_payroll(request):
     travel_count = 0
     ot_disqualified_count = 0
 
+    # -------------------------------------------------
+    # DTR lock/finalization status for selected period
+    # -------------------------------------------------
+    finalized_dtr_qs = (
+        FinalizedDTR.objects
+        .select_related("profile", "finalized_by", "unlocked_by")
+        .filter(
+            profile__in=prof_qs,
+            period=selected_period,
+        )
+    )
+
+    finalized_dtr_map = {
+        dtr.profile_id: dtr
+        for dtr in finalized_dtr_qs
+    }
+
+    dtr_locked_count = finalized_dtr_qs.filter(is_locked=True).count()
+    dtr_unlocked_count = finalized_dtr_qs.filter(is_locked=False).count()
+    dtr_finalized_count = finalized_dtr_qs.count()
+
     for prof in prof_qs.order_by("user__username"):
         result = _compute_payroll(prof, branch_obj, period_obj, payroll_rules)
         saved_item = (
@@ -5899,6 +6557,19 @@ def admin_payroll(request):
 
         if "ot disqualified" in issues_text.lower():
             ot_disqualified_count += 1
+        
+        finalized_dtr = finalized_dtr_map.get(prof.id)
+
+        if finalized_dtr:
+            if finalized_dtr.is_locked:
+                dtr_status = "LOCKED"
+                dtr_status_label = "Locked / Finalized"
+            else:
+                dtr_status = "UNLOCKED"
+                dtr_status_label = "Unlocked for Correction"
+        else:
+            dtr_status = "NOT_FINALIZED"
+            dtr_status_label = "Not Finalized"
 
         employees.append({
             "id": prof.id,
@@ -5993,12 +6664,29 @@ def admin_payroll(request):
             "other_employer_contribution": gov.get("other_employer_contribution", Decimal("0.00")),
             "employer_contributions_total": gov.get("employer_contributions_total", Decimal("0.00")),
 
+            "dtr_status": dtr_status,
+            "dtr_status_label": dtr_status_label,
+            "dtr_locked": bool(finalized_dtr and finalized_dtr.is_locked),
+            "dtr_finalized": bool(finalized_dtr),
+            "dtr_id": finalized_dtr.id if finalized_dtr else None,
+            "dtr_finalized_by": finalized_dtr.finalized_by.username if finalized_dtr and finalized_dtr.finalized_by else "",
+            "dtr_finalized_at": finalized_dtr.finalized_at if finalized_dtr else None,
+            "dtr_unlocked_by": finalized_dtr.unlocked_by.username if finalized_dtr and finalized_dtr.unlocked_by else "",
+            "dtr_unlocked_at": finalized_dtr.unlocked_at if finalized_dtr else None,
+            "dtr_unlock_reason": finalized_dtr.unlock_reason if finalized_dtr else "",
+
                         
         })
 
     batch_qs = (
     PayrollBatch.objects
-    .select_related("branch", "period", "processed_by")
+    .select_related(
+    "branch",
+    "period",
+    "processed_by",
+    "finalized_by",
+    "reopened_by",
+    )
     .order_by("-processed_at", "-created_at")
     )
 
@@ -6019,6 +6707,23 @@ def admin_payroll(request):
             "branch_name": b.branch.name,
             "period_name": b.period.name,
             "employee_type_scope": getattr(b, "employee_type_scope", "ALL"),
+            "is_finalized": (
+                b.status == PayrollBatch.STATUS_FINALIZED
+            ),
+            "finalized_by": (
+                b.finalized_by.username
+                if b.finalized_by
+                else ""
+            ),
+            "finalized_at": b.finalized_at,
+            "reopened_by": (
+                b.reopened_by.username
+                if b.reopened_by
+                else ""
+            ),
+            "reopened_at": b.reopened_at,
+            "reopen_reason": b.reopen_reason or "",
+
             "status": b.get_status_display() if hasattr(b, "get_status_display") else b.status,
             "processed_by": b.processed_by.username if b.processed_by else "—",
             "processed_at": b.processed_at,
@@ -6054,6 +6759,10 @@ def admin_payroll(request):
 
         "selected_emp_type": emp_type,
         "missing_contribution_count": contribution_missing_count,
+
+        "dtr_locked_count": dtr_locked_count,
+        "dtr_unlocked_count": dtr_unlocked_count,
+        "dtr_finalized_count": dtr_finalized_count,
     }
 
     return render(request, "admin/payroll.html", context)
@@ -6807,6 +7516,35 @@ def admin_payroll_process_batch(request):
     total_items = 0
 
     with transaction.atomic():
+        # -------------------------------------------------
+        # Block regeneration of an officially finalized batch
+        # -------------------------------------------------
+        existing_batch = (
+            PayrollBatch.objects
+            .select_for_update()
+            .filter(
+                branch=branch_obj,
+                period=period,
+                employee_type_scope=emp_type,
+            )
+            .first()
+        )
+
+        if (
+            existing_batch
+            and existing_batch.status == PayrollBatch.STATUS_FINALIZED
+        ):
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "error": (
+                        "This payroll batch is officially finalized. "
+                        "Reopen the payroll batch before attempting "
+                        "to process it again."
+                    ),
+                },
+                status=400,
+            )
         batch, created = PayrollBatch.objects.get_or_create(
             branch=branch_obj,
             period=period,
@@ -7018,3 +7756,659 @@ def admin_payroll_process_batch(request):
         "totals_net": str(_money(totals_net)),
         "totals_deductions": str(_money(totals_deductions)),
     })
+
+# =========================================================
+# FINALIZE PAYROLL BATCH
+# Place immediately after admin_payroll_process_batch()
+# =========================================================
+
+@login_required
+@require_POST
+def admin_finalize_payroll_batch(request, batch_id):
+    """
+    Officially finalize one completed payroll batch.
+
+    Finalization requirements:
+    - Batch is completed
+    - Batch contains payroll items
+    - Every included employee has a locked FinalizedDTR
+    - No critical payroll configuration errors exist
+    """
+    if not (
+        request.user.is_staff
+        or request.user.is_superuser
+    ):
+        return redirect("login_ui")
+
+    with transaction.atomic():
+        batch = get_object_or_404(
+            PayrollBatch.objects
+            .select_for_update()
+            .select_related(
+                "branch",
+                "period",
+                "processed_by",
+                "finalized_by",
+                "reopened_by",
+            ),
+            id=batch_id,
+        )
+
+        if not _admin_can_access_payroll_batch(request, batch):
+            raise PermissionDenied(
+                "You cannot finalize payroll outside your assigned branch."
+            )
+
+        validation_errors = _get_payroll_batch_finalization_errors(
+            batch
+        )
+
+        if validation_errors:
+            for error in validation_errors:
+                messages.error(request, error)
+
+            return redirect(
+                _payroll_batch_redirect_url(batch)
+            )
+
+        batch.status = PayrollBatch.STATUS_FINALIZED
+        batch.finalized_by = request.user
+        batch.finalized_at = timezone.now()
+
+        batch.save(
+            update_fields=[
+                "status",
+                "finalized_by",
+                "finalized_at",
+            ]
+        )
+
+    messages.success(
+        request,
+        f'Payroll batch "{batch.name}" was finalized successfully.',
+    )
+
+    return redirect(
+        _payroll_batch_redirect_url(batch)
+    )
+
+
+# =========================================================
+# REOPEN PAYROLL BATCH
+# Place directly below admin_finalize_payroll_batch()
+# =========================================================
+
+@login_required
+@require_POST
+def admin_reopen_payroll_batch(request, batch_id):
+    """
+    Reopen an officially finalized payroll batch.
+
+    Important:
+    Reopening the batch does not automatically unlock employee DTRs.
+    Affected DTRs must still be unlocked individually.
+    """
+    if not (
+        request.user.is_staff
+        or request.user.is_superuser
+    ):
+        return redirect("login_ui")
+
+    reopen_reason = (
+        request.POST.get("reopen_reason")
+        or ""
+    ).strip()
+
+    with transaction.atomic():
+        batch = get_object_or_404(
+            PayrollBatch.objects
+            .select_for_update()
+            .select_related(
+                "branch",
+                "period",
+                "finalized_by",
+                "reopened_by",
+            ),
+            id=batch_id,
+        )
+
+        if not _admin_can_access_payroll_batch(request, batch):
+            raise PermissionDenied(
+                "You cannot reopen payroll outside your assigned branch."
+            )
+
+        if len(reopen_reason) < 5:
+            messages.error(
+                request,
+                "A reopening reason of at least 5 characters is required.",
+            )
+
+            return redirect(
+                _payroll_batch_redirect_url(batch)
+            )
+
+        if batch.status != PayrollBatch.STATUS_FINALIZED:
+            messages.info(
+                request,
+                "This payroll batch is not currently finalized.",
+            )
+
+            return redirect(
+                _payroll_batch_redirect_url(batch)
+            )
+
+        batch.status = PayrollBatch.STATUS_COMPLETED
+        batch.reopened_by = request.user
+        batch.reopened_at = timezone.now()
+        batch.reopen_reason = reopen_reason
+
+        batch.save(
+            update_fields=[
+                "status",
+                "reopened_by",
+                "reopened_at",
+                "reopen_reason",
+            ]
+        )
+
+    messages.success(
+        request,
+        f'Payroll batch "{batch.name}" was reopened successfully.',
+    )
+
+    return redirect(
+        _payroll_batch_redirect_url(batch)
+    )
+
+# =========================================================
+# PAYROLL BATCH DETAIL / PRINTABLE PAYROLL REGISTER
+# Place immediately after admin_reopen_payroll_batch()
+# =========================================================
+
+@login_required
+def admin_payroll_batch_detail(request, batch_id):
+    """
+    Display one saved payroll batch and its official payroll register.
+
+    This page uses saved PayrollItem records only.
+    It does not recompute live payroll.
+    """
+
+    if not (
+        request.user.is_staff
+        or request.user.is_superuser
+    ):
+        return redirect("login_ui")
+
+    batch = get_object_or_404(
+        PayrollBatch.objects.select_related(
+            "branch",
+            "period",
+            "processed_by",
+            "finalized_by",
+            "reopened_by",
+        ),
+        id=batch_id,
+    )
+
+    if not _admin_can_access_payroll_batch(request, batch):
+        raise PermissionDenied(
+            "You cannot view payroll outside your assigned branch."
+        )
+
+    payroll_items = list(
+        PayrollItem.objects
+        .select_related(
+            "profile",
+            "profile__user",
+            "profile__branch",
+        )
+        .filter(batch=batch)
+        .order_by(
+            "profile__employment_type",
+            "profile__user__last_name",
+            "profile__user__first_name",
+            "profile__user__username",
+        )
+    )
+
+    def money(value):
+        try:
+            return _money(Decimal(str(value or "0.00")))
+        except Exception:
+            return Decimal("0.00")
+
+    def get_dict(value):
+        return value if isinstance(value, dict) else {}
+
+    def get_meta_money(meta, section_name, key, fallback="0.00"):
+        section = get_dict(meta.get(section_name))
+        return money(section.get(key, fallback))
+
+    finalized_dtrs = (
+        FinalizedDTR.objects
+        .select_related(
+            "profile",
+            "finalized_by",
+            "unlocked_by",
+        )
+        .filter(
+            period=batch.period,
+            profile_id__in=[
+                item.profile_id
+                for item in payroll_items
+            ],
+        )
+    )
+
+    finalized_dtr_map = {
+        dtr.profile_id: dtr
+        for dtr in finalized_dtrs
+    }
+
+    register_rows = []
+
+    calculated_total_gross = Decimal("0.00")
+    calculated_total_deductions = Decimal("0.00")
+    calculated_total_net = Decimal("0.00")
+    calculated_total_employer_cost = Decimal("0.00")
+
+    for item in payroll_items:
+        profile = item.profile
+        user = profile.user
+        meta = get_dict(item.meta)
+
+        computed_meta = get_dict(
+            meta.get("computed_payroll")
+        )
+
+        permanent_meta = get_dict(
+            meta.get("permanent_breakdown")
+        )
+
+        gov_meta = get_dict(
+            meta.get("gov")
+        )
+
+        attendance_meta = get_dict(
+            meta.get("attendance_summary")
+        )
+
+        employment_type = profile.employment_type
+
+        employee_name = (
+            user.get_full_name()
+            or user.username
+        )
+
+        basic_or_base_pay = money(item.base_pay)
+        premium_pay = money(item.premium_pay)
+        overtime_pay = money(item.overtime_pay)
+
+        pera = Decimal("0.00")
+        other_earnings = Decimal("0.00")
+
+        if employment_type == UserProfile.EMP_PERMANENT:
+            basic_or_base_pay = money(
+                permanent_meta.get(
+                    "basic_salary",
+                    item.base_pay,
+                )
+            )
+
+            pera = money(
+                permanent_meta.get(
+                    "pera",
+                    "0.00",
+                )
+            )
+
+            other_earnings = money(
+                permanent_meta.get(
+                    "other_earnings",
+                    "0.00",
+                )
+            )
+
+        gross_pay = money(
+            basic_or_base_pay
+            + premium_pay
+            + overtime_pay
+            + pera
+            + other_earnings
+        )
+
+        late_deduction = money(
+            computed_meta.get(
+                "late_deduction",
+                meta.get(
+                    "late_deduction",
+                    "0.00",
+                ),
+            )
+        )
+
+        undertime_deduction = money(
+            computed_meta.get(
+                "undertime_deduction",
+                meta.get(
+                    "undertime_deduction",
+                    "0.00",
+                ),
+            )
+        )
+
+        absence_deduction = money(
+            computed_meta.get(
+                "absence_deduction",
+                meta.get(
+                    "absence_deduction",
+                    "0.00",
+                ),
+            )
+        )
+
+        manual_deduction = money(
+            item.manual_deduction
+        )
+
+        sss = money(
+            meta.get(
+                "sss_amount",
+                gov_meta.get(
+                    "sss",
+                    "0.00",
+                ),
+            )
+        )
+
+        philhealth = money(
+            meta.get(
+                "philhealth_amount",
+                gov_meta.get(
+                    "philhealth",
+                    "0.00",
+                ),
+            )
+        )
+
+        pagibig = money(
+            meta.get(
+                "pagibig_amount",
+                gov_meta.get(
+                    "pagibig",
+                    "0.00",
+                ),
+            )
+        )
+
+        tax_or_wtax = money(
+            permanent_meta.get(
+                "wtax",
+                item.tax_total,
+            )
+            if employment_type == UserProfile.EMP_PERMANENT
+            else item.tax_total
+        )
+
+        gsis_employee = money(
+            permanent_meta.get(
+                "gsis_employee",
+                "0.00",
+            )
+        )
+
+        gsis_employer = money(
+            permanent_meta.get(
+                "gsis_employer",
+                "0.00",
+            )
+        )
+
+        loan_deduction = money(
+            permanent_meta.get(
+                "loan_deduction",
+                computed_meta.get(
+                    "loan_deduction",
+                    "0.00",
+                ),
+            )
+        )
+
+        other_deduction = money(
+            permanent_meta.get(
+                "other_deduction",
+                computed_meta.get(
+                    "other_deduction",
+                    "0.00",
+                ),
+            )
+        )
+
+        employer_contributions_total = money(
+            permanent_meta.get(
+                "employer_contributions_total",
+                gov_meta.get(
+                    "employer_contributions_total",
+                    "0.00",
+                ),
+            )
+        )
+
+        total_deductions = money(
+            item.deductions_total
+        )
+
+        net_pay = money(
+            item.net_pay
+        )
+
+        finalized_dtr = finalized_dtr_map.get(
+            profile.id
+        )
+
+        if finalized_dtr and finalized_dtr.is_locked:
+            dtr_status = "LOCKED"
+            dtr_status_label = "Locked / Finalized"
+        elif finalized_dtr:
+            dtr_status = "UNLOCKED"
+            dtr_status_label = "Unlocked for Correction"
+        else:
+            dtr_status = "NOT_FINALIZED"
+            dtr_status_label = "Not Finalized"
+
+        register_rows.append({
+            "item_id": item.id,
+            "profile_id": profile.id,
+
+            "employee_name": employee_name,
+            "username": user.username,
+            "biometric_employee_id": (
+                profile.biometric_employee_id
+                or "—"
+            ),
+            "employment_type": employment_type,
+            "department": profile.department or "—",
+            "position": profile.position or "—",
+
+            "days_present": attendance_meta.get(
+                "present_days",
+                attendance_meta.get(
+                    "days_present",
+                    0,
+                ),
+            ),
+            "travel_days": attendance_meta.get(
+                "travel_days",
+                0,
+            ),
+            "holiday_days": attendance_meta.get(
+                "holiday_days",
+                0,
+            ),
+            "late_minutes": item.late_minutes or 0,
+            "undertime_minutes": (
+                item.undertime_minutes
+                or 0
+            ),
+            "absences": item.absences or 0,
+
+            "base_pay": basic_or_base_pay,
+            "pera": pera,
+            "other_earnings": other_earnings,
+            "premium_pay": premium_pay,
+            "overtime_hours": money(
+                item.overtime_hours
+            ),
+            "overtime_pay": overtime_pay,
+            "gross_pay": gross_pay,
+
+            "late_deduction": late_deduction,
+            "undertime_deduction": (
+                undertime_deduction
+            ),
+            "absence_deduction": (
+                absence_deduction
+            ),
+
+            "sss": sss,
+            "philhealth": philhealth,
+            "pagibig": pagibig,
+            "tax_or_wtax": tax_or_wtax,
+            "gsis_employee": gsis_employee,
+            "gsis_employer": gsis_employer,
+            "loan_deduction": loan_deduction,
+            "other_deduction": other_deduction,
+            "manual_deduction": manual_deduction,
+
+            "government_total": money(
+                item.gov_contributions_total
+            ),
+            "total_deductions": total_deductions,
+            "net_pay": net_pay,
+
+            "employer_contributions_total": (
+                employer_contributions_total
+            ),
+
+            "dtr_status": dtr_status,
+            "dtr_status_label": dtr_status_label,
+            "issues": item.issues or "",
+        })
+
+        calculated_total_gross += gross_pay
+        calculated_total_deductions += (
+            total_deductions
+        )
+        calculated_total_net += net_pay
+        calculated_total_employer_cost += (
+            employer_contributions_total
+        )
+
+    calculated_total_gross = money(
+        calculated_total_gross
+    )
+
+    calculated_total_deductions = money(
+        calculated_total_deductions
+    )
+
+    calculated_total_net = money(
+        calculated_total_net
+    )
+
+    calculated_total_employer_cost = money(
+        calculated_total_employer_cost
+    )
+
+    locked_dtr_count = sum(
+        1
+        for row in register_rows
+        if row["dtr_status"] == "LOCKED"
+    )
+
+    unlocked_dtr_count = sum(
+        1
+        for row in register_rows
+        if row["dtr_status"] == "UNLOCKED"
+    )
+
+    not_finalized_dtr_count = sum(
+        1
+        for row in register_rows
+        if row["dtr_status"] == "NOT_FINALIZED"
+    )
+    batch_validation = (
+        _build_payroll_batch_validation(
+            batch
+        )
+    )
+    # Remove accidentally duplicated validation checks while preserving order.
+    unique_validation_checks = []
+    seen_validation_labels = set()
+
+    for check in batch_validation.get("checks", []):
+        label = str(check.get("label", "")).strip()
+
+        if label and label not in seen_validation_labels:
+            seen_validation_labels.add(label)
+            unique_validation_checks.append(check)
+
+    batch_validation["checks"] = unique_validation_checks
+
+    context = {
+        "current": "payroll",
+
+        "batch": batch,
+        "period": batch.period,
+        "branch": batch.branch,
+
+        "register_rows": register_rows,
+        "employee_count": len(register_rows),
+
+        "calculated_total_gross": (
+            calculated_total_gross
+        ),
+        "calculated_total_deductions": (
+            calculated_total_deductions
+        ),
+        "calculated_total_net": (
+            calculated_total_net
+        ),
+        "calculated_total_employer_cost": (
+            calculated_total_employer_cost
+        ),
+
+        "locked_dtr_count": locked_dtr_count,
+        "unlocked_dtr_count": unlocked_dtr_count,
+        "not_finalized_dtr_count": (
+            not_finalized_dtr_count
+        ),
+        "batch_validation": batch_validation,
+        "validation_ready": (
+            batch_validation["is_ready"]
+        ),
+        "validation_errors": (
+            batch_validation["errors"]
+        ),
+        "validation_warnings": (
+            batch_validation["warnings"]
+        ),
+        "validation_checks": (
+            batch_validation["checks"]
+        ),
+
+        "printed_by": (
+            request.user.get_full_name()
+            or request.user.username
+        ),
+        "printed_at": timezone.localtime(
+            timezone.now()
+        ),
+    }
+
+    return render(
+        request,
+        "admin/payroll_batch_detail.html",
+        context,
+    )

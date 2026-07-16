@@ -23,6 +23,27 @@ urlpatterns = [
     path("admin-ui/biometrics/template/", views.admin_biometrics_template, name="admin_biometrics_template"),
     path("admin-ui/biometrics/export/", views.admin_biometrics_export, name="admin_biometrics_export"),
 
+    path("admin-ui/payroll/batch/<int:batch_id>/finalize/",
+    views.admin_finalize_payroll_batch, name="admin_finalize_payroll_batch",),
+
+    path("admin-ui/payroll/batch/<int:batch_id>/reopen/", views.admin_reopen_payroll_batch, name="admin_reopen_payroll_batch",),
+    path(
+    "admin-ui/payroll/batch/<int:batch_id>/",
+    views.admin_payroll_batch_detail,
+    name="admin_payroll_batch_detail",
+    ),
+    path(
+    "admin-ui/payroll/batch/<int:batch_id>/finalize/",
+    views.admin_finalize_payroll_batch,
+    name="admin_finalize_payroll_batch",
+    ),
+
+    path(
+        "admin-ui/payroll/batch/<int:batch_id>/reopen/",
+        views.admin_reopen_payroll_batch,
+        name="admin_reopen_payroll_batch",
+    ),
+
     #hikvision_sync
     path("admin-ui/biometrics/sync/", views.admin_biometrics_sync_now, name="admin_biometrics_sync"),
 
