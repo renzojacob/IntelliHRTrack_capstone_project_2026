@@ -373,6 +373,14 @@
       </div>
     </form>
   </div>
+  
+  {% if dtr_locked_count %}
+    <div class="mt-3 rounded-xl border border-amber-300/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+      <strong>{{ dtr_locked_count }}</strong> DTR record(s) are locked/finalized for this period.
+      Payroll reprocessing will be blocked until they are unlocked.
+    </div>
+  {% endif %}
+
 
   <!-- KPI Cards -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
@@ -478,7 +486,20 @@
         <span class="text-xl font-bold">{{ payroll_status|default:"Draft" }}</span>
       </div>
 
-      <div class="text-xs text-gray-400 mt-2">{{ selected_period.name|default:"No period" }}</div>
+      <div class="text-xs text-gray-400 mt-2">
+  {{ selected_period.name|default:"No period" }}
+</div>
+
+<div class="mt-2 flex flex-wrap gap-1 text-[10px]">
+  <span class="status-chip green">
+    Locked: {{ dtr_locked_count|default:0 }}
+  </span>
+
+  <span class="status-chip amber">
+    Unlocked: {{ dtr_unlocked_count|default:0 }}
+  </span>
+</div>
+
     </div>
   </div>
 
@@ -585,6 +606,7 @@
           <th class="py-3 pr-3 font-semibold">Tax / WTAX</th>
           <th class="py-3 pr-3 font-semibold">Deductions</th>
           <th class="py-3 pr-3 font-semibold">Net Pay</th>
+          <th class="py-3 pr-3 font-semibold">DTR Status</th>
           <th class="py-3 pr-3 font-semibold">Issues</th>
           <th class="py-3 pr-3 font-semibold">Actions</th>
         </tr>
@@ -695,19 +717,62 @@
             ₱{{ employee.net_pay|default:employee.computed_payroll.net|default:"0.00" }}
           </td>
 
-          <td class="py-3 pr-3">
-            {% if employee.issues %}
-              <span class="inline-flex items-center gap-1 text-amber-400" title="{{ employee.issues }}">
-                <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
-              </span>
-            {% elif employee.attendance_summary.has_missing_logs %}
-              <span class="inline-flex items-center gap-1 text-amber-400" title="Missing attendance logs">
-                <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
-              </span>
-            {% else %}
-              <iconify-icon icon="ph:check-circle-duotone" class="text-emerald-400"></iconify-icon>
-            {% endif %}
-          </td>
+          
+          <!-- DTR Status -->
+              <td class="py-3 pr-3">
+                {% if employee.dtr_locked %}
+                  <span
+                    class="status-chip green"
+                    title="Finalized by {{ employee.dtr_finalized_by }} at {{ employee.dtr_finalized_at|date:'Y-m-d H:i' }}"
+                  >
+                    <iconify-icon icon="ph:lock-simple-duotone"></iconify-icon>
+                    Locked
+                  </span>
+
+                {% elif employee.dtr_finalized %}
+                  <span
+                    class="status-chip amber"
+                    title="Unlocked by {{ employee.dtr_unlocked_by }}. Reason: {{ employee.dtr_unlock_reason }}"
+                  >
+                    <iconify-icon icon="ph:lock-open-duotone"></iconify-icon>
+                    Unlocked
+                  </span>
+
+                {% else %}
+                  <span class="status-chip gray">
+                    <iconify-icon icon="ph:clock-duotone"></iconify-icon>
+                    Not Finalized
+                  </span>
+                {% endif %}
+              </td>
+
+              <!-- Issues -->
+              <td class="py-3 pr-3">
+                {% if employee.issues %}
+                  <span
+                    class="inline-flex items-center gap-1 text-amber-400"
+                    title="{{ employee.issues }}"
+                  >
+                    <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
+                  </span>
+
+                {% elif employee.attendance_summary.has_missing_logs %}
+                  <span
+                    class="inline-flex items-center gap-1 text-amber-400"
+                    title="Missing attendance logs"
+                  >
+                    <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
+                  </span>
+
+                {% else %}
+                  <iconify-icon
+                    icon="ph:check-circle-duotone"
+                    class="text-emerald-400"
+                  ></iconify-icon>
+                {% endif %}
+              </td>
+
+              <!-- Actions -->
 
           <td class="py-3 pr-3">
             <div class="flex gap-2">
@@ -747,7 +812,7 @@
         </tr>
 
         <tr class="expand-detail-row hidden" data-detail-for="{{ employee.id }}">
-          <td colspan="19" class="p-4">
+          <td colspan="20" class="p-4">
             <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
               <div class="glass-premium p-3 rounded-lg">
                 <span class="text-gray-500">Daily Rate</span>
@@ -810,6 +875,26 @@
               </div>
             </div>
 
+            <div class="glass-premium p-3 rounded-lg">
+              <span class="text-gray-500">DTR Lock Status</span>
+
+              {% if employee.dtr_locked %}
+                <strong class="block mt-1 text-emerald-400">Locked / Finalized</strong>
+                <div class="text-[10px] text-gray-400 mt-1">
+                  By {{ employee.dtr_finalized_by|default:"—" }}
+                  {% if employee.dtr_finalized_at %}
+                    · {{ employee.dtr_finalized_at|date:"Y-m-d H:i" }}
+                  {% endif %}
+                </div>
+              {% elif employee.dtr_finalized %}
+                <strong class="block mt-1 text-amber-400">Unlocked for Correction</strong>
+                <div class="text-[10px] text-gray-400 mt-1">
+                  Reason: {{ employee.dtr_unlock_reason|default:"—" }}
+                </div>
+              {% else %}
+                <strong class="block mt-1 text-gray-400">Not Finalized</strong>
+              {% endif %}
+            </div>
             <div class="mt-3 text-xs text-gray-500 dark:text-gray-400">
               For permanent employees, employer contributions are shown for records/costing only and are not deducted from net pay.
             </div>
@@ -818,7 +903,7 @@
 
         {% empty %}
         <tr>
-          <td colspan="19" class="text-center py-10 text-gray-400">
+          <td colspan="20" class="text-center py-10 text-gray-400">
             No employees match the selected filters.
           </td>
         </tr>
@@ -882,62 +967,249 @@
   </div>
 
   <!-- Batch History -->
-  <div class="glass-premium rounded-2xl p-5 border border-white/30">
-    <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-      <iconify-icon icon="ph:history-duotone" class="text-accent"></iconify-icon>
-      Payroll Batch History
-    </h2>
+<div class="glass-premium rounded-2xl p-5 border border-white/30">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+    <div>
+      <h2 class="text-lg font-semibold flex items-center gap-2">
+        <iconify-icon icon="ph:history-duotone" class="text-accent"></iconify-icon>
+        Payroll Batch History
+      </h2>
 
-    <div class="overflow-x-auto payroll-scroll">
-      <table class="w-full min-w-[900px] text-sm">
-        <thead class="border-b border-white/20">
-          <tr class="text-left text-gray-500">
-            <th class="pb-2">Batch Name</th>
-            <th>Branch</th>
-            <th>Period</th>
-            <th>Scope</th>
-            <th>Status</th>
-            <th>Processed By</th>
-            <th>Processed At</th>
-            <th>Total Net</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
+      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        Completed batches can be finalized only after every included employee DTR is locked.
+      </p>
+    </div>
 
-        <tbody>
-          {% for batch in payroll_batches %}
-          <tr class="border-b border-white/10 hover:bg-white/5 transition">
-            <td class="py-2 font-medium">{{ batch.name }}</td>
-            <td>{{ batch.branch.name|default:batch.branch_name }}</td>
-            <td>{{ batch.period.name|default:batch.period_name }}</td>
-            <td>
+    <span class="status-chip blue">
+      {{ payroll_batches|length }} Batch{{ payroll_batches|length|pluralize:"es" }}
+    </span>
+  </div>
+
+  <!-- Django messages produced by finalize/reopen views -->
+  {% if messages %}
+    <div class="mb-4 space-y-2">
+      {% for message in messages %}
+        <div class="
+          rounded-xl border px-4 py-3 text-sm
+          {% if message.tags == 'success' %}
+            border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300
+          {% elif message.tags == 'error' %}
+            border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300
+          {% elif message.tags == 'warning' %}
+            border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300
+          {% else %}
+            border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300
+          {% endif %}
+        ">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="overflow-x-auto payroll-scroll">
+    <table class="w-full min-w-[1450px] text-sm">
+      <thead class="border-b border-white/20">
+        <tr class="text-left text-gray-500 dark:text-gray-400">
+          <th class="pb-3 pr-4">Batch Name</th>
+          <th class="pb-3 pr-4">Branch</th>
+          <th class="pb-3 pr-4">Period</th>
+          <th class="pb-3 pr-4">Scope</th>
+          <th class="pb-3 pr-4">Status</th>
+          <th class="pb-3 pr-4">Processed By</th>
+          <th class="pb-3 pr-4">Processed At</th>
+          <th class="pb-3 pr-4">Total Net</th>
+          <th class="pb-3 pr-4">Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for batch in payroll_batches %}
+          <tr class="border-b border-white/10 align-top hover:bg-white/5 transition">
+
+            <!-- Batch Name -->
+            <td class="py-3 pr-4 font-medium">
+              {{ batch.name }}
+
+              {% if batch.reopened_by %}
+                <div class="mt-1 text-[10px] text-amber-600 dark:text-amber-300">
+                  Previously reopened
+                </div>
+              {% endif %}
+            </td>
+
+            <!-- Branch -->
+            <td class="py-3 pr-4">
+              {{ batch.branch.name|default:batch.branch_name|default:"—" }}
+            </td>
+
+            <!-- Period -->
+            <td class="py-3 pr-4">
+              {{ batch.period.name|default:batch.period_name|default:"—" }}
+            </td>
+
+            <!-- Scope -->
+            <td class="py-3 pr-4">
               <span class="status-chip blue">
                 {{ batch.employee_type_scope|default:"ALL" }}
               </span>
             </td>
-            <td>
-  <span class="status-chip {% if batch.status == 'completed' or batch.status == 'Completed' %}green{% else %}amber{% endif %}">
-                {{ batch.status }}
-              </span>
+
+            <!-- Status -->
+            <td class="py-3 pr-4">
+              {% if batch.is_finalized %}
+                <span class="status-chip purple">
+                  <iconify-icon icon="ph:seal-check-duotone"></iconify-icon>
+                  Finalized
+                </span>
+
+              {% elif batch.status == "completed" or batch.status == "Completed" %}
+                <span class="status-chip green">
+                  <iconify-icon icon="ph:check-circle-duotone"></iconify-icon>
+                  Completed
+                </span>
+
+              {% else %}
+                <span class="status-chip amber">
+                  <iconify-icon icon="ph:clock-duotone"></iconify-icon>
+                  {{ batch.status|default:"Draft" }}
+                </span>
+              {% endif %}
             </td>
-            <td>{{ batch.processed_by.username|default:batch.processed_by|default:"—" }}</td>
-            <td>{{ batch.processed_at|date:"Y-m-d H:i"|default:"—" }}</td>
-            <td class="font-semibold">₱{{ batch.totals_net|default:batch.total_net|default:"0.00" }}</td>
-            <td>
-              <button type="button" class="viewBatchBtn text-accent text-xs underline-offset-2 hover:underline" data-batch-id="{{ batch.id }}">
-                View / Print
-              </button>
+
+            <!-- Processed By -->
+            <td class="py-3 pr-4">
+              {{ batch.processed_by.username|default:batch.processed_by|default:"—" }}
+            </td>
+
+            <!-- Processed At -->
+            <td class="py-3 pr-4 whitespace-nowrap">
+              {% if batch.processed_at %}
+                {{ batch.processed_at|date:"Y-m-d H:i" }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <!-- Total Net -->
+            <td class="py-3 pr-4 whitespace-nowrap font-semibold text-accent">
+              ₱{{ batch.total_net|default:"0.00" }}
+            </td>
+
+            <!-- Actions -->
+            <td class="py-3 pr-4">
+              <div class="flex min-w-[230px] flex-col items-start gap-2">
+
+              <a
+              href="{% url 'admin_payroll_batch_detail' batch.id %}"
+              class="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-500 hover:text-white dark:text-blue-300">
+              <iconify-icon icon="ph:file-text-duotone"></iconify-icon>
+              View / Print Register
+            </a>
+
+                {% if batch.is_finalized %}
+
+                  <!-- Finalized audit information -->
+                  <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs">
+                    <div class="font-semibold text-emerald-700 dark:text-emerald-300">
+                      Officially Finalized
+                    </div>
+
+                    <div class="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+                      By {{ batch.finalized_by|default:"—" }}
+
+                      {% if batch.finalized_at %}
+                        on {{ batch.finalized_at|date:"Y-m-d H:i" }}
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <!-- Reopen form -->
+                  <form
+                    method="post"
+                    action="{% url 'admin_reopen_payroll_batch' batch.id %}"
+                    onsubmit="return confirm('Reopen this finalized payroll batch? The reason will be recorded in the audit trail.');"
+                    class="w-full space-y-2"
+                  >
+                    {% csrf_token %}
+
+                    <input
+                      type="text"
+                      name="reopen_reason"
+                      required
+                      minlength="5"
+                      placeholder="Reason for reopening"
+                      class="w-full rounded-lg border border-white/20 bg-white/30 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 dark:bg-slate-900/40"
+                    >
+
+                    <button
+                      type="submit"
+                      class="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-500 hover:text-white dark:text-amber-300"
+                    >
+                      <iconify-icon icon="ph:lock-open-duotone"></iconify-icon>
+                      Reopen Batch
+                    </button>
+                  </form>
+
+                {% elif batch.status == "completed" or batch.status == "Completed" %}
+
+                  <!-- Finalize form -->
+                  <form
+                    method="post"
+                    action="{% url 'admin_finalize_payroll_batch' batch.id %}"
+                    onsubmit="return confirm('Officially finalize this payroll batch? Every included employee must have a locked DTR.');"
+                  >
+                    {% csrf_token %}
+
+                    <button
+                      type="submit"
+                      class="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-500 hover:text-white dark:text-emerald-300"
+                    >
+                      <iconify-icon icon="ph:seal-check-duotone"></iconify-icon>
+                      Finalize Batch
+                    </button>
+                  </form>
+
+                  <!-- Show last reopening information -->
+                  {% if batch.reopened_by %}
+                    <div class="max-w-[230px] rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[10px] text-amber-700 dark:text-amber-300">
+                      <strong>Last reopened by:</strong>
+                      {{ batch.reopened_by }}
+
+                      {% if batch.reopened_at %}
+                        on {{ batch.reopened_at|date:"Y-m-d H:i" }}
+                      {% endif %}
+
+                      <br>
+
+                      <strong>Reason:</strong>
+                      {{ batch.reopen_reason|default:"—" }}
+                    </div>
+                  {% endif %}
+
+                {% else %}
+
+                  <span class="text-xs text-gray-400">
+                    Process payroll before finalization.
+                  </span>
+
+                {% endif %}
+              </div>
             </td>
           </tr>
-          {% empty %}
+
+        {% empty %}
           <tr>
-          <td colspan="9" class="py-6 text-center text-gray-400">No previous batches found.</td>
+            <td colspan="9" class="py-8 text-center text-gray-400">
+              No payroll batches found for the selected filters.
+            </td>
           </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
+</div>
+
 
   <!-- Validation Panel -->
   <div class="rounded-2xl p-5 border border-amber-200/50 bg-amber-50/40 dark:bg-amber-900/20 dark:border-amber-800/30 backdrop-blur-sm">

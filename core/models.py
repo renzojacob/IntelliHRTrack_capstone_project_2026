@@ -482,10 +482,12 @@ class HolidaySuspension(models.Model):
 class PayrollBatch(models.Model):
     STATUS_DRAFT = "draft"
     STATUS_COMPLETED = "completed"
+    STATUS_FINALIZED = "finalized"
 
     STATUS_CHOICES = [
         (STATUS_DRAFT, "Draft"),
         (STATUS_COMPLETED, "Completed"),
+        (STATUS_FINALIZED, "Finalized"),
     ]
 
     SCOPE_ALL = "ALL"
@@ -544,6 +546,37 @@ class PayrollBatch(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    finalized_by = models.ForeignKey(
+    settings.AUTH_USER_MODEL,
+    null=True,
+    blank=True,
+    on_delete=models.SET_NULL,
+    related_name="finalized_payroll_batches",
+    )
+
+    finalized_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    reopened_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reopened_payroll_batches",
+    )
+
+    reopened_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    reopen_reason = models.TextField(
+        blank=True,
+        default="",
+    )
+
     class Meta:
         ordering = ["-created_at"]
         db_table = "core_payrollbatch"
@@ -551,6 +584,14 @@ class PayrollBatch(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.branch.name}) - {self.employee_type_scope}"
+
+    @property
+    def is_finalized(self):
+        return self.status == self.STATUS_FINALIZED
+
+    @property
+    def can_be_reprocessed(self):
+        return not self.is_finalized
 
 class PayrollItem(models.Model):
     batch = models.ForeignKey(PayrollBatch, on_delete=models.CASCADE, related_name="items")
