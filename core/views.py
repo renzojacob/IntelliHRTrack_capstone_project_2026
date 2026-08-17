@@ -123,6 +123,45 @@ def _get_branch_from_post(request, branches_qs):
 
     return branches_qs.filter(name__iexact=raw).first()
 
+def _pick_attendance_employee_id(user, branch):
+    """
+    Get the attendance/biometric employee ID for an employee.
+
+    Primary source:
+        UserProfile.biometric_employee_id
+
+    Fallback:
+        username
+
+    This helper is used by:
+        employee_dashboard
+        employee_attendance
+        employee_dtr_print
+        payroll/attendance related employee views
+    """
+
+    try:
+        profile = user.profile
+    except UserProfile.DoesNotExist:
+        return str(user.username).strip()
+
+    biometric_id = str(
+        profile.biometric_employee_id or ""
+    ).strip()
+
+    if biometric_id:
+        return biometric_id
+
+    return str(user.username).strip()
+
+def _fmt_time_ampm(dt):
+    if not dt:
+        return ""
+
+    if not hasattr(dt, "strftime"):
+        return str(dt)
+
+    return dt.strftime("%I:%M %p").lstrip("0")
 
 # =========================
 # Landing Page
