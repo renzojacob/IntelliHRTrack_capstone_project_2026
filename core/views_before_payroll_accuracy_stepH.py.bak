@@ -3632,90 +3632,6 @@ def attendance_detail(request, pk):
     obj = get_object_or_404(AttendanceRecord.objects.select_related("branch"), pk=pk)
     return render(request, "admin/attendance_detail.html", {"current": "biometrics", "obj": obj})
 
-def _locked_dtr_for_attendance_values(
-    employee_id,
-    branch,
-    timestamp,
-):
-    """
-    Return the locked FinalizedDTR covering an attendance
-    record, or None when the record is still editable.
-
-    A locked DTR protects the raw attendance source used
-    for an already approved payroll period.
-    """
-
-    employee_id = str(
-        employee_id or ""
-    ).strip()
-
-    if (
-        not employee_id
-        or branch is None
-        or timestamp is None
-    ):
-        return None
-
-    try:
-        if timezone.is_aware(timestamp):
-            local_timestamp = timezone.localtime(
-                timestamp
-            )
-
-        elif settings.USE_TZ:
-            local_timestamp = timezone.make_aware(
-                timestamp,
-                timezone.get_current_timezone(),
-            )
-
-        else:
-            local_timestamp = timestamp
-
-        attendance_date = local_timestamp.date()
-
-    except Exception:
-        return None
-
-    profile = (
-        UserProfile.objects
-        .filter(
-            branch=branch,
-            biometric_employee_id=employee_id,
-        )
-        .first()
-    )
-
-    if not profile:
-        return None
-
-    return (
-        FinalizedDTR.objects
-        .select_related(
-            "period",
-            "profile",
-            "profile__user",
-        )
-        .filter(
-            profile=profile,
-            branch=branch,
-            is_locked=True,
-            period__start_date__lte=attendance_date,
-            period__end_date__gte=attendance_date,
-        )
-        .first()
-    )
-
-
-def _locked_dtr_for_attendance_record(record):
-    if record is None:
-        return None
-
-    return _locked_dtr_for_attendance_values(
-        record.employee_id,
-        record.branch,
-        record.timestamp,
-    )
-
 
 @login_required
 def attendance_create(request):
@@ -3732,39 +3648,12 @@ def attendance_create(request):
             obj = form.save(commit=False)
 
             admin_branch = _get_admin_branch(request)
-
             if admin_branch:
                 obj.branch = admin_branch
 
-            locked_dtr = _locked_dtr_for_attendance_values(
-                obj.employee_id,
-                obj.branch,
-                obj.timestamp,
-            )
-
-            if locked_dtr:
-                form.add_error(
-                    None,
-                    (
-                        "Attendance cannot be created because "
-                        "this employee's DTR is locked for "
-                        f'"{locked_dtr.period.name}". '
-                        "Unlock the DTR before making attendance "
-                        "corrections."
-                    ),
-                )
-
-            else:
-                obj.save()
-
-                messages.success(
-                    request,
-                    "Record created successfully!",
-                )
-
-                return redirect(
-                    "admin_biometrics"
-                )
+            obj.save()
+            messages.success(request, "Record created successfully!")
+            return redirect("admin_biometrics")
     else:
         form = AttendanceRecordForm()
         _apply_branch_choices_to_form(form, branches_qs)
@@ -3791,42 +3680,10 @@ def attendance_update(request, pk):
     obj = get_object_or_404(AttendanceRecord.objects.select_related("branch"), pk=pk)
 
     admin_branch = _get_admin_branch(request)
+    if admin_branch and obj.branch_id != admin_branch.id:
+        messages.error(request, "You can only edit attendance records in your branch.")
+        return redirect("admin_biometrics")
 
-    if (
-        admin_branch
-        and obj.branch_id != admin_branch.id
-    ):
-        messages.error(
-            request,
-            "You can only edit attendance records in your branch.",
-        )
-
-        return redirect(
-            "admin_biometrics"
-        )
-
-    # Check the lock independently of the branch-access check.
-    # This assignment must always execute before:
-    # if locked_dtr:
-    locked_dtr = _locked_dtr_for_attendance_record(
-        obj
-    )
-
-    if locked_dtr:
-        messages.error(
-            request,
-            (
-                "This attendance record cannot be edited "
-                "because its DTR is locked for "
-                f'"{locked_dtr.period.name}". '
-                "Unlock the DTR before correcting attendance."
-            ),
-        )
-
-        return redirect(
-            "admin_biometrics"
-        )
-        
     if request.method == "POST":
         form = AttendanceRecordForm(request.POST, instance=obj)
         _apply_branch_choices_to_form(form, branches_qs)
@@ -3836,36 +3693,6 @@ def attendance_update(request, pk):
 
             if admin_branch:
                 edited.branch = admin_branch
-
-            target_locked_dtr = (
-                _locked_dtr_for_attendance_values(
-                    edited.employee_id,
-                    edited.branch,
-                    edited.timestamp,
-                )
-            )
-
-            if target_locked_dtr:
-                form.add_error(
-                    None,
-                    (
-                        "This change would place the attendance "
-                        "record inside a locked DTR period "
-                        f'"{target_locked_dtr.period.name}".'
-                    ),
-                )
-
-            else:
-                edited.save()
-
-                messages.success(
-                    request,
-                    "Record updated successfully!",
-                )
-
-                return redirect(
-                    "admin_biometrics"
-                )
 
             edited.save()
             messages.success(request, "Record updated successfully!")
@@ -3889,69 +3716,20 @@ def attendance_update(request, pk):
 
 @login_required
 def attendance_delete(request, pk):
-    if not (
-        request.user.is_staff
-        or request.user.is_superuser
-    ):
+    if not (request.user.is_staff or request.user.is_superuser):
         return redirect("login_ui")
 
-    obj = get_object_or_404(
-        AttendanceRecord.objects.select_related(
-            "branch"
-        ),
-        pk=pk,
-    )
+    obj = get_object_or_404(AttendanceRecord.objects.select_related("branch"), pk=pk)
 
     admin_branch = _get_admin_branch(request)
-
-    if (
-        admin_branch
-        and obj.branch_id != admin_branch.id
-    ):
-        messages.error(
-            request,
-            "You can only delete attendance records in your branch.",
-        )
-
-        return redirect(
-            "admin_biometrics"
-        )
-
-    # -------------------------------------------------
-    # FINALIZED DTR PROTECTION
-    # -------------------------------------------------
-    # This check MUST execute independently of the
-    # branch-access condition above.
-    locked_dtr = _locked_dtr_for_attendance_record(
-        obj
-    )
-
-    if locked_dtr:
-        messages.error(
-            request,
-            (
-                "This attendance record cannot be deleted "
-                "because its DTR is locked for "
-                f'"{locked_dtr.period.name}". '
-                "Unlock the DTR before correcting attendance."
-            ),
-        )
-
-        return redirect(
-            "admin_biometrics"
-        )
+    if admin_branch and obj.branch_id != admin_branch.id:
+        messages.error(request, "You can only delete attendance records in your branch.")
+        return redirect("admin_biometrics")
 
     if request.method == "POST":
         obj.delete()
-
-        messages.success(
-            request,
-            "Record deleted successfully!",
-        )
-
-        return redirect(
-            "admin_biometrics"
-        )
+        messages.success(request, "Record deleted successfully!")
+        return redirect("admin_biometrics")
 
     return render(
         request,
@@ -3961,7 +3739,16 @@ def attendance_delete(request, pk):
             "obj": obj,
         },
     )
-    
+
+#==============================================================
+# -------------------------
+# Payroll helpers / Payroll Engine
+# -------------------------
+
+SALARY_DIVISOR = Decimal("22")
+DAILY_HOURS = Decimal("8")
+OT_MULTIPLIER = Decimal("1.25")
+
 def _get_or_create_rules(branch: Branch) -> PayrollRule:
     rules, _ = PayrollRule.objects.get_or_create(branch=branch)
     return rules

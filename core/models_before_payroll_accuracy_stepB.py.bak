@@ -352,21 +352,8 @@ class PayrollRule(models.Model):
     grace_minutes_normal = models.PositiveIntegerField(default=15)
     flag_ceremony_cutoff_time = models.TimeField(default="08:00")
 
-    # Earliest time that can earn ordinary working-time credit.
-    # An actual biometric punch earlier than this is still displayed
-    # in the DTR, but payroll credit begins only at this time.
-    earliest_creditable_time = models.TimeField(default="07:00")
-
-    # Lunch is excluded from ordinary working time.
     lunch_break_required = models.BooleanField(default=True)
-    lunch_start_time = models.TimeField(default="12:00")
-    lunch_end_time = models.TimeField(default="13:00")
-
-    daily_hours_required = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=8,
-    )
+    daily_hours_required = models.DecimalField(max_digits=5, decimal_places=2, default=8)
 
     work_start_time = models.TimeField(default="08:00")
     work_end_time = models.TimeField(default="17:00")
