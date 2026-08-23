@@ -54,7 +54,18 @@ from .models import (
     TravelOrder,
     OvertimeRequest,
 )
-
+from .payroll_calculations import (
+    as_decimal,
+    bir_withholding_tax,
+    contractual_earned_compensation,
+    credited_work_minutes,
+    optional_monthly_deduction_for_period,
+    overtime_eligibility,
+    permanent_statutory_contributions,
+    period_fraction,
+    recurring_amount_for_period,
+    money as _money,
+)
 
 # =========================
 # Small helpers
@@ -851,6 +862,15 @@ def admin_employee_management(request):
         except Exception:
             return Decimal(default)
 
+    def _to_optional_date(value):
+        raw = str(value or "").strip()
+        if not raw:
+            return None
+        try:
+            return datetime.strptime(raw, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
     def _get_allowed_branch_from_post():
         """
         Superuser can choose branch from POST.
@@ -891,20 +911,20 @@ def admin_employee_management(request):
 
         # For permanent employees, SSS should normally be 0 because GSIS is used.
         # Still stored for compatibility, but default is safer as 0.
-        sss_default = "0.00" if is_permanent else "760.00"
+        sss_default = "0.00"
 
         sss_amount = _to_decimal(request.POST.get("sss_amount"), sss_default)
-        pagibig_amount = _to_decimal(request.POST.get("pagibig_amount"), "0.00" if is_permanent else "400.00")
+        pagibig_amount = _to_decimal(request.POST.get("pagibig_amount"), "0.00")
 
         philhealth_mode = (request.POST.get("philhealth_mode") or "percent").strip().lower()
-        philhealth_value = _to_decimal(request.POST.get("philhealth_value"), "0.00" if is_permanent else "5.00")
+        philhealth_value = _to_decimal(request.POST.get("philhealth_value"), "0.00")
 
         if philhealth_mode not in ("percent", "fixed"):
             philhealth_mode = "percent"
 
-        # Permanent employee deduction fields.
-        # These are manual/configurable first because exact official formulas
-        # still need client confirmation.
+        # Positive permanent values are explicit per-period overrides.  Zero
+        # lets the statutory calculator supply GSIS, PhilHealth, Pag-IBIG,
+        # and BIR withholding amounts.
         wtax_amount = _to_decimal(request.POST.get("wtax_amount"), "0.00")
         gsis_employee_share = _to_decimal(request.POST.get("gsis_employee_share"), "0.00")
         gsis_employer_share = _to_decimal(request.POST.get("gsis_employer_share"), "0.00")
@@ -946,6 +966,8 @@ def admin_employee_management(request):
 
             monthly_salary = _to_decimal(request.POST.get("monthly_salary"), "0.00")
             daily_rate = _to_decimal(request.POST.get("daily_rate"), "0.00")
+            employment_start_date = _to_optional_date(request.POST.get("employment_start_date"))
+            employment_end_date = _to_optional_date(request.POST.get("employment_end_date"))
 
             pera_allowance = _to_decimal(request.POST.get("pera_allowance"), "0.00")
             other_earnings_amount = _to_decimal(request.POST.get("other_earnings_amount"), "0.00")
@@ -963,6 +985,14 @@ def admin_employee_management(request):
 
             if employment_type not in ALLOWED_EMPLOYMENT_TYPES:
                 messages.error(request, "Employment type must be COS, JO, or Permanent.")
+                return redirect("admin_employees")
+
+            if (
+                employment_start_date
+                and employment_end_date
+                and employment_end_date < employment_start_date
+            ):
+                messages.error(request, "Employment end date cannot be earlier than the start date.")
                 return redirect("admin_employees")
 
             if not password or len(password) < 8:
@@ -990,6 +1020,8 @@ def admin_employee_management(request):
                         biometric_employee_id=biometric_employee_id,
                         monthly_salary=monthly_salary,
                         daily_rate=daily_rate,
+                        employment_start_date=employment_start_date,
+                        employment_end_date=employment_end_date,
                         pera_allowance=pera_allowance,
                         other_earnings_amount=other_earnings_amount,
                         manual_deduction_amount=manual_deduction_amount,
@@ -1031,6 +1063,8 @@ def admin_employee_management(request):
 
             monthly_salary = _to_decimal(request.POST.get("monthly_salary"), "0.00")
             daily_rate = _to_decimal(request.POST.get("daily_rate"), "0.00")
+            employment_start_date = _to_optional_date(request.POST.get("employment_start_date"))
+            employment_end_date = _to_optional_date(request.POST.get("employment_end_date"))
 
             pera_allowance = _to_decimal(request.POST.get("pera_allowance"), "0.00")
             other_earnings_amount = _to_decimal(request.POST.get("other_earnings_amount"), "0.00")
@@ -1040,6 +1074,14 @@ def admin_employee_management(request):
 
             if employment_type not in ALLOWED_EMPLOYMENT_TYPES:
                 messages.error(request, "Employment type must be COS, JO, or Permanent.")
+                return redirect("admin_employees")
+
+            if (
+                employment_start_date
+                and employment_end_date
+                and employment_end_date < employment_start_date
+            ):
+                messages.error(request, "Employment end date cannot be earlier than the start date.")
                 return redirect("admin_employees")
 
             if request.user.is_superuser:
@@ -1057,6 +1099,8 @@ def admin_employee_management(request):
                     prof.biometric_employee_id = biometric_employee_id
                     prof.monthly_salary = monthly_salary
                     prof.daily_rate = daily_rate
+                    prof.employment_start_date = employment_start_date
+                    prof.employment_end_date = employment_end_date
                     prof.pera_allowance = pera_allowance
                     prof.other_earnings_amount = other_earnings_amount
                     prof.manual_deduction_amount = manual_deduction_amount
@@ -1122,10 +1166,10 @@ def admin_employee_management(request):
         EmployeeContribution.objects.get_or_create(
             profile=prof,
             defaults={
-                "sss_amount": Decimal("0.00") if is_permanent else Decimal("760.00"),
-                "pagibig_amount": Decimal("0.00") if is_permanent else Decimal("400.00"),
+                "sss_amount": Decimal("0.00"),
+                "pagibig_amount": Decimal("0.00"),
                 "philhealth_mode": "percent",
-                "philhealth_value": Decimal("0.00") if is_permanent else Decimal("5.00"),
+                "philhealth_value": Decimal("0.00"),
 
                 "wtax_amount": Decimal("0.00"),
                 "gsis_employee_share": Decimal("0.00"),
@@ -2057,6 +2101,13 @@ def employee_payroll(request):
 
     rules = _get_or_create_rules(branch)
 
+    payroll_history = (
+        PayrollItem.objects
+        .select_related("batch", "batch__period", "batch__branch")
+        .filter(profile=profile)
+        .order_by("-batch__period__start_date", "-batch__created_at")
+    )
+
     preview = None
     computed = {}
     attendance_summary = {}
@@ -2064,29 +2115,49 @@ def employee_payroll(request):
     gov = {}
     dtr_rows = []
     issues = []
+    selected_saved_item = None
+    using_saved_payroll = False
+    payroll_source_label = "Live payroll preview"
 
     if selected_period:
-        preview = _compute_payroll(profile, branch, selected_period, rules)
-        computed = preview.get("computed_payroll", {})
-        attendance_summary = preview.get("attendance_summary", {})
-        rates = preview.get("rates", {})
-        gov = preview.get("gov", {})
-        dtr_rows = preview.get("dtr_rows", [])
-        issues_text = preview.get("issues", "")
+        selected_saved_item = (
+            payroll_history
+            .filter(
+                batch__period=selected_period,
+                batch__status__in=(
+                    PayrollBatch.STATUS_COMPLETED,
+                    PayrollBatch.STATUS_FINALIZED,
+                ),
+            )
+            .order_by("-batch__finalized_at", "-batch__processed_at", "-batch__created_at")
+            .first()
+        )
+
+        if selected_saved_item and isinstance(selected_saved_item.meta, dict):
+            saved_meta = selected_saved_item.meta
+            computed = saved_meta.get("computed_payroll", {}) or {}
+            attendance_summary = saved_meta.get("attendance_summary", {}) or {}
+            rates = saved_meta.get("rates", {}) or {}
+            gov = saved_meta.get("gov", {}) or {}
+            dtr_rows = saved_meta.get("dtr_rows", []) or []
+            issues_text = selected_saved_item.issues or ""
+            using_saved_payroll = True
+            payroll_source_label = (
+                f"Saved {selected_saved_item.batch.get_status_display()} payroll"
+            )
+        else:
+            preview = _compute_payroll(profile, branch, selected_period, rules)
+            computed = preview.get("computed_payroll", {})
+            attendance_summary = preview.get("attendance_summary", {})
+            rates = preview.get("rates", {})
+            gov = preview.get("gov", {})
+            dtr_rows = preview.get("dtr_rows", [])
+            issues_text = preview.get("issues", "")
+
         if isinstance(issues_text, str) and issues_text:
             issues = [x.strip() for x in issues_text.split(";") if x.strip()]
         elif isinstance(issues_text, list):
             issues = issues_text
-
-    # -------------------------
-    # Saved payroll history
-    # -------------------------
-    payroll_history = (
-        PayrollItem.objects
-        .select_related("batch", "batch__period", "batch__branch")
-        .filter(profile=profile)
-        .order_by("-batch__period__start_date", "-batch__created_at")
-    )
 
     latest_saved_item = payroll_history.first()
 
@@ -2108,6 +2179,9 @@ def employee_payroll(request):
         "gov": gov,
         "dtr_rows": dtr_rows,
         "issues": issues,
+        "using_saved_payroll": using_saved_payroll,
+        "payroll_source_label": payroll_source_label,
+        "selected_saved_item": selected_saved_item,
 
         "payroll_history": payroll_history,
         "latest_saved_item": latest_saved_item,
@@ -2245,6 +2319,8 @@ def _build_payslip_data(profile, period, branch, rules, generated_by_user, saved
     issues = live_result.get("issues", "")
 
     meta = {}
+    employee_snapshot = {}
+
     source_label = "Live Payroll Preview"
     processed_batch = None
 
@@ -2297,6 +2373,34 @@ def _build_payslip_data(profile, period, branch, rules, generated_by_user, saved
         source_label = "Processed Payroll Record"
         processed_batch = saved_item.batch
         meta = saved_item.meta or {}
+
+        # -------------------------------------------------
+        # Saved payroll must use the processed snapshot,
+        # not today's live employee/rule/attendance values.
+        # -------------------------------------------------
+        saved_rates = meta.get(
+            "rates",
+            {},
+        )
+
+        if isinstance(saved_rates, dict):
+            rates = saved_rates
+
+        saved_summary = meta.get(
+            "attendance_summary",
+            {},
+        )
+
+        if isinstance(saved_summary, dict):
+            summary = saved_summary
+
+        saved_employee = meta.get(
+            "employee",
+            {},
+        )
+
+        if isinstance(saved_employee, dict):
+            employee_snapshot = saved_employee
 
         base_pay = _payslip_money(saved_item.base_pay)
         basic_salary = _payslip_money(
@@ -2378,21 +2482,83 @@ def _build_payslip_data(profile, period, branch, rules, generated_by_user, saved
         # Rebuild gross from saved official line items.
         gross_pay = _money(base_pay + pera + other_earnings + premium_pay + overtime_pay)
 
-    is_permanent = profile.employment_type == UserProfile.EMP_PERMANENT
+    payslip_employment_type = (
+        employee_snapshot.get(
+            "employment_type"
+        )
+        or profile.employment_type
+    )
+
+    is_permanent = (
+        payslip_employment_type
+        == UserProfile.EMP_PERMANENT
+    )
 
     reference_code = f"ITHR-{period.id}-{profile.id}-{timezone.now().strftime('%Y%m%d%H%M')}"
 
     payslip = {
         "reference_code": reference_code,
         "source_label": source_label,
+        "employee_name": (
+            employee_snapshot.get(
+                "full_name"
+            )
+            or profile.user.get_full_name()
+            or profile.user.username
+        ),
 
-        "employee_name": profile.user.get_full_name() or profile.user.username,
-        "employee_username": profile.user.username,
-        "employee_id": live_result.get("picked_employee_id") or profile.biometric_employee_id or profile.user.id,
-        "branch": branch.name if branch else "—",
-        "department": profile.department or "—",
-        "position": profile.position or "—",
-        "employment_type": profile.employment_type,
+        "employee_username": (
+            employee_snapshot.get(
+                "username"
+            )
+            or profile.user.username
+        ),
+
+        "employee_id": (
+            employee_snapshot.get(
+                "employee_id_used"
+            )
+            or employee_snapshot.get(
+                "biometric_employee_id"
+            )
+            or live_result.get(
+                "picked_employee_id"
+            )
+            or profile.biometric_employee_id
+            or profile.user.id
+        ),
+
+        "branch": (
+            employee_snapshot.get(
+                "branch"
+            )
+            or (
+                branch.name
+                if branch
+                else "—"
+            )
+        ),
+
+        "department": (
+            employee_snapshot.get(
+                "department"
+            )
+            or profile.department
+            or "—"
+        ),
+
+        "position": (
+            employee_snapshot.get(
+                "position"
+            )
+            or profile.position
+            or "—"
+        ),
+
+        "employment_type": (
+            payslip_employment_type
+        ),
+
         "is_permanent": is_permanent,
 
         "period_name": period.name,
@@ -3273,9 +3439,17 @@ def admin_biometrics_create_holiday(request):
     scope = (request.POST.get("scope") or HolidaySuspension.SCOPE_REGION).strip()
     branch_id = (request.POST.get("branch") or "").strip()
     notes = (request.POST.get("notes") or "").strip()
+    source_reference = (request.POST.get("source_reference") or "").strip()
+    is_payroll_verified = bool(request.POST.get("is_payroll_verified"))
 
     if not name or not date_value:
         return JsonResponse({"ok": False, "error": "Name and date are required."}, status=400)
+
+    if is_payroll_verified and not source_reference:
+        return JsonResponse(
+            {"ok": False, "error": "An official source reference is required before the entry can affect payroll."},
+            status=400,
+        )
 
     try:
         holiday_date = datetime.strptime(date_value, "%Y-%m-%d").date()
@@ -3297,6 +3471,8 @@ def admin_biometrics_create_holiday(request):
         scope=scope,
         branch=branch,
         notes=notes,
+        source_reference=source_reference,
+        is_payroll_verified=is_payroll_verified,
     )
 
     return JsonResponse({"ok": True})
@@ -3316,9 +3492,17 @@ def admin_biometrics_update_holiday(request, holiday_id):
     scope = (request.POST.get("scope") or HolidaySuspension.SCOPE_REGION).strip()
     branch_id = (request.POST.get("branch") or "").strip()
     notes = (request.POST.get("notes") or "").strip()
+    source_reference = (request.POST.get("source_reference") or "").strip()
+    is_payroll_verified = bool(request.POST.get("is_payroll_verified"))
 
     if not name or not date_value:
         return JsonResponse({"ok": False, "error": "Name and date are required."}, status=400)
+
+    if is_payroll_verified and not source_reference:
+        return JsonResponse(
+            {"ok": False, "error": "An official source reference is required before the entry can affect payroll."},
+            status=400,
+        )
 
     try:
         holiday.date = datetime.strptime(date_value, "%Y-%m-%d").date()
@@ -3338,6 +3522,8 @@ def admin_biometrics_update_holiday(request, holiday_id):
     holiday.scope = scope
     holiday.branch = branch
     holiday.notes = notes
+    holiday.source_reference = source_reference
+    holiday.is_payroll_verified = is_payroll_verified
     holiday.save()
 
     return JsonResponse({"ok": True})
@@ -3446,6 +3632,90 @@ def attendance_detail(request, pk):
     obj = get_object_or_404(AttendanceRecord.objects.select_related("branch"), pk=pk)
     return render(request, "admin/attendance_detail.html", {"current": "biometrics", "obj": obj})
 
+def _locked_dtr_for_attendance_values(
+    employee_id,
+    branch,
+    timestamp,
+):
+    """
+    Return the locked FinalizedDTR covering an attendance
+    record, or None when the record is still editable.
+
+    A locked DTR protects the raw attendance source used
+    for an already approved payroll period.
+    """
+
+    employee_id = str(
+        employee_id or ""
+    ).strip()
+
+    if (
+        not employee_id
+        or branch is None
+        or timestamp is None
+    ):
+        return None
+
+    try:
+        if timezone.is_aware(timestamp):
+            local_timestamp = timezone.localtime(
+                timestamp
+            )
+
+        elif settings.USE_TZ:
+            local_timestamp = timezone.make_aware(
+                timestamp,
+                timezone.get_current_timezone(),
+            )
+
+        else:
+            local_timestamp = timestamp
+
+        attendance_date = local_timestamp.date()
+
+    except Exception:
+        return None
+
+    profile = (
+        UserProfile.objects
+        .filter(
+            branch=branch,
+            biometric_employee_id=employee_id,
+        )
+        .first()
+    )
+
+    if not profile:
+        return None
+
+    return (
+        FinalizedDTR.objects
+        .select_related(
+            "period",
+            "profile",
+            "profile__user",
+        )
+        .filter(
+            profile=profile,
+            branch=branch,
+            is_locked=True,
+            period__start_date__lte=attendance_date,
+            period__end_date__gte=attendance_date,
+        )
+        .first()
+    )
+
+
+def _locked_dtr_for_attendance_record(record):
+    if record is None:
+        return None
+
+    return _locked_dtr_for_attendance_values(
+        record.employee_id,
+        record.branch,
+        record.timestamp,
+    )
+
 
 @login_required
 def attendance_create(request):
@@ -3462,12 +3732,39 @@ def attendance_create(request):
             obj = form.save(commit=False)
 
             admin_branch = _get_admin_branch(request)
+
             if admin_branch:
                 obj.branch = admin_branch
 
-            obj.save()
-            messages.success(request, "Record created successfully!")
-            return redirect("admin_biometrics")
+            locked_dtr = _locked_dtr_for_attendance_values(
+                obj.employee_id,
+                obj.branch,
+                obj.timestamp,
+            )
+
+            if locked_dtr:
+                form.add_error(
+                    None,
+                    (
+                        "Attendance cannot be created because "
+                        "this employee's DTR is locked for "
+                        f'"{locked_dtr.period.name}". '
+                        "Unlock the DTR before making attendance "
+                        "corrections."
+                    ),
+                )
+
+            else:
+                obj.save()
+
+                messages.success(
+                    request,
+                    "Record created successfully!",
+                )
+
+                return redirect(
+                    "admin_biometrics"
+                )
     else:
         form = AttendanceRecordForm()
         _apply_branch_choices_to_form(form, branches_qs)
@@ -3494,10 +3791,42 @@ def attendance_update(request, pk):
     obj = get_object_or_404(AttendanceRecord.objects.select_related("branch"), pk=pk)
 
     admin_branch = _get_admin_branch(request)
-    if admin_branch and obj.branch_id != admin_branch.id:
-        messages.error(request, "You can only edit attendance records in your branch.")
-        return redirect("admin_biometrics")
 
+    if (
+        admin_branch
+        and obj.branch_id != admin_branch.id
+    ):
+        messages.error(
+            request,
+            "You can only edit attendance records in your branch.",
+        )
+
+        return redirect(
+            "admin_biometrics"
+        )
+
+    # Check the lock independently of the branch-access check.
+    # This assignment must always execute before:
+    # if locked_dtr:
+    locked_dtr = _locked_dtr_for_attendance_record(
+        obj
+    )
+
+    if locked_dtr:
+        messages.error(
+            request,
+            (
+                "This attendance record cannot be edited "
+                "because its DTR is locked for "
+                f'"{locked_dtr.period.name}". '
+                "Unlock the DTR before correcting attendance."
+            ),
+        )
+
+        return redirect(
+            "admin_biometrics"
+        )
+        
     if request.method == "POST":
         form = AttendanceRecordForm(request.POST, instance=obj)
         _apply_branch_choices_to_form(form, branches_qs)
@@ -3507,6 +3836,36 @@ def attendance_update(request, pk):
 
             if admin_branch:
                 edited.branch = admin_branch
+
+            target_locked_dtr = (
+                _locked_dtr_for_attendance_values(
+                    edited.employee_id,
+                    edited.branch,
+                    edited.timestamp,
+                )
+            )
+
+            if target_locked_dtr:
+                form.add_error(
+                    None,
+                    (
+                        "This change would place the attendance "
+                        "record inside a locked DTR period "
+                        f'"{target_locked_dtr.period.name}".'
+                    ),
+                )
+
+            else:
+                edited.save()
+
+                messages.success(
+                    request,
+                    "Record updated successfully!",
+                )
+
+                return redirect(
+                    "admin_biometrics"
+                )
 
             edited.save()
             messages.success(request, "Record updated successfully!")
@@ -3530,20 +3889,69 @@ def attendance_update(request, pk):
 
 @login_required
 def attendance_delete(request, pk):
-    if not (request.user.is_staff or request.user.is_superuser):
+    if not (
+        request.user.is_staff
+        or request.user.is_superuser
+    ):
         return redirect("login_ui")
 
-    obj = get_object_or_404(AttendanceRecord.objects.select_related("branch"), pk=pk)
+    obj = get_object_or_404(
+        AttendanceRecord.objects.select_related(
+            "branch"
+        ),
+        pk=pk,
+    )
 
     admin_branch = _get_admin_branch(request)
-    if admin_branch and obj.branch_id != admin_branch.id:
-        messages.error(request, "You can only delete attendance records in your branch.")
-        return redirect("admin_biometrics")
+
+    if (
+        admin_branch
+        and obj.branch_id != admin_branch.id
+    ):
+        messages.error(
+            request,
+            "You can only delete attendance records in your branch.",
+        )
+
+        return redirect(
+            "admin_biometrics"
+        )
+
+    # -------------------------------------------------
+    # FINALIZED DTR PROTECTION
+    # -------------------------------------------------
+    # This check MUST execute independently of the
+    # branch-access condition above.
+    locked_dtr = _locked_dtr_for_attendance_record(
+        obj
+    )
+
+    if locked_dtr:
+        messages.error(
+            request,
+            (
+                "This attendance record cannot be deleted "
+                "because its DTR is locked for "
+                f'"{locked_dtr.period.name}". '
+                "Unlock the DTR before correcting attendance."
+            ),
+        )
+
+        return redirect(
+            "admin_biometrics"
+        )
 
     if request.method == "POST":
         obj.delete()
-        messages.success(request, "Record deleted successfully!")
-        return redirect("admin_biometrics")
+
+        messages.success(
+            request,
+            "Record deleted successfully!",
+        )
+
+        return redirect(
+            "admin_biometrics"
+        )
 
     return render(
         request,
@@ -3553,21 +3961,7 @@ def attendance_delete(request, pk):
             "obj": obj,
         },
     )
-
-#==============================================================
-# -------------------------
-# Payroll helpers / Payroll Engine
-# -------------------------
-
-SALARY_DIVISOR = Decimal("22")
-DAILY_HOURS = Decimal("8")
-OT_MULTIPLIER = Decimal("1.25")
-
-
-def _money(value):
-    return Decimal(value or 0).quantize(Decimal("0.01"))
-
-
+    
 def _get_or_create_rules(branch: Branch) -> PayrollRule:
     rules, _ = PayrollRule.objects.get_or_create(branch=branch)
     return rules
@@ -3713,17 +4107,6 @@ def _daily_logs(employee_id: str, branch: Branch, d: date):
 # Attendance matching + DTR summary computation
 # =========================================================
 
-def _money(value):
-    """
-    Safe money formatter for Decimal values.
-    If you already have _money above this, you may keep only one version.
-    """
-    try:
-        return Decimal(value or 0).quantize(Decimal("0.01"))
-    except Exception:
-        return Decimal("0.00")
-
-
 def _normalize_emp_id(value):
     """
     Normalize biometric IDs:
@@ -3734,16 +4117,11 @@ def _normalize_emp_id(value):
 
 def _get_profile_biometric_id(profile):
     """
-    The official attendance identity must come from UserProfile.biometric_employee_id.
-    Fallbacks are only for debugging / old data compatibility.
+    The official attendance identity comes only from
+    UserProfile.biometric_employee_id.  Falling back to a Django user ID can
+    attach another person's biometric records to payroll.
     """
-    bio_id = _normalize_emp_id(getattr(profile, "biometric_employee_id", ""))
-
-    if bio_id:
-        return bio_id
-
-    # fallback only if biometric_employee_id is empty
-    return _normalize_emp_id(getattr(profile.user, "id", ""))
+    return _normalize_emp_id(getattr(profile, "biometric_employee_id", ""))
 
 
 def _normalize_status_text(value):
@@ -3839,6 +4217,7 @@ def _holidays_for_period(branch, period):
     qs = HolidaySuspension.objects.filter(
         date__gte=period.start_date,
         date__lte=period.end_date,
+        is_payroll_verified=True,
     ).filter(
         Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
         | Q(scope=HolidaySuspension.SCOPE_REGION)
@@ -3846,6 +4225,18 @@ def _holidays_for_period(branch, period):
     )
 
     return {h.date: h for h in qs}
+
+
+def _unverified_holidays_for_period(branch, period):
+    return HolidaySuspension.objects.filter(
+        date__gte=period.start_date,
+        date__lte=period.end_date,
+        is_payroll_verified=False,
+    ).filter(
+        Q(scope=HolidaySuspension.SCOPE_NATIONWIDE)
+        | Q(scope=HolidaySuspension.SCOPE_REGION)
+        | Q(scope=HolidaySuspension.SCOPE_BRANCH, branch=branch)
+    )
 
 
 def _is_holiday_for_branch(day, holiday_map):
@@ -3925,63 +4316,29 @@ def _build_dtr_and_summary(profile, branch, period, rules):
         except Exception:
             pass
 
-    # Employee ID candidates. Official is biometric_employee_id.
-    employee_id_candidates = {
-        _normalize_emp_id(employee_id),
-        _normalize_emp_id(profile.user.id),
-        _normalize_emp_id(profile.user.username),
-    }
-    employee_id_candidates = [x for x in employee_id_candidates if x]
-
-    # IMPORTANT:
-    # First, get records without strict branch filter.
-    # This helps if older attendance rows have null/wrong branch.
-    records_qs = AttendanceRecord.objects.filter(
-        employee_id__in=employee_id_candidates,
-        timestamp__gte=start_dt,
-        timestamp__lt=end_dt,
-    ).order_by("timestamp")
-
-    records_without_branch_count = records_qs.count()
-
-    # Then prefer same-branch records.
-    branch_records_qs = records_qs.filter(branch=branch)
-
-    if branch_records_qs.exists():
-        records_qs = branch_records_qs
+    # Payroll must never use a Django user ID/username fallback or attendance
+    # belonging to a different branch.  Off-branch records are reported for
+    # correction but are not included in pay.
+    if employee_id:
+        all_matching_records = AttendanceRecord.objects.filter(
+            employee_id=employee_id,
+            timestamp__gte=start_dt,
+            timestamp__lt=end_dt,
+        )
     else:
-        # Fallback: use records even if branch is missing/wrong, but warn.
-        if records_without_branch_count > 0:
-            issues.append("Attendance branch mismatch or blank branch; used employee ID match fallback")
+        all_matching_records = AttendanceRecord.objects.none()
+
+    off_branch_count = all_matching_records.exclude(branch=branch).count()
+    if off_branch_count:
+        issues.append(
+            f"{off_branch_count} attendance record(s) matched the biometric ID "
+            "but were ignored because the branch was different or blank"
+        )
+
+    records_qs = all_matching_records.filter(branch=branch).order_by("timestamp")
+    records_found_count = records_qs.count()
 
     records = list(records_qs)
-
-    # Debug print. Keep this while testing.
-    print("========== PAYROLL DTR DEBUG ==========")
-    print("USER:", profile.user.username)
-    print("PROFILE ID:", profile.id)
-    print("BIO ID USED:", employee_id)
-    print("PERIOD:", start_day, "to", end_day)
-    print("BRANCH:", branch.name if branch else None)
-    print("EMPLOYEE ID CANDIDATES:", employee_id_candidates)
-    print("RECORDS FOUND WITHOUT BRANCH FILTER:", records_without_branch_count)
-    print("RECORDS USED:", len(records))
-    print("MATCHING RECORD BRANCHES:", list(records_qs.values_list("branch__name", flat=True).distinct()))
-    print("MATCHING RECORD SAMPLE:", [
-        {
-            "id": r.id,
-            "employee_id": r.employee_id,
-            "timestamp": str(r.timestamp),
-            "local": str(_record_local_datetime(r)),
-            "db_status": r.attendance_status,
-            "raw_label": (r.raw_row or {}).get("label"),
-            "raw_attendanceStatus": (r.raw_row or {}).get("attendanceStatus"),
-            "kind": _record_attendance_kind(r),
-            "branch": r.branch.name if r.branch else None,
-        }
-        for r in records[:10]
-    ])
-    print("=======================================")
 
     # Group records by local date
     records_by_day = defaultdict(list)
@@ -3994,6 +4351,27 @@ def _build_dtr_and_summary(profile, branch, period, rules):
             records_by_day[local_day].append(rec)
 
     holiday_map = _holidays_for_period(branch, period)
+    unverified_holiday_count = _unverified_holidays_for_period(branch, period).count()
+    if unverified_holiday_count:
+        issues.append(
+            f"{unverified_holiday_count} unverified holiday/suspension record(s) "
+            "were ignored; add an official source before finalizing payroll"
+        )
+
+    approved_leave_qs = LeaveRequest.objects.filter(
+        employee=profile.user,
+        branch=branch,
+        status=LeaveRequest.STATUS_APPROVED,
+        start_date__lte=end_day,
+        end_date__gte=start_day,
+    )
+    approved_leave_by_day = {}
+    for leave_request in approved_leave_qs:
+        leave_start = max(leave_request.start_date, start_day)
+        leave_end = min(leave_request.end_date, end_day)
+        for leave_day in _date_range(leave_start, leave_end):
+            if not _is_weekend(leave_day):
+                approved_leave_by_day[leave_day] = leave_request
 
     travel_qs = TravelOrder.objects.filter(
         employee=profile,
@@ -4016,8 +4394,12 @@ def _build_dtr_and_summary(profile, branch, period, rules):
     days_present = 0
     travel_days = 0
     holiday_days = 0
+    leave_days = Decimal("0.00")
+    official_leave_days = Decimal("0.00")
     absences = 0
     missing_logs = 0
+    active_workdays = 0
+    outside_employment_days = 0
 
     late_minutes_total = 0
     undertime_minutes_total = 0
@@ -4028,6 +4410,20 @@ def _build_dtr_and_summary(profile, branch, period, rules):
         holiday_obj = holiday_map.get(current_day)
         is_holiday = bool(holiday_obj)
         is_travel = current_day in travel_days_set
+        leave_request = approved_leave_by_day.get(current_day)
+        is_outside_employment = bool(
+            (
+                profile.employment_start_date
+                and current_day < profile.employment_start_date
+            )
+            or (
+                profile.employment_end_date
+                and current_day > profile.employment_end_date
+            )
+        )
+
+        if not is_weekend and not is_outside_employment:
+            active_workdays += 1
 
         day_records = sorted(
             records_by_day.get(current_day, []),
@@ -4070,13 +4466,22 @@ def _build_dtr_and_summary(profile, branch, period, rules):
         status = "Absent"
         remarks = ""
 
-        if is_weekend:
+        if is_outside_employment:
+            status = "Outside Employment Period"
+            remarks = "Not covered by appointment/contract"
+            outside_employment_days += 1
+
+        elif is_weekend:
             status = "Weekend"
             remarks = "Weekend"
 
         elif is_holiday:
             status = "Holiday/Suspension"
-            remarks = holiday_obj.name if holiday_obj else "Holiday/Suspension"
+            remarks = (
+                holiday_obj.name
+                if holiday_obj
+                else "Holiday/Suspension"
+            )
             holiday_days += 1
 
         elif is_travel:
@@ -4085,78 +4490,212 @@ def _build_dtr_and_summary(profile, branch, period, rules):
             travel_days += 1
             days_present += 1
 
-        elif has_any_log:
-            status = "Present"
-            days_present += 1
+        elif leave_request and not has_any_log:
+            if leave_request.duration == LeaveRequest.DURATION_FULL:
+                status = "Approved Leave"
+                remarks = leave_request.get_leave_type_display()
+                leave_days += Decimal("1.00")
 
-            first_in = in_times[0] if in_times else None
-            last_out = out_times[-1] if out_times else None
-
-            # Civil Service Form No. 48 style columns
-            morning_ins = [t for t in in_times if t < time(12, 0)]
-            afternoon_ins = [t for t in in_times if t >= time(12, 0)]
-
-            morning_outs = [t for t in out_times if t <= time(12, 59)]
-            afternoon_outs = [t for t in out_times if t > time(12, 0)]
-
-            if morning_ins:
-                am_in = _time_to_str(morning_ins[0])
-            elif first_in:
-                am_in = _time_to_str(first_in)
-
-            if morning_outs:
-                am_out = _time_to_str(morning_outs[-1])
-
-            if afternoon_ins:
-                pm_in = _time_to_str(afternoon_ins[0])
-
-            if afternoon_outs:
-                pm_out = _time_to_str(afternoon_outs[-1])
-            elif last_out:
-                pm_out = _time_to_str(last_out)
-
-            if first_in and last_out:
-                span_minutes = _minutes_between(first_in, last_out, current_day)
-
-                # Deduct 1 hour lunch if work span crosses lunch period.
-                lunch_deduct = 0
-                if first_in < time(12, 0) and last_out > time(13, 0):
-                    lunch_deduct = 60
-
-                total_rendered_minutes = max(0, span_minutes - lunch_deduct)
-
-            elif first_in and not last_out:
-                status = "Incomplete"
-                remarks = "Missing check-out"
-                missing_logs += 1
-
-            elif last_out and not first_in:
-                status = "Incomplete"
-                remarks = "Missing check-in"
-                missing_logs += 1
+                if leave_request.leave_type == LeaveRequest.TYPE_OFFICIAL:
+                    status = "Official Business"
+                    days_present += 1
+                    official_leave_days += Decimal("1.00")
 
             else:
                 status = "Incomplete"
-                remarks = "Unknown attendance logs"
+                remarks = (
+                    "Approved half-day leave has no attendance "
+                    "for the other half"
+                )
+                leave_days += Decimal("0.50")
                 missing_logs += 1
 
+        elif has_any_log:
+            # -------------------------------------------------
+            # Actual biometric punches
+            # -------------------------------------------------
+            earliest_creditable = (
+                rules.earliest_creditable_time
+                or time(7, 0)
+            )
+
+            lunch_start = (
+                rules.lunch_start_time
+                or time(12, 0)
+            )
+
+            lunch_end = (
+                rules.lunch_end_time
+                or time(13, 0)
+            )
+
+            # -------------------------------------------------
+            # Civil Service Form No. 48 punch classification
+            # -------------------------------------------------
+            morning_ins = [
+                t
+                for t in in_times
+                if t < lunch_start
+            ]
+
+            afternoon_ins = [
+                t
+                for t in in_times
+                if t >= lunch_start
+            ]
+
+            morning_outs = [
+                t
+                for t in out_times
+                if t < lunch_end
+            ]
+
+            afternoon_outs = [
+                t
+                for t in out_times
+                if t >= lunch_end
+            ]
+
+            am_in_time = (
+                morning_ins[0]
+                if morning_ins
+                else None
+            )
+
+            am_out_time = (
+                morning_outs[-1]
+                if morning_outs
+                else None
+            )
+
+            pm_in_time = (
+                afternoon_ins[0]
+                if afternoon_ins
+                else None
+            )
+
+            pm_out_time = (
+                afternoon_outs[-1]
+                if afternoon_outs
+                else None
+            )
+
+            # -------------------------------------------------
+            # Preserve actual biometric punches for DTR display
+            # -------------------------------------------------
+            if am_in_time:
+                am_in = _time_to_str(am_in_time)
+
+            if am_out_time:
+                am_out = _time_to_str(am_out_time)
+
+            if pm_in_time:
+                pm_in = _time_to_str(pm_in_time)
+
+            if pm_out_time:
+                pm_out = _time_to_str(pm_out_time)
+
+            # -------------------------------------------------
+            # Required four-punch DTR validation
+            # -------------------------------------------------
+            missing_punches = []
+
+            if am_in_time is None:
+                missing_punches.append("AM Arrival")
+
+            if am_out_time is None:
+                missing_punches.append("AM Departure")
+
+            if pm_in_time is None:
+                missing_punches.append("PM Arrival")
+
+            if pm_out_time is None:
+                missing_punches.append("PM Departure")
+
+            complete_four_punches = (
+                len(missing_punches) == 0
+            )
+
+            # -------------------------------------------------
+            # Creditable working minutes
+            # -------------------------------------------------
+            total_rendered_minutes = credited_work_minutes(
+                am_in_time,
+                am_out_time,
+                pm_in_time,
+                pm_out_time,
+                earliest_creditable_time=earliest_creditable,
+                lunch_start_time=lunch_start,
+                lunch_end_time=lunch_end,
+                lunch_break_required=bool(
+                    rules.lunch_break_required
+                ),
+            )
+
+            if complete_four_punches:
+                status = "Present"
+                days_present += 1
+
+            else:
+                status = "Incomplete"
+                remarks = (
+                    "Missing required DTR punch(es): "
+                    + ", ".join(missing_punches)
+                )
+
+                missing_logs += 1
+
+                issues.append(
+                    f"{current_day.isoformat()}: "
+                    f"{remarks}"
+                )
+
+            # -------------------------------------------------
             # Late computation
-            if first_in:
-                if _is_flag_ceremony_day(current_day, holiday_map):
-                    threshold = rules.flag_ceremony_cutoff_time
-                else:
-                    threshold_dt = datetime.combine(current_day, rules.work_start_time) + timedelta(
-                        minutes=int(rules.grace_minutes_normal or 15)
+            # -------------------------------------------------
+            if am_in_time:
+                if _is_flag_ceremony_day(
+                    current_day,
+                    holiday_map,
+                ):
+                    threshold = (
+                        rules.flag_ceremony_cutoff_time
+                        or time(8, 0)
                     )
+
+                else:
+                    threshold_dt = (
+                        datetime.combine(
+                            current_day,
+                            rules.work_start_time
+                            or time(8, 0),
+                        )
+                        + timedelta(
+                            minutes=int(
+                                rules.grace_minutes_normal
+                                or 15
+                            )
+                        )
+                    )
+
                     threshold = threshold_dt.time()
 
-                if first_in > threshold:
-                    late_minutes = _minutes_between(threshold, first_in, current_day)
+                if am_in_time > threshold:
+                    late_minutes = _minutes_between(
+                        threshold,
+                        am_in_time,
+                        current_day,
+                    )
 
+            # -------------------------------------------------
             # Undertime computation
-            if first_in and last_out:
+            # -------------------------------------------------
+            if complete_four_punches:
                 if total_rendered_minutes < required_minutes:
-                    undertime_minutes = required_minutes - total_rendered_minutes
+                    undertime_minutes = (
+                        required_minutes
+                        - total_rendered_minutes
+                    )
 
             late_minutes_total += late_minutes
             undertime_minutes_total += undertime_minutes
@@ -4165,6 +4704,7 @@ def _build_dtr_and_summary(profile, branch, period, rules):
             status = "Absent"
             remarks = "No attendance logs"
             absences += 1
+
 
         total_hours = Decimal(total_rendered_minutes) / Decimal("60")
 
@@ -4180,6 +4720,7 @@ def _build_dtr_and_summary(profile, branch, period, rules):
             "pm_out": pm_out,
 
             "total_hours": f"{total_hours:.2f}",
+            "total_minutes": int(total_rendered_minutes),
             "late": int(late_minutes),
             "undertime": int(undertime_minutes),
 
@@ -4206,8 +4747,14 @@ def _build_dtr_and_summary(profile, branch, period, rules):
         "late_minutes": int(late_minutes_total),
         "undertime_minutes": int(undertime_minutes_total),
 
-        "records_found": int(records_without_branch_count),
+        "leave_days": float(leave_days),
+        "official_leave_days": float(official_leave_days),
+        "active_workdays": int(active_workdays),
+        "outside_employment_days": int(outside_employment_days),
+
+        "records_found": int(records_found_count),
         "records_used": int(len(records)),
+        "off_branch_records_ignored": int(off_branch_count),
         "issues": issues,
     }
 
@@ -4265,15 +4812,45 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     if daily_required_hours <= 0:
         daily_required_hours = Decimal("8")
 
-    # Daily Rate = Monthly Salary / Salary Divisor
-    # For permanent employees, monthly_salary is treated as basic salary.
-    if monthly_salary > 0:
-        daily_rate = monthly_salary / salary_divisor
-    else:
-        daily_rate = daily_rate_profile
+    # -------------------------------------------------
+    # Payroll rate computation
+    # -------------------------------------------------
+    # JO:
+    # If an explicit contractual daily rate exists,
+    # that rate takes priority.
+    #
+    # COS / PERMANENT:
+    # If monthly salary exists, derive the daily rate
+    # using the configured salary divisor.
+    #
+    # Monetary rates are rounded to centavos at each
+    # displayed calculation stage so that manual
+    # computation matches IntelliHRTrack.
+    if emp_type == UserProfile.EMP_JO and daily_rate_profile > 0:
+        daily_rate = _money(daily_rate_profile)
 
-    hourly_rate = daily_rate / daily_required_hours if daily_required_hours > 0 else Decimal("0.00")
-    per_minute_rate = hourly_rate / Decimal("60") if hourly_rate > 0 else Decimal("0.00")
+    elif monthly_salary > 0:
+        daily_rate = _money(
+            monthly_salary / salary_divisor
+        )
+
+    else:
+        daily_rate = _money(daily_rate_profile)
+
+    if daily_rate > 0 and daily_required_hours > 0:
+        hourly_rate = _money(
+            daily_rate / daily_required_hours
+        )
+    else:
+        hourly_rate = Decimal("0.00")
+
+    if hourly_rate > 0:
+        per_minute_rate = _money(
+            hourly_rate / Decimal("60")
+        )
+    else:
+        per_minute_rate = Decimal("0.00")
+
 
     if daily_rate <= 0 and monthly_salary <= 0:
         issues.append("No daily/monthly salary configured")
@@ -4287,6 +4864,9 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     absences = int(dtr.get("absences", 0) or 0)
     late_minutes = int(dtr.get("late_minutes", 0) or 0)
     undertime_minutes = int(dtr.get("undertime_minutes", 0) or 0)
+    leave_days = Decimal(str(dtr.get("leave_days", 0) or 0))
+    official_leave_days = Decimal(str(dtr.get("official_leave_days", 0) or 0))
+    active_workdays = int(dtr.get("active_workdays", 0) or 0)
 
     # In your current DTR builder, official travel is already treated as a paid status.
     # So we use present_days as the paid basis to avoid double-counting travel.
@@ -4301,6 +4881,25 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     pera_for_period = Decimal("0.00")
     other_earnings_for_period = Decimal("0.00")
     base_pay = Decimal("0.00")
+    normal_fixed_base = monthly_salary * period_fraction(period.pay_mode)
+
+    has_partial_employment_period = bool(
+        (
+            profile.employment_start_date
+            and period.start_date <= profile.employment_start_date <= period.end_date
+        )
+        or (
+            profile.employment_end_date
+            and period.start_date <= profile.employment_end_date <= period.end_date
+        )
+    )
+
+    def fixed_base_for_period():
+        if monthly_salary <= 0:
+            return Decimal("0.00")
+        if not has_partial_employment_period:
+            return normal_fixed_base
+        return min(normal_fixed_base, daily_rate * Decimal(active_workdays))
 
     if emp_type == UserProfile.EMP_JO:
         # JO = no work, no pay.
@@ -4308,34 +4907,31 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
         base_pay = daily_rate * Decimal(paid_attendance_days)
 
     elif emp_type == UserProfile.EMP_COS:
-        # COS = fixed monthly/semi-monthly base.
-        # This preserves your current behavior.
+        # Fixed COS pay is prorated only for a partial appointment/contract
+        # period.  Approved leave and holidays are not treated as absences.
         if monthly_salary > 0:
-            if period.pay_mode == PayrollPeriod.PAY_MONTHLY:
-                base_pay = monthly_salary
-            else:
-                base_pay = monthly_salary / Decimal("2")
+            base_pay = fixed_base_for_period()
         else:
-            # Fallback if COS has no monthly salary but has daily rate.
-            working_days = 0
-            for row in dtr.get("rows", []):
-                if row.get("status") not in ["Weekend", "Holiday/Suspension"]:
-                    working_days += 1
-
-            base_pay = daily_rate * Decimal(max(0, working_days - absences))
+            # Daily COS follows the same actual-days-worked basis as daily JO.
+            base_pay = daily_rate * Decimal(paid_attendance_days)
 
     elif emp_type == UserProfile.EMP_PERMANENT:
         # Permanent = basic salary for the period.
         # PERA and other earnings are added to gross.
         if monthly_salary > 0:
-            if period.pay_mode == PayrollPeriod.PAY_MONTHLY:
-                base_pay = monthly_salary
-                pera_for_period = pera_allowance
-                other_earnings_for_period = other_earnings_amount
-            else:
-                base_pay = monthly_salary / Decimal("2")
-                pera_for_period = pera_allowance / Decimal("2")
-                other_earnings_for_period = other_earnings_amount / Decimal("2")
+            base_pay = fixed_base_for_period()
+            normal_base = normal_fixed_base or Decimal("1.00")
+            proration_ratio = min(Decimal("1.00"), base_pay / normal_base)
+            pera_for_period = (
+                pera_allowance
+                * period_fraction(period.pay_mode)
+                * proration_ratio
+            )
+            other_earnings_for_period = (
+                other_earnings_amount
+                * period_fraction(period.pay_mode)
+                * proration_ratio
+            )
         else:
             base_pay = Decimal("0.00")
             issues.append("Permanent employee has no basic/monthly salary configured")
@@ -4354,10 +4950,10 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     late_deduction = _money(Decimal(late_minutes) * per_minute_rate)
     undertime_deduction = _money(Decimal(undertime_minutes) * per_minute_rate)
 
-    # Do not add absence deduction yet.
-    # Reason: client policy for permanent/COS unpaid absences must be confirmed first.
-    # JO already follows no-work-no-pay through base pay.
     absence_deduction = Decimal("0.00")
+    if emp_type == UserProfile.EMP_COS and monthly_salary > 0:
+        # The supplied COS reference computes fixed pay less unpaid absences.
+        absence_deduction = _money(daily_rate * Decimal(absences))
 
     attendance_deduction = _money(
         late_deduction
@@ -4380,10 +4976,114 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     if emp_type == UserProfile.EMP_PERMANENT and profile.has_premium:
         issues.append("Premium flag ignored for Permanent employee unless client policy allows it")
 
-    # -------------------------
+        # -------------------------
     # Overtime
     # -------------------------
+    # Approved OT alone is NOT enough.
+    #
+    # Payable OT must also satisfy:
+    # - complete Present DTR
+    # - actual work beyond required daily hours
+    # - not late on OT date
+    # - not absent on previous applicable workday
+    # - not on Official Travel on previous applicable workday
+    #
+    # Payable OT is capped to actual OT proven by DTR.
     ot_hours = Decimal("0.00")
+    ot_approved_hours = Decimal("0.00")
+    ot_eligible_minutes_total = 0
+    ot_excluded_minutes_total = 0
+    ot_details = []
+
+    dtr_rows_by_date = {
+        str(row.get("date")): row
+        for row in dtr.get("rows", [])
+        if isinstance(row, dict)
+        and row.get("date")
+    }
+
+    def _get_dtr_row_for_date(target_date):
+        """
+        Return the employee DTR row for one date.
+
+        If the date is outside the current payroll period,
+        build a temporary one-day DTR so previous-workday
+        OT restrictions can still be checked.
+        """
+        date_key = target_date.isoformat()
+
+        existing_row = dtr_rows_by_date.get(date_key)
+
+        if existing_row is not None:
+            return existing_row
+
+        one_day_period = SimpleNamespace(
+            start_date=target_date,
+            end_date=target_date,
+            pay_mode=period.pay_mode,
+        )
+
+        one_day_dtr = _build_dtr_and_summary(
+            profile,
+            branch,
+            one_day_period,
+            rules,
+        )
+
+        rows = one_day_dtr.get("rows", [])
+
+        if not rows:
+            return None
+
+        row = rows[0]
+
+        dtr_rows_by_date[date_key] = row
+
+        return row
+
+    def _previous_applicable_workday_row(target_date):
+        """
+        Find the previous applicable working day.
+
+        Skip:
+        - weekends
+        - verified holidays/suspensions
+        - dates outside employment
+
+        Approved leave remains an applicable workday status,
+        but it is not treated as an absence.
+        """
+        candidate = target_date - timedelta(days=1)
+
+        # 31 days is more than enough for ordinary consecutive
+        # weekends/holidays while preventing an accidental loop.
+        for _ in range(31):
+            if (
+                profile.employment_start_date
+                and candidate < profile.employment_start_date
+            ):
+                return None
+
+            row = _get_dtr_row_for_date(candidate)
+
+            if not row:
+                return None
+
+            status = str(
+                row.get("status", "")
+            ).strip()
+
+            if status in {
+                "Weekend",
+                "Holiday/Suspension",
+                "Outside Employment Period",
+            }:
+                candidate -= timedelta(days=1)
+                continue
+
+            return row
+
+        return None
 
     try:
         ot_qs = OvertimeRequest.objects.filter(
@@ -4391,28 +5091,153 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             approved=True,
             date__gte=period.start_date,
             date__lte=period.end_date,
-        )
+        ).order_by("date", "id")
 
         for ot in ot_qs:
-            matching_dtr_row = None
+            approved_hours = max(
+                Decimal("0.00"),
+                D(ot.hours),
+            )
 
-            for row in dtr.get("rows", []):
-                if row.get("date") == ot.date.isoformat():
-                    matching_dtr_row = row
-                    break
+            ot_approved_hours += approved_hours
 
-            # Rule: if late that day, OT is disqualified.
-            if matching_dtr_row and int(matching_dtr_row.get("late", 0) or 0) > 0:
-                issues.append(f"OT disqualified on {ot.date}: employee was late")
-                continue
+            current_row = _get_dtr_row_for_date(
+                ot.date
+            )
 
-            ot_hours += D(ot.hours)
+            previous_row = (
+                _previous_applicable_workday_row(
+                    ot.date
+                )
+            )
 
-    except Exception:
+            decision = overtime_eligibility(
+                approved_hours,
+                current_row,
+                previous_row,
+                required_minutes=(
+                    int(
+                        daily_required_hours
+                        * Decimal("60")
+                    )
+                ),
+            )
+
+            eligible_minutes = int(
+                decision.get(
+                    "eligible_minutes",
+                    0,
+                )
+                or 0
+            )
+
+            approved_minutes = int(
+                decision.get(
+                    "approved_minutes",
+                    0,
+                )
+                or 0
+            )
+
+            ot_eligible_minutes_total += (
+                eligible_minutes
+            )
+
+            ot_excluded_minutes_total += max(
+                0,
+                approved_minutes
+                - eligible_minutes,
+            )
+
+            ot_details.append({
+                "date": ot.date.isoformat(),
+                "approved_hours": str(
+                    _money(approved_hours)
+                ),
+                "worked_minutes": int(
+                    (
+                        current_row
+                        or {}
+                    ).get(
+                        "total_minutes",
+                        0,
+                    )
+                    or 0
+                ),
+                "actual_overtime_minutes": int(
+                    decision.get(
+                        "actual_overtime_minutes",
+                        0,
+                    )
+                    or 0
+                ),
+                "eligible_minutes": (
+                    eligible_minutes
+                ),
+                "previous_workday_status": (
+                    str(
+                        (
+                            previous_row
+                            or {}
+                        ).get(
+                            "status",
+                            "",
+                        )
+                    )
+                ),
+                "blockers": list(
+                    decision.get(
+                        "blockers",
+                        [],
+                    )
+                ),
+                "notes": list(
+                    decision.get(
+                        "notes",
+                        [],
+                    )
+                ),
+            })
+
+            blockers = decision.get(
+                "blockers",
+                [],
+            )
+
+            if blockers:
+                issues.append(
+                    (
+                        f"OT {ot.date.isoformat()} excluded: "
+                        + ", ".join(blockers)
+                    )
+                )
+
+    except Exception as exc:
+        ot_eligible_minutes_total = 0
+        ot_excluded_minutes_total = 0
         ot_hours = Decimal("0.00")
 
-    ot_multiplier = D(rules.ot_multiplier, "1.25")
-    overtime_pay = _money(ot_hours * hourly_rate * ot_multiplier)
+        issues.append(
+            f"Unable to validate overtime eligibility: {exc}"
+        )
+
+    # Convert exact payable OT minutes to hours.
+    ot_hours = (
+        Decimal(ot_eligible_minutes_total)
+        / Decimal("60")
+    )
+
+    ot_multiplier = D(
+        rules.ot_multiplier,
+        "1.25",
+    )
+
+    overtime_pay = _money(
+        ot_hours
+        * hourly_rate
+        * ot_multiplier
+    )
+    
 
     # -------------------------
     # Employee contribution/deduction profile
@@ -4420,10 +5245,10 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     contrib, _ = EmployeeContribution.objects.get_or_create(
         profile=profile,
         defaults={
-            "sss_amount": Decimal("0.00") if emp_type == UserProfile.EMP_PERMANENT else D(rules.sss_minimum, "760.00"),
-            "pagibig_amount": Decimal("0.00") if emp_type == UserProfile.EMP_PERMANENT else D(rules.pagibig_minimum, "400.00"),
+            "sss_amount": Decimal("0.00"),
+            "pagibig_amount": Decimal("0.00"),
             "philhealth_mode": getattr(rules, "philhealth_default_mode", EmployeeContribution.PHILHEALTH_PERCENT) or EmployeeContribution.PHILHEALTH_PERCENT,
-            "philhealth_value": Decimal("0.00") if emp_type == UserProfile.EMP_PERMANENT else D(rules.philhealth_default_value, "5.00"),
+            "philhealth_value": Decimal("0.00"),
         },
     )
 
@@ -4435,25 +5260,16 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
         + overtime_pay
     )
 
-    # -------------------------
-    # PhilHealth
-    # -------------------------
-    philhealth = Decimal("0.00")
-
-    if contrib.philhealth_mode == EmployeeContribution.PHILHEALTH_FIXED:
-        philhealth = D(contrib.philhealth_value)
-    else:
-        philhealth_rate = D(contrib.philhealth_value) / Decimal("100")
-        philhealth = gross_before_deductions * philhealth_rate
-
-    philhealth = _money(philhealth)
-
-    # -------------------------
-    # JO/COS deductions
-    # -------------------------
     sss = Decimal("0.00")
     pagibig = Decimal("0.00")
+    philhealth = Decimal("0.00")
     tax_total = Decimal("0.00")
+    taxable_compensation = Decimal("0.00")
+
+    # JO/COS actual earnings after attendance-related deductions.
+    contractual_earned_amount = Decimal("0.00")
+
+    contribution_sources = {}
 
     # -------------------------
     # Permanent deductions
@@ -4464,20 +5280,52 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     loan_deduction_amount = Decimal("0.00")
     other_deduction_amount = Decimal("0.00")
     other_employer_contribution = Decimal("0.00")
+    philhealth_employer_share = Decimal("0.00")
+    pagibig_employer_share = Decimal("0.00")
 
     if emp_type == UserProfile.EMP_PERMANENT:
-        # Permanent employees use GSIS, WTAX, PhilHealth, Pag-IBIG, loans, and other deductions.
-        sss = Decimal("0.00")
+        statutory = permanent_statutory_contributions(
+            monthly_salary,
+            period.pay_mode,
+        )
 
-        pagibig = _money(D(contrib.pagibig_amount))
-        wtax_amount = _money(D(getattr(contrib, "wtax_amount", Decimal("0.00"))))
-        gsis_employee_share = _money(D(getattr(contrib, "gsis_employee_share", Decimal("0.00"))))
-        gsis_employer_share = _money(D(getattr(contrib, "gsis_employer_share", Decimal("0.00"))))
+        if (
+            contrib.philhealth_mode == EmployeeContribution.PHILHEALTH_FIXED
+            and D(contrib.philhealth_value) > 0
+        ):
+            philhealth = _money(D(contrib.philhealth_value))
+            contribution_sources["philhealth"] = "manual per-period override"
+        else:
+            philhealth = statutory["philhealth_employee"]
+            contribution_sources["philhealth"] = "statutory"
+
+        if D(contrib.pagibig_amount) > 0:
+            pagibig = _money(D(contrib.pagibig_amount))
+            contribution_sources["pagibig"] = "manual per-period override"
+        else:
+            pagibig = statutory["pagibig_employee"]
+            contribution_sources["pagibig"] = "statutory"
+
+        if D(getattr(contrib, "gsis_employee_share", 0)) > 0:
+            gsis_employee_share = _money(D(contrib.gsis_employee_share))
+            contribution_sources["gsis_employee"] = "manual per-period override"
+        else:
+            gsis_employee_share = statutory["gsis_employee"]
+            contribution_sources["gsis_employee"] = "statutory"
+
+        if D(getattr(contrib, "gsis_employer_share", 0)) > 0:
+            gsis_employer_share = _money(D(contrib.gsis_employer_share))
+            contribution_sources["gsis_employer"] = "manual per-period override"
+        else:
+            gsis_employer_share = statutory["gsis_employer"]
+            contribution_sources["gsis_employer"] = "statutory"
+
+        philhealth_employer_share = statutory["philhealth_employer"]
+        pagibig_employer_share = statutory["pagibig_employer"]
+
         loan_deduction_amount = _money(D(getattr(contrib, "loan_deduction_amount", Decimal("0.00"))))
         other_deduction_amount = _money(D(getattr(contrib, "other_deduction_amount", Decimal("0.00"))))
         other_employer_contribution = _money(D(getattr(contrib, "other_employer_contribution", Decimal("0.00"))))
-
-        tax_total = wtax_amount
 
         gov_total = _money(
             philhealth
@@ -4485,36 +5333,202 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             + gsis_employee_share
         )
 
+        # PERA is excluded from taxable compensation. Mandatory employee
+        # shares are also removed before applying the BIR payroll-period table.
+        taxable_compensation = _money(max(
+            Decimal("0.00"),
+            gross_before_deductions
+            - pera_for_period
+            - gov_total
+            - attendance_deduction,
+        ))
+        automatic_wtax = bir_withholding_tax(
+            taxable_compensation,
+            period.pay_mode,
+        )
+        if D(getattr(contrib, "wtax_amount", 0)) > 0:
+            wtax_amount = _money(D(contrib.wtax_amount))
+            contribution_sources["wtax"] = "manual per-period override"
+        else:
+            wtax_amount = automatic_wtax
+            contribution_sources["wtax"] = "BIR Annex E"
+
+        tax_total = wtax_amount
+
         employer_contributions_total = _money(
             gsis_employer_share
+            + philhealth_employer_share
+            + pagibig_employer_share
             + other_employer_contribution
         )
 
         if monthly_salary <= 0:
             issues.append("Permanent basic salary missing")
 
-        if gov_total <= 0 and tax_total <= 0 and loan_deduction_amount <= 0:
-            issues.append("Permanent deductions not configured yet")
-
     else:
-        # JO/COS keep the old logic: SSS, Pag-IBIG, PhilHealth, tax.
-        sss = D(contrib.sss_amount)
-        pagibig = D(contrib.pagibig_amount)
+        # =====================================================
+        # JO / COS CONTRIBUTIONS AND TAX
+        # =====================================================
+        #
+        # Client rules currently used by IntelliHRTrack:
+        #
+        # SSS:
+        # - optional/employee choice
+        # - if selected, apply at least the configured
+        #   monthly minimum
+        #
+        # Pag-IBIG:
+        # - optional/employee choice
+        # - if selected, apply at least the configured
+        #   monthly minimum
+        #
+        # PhilHealth:
+        # - percentage or fixed amount
+        # - percentage mode uses compensation actually
+        #   earned after attendance deductions
+        #
+        # Tax:
+        # - configurable percentage
+        # - uses compensation actually earned after
+        #   attendance deductions
+        # =====================================================
 
-        # Enforce minimums for JO/COS only.
-        if sss < D(rules.sss_minimum):
-            sss = D(rules.sss_minimum)
+        contractual_earned_amount = (
+            contractual_earned_compensation(
+                gross_before_deductions,
+                attendance_deduction,
+            )
+        )
 
-        if pagibig < D(rules.pagibig_minimum):
-            pagibig = D(rules.pagibig_minimum)
+        # -------------------------------------------------
+        # Optional monthly SSS
+        # -------------------------------------------------
+        sss = optional_monthly_deduction_for_period(
+            contrib.sss_amount,
+            rules.sss_minimum,
+            period.pay_mode,
+        )
 
-        sss = _money(sss)
-        pagibig = _money(pagibig)
+        if (
+            D(contrib.sss_amount) > 0
+            and D(contrib.sss_amount) < D(rules.sss_minimum)
+        ):
+            issues.append(
+                (
+                    "Configured JO/COS SSS amount was below "
+                    f"the ₱{_money(rules.sss_minimum)} monthly "
+                    "minimum; minimum amount was applied"
+                )
+            )
 
-        gov_total = _money(sss + pagibig + philhealth)
+        # -------------------------------------------------
+        # Optional monthly Pag-IBIG
+        # -------------------------------------------------
+        pagibig = optional_monthly_deduction_for_period(
+            contrib.pagibig_amount,
+            rules.pagibig_minimum,
+            period.pay_mode,
+        )
 
-        tax_rate = D(rules.tax_rate_percent) / Decimal("100")
-        tax_total = _money(gross_before_deductions * tax_rate)
+        if (
+            D(contrib.pagibig_amount) > 0
+            and D(contrib.pagibig_amount) < D(rules.pagibig_minimum)
+        ):
+            issues.append(
+                (
+                    "Configured JO/COS Pag-IBIG amount was below "
+                    f"the ₱{_money(rules.pagibig_minimum)} monthly "
+                    "minimum; minimum amount was applied"
+                )
+            )
+
+        # -------------------------------------------------
+        # PhilHealth
+        # -------------------------------------------------
+        if (
+            contrib.philhealth_mode
+            == EmployeeContribution.PHILHEALTH_FIXED
+        ):
+            philhealth = recurring_amount_for_period(
+                contrib.philhealth_value,
+                period.pay_mode,
+            )
+
+            contribution_sources["philhealth"] = (
+                "fixed monthly JO/COS amount"
+            )
+
+        else:
+            philhealth_percent = D(
+                contrib.philhealth_value
+            )
+
+            # If no employee-specific percentage was entered,
+            # use the branch payroll-rule default.
+            if philhealth_percent <= 0:
+                philhealth_percent = D(
+                    rules.philhealth_default_value,
+                    "5.00",
+                )
+
+                contribution_sources["philhealth"] = (
+                    "branch default percentage"
+                )
+
+            else:
+                contribution_sources["philhealth"] = (
+                    "employee-specific percentage"
+                )
+
+            philhealth_rate = (
+                philhealth_percent
+                / Decimal("100")
+            )
+
+            philhealth = _money(
+                contractual_earned_amount
+                * philhealth_rate
+            )
+
+        contribution_sources["sss"] = (
+            "optional monthly JO/COS deduction"
+            if D(contrib.sss_amount) > 0
+            else "not selected"
+        )
+
+        contribution_sources["pagibig"] = (
+            "optional monthly JO/COS deduction"
+            if D(contrib.pagibig_amount) > 0
+            else "not selected"
+        )
+
+        gov_total = _money(
+            sss
+            + pagibig
+            + philhealth
+        )
+
+        # -------------------------------------------------
+        # Configurable JO/COS tax
+        # -------------------------------------------------
+        taxable_compensation = _money(
+            contractual_earned_amount
+        )
+
+        tax_rate = (
+            D(rules.tax_rate_percent)
+            / Decimal("100")
+        )
+
+        tax_total = _money(
+            taxable_compensation
+            * tax_rate
+        )
+
+        contribution_sources["tax"] = (
+            f"{_money(rules.tax_rate_percent)}% "
+            "of contractual earned compensation"
+        )
 
         employer_contributions_total = Decimal("0.00")
 
@@ -4538,22 +5552,18 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     net_pay = _money(gross_before_deductions - deductions_total)
 
     if net_pay < 0:
-        net_pay = Decimal("0.00")
+        issues.append("Total deductions exceed gross pay; payroll cannot be finalized")
 
     # -------------------------
     # Issue flags
     # -------------------------
-    if dtr.get("records_found", 0) == 0:
+    if dtr.get("records_found", 0) == 0 and absences > 0:
         issues.append("No attendance records found for biometric ID in selected period")
 
     if dtr.get("missing_logs", 0) > 0:
         issues.append(f"{dtr.get('missing_logs', 0)} day(s) with missing attendance logs")
 
-    if emp_type in [UserProfile.EMP_JO, UserProfile.EMP_COS]:
-        if sss <= 0 or pagibig <= 0:
-            issues.append("Contribution missing")
-
-    issues_text = ", ".join(dict.fromkeys([i for i in issues if i]))
+    issues_text = "; ".join(dict.fromkeys([i for i in issues if i]))
 
     return {
         "picked_employee_id": dtr.get("employee_id_used"),
@@ -4562,10 +5572,17 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             "present_days": present_days,
             "travel_days": travel_days,
             "holiday_days": holiday_days,
+            "leave_days": float(leave_days),
+            "official_leave_days": float(official_leave_days),
             "absences": absences,
+            "late_minutes": late_minutes,
+            "undertime_minutes": undertime_minutes,
             "missing_logs": int(dtr.get("missing_logs", 0) or 0),
             "records_found": int(dtr.get("records_found", 0) or 0),
             "records_used": int(dtr.get("records_used", 0) or 0),
+            "off_branch_records_ignored": int(dtr.get("off_branch_records_ignored", 0) or 0),
+            "active_workdays": active_workdays,
+            "outside_employment_days": int(dtr.get("outside_employment_days", 0) or 0),
         },
 
         "rates": {
@@ -4580,8 +5597,32 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             "pera": _money(pera_for_period),
             "other_earnings": _money(other_earnings_for_period),
 
+            "earned_after_attendance": _money(
+                contractual_earned_amount
+                if emp_type in [
+                    UserProfile.EMP_JO,
+                    UserProfile.EMP_COS,
+                ]
+                else gross_before_deductions
+                - attendance_deduction
+            ),
+
             "premium": _money(premium_pay),
-            "overtime_hours": _money(ot_hours),
+
+            "overtime_approved_hours": _money(
+                ot_approved_hours
+            ),
+            "overtime_hours": _money(
+                ot_hours
+            ),
+            "overtime_eligible_minutes": int(
+                ot_eligible_minutes_total
+            ),
+            "overtime_excluded_minutes": int(
+                ot_excluded_minutes_total
+            ),
+            "overtime_details": ot_details,
+
             "ot": _money(overtime_pay),
             "gross": _money(gross_before_deductions),
 
@@ -4611,15 +5652,19 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             "philhealth": _money(philhealth),
             "gov_total": _money(gov_total),
             "tax": _money(tax_total),
+            "taxable_compensation": _money(taxable_compensation),
 
             # Permanent-specific
             "wtax": _money(wtax_amount),
             "gsis_employee": _money(gsis_employee_share),
             "gsis_employer": _money(gsis_employer_share),
+            "philhealth_employer": _money(philhealth_employer_share),
+            "pagibig_employer": _money(pagibig_employer_share),
             "loan_deduction": _money(loan_deduction_amount),
             "other_deduction": _money(other_deduction_amount),
             "other_employer_contribution": _money(other_employer_contribution),
             "employer_contributions_total": _money(employer_contributions_total),
+            "sources": contribution_sources,
         },
 
         "issues": issues_text,
@@ -5722,75 +6767,21 @@ def _compute_daily_hours_and_late(day_records, rules):
     return total_hours, late_minutes, undertime_minutes
 
 def _compute_employee_payroll(profile, period, rules):
-    records = _get_employee_attendance(profile, period)
-    grouped = _group_attendance_by_day(records)
-
-    days_present = 0
-    total_hours = 0
-    total_late = 0
-    total_undertime = 0
-
-    for day, recs in grouped.items():
-        hours, late, undertime = _compute_daily_hours_and_late(recs, rules)
-
-        if hours > 0:
-            days_present += 1
-
-        total_hours += hours
-        total_late += late
-        total_undertime += undertime
-
-    # =========================
-    # 💰 RATE COMPUTATION
-    # =========================
-    if profile.monthly_salary:
-        daily_rate = profile.monthly_salary / rules.salary_divisor
-    else:
-        daily_rate = profile.daily_rate or 0
-
-    hourly_rate = daily_rate / 8
-    per_minute_rate = hourly_rate / 60
-
-    late_deduction = Decimal(total_late) * Decimal(per_minute_rate)
-    undertime_deduction = Decimal(total_undertime) * Decimal(per_minute_rate)
-
-    base_pay = Decimal(days_present) * Decimal(daily_rate)
-
-    # =========================
-    # 💸 CONTRIBUTIONS
-    # =========================
-    sss = rules.sss_minimum
-    pagibig = rules.pagibig_minimum
-
-    philhealth = base_pay * (rules.philhealth_default_value / 100)
-
-    tax = base_pay * (rules.tax_rate_percent / 100)
-
-    gov_total = sss + pagibig + philhealth
-
-    # =========================
-    # 🧾 NET PAY
-    # =========================
-    if base_pay <= 0:
-        gov_total = Decimal("0.00")
-        tax = Decimal("0.00")
-        net_pay = Decimal("0.00")
-    else:
-        net_pay = base_pay - late_deduction - undertime_deduction - gov_total - tax
-
-    if net_pay < 0:
-        net_pay = Decimal("0.00")
-
+    """Compatibility wrapper around the authoritative payroll calculator."""
+    result = _compute_payroll(profile, profile.branch, period, rules)
+    computed = result["computed_payroll"]
+    attendance = result["attendance_summary"]
+    gov = result["gov"]
     return {
-        "days_present": days_present,
-        "late_minutes": int(total_late),
-        "undertime_minutes": int(total_undertime),
-        "base_pay": base_pay,
-        "late_deduction": late_deduction,
-        "undertime_deduction": undertime_deduction,
-        "gov_contributions": gov_total,
-        "tax": tax,
-        "net_pay": net_pay,
+        "days_present": attendance["present_days"],
+        "late_minutes": computed["late_minutes"],
+        "undertime_minutes": computed["undertime_minutes"],
+        "base_pay": computed["base"],
+        "late_deduction": computed["late_deduction"],
+        "undertime_deduction": computed["undertime_deduction"],
+        "gov_contributions": gov["gov_total"],
+        "tax": gov["tax"],
+        "net_pay": computed["net"],
     }
 #==============================
 # =========================================================
@@ -6095,6 +7086,12 @@ def _build_payroll_batch_validation(batch):
         "permanent employee has no basic/monthly salary configured",
         "permanent basic salary missing",
         "unknown employment type",
+        "missing biometric employee id",
+        "no attendance records found",
+        "ignored because the branch was different or blank",
+        "unverified holiday/suspension",
+        "missing attendance logs",
+        "deductions exceed gross pay",
     )
 
     critical_issue_names = []
@@ -6205,9 +7202,9 @@ def _build_payroll_batch_validation(batch):
     )
 
     if not no_missing_logs:
-        warnings.append(
+        errors.append(
             "Some employees have missing attendance logs. "
-            "Review them before approving payroll: "
+            "Correct them before finalizing payroll: "
             + ", ".join(
                 entry["name"]
                 for entry
@@ -7331,6 +8328,30 @@ def admin_finalize_payroll_item_dtr(request, item_id):
         messages.error(request, "Cannot finalize DTR because this payroll item has no saved DTR rows.")
         return redirect("admin_payroll_item_dtr_print", item_id=item.id)
 
+    missing_logs = int(summary.get("missing_logs", 0) or 0)
+    incomplete_rows = [row for row in rows if row.get("status") == "Incomplete"]
+    blocking_issue_phrases = (
+        "missing biometric employee id",
+        "no attendance records found",
+        "ignored because the branch was different or blank",
+        "unverified holiday/suspension",
+    )
+    issue_text = str(item.issues or "").lower()
+
+    if missing_logs or incomplete_rows:
+        messages.error(
+            request,
+            "Cannot finalize DTR while attendance logs are incomplete. Correct the logs and reprocess payroll first.",
+        )
+        return redirect("admin_payroll_item_dtr_print", item_id=item.id)
+
+    if any(phrase in issue_text for phrase in blocking_issue_phrases):
+        messages.error(
+            request,
+            "Cannot finalize DTR until biometric, branch, attendance, and holiday verification issues are corrected.",
+        )
+        return redirect("admin_payroll_item_dtr_print", item_id=item.id)
+
     source_meta = {
         "payroll_item_id": item.id,
         "batch_id": batch.id,
@@ -7684,6 +8705,8 @@ def admin_payroll_process_batch(request):
                         "position": prof.position or "",
                         "biometric_employee_id": prof.biometric_employee_id or "",
                         "employee_id_used": res.get("picked_employee_id") or "",
+                        "employment_start_date": str(prof.employment_start_date or ""),
+                        "employment_end_date": str(prof.employment_end_date or ""),
                     },
 
                     "rates": {
@@ -7699,11 +8722,68 @@ def admin_payroll_process_batch(request):
                         "basic_salary": str(p.get("basic_salary", p.get("base", Decimal("0.00")))),
                         "pera": str(p.get("pera", Decimal("0.00"))),
                         "other_earnings": str(p.get("other_earnings", Decimal("0.00"))),
+                        "premium": str(
+                            p.get(
+                                "premium",
+                                Decimal("0.00"),
+                            )
+                        ),
 
-                        "premium": str(p.get("premium", Decimal("0.00"))),
-                        "overtime_hours": str(p.get("overtime_hours", Decimal("0.00"))),
-                        "ot": str(p.get("ot", Decimal("0.00"))),
-                        "gross": str(p.get("gross", Decimal("0.00"))),
+                        "overtime_approved_hours": str(
+                            p.get(
+                                "overtime_approved_hours",
+                                Decimal("0.00"),
+                            )
+                        ),
+
+                        "overtime_hours": str(
+                            p.get(
+                                "overtime_hours",
+                                Decimal("0.00"),
+                            )
+                        ),
+
+                        "overtime_eligible_minutes": int(
+                            p.get(
+                                "overtime_eligible_minutes",
+                                0,
+                            )
+                            or 0
+                        ),
+
+                        "overtime_excluded_minutes": int(
+                            p.get(
+                                "overtime_excluded_minutes",
+                                0,
+                            )
+                            or 0
+                        ),
+
+                        "overtime_details": p.get(
+                            "overtime_details",
+                            [],
+                        ),
+
+                        "ot": str(
+                            p.get(
+                                "ot",
+                                Decimal("0.00"),
+                            )
+                        ),
+
+                        "gross": str(
+                            p.get(
+                                "gross",
+                                Decimal("0.00"),
+                            )
+                        ),
+
+                        "earned_after_attendance": str(
+                            p.get(
+                                "earned_after_attendance",
+                                Decimal("0.00"),
+                            )
+                        ),
 
                         "late_minutes": late_minutes,
                         "undertime_minutes": undertime_minutes,
@@ -7756,11 +8836,15 @@ def admin_payroll_process_batch(request):
                         "pagibig": str(gov.get("pagibig", Decimal("0.00"))),
                         "gov_total": str(gov.get("gov_total", Decimal("0.00"))),
                         "tax": str(gov.get("tax", Decimal("0.00"))),
+                        "taxable_compensation": str(gov.get("taxable_compensation", Decimal("0.00"))),
 
                         "wtax": str(gov.get("wtax", Decimal("0.00"))),
                         "gsis_employee": str(gov.get("gsis_employee", Decimal("0.00"))),
                         "gsis_employer": str(gov.get("gsis_employer", Decimal("0.00"))),
+                        "philhealth_employer": str(gov.get("philhealth_employer", Decimal("0.00"))),
+                        "pagibig_employer": str(gov.get("pagibig_employer", Decimal("0.00"))),
                         "employer_contributions_total": str(gov.get("employer_contributions_total", Decimal("0.00"))),
+                        "sources": gov.get("sources", {}),
                     },
 
                     "dtr_rows": safe_dtr_rows,

@@ -114,14 +114,18 @@
       <div class="absolute -right-16 -top-16 w-48 h-48 rounded-full gradient-accent opacity-20 blur-2xl"></div>
 
       <div class="relative z-10">
-        <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Estimated Net Pay</p>
+        <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ payroll_source_label }}</p>
         <div class="mt-2 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h3 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">
               ₱{{ computed.net|default:"0.00" }}
             </h3>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              Computed using your attendance, payroll rules, deductions, contributions, and tax settings.
+              {% if using_saved_payroll %}
+                This is the payroll snapshot saved by the payroll officer. Later profile or attendance changes do not alter it.
+              {% else %}
+                Preview computed from current attendance and settings. It is not an official payslip until payroll is processed.
+              {% endif %}
             </p>
           </div>
 
@@ -183,7 +187,7 @@
   </div>
 
   <!-- Attendance Basis Cards -->
-  <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
+  <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-9 gap-4">
     <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
       <p class="text-xs text-gray-500 dark:text-gray-400">Present</p>
       <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.days_present|default:"0" }}</p>
@@ -195,6 +199,10 @@
     <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
       <p class="text-xs text-gray-500 dark:text-gray-400">Holiday</p>
       <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.holiday_days|default:"0" }}</p>
+    </article>
+    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
+      <p class="text-xs text-gray-500 dark:text-gray-400">Approved Leave</p>
+      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.leave_days|default:"0" }}</p>
     </article>
     <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
       <p class="text-xs text-gray-500 dark:text-gray-400">Absences</p>
@@ -274,8 +282,12 @@
           <strong>₱{{ gov.tax|default:"0.00" }}</strong>
         </div>
         <div class="rounded-2xl glass p-4 flex justify-between gap-4">
+          <span class="text-gray-500 dark:text-gray-400">Taxable Compensation</span>
+          <strong>₱{{ gov.taxable_compensation|default:"0.00" }}</strong>
+        </div>
+        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
           <span class="text-gray-500 dark:text-gray-400">Manual Deduction</span>
-          <strong>₱{{ profile.manual_deduction_amount|default:"0.00" }}</strong>
+          <strong>₱{{ computed.manual_deduction|default:"0.00" }}</strong>
         </div>
         <div class="rounded-2xl gradient-accent text-white p-4 flex justify-between gap-4 shadow-glow">
           <span class="font-bold">Total Deductions</span>
@@ -290,7 +302,7 @@
     <p class="text-xs uppercase tracking-wide text-accent font-bold">Formula Guide</p>
     <h3 class="mt-1 text-xl font-extrabold text-gray-900 dark:text-white">How Your Payroll Is Computed</h3>
 
-    <div class="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 text-sm">
+    <div class="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 text-sm">
       <div class="rounded-2xl glass p-4">
         <h4 class="font-extrabold text-gray-900 dark:text-white">Rates</h4>
         <p class="mt-2 text-gray-600 dark:text-gray-300">Daily Rate = Monthly Salary / Salary Divisor</p>
@@ -310,7 +322,12 @@
 
       <div class="rounded-2xl glass p-4">
         <h4 class="font-extrabold text-gray-900 dark:text-white">COS</h4>
-        <p class="mt-2 text-gray-600 dark:text-gray-300">COS uses salary rules. Valid holidays and suspensions are not deducted.</p>
+        <p class="mt-2 text-gray-600 dark:text-gray-300">Fixed COS pay uses the period salary less unpaid absences. Verified holidays and approved leave are not absences.</p>
+      </div>
+
+      <div class="rounded-2xl glass p-4">
+        <h4 class="font-extrabold text-gray-900 dark:text-white">Permanent</h4>
+        <p class="mt-2 text-gray-600 dark:text-gray-300">PERA is non-taxable. Employee government shares are deducted; employer shares are recorded but never reduce net pay.</p>
       </div>
     </div>
   </article>

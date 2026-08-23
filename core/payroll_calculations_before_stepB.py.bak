@@ -1,0 +1,112 @@
+"""Pure payroll calculation helpers.
+
+The view layer owns database access and attendance collection.  This module
+contains the money rules that must remain identical for previews, batches,
+payslips, and tests.
+"""
+
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+
+CENT = Decimal("0.01")
+
+
+def as_decimal(value, default="0.00"):
+    try:
+        if value is None or value == "":
+            return Decimal(default)
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal(default)
+
+
+def money(value):
+    return as_decimal(value).quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+def is_monthly_period(pay_mode):
+    return str(pay_mode or "").upper() == "MONTHLY"
+
+
+def period_fraction(pay_mode):
+    """Return the portion of a monthly amount due in one payroll period."""
+    return Decimal("1.00") if is_monthly_period(pay_mode) else Decimal("0.50")
+
+
+def recurring_amount_for_period(monthly_amount, pay_mode):
+    return money(as_decimal(monthly_amount) * period_fraction(pay_mode))
+
+
+def _tax_from_brackets(taxable_compensation, brackets):
+    taxable = max(Decimal("0.00"), as_decimal(taxable_compensation))
+
+    for lower, upper, base_tax, rate in brackets:
+        if upper is None or taxable <= upper:
+            if taxable < lower:
+                return Decimal("0.00")
+            return money(base_tax + ((taxable - lower) * rate))
+
+    return Decimal("0.00")
+
+
+MONTHLY_WITHHOLDING_BRACKETS = (
+    (Decimal("0"), Decimal("20833"), Decimal("0"), Decimal("0")),
+    (Decimal("20833"), Decimal("33332.99"), Decimal("0"), Decimal("0.15")),
+    (Decimal("33333"), Decimal("66666.99"), Decimal("1875.00"), Decimal("0.20")),
+    (Decimal("66667"), Decimal("166666.99"), Decimal("8541.80"), Decimal("0.25")),
+    (Decimal("166667"), Decimal("666666.99"), Decimal("33541.80"), Decimal("0.30")),
+    (Decimal("666667"), None, Decimal("183541.80"), Decimal("0.35")),
+)
+
+
+SEMI_MONTHLY_WITHHOLDING_BRACKETS = (
+    (Decimal("0"), Decimal("10417"), Decimal("0"), Decimal("0")),
+    (Decimal("10417"), Decimal("16666.99"), Decimal("0"), Decimal("0.15")),
+    (Decimal("16667"), Decimal("33332.99"), Decimal("937.50"), Decimal("0.20")),
+    (Decimal("33333"), Decimal("83332.99"), Decimal("4270.70"), Decimal("0.25")),
+    (Decimal("83333"), Decimal("333332.99"), Decimal("16770.70"), Decimal("0.30")),
+    (Decimal("333333"), None, Decimal("91770.70"), Decimal("0.35")),
+)
+
+
+def bir_withholding_tax(taxable_compensation, pay_mode):
+    """BIR Annex E withholding table effective 1 January 2023 onward."""
+    brackets = (
+        MONTHLY_WITHHOLDING_BRACKETS
+        if is_monthly_period(pay_mode)
+        else SEMI_MONTHLY_WITHHOLDING_BRACKETS
+    )
+    return _tax_from_brackets(taxable_compensation, brackets)
+
+
+def permanent_statutory_contributions(monthly_basic_salary, pay_mode):
+    """Compute employee/employer shares from monthly basic salary.
+
+    PhilHealth uses the 5% premium with a P10,000 floor and P100,000
+    ceiling; the premium is divided equally between employee and employer.
+    Pag-IBIG uses 2% up to the P10,000 maximum fund salary.  GSIS uses the
+    current standard 9% member and 12% employer shares.
+    """
+    basic = max(Decimal("0.00"), as_decimal(monthly_basic_salary))
+    factor = period_fraction(pay_mode)
+
+    philhealth_base = min(max(basic, Decimal("10000.00")), Decimal("100000.00"))
+    philhealth_total = philhealth_base * Decimal("0.05")
+    philhealth_employee = philhealth_total / Decimal("2")
+    philhealth_employer = philhealth_total / Decimal("2")
+
+    pagibig_base = min(basic, Decimal("10000.00"))
+    pagibig_employee = pagibig_base * Decimal("0.02")
+    pagibig_employer = pagibig_base * Decimal("0.02")
+
+    gsis_employee = basic * Decimal("0.09")
+    gsis_employer = basic * Decimal("0.12")
+
+    return {
+        "philhealth_employee": money(philhealth_employee * factor),
+        "philhealth_employer": money(philhealth_employer * factor),
+        "pagibig_employee": money(pagibig_employee * factor),
+        "pagibig_employer": money(pagibig_employer * factor),
+        "gsis_employee": money(gsis_employee * factor),
+        "gsis_employer": money(gsis_employer * factor),
+    }

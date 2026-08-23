@@ -546,6 +546,16 @@
           </div>
 
           <div>
+            <label class="field-label">Employment / Contract Start</label>
+            <input name="employment_start_date" type="date" class="form-input mt-2">
+          </div>
+
+          <div>
+            <label class="field-label">Employment / Contract End</label>
+            <input name="employment_end_date" type="date" class="form-input mt-2">
+          </div>
+
+          <div>
             <label class="field-label">PERA Allowance</label>
             <input name="pera_allowance" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
@@ -573,18 +583,18 @@
       <div class="mt-6 section-card">
         <h3 class="text-base font-extrabold text-gray-950 dark:text-white">JO/COS Contributions</h3>
         <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">
-          These are mainly for Job Order and Contract of Service employees.
+          Enter monthly JO/COS deductions only when the contract requires them. Zero is valid. Semi-monthly payroll uses half of a monthly fixed amount.
         </p>
 
         <div class="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
           <div>
             <label class="field-label">SSS Amount</label>
-            <input name="sss_amount" type="number" step="0.01" min="0" value="760.00" class="form-input mt-2">
+            <input name="sss_amount" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
 
           <div>
             <label class="field-label">Pag-IBIG Amount</label>
-            <input name="pagibig_amount" type="number" step="0.01" min="0" value="400.00" class="form-input mt-2">
+            <input name="pagibig_amount" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
 
           <div>
@@ -597,7 +607,7 @@
 
           <div>
             <label class="field-label">PhilHealth Value</label>
-            <input name="philhealth_value" type="number" step="0.01" min="0" value="5.00" class="form-input mt-2">
+            <input name="philhealth_value" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
         </div>
       </div>
@@ -606,22 +616,22 @@
       <div class="mt-6 section-card">
         <h3 class="text-base font-extrabold text-gray-950 dark:text-white">Permanent Employee Deductions</h3>
         <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">
-          Use manually confirmed amounts first. Exact government formulas still need client validation.
+          Leave statutory fields at zero to calculate BIR withholding, GSIS, PhilHealth, and Pag-IBIG automatically. Enter a positive amount only as an authorized per-period override.
         </p>
 
         <div class="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
           <div>
-            <label class="field-label">WTAX Amount</label>
+            <label class="field-label">WTAX Override</label>
             <input name="wtax_amount" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
 
           <div>
-            <label class="field-label">GSIS Employee Share</label>
+            <label class="field-label">GSIS Employee Override</label>
             <input name="gsis_employee_share" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
 
           <div>
-            <label class="field-label">GSIS Employer Share</label>
+            <label class="field-label">GSIS Employer Override</label>
             <input name="gsis_employer_share" type="number" step="0.01" min="0" value="0.00" class="form-input mt-2">
           </div>
 
@@ -761,6 +771,16 @@
                 </div>
 
                 <div>
+                  <label class="field-label">Employment / Contract Start</label>
+                  <input name="employment_start_date" type="date" value="{{ p.employment_start_date|date:'Y-m-d' }}" class="form-input mt-2">
+                </div>
+
+                <div>
+                  <label class="field-label">Employment / Contract End</label>
+                  <input name="employment_end_date" type="date" value="{{ p.employment_end_date|date:'Y-m-d' }}" class="form-input mt-2">
+                </div>
+
+                <div>
                   <label class="field-label">PERA Allowance</label>
                   <input name="pera_allowance" type="number" step="0.01" min="0" value="{{ p.pera_allowance|default:'0.00' }}" class="form-input mt-2">
                 </div>
@@ -790,12 +810,12 @@
               <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <div>
                   <label class="field-label">SSS Amount</label>
-                  <input name="sss_amount" type="number" step="0.01" min="0" value="{{ p.contrib.sss_amount|default:'760.00' }}" class="form-input mt-2">
+                  <input name="sss_amount" type="number" step="0.01" min="0" value="{{ p.contrib.sss_amount|default:'0.00' }}" class="form-input mt-2">
                 </div>
 
                 <div>
                   <label class="field-label">Pag-IBIG Amount</label>
-                  <input name="pagibig_amount" type="number" step="0.01" min="0" value="{{ p.contrib.pagibig_amount|default:'400.00' }}" class="form-input mt-2">
+                  <input name="pagibig_amount" type="number" step="0.01" min="0" value="{{ p.contrib.pagibig_amount|default:'0.00' }}" class="form-input mt-2">
                 </div>
 
                 <div>
@@ -808,7 +828,7 @@
 
                 <div>
                   <label class="field-label">PhilHealth Value</label>
-                  <input name="philhealth_value" type="number" step="0.01" min="0" value="{{ p.contrib.philhealth_value|default:'5.00' }}" class="form-input mt-2">
+                  <input name="philhealth_value" type="number" step="0.01" min="0" value="{{ p.contrib.philhealth_value|default:'0.00' }}" class="form-input mt-2">
                 </div>
               </div>
             </div>
@@ -818,17 +838,17 @@
 
               <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <div>
-                  <label class="field-label">WTAX Amount</label>
+                  <label class="field-label">WTAX Override</label>
                   <input name="wtax_amount" type="number" step="0.01" min="0" value="{{ p.contrib.wtax_amount|default:'0.00' }}" class="form-input mt-2">
                 </div>
 
                 <div>
-                  <label class="field-label">GSIS Employee Share</label>
+                  <label class="field-label">GSIS Employee Override</label>
                   <input name="gsis_employee_share" type="number" step="0.01" min="0" value="{{ p.contrib.gsis_employee_share|default:'0.00' }}" class="form-input mt-2">
                 </div>
 
                 <div>
-                  <label class="field-label">GSIS Employer Share</label>
+                  <label class="field-label">GSIS Employer Override</label>
                   <input name="gsis_employer_share" type="number" step="0.01" min="0" value="{{ p.contrib.gsis_employer_share|default:'0.00' }}" class="form-input mt-2">
                 </div>
 

@@ -654,6 +654,9 @@
                     {% else %}bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300{% endif %}">
                     {{ holiday.get_type_display }}
                   </span>
+                  <span class="rounded-full px-2 py-1 text-xs font-extrabold {% if holiday.is_payroll_verified %}bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300{% else %}bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-slate-300{% endif %}">
+                    {% if holiday.is_payroll_verified %}Payroll Verified{% else %}Not Verified{% endif %}
+                  </span>
                 </div>
 
                 <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">{{ holiday.date|date:"M d, Y" }}</p>
@@ -669,6 +672,9 @@
                 {% if holiday.notes %}
                   <p class="mt-2 break-words text-xs text-gray-600 dark:text-slate-400">{{ holiday.notes }}</p>
                 {% endif %}
+                {% if holiday.source_reference %}
+                  <p class="mt-2 break-words text-xs text-gray-600 dark:text-slate-400"><strong>Source:</strong> {{ holiday.source_reference }}</p>
+                {% endif %}
               </div>
             </div>
 
@@ -676,11 +682,13 @@
               {% if holiday.type == 'holiday' %}text-green-700 dark:text-green-300
               {% elif holiday.type == 'suspension' %}text-red-700 dark:text-red-300
               {% else %}text-amber-700 dark:text-amber-300{% endif %}">
-              Impact:
-              {% if holiday.type == 'holiday' %}
-                JO - No Pay, COS - Paid
+              Payroll impact:
+              {% if not holiday.is_payroll_verified %}
+                None until an official source is verified
+              {% elif holiday.type == 'holiday' %}
+                Excluded from JO actual-days pay and from absence counting
               {% elif holiday.type == 'suspension' %}
-                Work suspension affects expected attendance
+                Excluded from expected attendance
               {% else %}
                 Special non-working day behavior
               {% endif %}
@@ -695,7 +703,9 @@
                       data-type="{{ holiday.type }}"
                       data-scope="{{ holiday.scope }}"
                       data-branch="{{ holiday.branch_id|default:'' }}"
-                      data-notes="{{ holiday.notes|default:'' }}">
+                      data-notes="{{ holiday.notes|default:'' }}"
+                      data-source-reference="{{ holiday.source_reference|default:'' }}"
+                      data-payroll-verified="{% if holiday.is_payroll_verified %}1{% else %}0{% endif %}">
                 Edit
               </button>
 
@@ -796,6 +806,17 @@
         <textarea id="holidayNotes" name="notes" rows="3"
                   class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white"></textarea>
       </div>
+
+      <div>
+        <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Official Source Reference</label>
+        <input id="holidaySourceReference" name="source_reference" type="text" placeholder="Proclamation, memorandum, or suspension order"
+               class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+      </div>
+
+      <label class="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 text-sm dark:border-blue-500/20 dark:bg-blue-500/10">
+        <input id="holidayPayrollVerified" name="is_payroll_verified" type="checkbox" class="mt-1 h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent">
+        <span><strong>Verified for payroll</strong><br><span class="text-gray-600 dark:text-slate-300">Only check this after the official source and exact coverage have been confirmed.</span></span>
+      </label>
 
       <div class="flex justify-end gap-3 pt-2">
         <button type="button" id="cancelHolidayModal"
@@ -973,6 +994,8 @@
   const holidayScope = document.getElementById("holidayScope");
   const holidayBranch = document.getElementById("holidayBranch");
   const holidayNotes = document.getElementById("holidayNotes");
+  const holidaySourceReference = document.getElementById("holidaySourceReference");
+  const holidayPayrollVerified = document.getElementById("holidayPayrollVerified");
   const holidayBranchWrap = document.getElementById("holidayBranchWrap");
 
   function openModal() {
@@ -988,6 +1011,7 @@
   function resetHolidayForm() {
     holidayForm?.reset();
     holidayId.value = "";
+    holidayPayrollVerified.checked = false;
     holidayModalTitle.textContent = "Add Holiday / Suspension";
   }
 
@@ -1017,6 +1041,8 @@
       holidayScope.value = this.dataset.scope || "region";
       holidayBranch.value = this.dataset.branch || "";
       holidayNotes.value = this.dataset.notes || "";
+      holidaySourceReference.value = this.dataset.sourceReference || "";
+      holidayPayrollVerified.checked = this.dataset.payrollVerified === "1";
       toggleHolidayBranch();
       openModal();
     });

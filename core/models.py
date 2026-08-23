@@ -130,6 +130,17 @@ class UserProfile(models.Model):
     daily_rate = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     monthly_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
+    employment_start_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="First date covered by the employee's appointment or contract.",
+    )
+    employment_end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Last date covered by the employee's appointment or contract.",
+    )
+
     # Permanent employee earnings
     # PERA is commonly treated as a standard allowance.
     # Exact handling per cut-off must still be confirmed by the client.
@@ -341,8 +352,21 @@ class PayrollRule(models.Model):
     grace_minutes_normal = models.PositiveIntegerField(default=15)
     flag_ceremony_cutoff_time = models.TimeField(default="08:00")
 
+    # Earliest time that can earn ordinary working-time credit.
+    # An actual biometric punch earlier than this is still displayed
+    # in the DTR, but payroll credit begins only at this time.
+    earliest_creditable_time = models.TimeField(default="07:00")
+
+    # Lunch is excluded from ordinary working time.
     lunch_break_required = models.BooleanField(default=True)
-    daily_hours_required = models.DecimalField(max_digits=5, decimal_places=2, default=8)
+    lunch_start_time = models.TimeField(default="12:00")
+    lunch_end_time = models.TimeField(default="13:00")
+
+    daily_hours_required = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=8,
+    )
 
     work_start_time = models.TimeField(default="08:00")
     work_end_time = models.TimeField(default="17:00")
@@ -362,8 +386,18 @@ class EmployeeContribution(models.Model):
     )
 
     # JO/COS common contribution fields
-    sss_amount = models.DecimalField(max_digits=10, decimal_places=2, default=760)
-    pagibig_amount = models.DecimalField(max_digits=10, decimal_places=2, default=400)
+    sss_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Monthly JO/COS SSS deduction. Leave at zero when not applicable.",
+    )
+    pagibig_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Monthly JO/COS amount or permanent per-period override.",
+    )
 
     PHILHEALTH_PERCENT = "percent"
     PHILHEALTH_FIXED = "fixed"
@@ -382,7 +416,7 @@ class EmployeeContribution(models.Model):
     philhealth_value = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        default=5,
+        default=0,
     )
 
     # Permanent employee deductions
@@ -468,6 +502,17 @@ class HolidaySuspension(models.Model):
     )
 
     notes = models.TextField(blank=True, default="")
+    is_payroll_verified = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Only verified entries affect DTR and payroll.",
+    )
+    source_reference = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Official proclamation, memorandum, or suspension-order reference.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -777,4 +822,3 @@ class OvertimeRequest(models.Model):
 
     def __str__(self):
         return f"{self.profile.user.username} OT {self.date} ({self.hours} hrs)"
-    
