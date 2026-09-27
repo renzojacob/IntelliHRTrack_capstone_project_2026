@@ -243,29 +243,43 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1">
-            <iconify-icon icon="ph:buildings-duotone" class="text-accent"></iconify-icon>
-            Branch
-          </label>
+  <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1">
+    <iconify-icon icon="ph:buildings-duotone" class="text-accent"></iconify-icon>
+    Branch
+  </label>
 
-          {% if is_superadmin %}
-            <select name="branch" id="branchSelect"
-                    class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60 transition">
-              <option value="">Select Branch</option>
-              {% for branch in branches %}
-                <option value="{{ branch.id }}" {% if selected_branch == branch.id or selected_branch|stringformat:"s" == branch.id|stringformat:"s" %}selected{% endif %}>
-                  {{ branch.name }}
-                </option>
-              {% endfor %}
-            </select>
-          {% else %}
-            <div class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm bg-white/30 dark:bg-slate-800/40 flex items-center gap-2">
-              <iconify-icon icon="ph:lock-simple-duotone" class="text-accent"></iconify-icon>
-              <span>{{ request.user.profile.branch.name|default:"Assigned Branch" }}</span>
-            </div>
-            <input type="hidden" name="branch" value="{{ request.user.profile.branch.id }}">
-          {% endif %}
-        </div>
+  {% if is_superadmin %}
+    <select
+      name="branch"
+      id="branchSelect"
+      class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60 transition"
+    >
+      {% for branch in branches %}
+        <option
+          value="{{ branch.id }}"
+          {% if selected_branch == branch.id %}selected{% endif %}
+        >
+          {{ branch.name }}
+        </option>
+      {% endfor %}
+    </select>
+  {% else %}
+    <div class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm bg-white/30 dark:bg-slate-800/40 flex items-center gap-2">
+      <iconify-icon icon="ph:lock-simple-duotone" class="text-accent"></iconify-icon>
+
+      <span>
+        {{ request.user.profile.branch.name|default:"Assigned Branch" }}
+      </span>
+    </div>
+
+    <input
+      type="hidden"
+      name="branch"
+      value="{{ request.user.profile.branch.id }}"
+    >
+  {% endif %}
+</div>
+
 
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1">
