@@ -34,10 +34,18 @@ from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.cache import never_cache
 from .models import BiometricDevice
-from .hikvision_sync import fetch_hikvision_attendance
+from .hikvision_sync import (
+    fetch_hikvision_attendance,
+    test_hikvision_connection,
+)
 from core.models import AttendanceRecord
 
-from .forms import AttendanceImportForm, AttendanceRecordForm
+from .forms import (
+    AttendanceImportForm,
+    AttendanceRecordForm,
+    BiometricDeviceForm,
+)
+
 from .models import (
     Branch,
     AttendanceRecord,
@@ -94,6 +102,40 @@ def _scoped_branch_queryset_for_admin(request):
     if b:
         return Branch.objects.filter(id=b.id).order_by("name")
     return Branch.objects.none()
+
+def _scoped_biometric_devices_for_admin(request):
+    """
+    Superuser:
+        Can manage devices from all branches.
+
+    Staff admin:
+        Can manage devices only from their assigned branch.
+    """
+
+    devices = (
+        BiometricDevice.objects
+        .select_related("branch")
+        .order_by("branch__name", "name")
+    )
+
+    if request.user.is_superuser:
+        return devices
+
+    admin_branch = _get_admin_branch(request)
+
+    if not admin_branch:
+        return devices.none()
+
+    return devices.filter(branch=admin_branch)
+
+
+def _get_scoped_biometric_device(request, device_id):
+    return get_object_or_404(
+        _scoped_biometric_devices_for_admin(request),
+        pk=device_id,
+    )
+
+
 
 
 def _apply_branch_choices_to_form(form, branches_qs):
@@ -716,37 +758,75 @@ def _scoped_profiles_for_admin(request):
     except UserProfile.DoesNotExist:
         return qs.none()
 
-#button sync for realtime data for attendance== renzo
+# Sync active Hikvision devices for the admin's permitted branch
 @login_required
+@require_POST
 def admin_biometrics_sync_now(request):
     if not (request.user.is_staff or request.user.is_superuser):
-        return redirect("login_ui")
+        raise PermissionDenied
 
-   
-
-    devices = BiometricDevice.objects.filter(is_active=True)
+    devices = (
+        _scoped_biometric_devices_for_admin(request)
+        .filter(is_active=True)
+    )
 
     if not devices.exists():
-        messages.error(request, "No active biometric device found.")
+        messages.error(
+            request,
+            "No active Hikvision device is registered for your branch.",
+        )
         return redirect("admin_biometrics")
 
-    success_count = 0
-    fail_count = 0
+    successful_devices = 0
+    failed_devices = 0
+    total_created = 0
 
     for device in devices:
-        try:
-            fetch_hikvision_attendance(device)
-            success_count += 1
-        except Exception as e:
-            fail_count += 1
-            messages.error(request, f"Sync failed for {device.name}: {e}")
+        connection = test_hikvision_connection(device)
 
-    if success_count:
-        messages.success(request, f"Device sync completed. Successful device syncs: {success_count}")
-    elif fail_count and not success_count:
-        messages.error(request, "All device sync attempts failed.")
+        if not connection["ok"]:
+            failed_devices += 1
+
+            messages.error(
+                request,
+                f"{device.name}: {connection['message']}",
+            )
+
+            continue
+
+        try:
+            created_count = fetch_hikvision_attendance(device)
+
+            total_created += int(created_count or 0)
+            successful_devices += 1
+
+        except Exception as exc:
+            failed_devices += 1
+
+            messages.error(
+                request,
+                f"Sync failed for {device.name}: {exc}",
+            )
+
+    if successful_devices:
+        messages.success(
+            request,
+            (
+                f"Synchronization completed for {successful_devices} "
+                f"device(s). {total_created} new attendance record(s) "
+                f"were added."
+            ),
+        )
+
+    if failed_devices:
+        messages.warning(
+            request,
+            f"{failed_devices} device(s) could not be synchronized.",
+        )
 
     return redirect("admin_biometrics")
+
+
 #===================
 #Add and delete employee travel feature
 @login_required
@@ -3114,6 +3194,8 @@ def admin_biometrics_attendance(request):
         travel_orders_qs = travel_orders_qs.filter(employee__branch=admin_branch)
 
     travel_orders = travel_orders_qs[:20]
+    
+    devices = _scoped_biometric_devices_for_admin(request)
 
     context = {
         "current": "biometrics",
@@ -3128,6 +3210,7 @@ def admin_biometrics_attendance(request):
         "travel_orders": travel_orders,
         "travel_today": travel_today_qs,
         "holidays": holidays,
+        "devices": devices,
     }
 
     return render(request, "admin/Biometrics_attendance.html", context)
@@ -9535,3 +9618,159 @@ def admin_payroll_batch_detail(request, batch_id):
         "admin/payroll_batch_detail.html",
         context,
     )
+@login_required
+@never_cache
+@require_http_methods(["GET", "POST"])
+def admin_biometric_device_create(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        raise PermissionDenied
+
+    if request.method == "POST":
+        form = BiometricDeviceForm(
+            request.POST,
+            user=request.user,
+        )
+
+        if form.is_valid():
+            device = form.save()
+
+            messages.success(
+                request,
+                (
+                    f'Hikvision device "{device.name}" was registered '
+                    f"for {device.branch.name}."
+                ),
+            )
+
+            return redirect("admin_biometrics")
+
+    else:
+        form = BiometricDeviceForm(user=request.user)
+
+    return render(
+        request,
+        "admin/biometric_device_form.html",
+        {
+            "current": "biometrics",
+            "form": form,
+            "page_title": "Register Hikvision Device",
+            "submit_label": "Register Device",
+            "device": None,
+        },
+    )
+
+
+@login_required
+@never_cache
+@require_http_methods(["GET", "POST"])
+def admin_biometric_device_update(request, device_id):
+    if not (request.user.is_staff or request.user.is_superuser):
+        raise PermissionDenied
+
+    device = _get_scoped_biometric_device(
+        request,
+        device_id,
+    )
+
+    if request.method == "POST":
+        form = BiometricDeviceForm(
+            request.POST,
+            instance=device,
+            user=request.user,
+        )
+
+        if form.is_valid():
+            device = form.save()
+
+            messages.success(
+                request,
+                f'Hikvision device "{device.name}" was updated.',
+            )
+
+            return redirect("admin_biometrics")
+
+    else:
+        form = BiometricDeviceForm(
+            instance=device,
+            user=request.user,
+        )
+
+    return render(
+        request,
+        "admin/biometric_device_form.html",
+        {
+            "current": "biometrics",
+            "form": form,
+            "page_title": "Update Hikvision Device",
+            "submit_label": "Save Changes",
+            "device": device,
+        },
+    )
+
+
+@login_required
+@require_POST
+def admin_biometric_device_test(request, device_id):
+    if not (request.user.is_staff or request.user.is_superuser):
+        raise PermissionDenied
+
+    device = _get_scoped_biometric_device(
+        request,
+        device_id,
+    )
+
+    result = test_hikvision_connection(device)
+
+    if result["ok"]:
+        messages.success(request, result["message"])
+    else:
+        messages.error(request, result["message"])
+
+    return redirect("admin_biometrics")
+
+
+@login_required
+@require_POST
+def admin_biometric_device_toggle(request, device_id):
+    if not (request.user.is_staff or request.user.is_superuser):
+        raise PermissionDenied
+
+    device = _get_scoped_biometric_device(
+        request,
+        device_id,
+    )
+
+    device.is_active = not device.is_active
+    device.save(update_fields=["is_active"])
+
+    status = "activated" if device.is_active else "deactivated"
+
+    messages.success(
+        request,
+        f'Hikvision device "{device.name}" was {status}.',
+    )
+
+    return redirect("admin_biometrics")
+
+
+@login_required
+@require_POST
+def admin_biometric_device_delete(request, device_id):
+    if not (request.user.is_staff or request.user.is_superuser):
+        raise PermissionDenied
+
+    device = _get_scoped_biometric_device(
+        request,
+        device_id,
+    )
+
+    device_name = device.name
+    device.delete()
+
+    messages.success(
+        request,
+        f'Hikvision device "{device_name}" was removed.',
+    )
+
+    return redirect("admin_biometrics")
+

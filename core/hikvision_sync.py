@@ -198,13 +198,20 @@ def _pick_person_events(events):
     return picked
 
 
-def _make_start_time():
+def _make_start_time(device):
     """
-    Start sync from last saved AttendanceRecord minus 2 minutes.
+    Uses the latest attendance record from the device's branch.
 
-    This avoids missing recent logs and get_or_create prevents duplicates.
+    Records from another branch must not affect the synchronization
+    starting time of this device.
     """
-    last = AttendanceRecord.objects.order_by("-timestamp").first()
+
+    last = (
+        AttendanceRecord.objects
+        .filter(branch=device.branch)
+        .order_by("-timestamp")
+        .first()
+    )
 
     if last and last.timestamp:
         start = last.timestamp
@@ -212,7 +219,10 @@ def _make_start_time():
         if timezone.is_aware(start):
             start = timezone.localtime(start)
         else:
-            start = timezone.make_aware(start, timezone.get_current_timezone())
+            start = timezone.make_aware(
+                start,
+                timezone.get_current_timezone(),
+            )
 
         return start - timedelta(minutes=2)
 
@@ -322,7 +332,7 @@ def fetch_hikvision_attendance(device):
     """
 
     end = timezone.localtime(timezone.now())
-    start = _make_start_time()
+    start = _make_start_time(device)
 
     try:
         # Major 5 and 0 are both queried because Hikvision firmware can vary.
@@ -412,4 +422,90 @@ def fetch_hikvision_attendance(device):
         print("DEVICE:", getattr(device, "name", "Unknown"))
         print("ERROR:", e)
         print("==========================================")
-        return 0
+
+        raise RuntimeError(
+            f"Could not synchronize {getattr(device, 'name', 'device')}: {e}"
+        ) from e
+
+
+def test_hikvision_connection(device):
+    """
+    Tests whether Django can reach and authenticate with the
+    registered Hikvision device.
+    """
+
+    url = (
+        f"http://{device.ip_address}:{device.port}"
+        "/ISAPI/System/deviceInfo"
+    )
+
+    try:
+        response = requests.get(
+            url,
+            auth=HTTPDigestAuth(
+                device.username,
+                device.password,
+            ),
+            timeout=8,
+        )
+
+        if response.status_code == 200:
+            return {
+                "ok": True,
+                "message": (
+                    f"Connected successfully to {device.name} at "
+                    f"{device.ip_address}:{device.port}."
+                ),
+            }
+
+        if response.status_code == 401:
+            return {
+                "ok": False,
+                "message": (
+                    "The device was reached, but the username or "
+                    "password was rejected."
+                ),
+            }
+
+        if response.status_code == 403:
+            return {
+                "ok": False,
+                "message": (
+                    "The device rejected access. Check the Hikvision "
+                    "account permissions and ISAPI settings."
+                ),
+            }
+
+        return {
+            "ok": False,
+            "message": (
+                f"The Hikvision device returned HTTP status "
+                f"{response.status_code}."
+            ),
+        }
+
+    except requests.exceptions.ConnectTimeout:
+        return {
+            "ok": False,
+            "message": (
+                "Connection timed out. Check the IP address, port, "
+                "device power, firewall, and network connection."
+            ),
+        }
+
+    except requests.exceptions.ConnectionError:
+        return {
+            "ok": False,
+            "message": (
+                "The server could not connect to the device. Check "
+                "whether both are reachable through the same network."
+            ),
+        }
+
+    except requests.RequestException as exc:
+        return {
+            "ok": False,
+            "message": f"Connection failed: {exc}",
+        }
+
+        

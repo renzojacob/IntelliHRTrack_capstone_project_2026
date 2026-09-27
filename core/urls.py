@@ -105,6 +105,37 @@ urlpatterns = [
 
     path("admin-ui/system/", views.admin_system_administration, name="admin_system"),
 
+    #attendance biometrics IP register
+    path(
+        "admin-ui/biometrics/devices/create/",
+        views.admin_biometric_device_create,
+        name="admin_biometric_device_create",
+    ),
+
+    path(
+        "admin-ui/biometrics/devices/<int:device_id>/update/",
+        views.admin_biometric_device_update,
+        name="admin_biometric_device_update",
+    ),
+
+    path(
+        "admin-ui/biometrics/devices/<int:device_id>/test/",
+        views.admin_biometric_device_test,
+        name="admin_biometric_device_test",
+    ),
+
+    path(
+        "admin-ui/biometrics/devices/<int:device_id>/toggle/",
+        views.admin_biometric_device_toggle,
+        name="admin_biometric_device_toggle",
+    ),
+
+    path(
+        "admin-ui/biometrics/devices/<int:device_id>/delete/",
+        views.admin_biometric_device_delete,
+        name="admin_biometric_device_delete",
+    ),
+
     # Attendance CRUD
     path("admin-ui/biometrics/records/new/", views.attendance_create, name="admin_attendance_create"),
     path("admin-ui/biometrics/records/<int:pk>/", views.attendance_detail, name="admin_attendance_detail"),

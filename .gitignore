@@ -12,3 +12,37 @@ leave_attatchments/
 Thumbs.db
 
 sample_attendance_data.csv
+
+
+########################
+# Python virtual environment
+.venv/
+venv/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+*.bak
+
+# Django generated/private files
+staticfiles/
+media/
+leave_attachments/
+client_data/
+db.sqlite3
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Node dependencies
+node_modules/
+
+# Editor files
+.vscode/
+.idea/
+
+
+# Generated payroll/demo exports
+payroll_defense_export.json

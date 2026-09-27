@@ -1,5 +1,192 @@
 {% extends 'admin/base_admin.html' %}
 {% block title %}Biometrics & Attendance | IntelliHRTrack{% endblock %}
+{% block extra_head %}
+<style>
+  :root {
+    --registered-panel: #ffffff;
+    --registered-card: #f8fafc;
+    --registered-row: #ffffff;
+    --registered-text: #0f172a;
+    --registered-muted: #475569;
+    --registered-border: #cbd5e1;
+    --registered-shadow: rgba(15, 23, 42, 0.10);
+  }
+
+  html.dark {
+    --registered-panel: #0f172a;
+    --registered-card: #172033;
+    --registered-row: #0b1220;
+    --registered-text: #f8fafc;
+    --registered-muted: #cbd5e1;
+    --registered-border: #334155;
+    --registered-shadow: rgba(0, 0, 0, 0.35);
+  }
+
+  .registered-device-section {
+    color: var(--registered-text);
+    border: 1px solid var(--registered-border);
+    background: var(--registered-panel);
+    box-shadow: 0 18px 40px var(--registered-shadow);
+  }
+
+  .registered-device-header {
+    border-bottom: 1px solid var(--registered-border);
+  }
+
+  .registered-device-muted {
+    color: var(--registered-muted);
+  }
+
+  .registered-device-card {
+    color: var(--registered-text);
+    border: 1px solid var(--registered-border);
+    background: var(--registered-card);
+    box-shadow: 0 8px 20px var(--registered-shadow);
+  }
+
+  .registered-device-row {
+    border: 1px solid var(--registered-border);
+    background: var(--registered-row);
+  }
+
+  .registered-device-action {
+    display: inline-flex;
+    min-height: 2.5rem;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    transition:
+      transform 150ms ease,
+      background-color 150ms ease,
+      border-color 150ms ease;
+  }
+
+  .registered-device-action:hover {
+    transform: translateY(-1px);
+  }
+
+  .device-action-test {
+    color: #1d4ed8;
+    border-color: #93c5fd;
+    background: #dbeafe;
+  }
+
+  .device-action-edit {
+    color: #0e7490;
+    border-color: #67e8f9;
+    background: #cffafe;
+  }
+
+  .device-action-toggle {
+    color: #92400e;
+    border-color: #fcd34d;
+    background: #fef3c7;
+  }
+
+  .device-action-delete {
+    color: #be123c;
+    border-color: #fda4af;
+    background: #ffe4e6;
+  }
+
+  html.dark .device-action-test {
+    color: #bfdbfe;
+    border-color: #1d4ed8;
+    background: #172554;
+  }
+
+  html.dark .device-action-edit {
+    color: #a5f3fc;
+    border-color: #0e7490;
+    background: #164e63;
+  }
+
+  html.dark .device-action-toggle {
+    color: #fde68a;
+    border-color: #b45309;
+    background: #451a03;
+  }
+
+  html.dark .device-action-delete {
+    color: #fecdd3;
+    border-color: #be123c;
+    background: #4c0519;
+  }
+
+.register-device-button {
+  display: inline-flex !important;
+  min-height: 2.75rem;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem !important;
+  border: 1px solid #0e7490 !important;
+  border-radius: 1rem !important;
+  background: linear-gradient(
+    135deg,
+    #0891b2,
+    #0f766e
+  ) !important;
+  color: #ffffff !important;
+  font-size: 0.875rem;
+  font-weight: 800;
+  text-decoration: none !important;
+  box-shadow: 0 8px 20px rgba(8, 145, 178, 0.25);
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    background 150ms ease;
+}
+
+.register-device-button,
+.register-device-button span,
+.register-device-button iconify-icon {
+  color: #ffffff !important;
+}
+
+.register-device-button:hover {
+  background: linear-gradient(
+    135deg,
+    #0e7490,
+    #115e59
+  ) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(8, 145, 178, 0.35);
+}
+
+.register-device-button:focus-visible {
+  outline: 3px solid rgba(6, 182, 212, 0.35);
+  outline-offset: 3px;
+}
+
+html.dark .register-device-button {
+  border-color: #22d3ee !important;
+  background: linear-gradient(
+    135deg,
+    #0e7490,
+    #0f766e
+  ) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 22px rgba(34, 211, 238, 0.20);
+}
+
+html.dark .register-device-button:hover {
+  background: linear-gradient(
+    135deg,
+    #0891b2,
+    #0d9488
+  ) !important;
+}
+
+</style>
+{% endblock %}
+
 
 {% block content %}
 <div class="space-y-6" data-can-import="{{ can_import|yesno:'1,0' }}">
@@ -89,6 +276,205 @@
       <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Most recent import time</p>
     </div>
   </section>
+
+<!-- REGISTERED HIKVISION DEVICES -->
+<section class="registered-device-section overflow-hidden rounded-3xl">
+
+  <div class="registered-device-header flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+
+    <div>
+      <h2 class="text-xl font-extrabold">
+        Registered Hikvision Devices
+      </h2>
+
+      <p class="registered-device-muted mt-1 text-sm">
+        Register and manage the biometric devices assigned to your branch.
+      </p>
+    </div>
+
+    <a href="{% url 'admin_biometric_device_create' %}"
+      class="register-device-button">
+
+      <iconify-icon
+        icon="ph:plus-circle-duotone"
+        class="text-lg">
+      </iconify-icon>
+
+      <span>Register Device</span>
+    </a>
+  </div>
+
+  {% if devices %}
+
+    <div class="grid grid-cols-1 gap-5 p-5 md:grid-cols-2 xl:grid-cols-3 sm:p-6">
+
+      {% for device in devices %}
+        <article class="registered-device-card rounded-3xl p-5">
+
+          <div class="flex items-start justify-between gap-4">
+
+            <div class="flex min-w-0 items-center gap-3">
+
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/15 text-cyan-700 dark:text-cyan-300">
+                <iconify-icon
+                  icon="ph:fingerprint-duotone"
+                  class="text-2xl">
+                </iconify-icon>
+              </div>
+
+              <div class="min-w-0">
+                <h3 class="truncate font-black">
+                  {{ device.name }}
+                </h3>
+
+                <p class="registered-device-muted mt-1 truncate text-xs">
+                  {{ device.branch.name }}
+                </p>
+              </div>
+            </div>
+
+            {% if device.is_active %}
+              <span class="shrink-0 rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
+                Active
+              </span>
+            {% else %}
+              <span class="shrink-0 rounded-full border border-slate-300 bg-slate-200 px-3 py-1 text-xs font-extrabold text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200">
+                Inactive
+              </span>
+            {% endif %}
+
+          </div>
+
+          <div class="mt-5 space-y-3 text-sm">
+
+            <div class="registered-device-row flex items-center justify-between gap-4 rounded-xl p-3">
+              <span class="registered-device-muted">
+                IP Address
+              </span>
+
+              <span class="break-all text-right font-bold">
+                {{ device.ip_address }}
+              </span>
+            </div>
+
+            <div class="registered-device-row flex items-center justify-between gap-4 rounded-xl p-3">
+              <span class="registered-device-muted">
+                Port
+              </span>
+
+              <span class="font-bold">
+                {{ device.port }}
+              </span>
+            </div>
+
+            <div class="registered-device-row flex items-center justify-between gap-4 rounded-xl p-3">
+              <span class="registered-device-muted">
+                Username
+              </span>
+
+              <span class="break-all text-right font-bold">
+                {{ device.username }}
+              </span>
+            </div>
+
+          </div>
+
+          <div class="mt-5 grid grid-cols-2 gap-2">
+
+            <form method="post"
+                  action="{% url 'admin_biometric_device_test' device.id %}">
+              {% csrf_token %}
+
+              <button type="submit"
+                      class="registered-device-action device-action-test">
+                <iconify-icon
+                  icon="ph:plugs-connected-duotone"
+                  class="mr-1">
+                </iconify-icon>
+
+                Test
+              </button>
+            </form>
+
+            <a href="{% url 'admin_biometric_device_update' device.id %}"
+               class="registered-device-action device-action-edit">
+              <iconify-icon
+                icon="ph:pencil-simple-duotone"
+                class="mr-1">
+              </iconify-icon>
+
+              Edit
+            </a>
+
+            <form method="post"
+                  action="{% url 'admin_biometric_device_toggle' device.id %}">
+              {% csrf_token %}
+
+              <button type="submit"
+                      class="registered-device-action device-action-toggle">
+
+                <iconify-icon
+                  icon="ph:power-duotone"
+                  class="mr-1">
+                </iconify-icon>
+
+                {% if device.is_active %}
+                  Deactivate
+                {% else %}
+                  Activate
+                {% endif %}
+              </button>
+            </form>
+
+            <form method="post"
+                  action="{% url 'admin_biometric_device_delete' device.id %}"
+                  onsubmit="return confirm('Remove this Hikvision device?');">
+
+              {% csrf_token %}
+
+              <button type="submit"
+                      class="registered-device-action device-action-delete">
+
+                <iconify-icon
+                  icon="ph:trash-duotone"
+                  class="mr-1">
+                </iconify-icon>
+
+                Remove
+              </button>
+            </form>
+
+          </div>
+        </article>
+      {% endfor %}
+
+    </div>
+
+  {% else %}
+
+    <div class="p-6">
+      <div class="registered-device-card rounded-3xl border-2 border-dashed p-8 text-center">
+
+        <iconify-icon
+          icon="ph:fingerprint-duotone"
+          class="text-5xl text-slate-400">
+        </iconify-icon>
+
+        <h3 class="mt-4 font-black">
+          No Hikvision device registered
+        </h3>
+
+        <p class="registered-device-muted mt-2 text-sm">
+          Register the Hikvision device used by your branch before
+          synchronizing attendance.
+        </p>
+
+      </div>
+    </div>
+
+  {% endif %}
+</section>
+
 
   <!-- TOP WORK AREA -->
   <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
@@ -462,11 +848,17 @@
         <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Imported and synced records from your device or files.</p>
       </div>
 
-      <a href="{% url 'admin_biometrics_sync' %}"
-         class="inline-flex items-center justify-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm font-extrabold text-accent transition hover:bg-accent/20">
-        <iconify-icon icon="ph:arrows-clockwise-duotone"></iconify-icon>
-        Sync Now
-      </a>
+      <form method="post" action="{% url 'admin_biometrics_sync' %}">
+        {% csrf_token %}
+
+        <button type="submit"
+                class="inline-flex items-center justify-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm font-extrabold text-accent transition hover:bg-accent/20">
+
+          <iconify-icon icon="ph:arrows-clockwise-duotone"></iconify-icon>
+          Sync Now
+        </button>
+      </form>
+
     </div>
 
     {% if records %}
