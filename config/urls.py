@@ -10,15 +10,15 @@ from django.views.static import serve
 
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("", include("core.urls")),
-
-    # Serves collected CSS/JS files on Railway.
+    # Must be first so core.urls cannot catch /static/... requests.
     re_path(
         r"^static/(?P<path>.*)$",
         serve,
         {"document_root": settings.STATIC_ROOT},
     ),
+
+    path("admin/", admin.site.urls),
+    path("", include("core.urls")),
 ]
 
 if settings.DEBUG:
