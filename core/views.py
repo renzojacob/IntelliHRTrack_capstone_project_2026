@@ -22,7 +22,8 @@ from django.contrib import messages
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
@@ -280,6 +281,29 @@ def logout_ui(request):
     response["Pragma"] = "no-cache"
     response["Expires"] = "0"
     return response
+
+@login_required
+@never_cache
+def change_password(request):
+    form = PasswordChangeForm(request.user, request.POST or None)
+
+    for field in form.fields.values():
+        field.widget.attrs.update({
+            "class": "mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-200",
+        })
+
+    if request.method == "POST":
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)
+            messages.success(request, "Your password was changed successfully.")
+            return redirect("change_password")
+
+        messages.error(request, "Please correct the password errors below.")
+
+    return render(request, "auth/change_password.html", {
+        "form": form,
+    })
 
 
 def signup_ui(request):
@@ -2791,11 +2815,16 @@ def employee_analytics(request):
 def employee_notifications(request):
     return render(request, "employee/notification.html", {"current": "notification"})
 
-
 @login_required
 @never_cache
 def employee_profile(request):
-    return render(request, "employee/setting_&_profile.html", {"current": "profile"})
+    profile = getattr(request.user, "profile", None)
+
+    return render(request, "employee/setting_&_profile.html", {
+        "current": "profile",
+        "profile": profile,
+        "display_name": request.user.get_full_name() or request.user.username,
+    })
 
 
 # =========================

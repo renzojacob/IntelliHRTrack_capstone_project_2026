@@ -10,6 +10,8 @@ urlpatterns = [
     path("auth/signup/", views.signup_ui, name="signup_ui"),
     path("auth/logout/", views.logout_ui, name="logout"),
 
+    path("account/change-password/", views.change_password, name="change_password"),
+    
     # -------------------------
     # Admin UI
     # -------------------------
