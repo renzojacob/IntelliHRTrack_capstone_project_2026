@@ -152,7 +152,10 @@
               <input type="checkbox" name="remember" class="rounded border-slate-300">
               Remember me
             </label>
-            <a href="#" class="text-accent hover:underline font-semibold">Forgot password?</a>
+
+            <a href="{% url 'password_reset' %}" class="text-accent hover:underline font-semibold">
+              Forgot password?
+            </a>
           </div>
 
           <!-- Submit -->

@@ -1,166 +1,381 @@
-from django.urls import path
+from django.contrib.auth import views as auth_views
+from django.urls import path, reverse_lazy
+
 from . import views
 
+
 urlpatterns = [
+    # =========================================================
     # Landing Page
+    # =========================================================
     path("", views.index, name="index"),
 
-    # auth
+    # =========================================================
+    # Authentication
+    # =========================================================
     path("auth/login/", views.login_ui, name="login_ui"),
     path("auth/signup/", views.signup_ui, name="signup_ui"),
     path("auth/logout/", views.logout_ui, name="logout"),
 
-    path("account/change-password/", views.change_password, name="change_password"),
-    
-    # -------------------------
-    # Admin UI
-    # -------------------------
-    path("admin-ui/dashboard/", views.admin_dashboard, name="admin_dashboard"),
-    path("admin-ui/leave/", views.admin_leave_approval, name="admin_leave"),
-    path("admin-ui/leave/<int:leave_id>/approve/", views.admin_leave_approve, name="admin_leave_approve"),
-    path("admin-ui/leave/<int:leave_id>/reject/", views.admin_leave_reject, name="admin_leave_reject"),
-
-    path("admin-ui/biometrics/", views.admin_biometrics_attendance, name="admin_biometrics"),
-    path("admin-ui/biometrics/import/", views.admin_biometrics_import, name="admin_biometrics_import"),
-    path("admin-ui/biometrics/template/", views.admin_biometrics_template, name="admin_biometrics_template"),
-    path("admin-ui/biometrics/export/", views.admin_biometrics_export, name="admin_biometrics_export"),
-
-    path("admin-ui/payroll/batch/<int:batch_id>/finalize/",
-    views.admin_finalize_payroll_batch, name="admin_finalize_payroll_batch",),
-
-    path("admin-ui/payroll/batch/<int:batch_id>/reopen/", views.admin_reopen_payroll_batch, name="admin_reopen_payroll_batch",),
+    # Change Password for authenticated users
     path(
-    "admin-ui/payroll/batch/<int:batch_id>/",
-    views.admin_payroll_batch_detail,
-    name="admin_payroll_batch_detail",
-    ),
-    path(
-    "admin-ui/payroll/batch/<int:batch_id>/finalize/",
-    views.admin_finalize_payroll_batch,
-    name="admin_finalize_payroll_batch",
+        "account/change-password/",
+        views.change_password,
+        name="change_password",
     ),
 
+    # Forgot Password: enter email address
+    path(
+        "auth/forgot-password/",
+        auth_views.PasswordResetView.as_view(
+            template_name="auth/password_reset.html",
+            email_template_name="auth/password_reset_email.html",
+            subject_template_name="auth/password_reset_subject.txt",
+            success_url=reverse_lazy("password_reset_done"),
+        ),
+        name="password_reset",
+    ),
+
+    # Forgot Password: email sent confirmation
+    path(
+        "auth/forgot-password/sent/",
+        auth_views.PasswordResetDoneView.as_view(
+            template_name="auth/password_reset_done.html",
+        ),
+        name="password_reset_done",
+    ),
+
+    # Forgot Password: create a new password
+    path(
+        "auth/reset-password/<uidb64>/<token>/",
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name="auth/password_reset_confirm.html",
+            success_url=reverse_lazy("password_reset_complete"),
+        ),
+        name="password_reset_confirm",
+    ),
+
+    # Forgot Password: password reset completed
+    path(
+        "auth/reset-password/complete/",
+        auth_views.PasswordResetCompleteView.as_view(
+            template_name="auth/password_reset_complete.html",
+        ),
+        name="password_reset_complete",
+    ),
+
+    # =========================================================
+    # Admin Dashboard and Leave Management
+    # =========================================================
+    path(
+        "admin-ui/dashboard/",
+        views.admin_dashboard,
+        name="admin_dashboard",
+    ),
+    path(
+        "admin-ui/leave/",
+        views.admin_leave_approval,
+        name="admin_leave",
+    ),
+    path(
+        "admin-ui/leave/<int:leave_id>/approve/",
+        views.admin_leave_approve,
+        name="admin_leave_approve",
+    ),
+    path(
+        "admin-ui/leave/<int:leave_id>/reject/",
+        views.admin_leave_reject,
+        name="admin_leave_reject",
+    ),
+
+    # =========================================================
+    # Admin Biometrics and Attendance
+    # =========================================================
+    path(
+        "admin-ui/biometrics/",
+        views.admin_biometrics_attendance,
+        name="admin_biometrics",
+    ),
+    path(
+        "admin-ui/biometrics/import/",
+        views.admin_biometrics_import,
+        name="admin_biometrics_import",
+    ),
+    path(
+        "admin-ui/biometrics/template/",
+        views.admin_biometrics_template,
+        name="admin_biometrics_template",
+    ),
+    path(
+        "admin-ui/biometrics/export/",
+        views.admin_biometrics_export,
+        name="admin_biometrics_export",
+    ),
+    path(
+        "admin-ui/biometrics/sync/",
+        views.admin_biometrics_sync_now,
+        name="admin_biometrics_sync",
+    ),
+
+    # Admin Holidays
+    path(
+        "admin-ui/biometrics/holidays/create/",
+        views.admin_biometrics_create_holiday,
+        name="admin_biometrics_create_holiday",
+    ),
+    path(
+        "admin-ui/biometrics/holidays/<int:holiday_id>/update/",
+        views.admin_biometrics_update_holiday,
+        name="admin_biometrics_update_holiday",
+    ),
+    path(
+        "admin-ui/biometrics/holidays/<int:holiday_id>/delete/",
+        views.admin_biometrics_delete_holiday,
+        name="admin_biometrics_delete_holiday",
+    ),
+
+    # Admin Travel Orders
+    path(
+        "admin-ui/travel/add/",
+        views.admin_add_travel,
+        name="admin_add_travel",
+    ),
+    path(
+        "admin-ui/travel/<int:travel_id>/delete/",
+        views.admin_delete_travel,
+        name="admin_delete_travel",
+    ),
+
+    # =========================================================
+    # Admin Employee Management
+    # =========================================================
+    path(
+        "admin-ui/employees/",
+        views.admin_employee_management,
+        name="admin_employees",
+    ),
+    path(
+        "admin-ui/employees/approve/<int:profile_id>/",
+        views.approve_user,
+        name="approve_user",
+    ),
+    path(
+        "admin-ui/employees/reject/<int:profile_id>/",
+        views.reject_user,
+        name="reject_user",
+    ),
+
+    # =========================================================
+    # Admin Payroll Management
+    # =========================================================
+    path(
+        "admin-ui/payroll/",
+        views.admin_payroll,
+        name="admin_payroll",
+    ),
+    path(
+        "admin-ui/payroll/preview/",
+        views.admin_payroll_preview_api,
+        name="admin_payroll_preview_api",
+    ),
+    path(
+        "admin-ui/payroll/process/",
+        views.admin_payroll_process_batch,
+        name="admin_payroll_process_batch",
+    ),
+    path(
+        "admin-ui/payroll/payslip/<int:profile_id>/<int:period_id>/",
+        views.admin_payslip,
+        name="admin_payslip",
+    ),
+    path(
+        "admin-ui/payroll/batch/<int:batch_id>/",
+        views.admin_payroll_batch_detail,
+        name="admin_payroll_batch_detail",
+    ),
+    path(
+        "admin-ui/payroll/batch/<int:batch_id>/finalize/",
+        views.admin_finalize_payroll_batch,
+        name="admin_finalize_payroll_batch",
+    ),
     path(
         "admin-ui/payroll/batch/<int:batch_id>/reopen/",
         views.admin_reopen_payroll_batch,
         name="admin_reopen_payroll_batch",
     ),
 
-    #hikvision_sync
-    path("admin-ui/biometrics/sync/", views.admin_biometrics_sync_now, name="admin_biometrics_sync"),
-
-    #admin holidays
-    path("admin-ui/biometrics/holidays/create/", views.admin_biometrics_create_holiday, name="admin_biometrics_create_holiday"),
-    path("admin-ui/biometrics/holidays/<int:holiday_id>/update/", views.admin_biometrics_update_holiday, name="admin_biometrics_update_holiday"),
-    path("admin-ui/biometrics/holidays/<int:holiday_id>/delete/", views.admin_biometrics_delete_holiday, name="admin_biometrics_delete_holiday"),
-
-    #travell
-    path("admin-ui/travel/add/", views.admin_add_travel, name="admin_add_travel"),
-    path("admin-ui/travel/<int:travel_id>/delete/", views.admin_delete_travel, name="admin_delete_travel"),
-
-    
-    # Employee Management
-    path("admin-ui/employees/", views.admin_employee_management, name="admin_employees"),
-    path("admin-ui/employees/approve/<int:profile_id>/", views.approve_user, name="approve_user"),
-    path("admin-ui/employees/reject/<int:profile_id>/", views.reject_user, name="reject_user"),
-
-        # Payroll Management
-    path("admin-ui/payroll/", views.admin_payroll, name="admin_payroll"),
-    path("admin-ui/payroll/preview/", views.admin_payroll_preview_api, name="admin_payroll_preview_api"),
-    path("admin-ui/payroll/process/", views.admin_payroll_process_batch, name="admin_payroll_process_batch"),
+    # Live DTR JSON API
     path(
-    "admin-ui/payroll/payslip/<int:profile_id>/<int:period_id>/",
-    views.admin_payslip,
-    name="admin_payslip",
+        "admin-ui/payroll/dtr/<int:profile_id>/",
+        views.admin_employee_dtr_api,
+        name="admin_employee_dtr_api",
     ),
 
-    # Live DTR JSON API
-    path("admin-ui/payroll/dtr/<int:profile_id>/", views.admin_employee_dtr_api, name="admin_employee_dtr_api"),
-
-    # Saved processed DTR print page
-    path("admin-ui/payroll/item/<int:item_id>/dtr/", views.admin_payroll_item_dtr_print, name="admin_payroll_item_dtr_print"),
+    # Saved Processed DTR
+    path(
+        "admin-ui/payroll/item/<int:item_id>/dtr/",
+        views.admin_payroll_item_dtr_print,
+        name="admin_payroll_item_dtr_print",
+    ),
     path(
         "admin-ui/payroll/item/<int:item_id>/dtr/finalize/",
         views.admin_finalize_payroll_item_dtr,
         name="admin_finalize_payroll_item_dtr",
     ),
-
     path(
         "admin-ui/payroll/dtr/<int:dtr_id>/unlock/",
         views.admin_unlock_finalized_dtr,
         name="admin_unlock_finalized_dtr",
     ),
 
+    # =========================================================
+    # Admin Scheduling, Reports, Analytics and System
+    # =========================================================
+    path(
+        "admin-ui/scheduling/",
+        views.admin_shift_scheduling,
+        name="admin_scheduling",
+    ),
+    path(
+        "admin-ui/reports/",
+        views.admin_reports,
+        name="admin_reports",
+    ),
+    path(
+        "admin-ui/analytics/",
+        views.admin_analytics,
+        name="admin_analytics",
+    ),
+    path(
+        "admin-ui/analytics/api/",
+        views.admin_analytics_api,
+        name="admin_analytics_api",
+    ),
+    path(
+        "admin-ui/analytics/employee-risks/",
+        views.admin_analytics_employee_risks_api,
+        name="admin_analytics_employee_risks_api",
+    ),
+    path(
+        "admin-ui/analytics/insights/",
+        views.admin_analytics_insights_api,
+        name="admin_analytics_insights_api",
+    ),
+    path(
+        "admin-ui/system/",
+        views.admin_system_administration,
+        name="admin_system",
+    ),
 
-
-
-    path("admin-ui/scheduling/", views.admin_shift_scheduling, name="admin_scheduling"),
-    path("admin-ui/reports/", views.admin_reports, name="admin_reports"),
-
-
-    path("admin-ui/analytics/", views.admin_analytics, name="admin_analytics"),
-    path("admin-ui/analytics/api/", views.admin_analytics_api, name="admin_analytics_api"),
-    path("admin-ui/analytics/employee-risks/", views.admin_analytics_employee_risks_api, name="admin_analytics_employee_risks_api"),
-    path("admin-ui/analytics/insights/", views.admin_analytics_insights_api, name="admin_analytics_insights_api"),
-
-
-
-    path("admin-ui/system/", views.admin_system_administration, name="admin_system"),
-
-    #attendance biometrics IP register
+    # =========================================================
+    # Biometric Device Registration
+    # =========================================================
     path(
         "admin-ui/biometrics/devices/create/",
         views.admin_biometric_device_create,
         name="admin_biometric_device_create",
     ),
-
     path(
         "admin-ui/biometrics/devices/<int:device_id>/update/",
         views.admin_biometric_device_update,
         name="admin_biometric_device_update",
     ),
-
     path(
         "admin-ui/biometrics/devices/<int:device_id>/test/",
         views.admin_biometric_device_test,
         name="admin_biometric_device_test",
     ),
-
     path(
         "admin-ui/biometrics/devices/<int:device_id>/toggle/",
         views.admin_biometric_device_toggle,
         name="admin_biometric_device_toggle",
     ),
-
     path(
         "admin-ui/biometrics/devices/<int:device_id>/delete/",
         views.admin_biometric_device_delete,
         name="admin_biometric_device_delete",
     ),
 
+    # =========================================================
     # Attendance CRUD
-    path("admin-ui/biometrics/records/new/", views.attendance_create, name="admin_attendance_create"),
-    path("admin-ui/biometrics/records/<int:pk>/", views.attendance_detail, name="admin_attendance_detail"),
-    path("admin-ui/biometrics/records/<int:pk>/edit/", views.attendance_update, name="admin_attendance_update"),
-    path("admin-ui/biometrics/records/<int:pk>/delete/", views.attendance_delete, name="admin_attendance_delete"),
+    # =========================================================
+    path(
+        "admin-ui/biometrics/records/new/",
+        views.attendance_create,
+        name="admin_attendance_create",
+    ),
+    path(
+        "admin-ui/biometrics/records/<int:pk>/",
+        views.attendance_detail,
+        name="admin_attendance_detail",
+    ),
+    path(
+        "admin-ui/biometrics/records/<int:pk>/edit/",
+        views.attendance_update,
+        name="admin_attendance_update",
+    ),
+    path(
+        "admin-ui/biometrics/records/<int:pk>/delete/",
+        views.attendance_delete,
+        name="admin_attendance_delete",
+    ),
 
-    # -------------------------
+    # =========================================================
     # Employee UI
-    # -------------------------
-    path("employee/dashboard/", views.employee_dashboard, name="employee_dashboard"),
-    path("employee/attendance/", views.employee_attendance, name="employee_attendance"),
-    path("employee/schedule/", views.employee_schedule, name="employee_schedule"),
-    path("employee/leave/", views.employee_leave, name="employee_leave"),
-    path("employee/leave/<int:leave_id>/cancel/", views.employee_leave_cancel, name="employee_leave_cancel"),
-
-
-    path("employee/payroll/", views.employee_payroll, name="employee_payroll"),
-    path("employee/attendance/print/", views.employee_dtr_print, name="employee_dtr_print"),
-    path("employee/payroll/payslip/<int:item_id>/", views.employee_payslip_print, name="employee_payslip_print"),
-
-    path("employee/analytics/", views.employee_analytics, name="employee_analytics"),
-    path("employee/notifications/", views.employee_notifications, name="employee_notifications"),
-    path("employee/profile/", views.employee_profile, name="employee_profile"),
-
-    
+    # =========================================================
+    path(
+        "employee/dashboard/",
+        views.employee_dashboard,
+        name="employee_dashboard",
+    ),
+    path(
+        "employee/attendance/",
+        views.employee_attendance,
+        name="employee_attendance",
+    ),
+    path(
+        "employee/schedule/",
+        views.employee_schedule,
+        name="employee_schedule",
+    ),
+    path(
+        "employee/leave/",
+        views.employee_leave,
+        name="employee_leave",
+    ),
+    path(
+        "employee/leave/<int:leave_id>/cancel/",
+        views.employee_leave_cancel,
+        name="employee_leave_cancel",
+    ),
+    path(
+        "employee/payroll/",
+        views.employee_payroll,
+        name="employee_payroll",
+    ),
+    path(
+        "employee/attendance/print/",
+        views.employee_dtr_print,
+        name="employee_dtr_print",
+    ),
+    path(
+        "employee/payroll/payslip/<int:item_id>/",
+        views.employee_payslip_print,
+        name="employee_payslip_print",
+    ),
+    path(
+        "employee/analytics/",
+        views.employee_analytics,
+        name="employee_analytics",
+    ),
+    path(
+        "employee/notifications/",
+        views.employee_notifications,
+        name="employee_notifications",
+    ),
+    path(
+        "employee/profile/",
+        views.employee_profile,
+        name="employee_profile",
+    ),
 ]
