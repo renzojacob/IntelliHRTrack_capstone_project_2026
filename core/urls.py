@@ -117,6 +117,17 @@ urlpatterns = [
         name="admin_biometrics_sync",
     ),
 
+    path(
+    "api/biometrics/connector/next/",
+    views.biometric_connector_next_request,
+    name="biometric_connector_next_request",
+    ),
+    path(
+        "api/biometrics/connector/requests/<int:request_id>/result/",
+        views.biometric_connector_submit_result,
+        name="biometric_connector_submit_result",
+    ),
+
     # Admin Holidays
     path(
         "admin-ui/biometrics/holidays/create/",

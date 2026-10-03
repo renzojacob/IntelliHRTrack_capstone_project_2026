@@ -1,6 +1,8 @@
 # core/models.py
 
 from decimal import Decimal
+import hashlib
+import hmac
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -777,6 +779,181 @@ class BiometricDevice(models.Model):
     def __str__(self):
         return f"{self.name} ({self.ip_address})"
 
+class BranchConnector(models.Model):
+    """
+    Represents the local Windows connector installed at one branch.
+
+    The connector uses a unique secret token to communicate with the
+    hosted IntelliHRTrack website. Only the SHA-256 hash of that token
+    is stored in the database.
+    """
+
+    branch = models.OneToOneField(
+        Branch,
+        on_delete=models.CASCADE,
+        related_name="biometric_connector",
+    )
+
+    name = models.CharField(
+        max_length=150,
+        default="Branch Hikvision Connector",
+    )
+
+    token_hash = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+    )
+
+    last_seen_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    last_ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        db_table = "core_branchconnector"
+        ordering = ["branch__name"]
+
+    @staticmethod
+    def hash_token(raw_token):
+        return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+    def set_token(self, raw_token):
+        self.token_hash = self.hash_token(raw_token)
+
+    def check_token(self, raw_token):
+        supplied_hash = self.hash_token(raw_token)
+        return hmac.compare_digest(self.token_hash, supplied_hash)
+
+    def __str__(self):
+        return f"{self.branch.name} Connector"
+
+
+class BiometricSyncRequest(models.Model):
+    """
+    A synchronization job created by the hosted Sync Now button.
+
+    The connector for the same branch claims this request, reads the
+    Hikvision device locally and uploads the resulting attendance data.
+    """
+
+    STATUS_PENDING = "PENDING"
+    STATUS_PROCESSING = "PROCESSING"
+    STATUS_COMPLETED = "COMPLETED"
+    STATUS_FAILED = "FAILED"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_PROCESSING, "Processing"),
+        (STATUS_COMPLETED, "Completed"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    branch = models.ForeignKey(
+        Branch,
+        on_delete=models.PROTECT,
+        related_name="biometric_sync_requests",
+    )
+
+    device = models.ForeignKey(
+        BiometricDevice,
+        on_delete=models.PROTECT,
+        related_name="sync_requests",
+    )
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_biometric_syncs",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+    )
+
+    date_from = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    date_to = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    total_received = models.PositiveIntegerField(default=0)
+    records_created = models.PositiveIntegerField(default=0)
+    records_skipped = models.PositiveIntegerField(default=0)
+    records_failed = models.PositiveIntegerField(default=0)
+
+    error_message = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+    )
+
+    claimed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        db_table = "core_biometricsyncrequest"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["branch", "status", "created_at"],
+                name="bio_sync_branch_status_idx",
+            ),
+            models.Index(
+                fields=["device", "status"],
+                name="bio_sync_device_status_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"Sync #{self.pk} - {self.branch.name} - "
+            f"{self.device.name} - {self.status}"
+        )
+
+        
 
 #employees on travel feature
 class TravelOrder(models.Model):

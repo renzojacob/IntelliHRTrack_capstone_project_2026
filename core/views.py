@@ -33,6 +33,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.cache import never_cache
 from .models import BiometricDevice
 from .hikvision_sync import (
@@ -62,7 +63,10 @@ from .models import (
     FinalizedDTR,
     TravelOrder,
     OvertimeRequest,
+    BranchConnector,
+    BiometricSyncRequest,
 )
+
 from .payroll_calculations import (
     as_decimal,
     bir_withholding_tax,
@@ -782,74 +786,442 @@ def _scoped_profiles_for_admin(request):
     except UserProfile.DoesNotExist:
         return qs.none()
 
-# Sync active Hikvision devices for the admin's permitted branch
+# Create branch-specific synchronization requests.
+# Railway does not connect directly to the private Hikvision IP.
+# The local connector installed at each branch processes these requests.
 @login_required
 @require_POST
 def admin_biometrics_sync_now(request):
     if not (request.user.is_staff or request.user.is_superuser):
         raise PermissionDenied
 
-    devices = (
+    devices = list(
         _scoped_biometric_devices_for_admin(request)
         .filter(is_active=True)
+        .select_related("branch")
     )
 
-    if not devices.exists():
+    if not devices:
         messages.error(
             request,
             "No active Hikvision device is registered for your branch.",
         )
         return redirect("admin_biometrics")
 
-    successful_devices = 0
-    failed_devices = 0
-    total_created = 0
+    created_requests = 0
+    already_pending = 0
+    branches_without_connector = set()
 
     for device in devices:
-        connection = test_hikvision_connection(device)
+        existing_request = BiometricSyncRequest.objects.filter(
+            device=device,
+            status__in=[
+                BiometricSyncRequest.STATUS_PENDING,
+                BiometricSyncRequest.STATUS_PROCESSING,
+            ],
+        ).first()
 
-        if not connection["ok"]:
-            failed_devices += 1
-
-            messages.error(
-                request,
-                f"{device.name}: {connection['message']}",
-            )
-
+        if existing_request:
+            already_pending += 1
             continue
 
-        try:
-            created_count = fetch_hikvision_attendance(device)
+        connector_exists = BranchConnector.objects.filter(
+            branch=device.branch,
+            is_active=True,
+        ).exists()
 
-            total_created += int(created_count or 0)
-            successful_devices += 1
+        if not connector_exists:
+            branches_without_connector.add(device.branch.name)
 
-        except Exception as exc:
-            failed_devices += 1
+        BiometricSyncRequest.objects.create(
+            branch=device.branch,
+            device=device,
+            requested_by=request.user,
+            status=BiometricSyncRequest.STATUS_PENDING,
+        )
 
-            messages.error(
-                request,
-                f"Sync failed for {device.name}: {exc}",
-            )
+        created_requests += 1
 
-    if successful_devices:
+    if created_requests:
         messages.success(
             request,
             (
-                f"Synchronization completed for {successful_devices} "
-                f"device(s). {total_created} new attendance record(s) "
-                f"were added."
+                f"{created_requests} biometric synchronization request(s) "
+                "were added to the queue. The appropriate branch connector "
+                "will process them."
             ),
         )
 
-    if failed_devices:
+    if already_pending:
+        messages.info(
+            request,
+            (
+                f"{already_pending} device(s) already have a pending or "
+                "processing synchronization request."
+            ),
+        )
+
+    if branches_without_connector:
+        branch_names = ", ".join(sorted(branches_without_connector))
+
         messages.warning(
             request,
-            f"{failed_devices} device(s) could not be synchronized.",
+            (
+                "The request was queued, but no active local connector is "
+                f"registered yet for: {branch_names}."
+            ),
         )
 
     return redirect("admin_biometrics")
 
+def _authenticate_branch_connector(request):
+    """
+    Authenticate a branch connector using:
+
+        Authorization: Bearer CONNECTOR_TOKEN
+
+    Returns the active BranchConnector or None.
+    """
+
+    authorization = (request.headers.get("Authorization") or "").strip()
+
+    if not authorization.startswith("Bearer "):
+        return None
+
+    raw_token = authorization[7:].strip()
+
+    if not raw_token:
+        return None
+
+    token_hash = BranchConnector.hash_token(raw_token)
+
+    connector = (
+        BranchConnector.objects
+        .select_related("branch")
+        .filter(
+            token_hash=token_hash,
+            is_active=True,
+        )
+        .first()
+    )
+
+    if connector is None:
+        return None
+
+    if not connector.check_token(raw_token):
+        return None
+
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    remote_address = request.META.get("REMOTE_ADDR")
+
+    if forwarded_for:
+        remote_address = forwarded_for.split(",")[0].strip()
+
+    connector.last_seen_at = timezone.now()
+
+    if remote_address:
+        connector.last_ip_address = remote_address
+
+    connector.save(
+        update_fields=[
+            "last_seen_at",
+            "last_ip_address",
+            "updated_at",
+        ]
+    )
+
+    return connector
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def biometric_connector_next_request(request):
+    """
+    Return and claim the oldest pending synchronization request belonging
+    to the authenticated connector's branch.
+    """
+
+    connector = _authenticate_branch_connector(request)
+
+    if connector is None:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Invalid or missing connector token.",
+            },
+            status=401,
+        )
+
+    with transaction.atomic():
+        sync_request = (
+            BiometricSyncRequest.objects
+            .select_for_update()
+            .select_related("branch", "device")
+            .filter(
+                branch=connector.branch,
+                status=BiometricSyncRequest.STATUS_PENDING,
+                device__is_active=True,
+            )
+            .order_by("created_at")
+            .first()
+        )
+
+        if sync_request is None:
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "request": None,
+                    "message": "No pending synchronization request.",
+                }
+            )
+
+        sync_request.status = BiometricSyncRequest.STATUS_PROCESSING
+        sync_request.claimed_at = timezone.now()
+        sync_request.error_message = ""
+
+        sync_request.save(
+            update_fields=[
+                "status",
+                "claimed_at",
+                "error_message",
+                "updated_at",
+            ]
+        )
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "request": {
+                "id": sync_request.id,
+                "branch": {
+                    "id": sync_request.branch_id,
+                    "name": sync_request.branch.name,
+                },
+                "device": {
+                    "id": sync_request.device_id,
+                    "name": sync_request.device.name,
+                    "ip_address": sync_request.device.ip_address,
+                    "port": sync_request.device.port,
+                    "username": sync_request.device.username,
+                    "password": sync_request.device.password,
+                },
+                "date_from": (
+                    sync_request.date_from.isoformat()
+                    if sync_request.date_from
+                    else None
+                ),
+                "date_to": (
+                    sync_request.date_to.isoformat()
+                    if sync_request.date_to
+                    else None
+                ),
+            },
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def biometric_connector_submit_result(request, request_id):
+    """
+    Receive normalized attendance events from the local branch connector.
+
+    The branch is always obtained from the connector token. The connector
+    cannot choose or override another branch.
+    """
+
+    connector = _authenticate_branch_connector(request)
+
+    if connector is None:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Invalid or missing connector token.",
+            },
+            status=401,
+        )
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "The request body must contain valid JSON.",
+            },
+            status=400,
+        )
+
+    sync_request = (
+        BiometricSyncRequest.objects
+        .select_related("branch", "device")
+        .filter(
+            id=request_id,
+            branch=connector.branch,
+        )
+        .first()
+    )
+
+    if sync_request is None:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Synchronization request not found for this branch.",
+            },
+            status=404,
+        )
+
+    reported_success = bool(payload.get("success", False))
+
+    if not reported_success:
+        error_message = str(
+            payload.get("error") or "The local connector reported a failure."
+        )[:5000]
+
+        sync_request.status = BiometricSyncRequest.STATUS_FAILED
+        sync_request.error_message = error_message
+        sync_request.completed_at = timezone.now()
+
+        sync_request.save(
+            update_fields=[
+                "status",
+                "error_message",
+                "completed_at",
+                "updated_at",
+            ]
+        )
+
+        return JsonResponse(
+            {
+                "ok": True,
+                "status": sync_request.status,
+                "message": "Failure report saved.",
+            }
+        )
+
+    events = payload.get("events", [])
+
+    if not isinstance(events, list):
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "The events value must be a JSON list.",
+            },
+            status=400,
+        )
+
+    created_count = 0
+    skipped_count = 0
+    failed_count = 0
+
+    allowed_statuses = {
+        AttendanceRecord.STATUS_CHECKIN,
+        AttendanceRecord.STATUS_CHECKOUT,
+        AttendanceRecord.STATUS_UNKNOWN,
+    }
+
+    with transaction.atomic():
+        for event in events:
+            try:
+                if not isinstance(event, dict):
+                    raise ValueError("Event must be a JSON object.")
+
+                employee_id = str(
+                    event.get("employee_id") or ""
+                ).strip()
+
+                timestamp_text = str(
+                    event.get("timestamp") or ""
+                ).strip()
+
+                attendance_status = str(
+                    event.get("attendance_status")
+                    or AttendanceRecord.STATUS_UNKNOWN
+                ).strip().upper()
+
+                if not employee_id:
+                    raise ValueError("Missing employee_id.")
+
+                parsed_timestamp = parse_datetime(timestamp_text)
+
+                if parsed_timestamp is None:
+                    raise ValueError(
+                        f"Invalid timestamp: {timestamp_text}"
+                    )
+
+                if timezone.is_naive(parsed_timestamp):
+                    parsed_timestamp = timezone.make_aware(
+                        parsed_timestamp,
+                        timezone.get_current_timezone(),
+                    )
+
+                if attendance_status not in allowed_statuses:
+                    attendance_status = AttendanceRecord.STATUS_UNKNOWN
+
+                raw_row = event.get("raw_row", {})
+
+                if not isinstance(raw_row, dict):
+                    raw_row = {
+                        "connector_raw_value": str(raw_row),
+                    }
+
+                _, created = AttendanceRecord.objects.get_or_create(
+                    employee_id=employee_id,
+                    timestamp=parsed_timestamp,
+                    attendance_status=attendance_status,
+                    branch=connector.branch,
+                    defaults={
+                        "full_name": str(
+                            event.get("full_name") or ""
+                        ).strip()[:255],
+                        "department": str(
+                            event.get("department") or ""
+                        ).strip()[:255],
+                        "raw_row": raw_row,
+                    },
+                )
+
+                if created:
+                    created_count += 1
+                else:
+                    skipped_count += 1
+
+            except Exception:
+                failed_count += 1
+
+        sync_request.status = BiometricSyncRequest.STATUS_COMPLETED
+        sync_request.total_received = len(events)
+        sync_request.records_created = created_count
+        sync_request.records_skipped = skipped_count
+        sync_request.records_failed = failed_count
+        sync_request.error_message = ""
+        sync_request.completed_at = timezone.now()
+
+        sync_request.save(
+            update_fields=[
+                "status",
+                "total_received",
+                "records_created",
+                "records_skipped",
+                "records_failed",
+                "error_message",
+                "completed_at",
+                "updated_at",
+            ]
+        )
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "status": sync_request.status,
+            "request_id": sync_request.id,
+            "total_received": len(events),
+            "records_created": created_count,
+            "records_skipped": skipped_count,
+            "records_failed": failed_count,
+        }
+    )
+    
 
 #===================
 #Add and delete employee travel feature
