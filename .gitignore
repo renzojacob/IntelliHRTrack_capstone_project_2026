@@ -46,3 +46,6 @@ node_modules/
 
 # Generated payroll/demo exports
 payroll_defense_export.json
+
+
+hikvision_connector.log
