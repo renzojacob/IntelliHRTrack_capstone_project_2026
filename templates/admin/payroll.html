@@ -1512,7 +1512,7 @@
       totalLate += late;
       totalUndertime += undertime;
 
-      if (!String(status).toLowerCase().includes("absent")) {
+      if (["present", "official travel", "official business"].includes(String(status).trim().toLowerCase())) {
         presentDays += 1;
       }
 
