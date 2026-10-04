@@ -5,6 +5,7 @@ contains the money rules that must remain identical for previews, batches,
 payslips, and tests.
 """
 
+from calendar import monthrange
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 
@@ -424,3 +425,24 @@ def permanent_statutory_contributions(monthly_basic_salary, pay_mode):
         "gsis_employee": money(gsis_employee * factor),
         "gsis_employer": money(gsis_employer * factor),
     }
+
+
+def payroll_period_validation_error(start_date, end_date, pay_mode):
+    """Validate calendar-month salary schedules before selection or processing."""
+    if start_date > end_date:
+        return "The start date cannot be later than the end date."
+    if (start_date.year, start_date.month) != (end_date.year, end_date.month):
+        return "Payroll dates must be within the same calendar month."
+    last_day = monthrange(start_date.year, start_date.month)[1]
+    expected = {
+        "MONTHLY": (1, last_day, "Monthly requires the first through the last day of the month."),
+        "FIRST_HALF": (1, 15, "1st half requires the 1st through the 15th of the month."),
+        "SECOND_HALF": (16, last_day, "2nd half requires the 16th through the last day of the month."),
+    }
+    schedule = expected.get(str(pay_mode or "").upper())
+    if schedule is None:
+        return "Select a valid salary schedule."
+    first, last, error = schedule
+    if (start_date.day, end_date.day) != (first, last):
+        return error
+    return ""

@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .models import Branch, PayrollPeriod, UserProfile
+from .payroll_calculations import payroll_period_validation_error
 
 
 def _payroll_period_branch_for_admin(request):
@@ -59,6 +60,11 @@ def admin_payroll_period_create(request):
     }
     if pay_mode not in valid_modes:
         messages.error(request, "Select a valid salary schedule.")
+        return redirect(payroll_url)
+
+    validation_error = payroll_period_validation_error(start_date, end_date, pay_mode)
+    if validation_error:
+        messages.error(request, validation_error)
         return redirect(payroll_url)
 
     mode_labels = {
