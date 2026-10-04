@@ -72,6 +72,7 @@ from .payroll_calculations import (
     bir_withholding_tax,
     contractual_earned_compensation,
     credited_work_minutes,
+    payroll_period_validation_error,
     optional_monthly_deduction_for_period,
     overtime_eligibility,
     permanent_statutory_contributions,
@@ -4560,7 +4561,7 @@ def _late_cutoff_for_day(branch: Branch, d: date, rules: PayrollRule):
         return rules.flag_ceremony_cutoff_time or time(8, 0)
 
     normal_start = rules.work_start_time or time(8, 0)
-    grace = int(rules.grace_minutes_normal or 15)
+    grace = int(rules.grace_minutes_normal if rules.grace_minutes_normal is not None else 15)
     return (datetime.combine(date.today(), normal_start) + timedelta(minutes=grace)).time()
 
 
@@ -4627,6 +4628,19 @@ def _normalize_status_text(value):
     return str(value or "").strip().lower().replace("-", "").replace("_", "").replace(" ", "")
 
 
+def _is_rejected_hikvision_record(record):
+    """True when a device event lacks mandatory dual-biometric proof."""
+    raw = record.raw_row or {}
+    is_hikvision_record = any(
+        key in raw
+        for key in (
+            "major", "minor", "currentVerifyMode", "face_event",
+            "fingerprint_event", "combined_device_event",
+        )
+    )
+    return is_hikvision_record and raw.get("dual_biometric_verified") is not True
+
+
 def _record_attendance_kind(record):
     """
     Returns: "in", "out", or "unknown"
@@ -4638,21 +4652,7 @@ def _record_attendance_kind(record):
     """
     raw = record.raw_row or {}
 
-    # Hikvision punches are valid for DTR/payroll only after both face and
-    # fingerprint have succeeded.  CSV/manual records do not contain these
-    # Hikvision event fields, so their existing behavior is preserved.
-    is_hikvision_record = any(
-        key in raw
-        for key in (
-            "major",
-            "minor",
-            "currentVerifyMode",
-            "face_event",
-            "fingerprint_event",
-            "combined_device_event",
-        )
-    )
-    if is_hikvision_record and raw.get("dual_biometric_verified") is not True:
+    if _is_rejected_hikvision_record(record):
         return "unknown"
 
     raw_status = _normalize_status_text(raw.get("attendanceStatus"))
@@ -4854,7 +4854,10 @@ def _build_dtr_and_summary(profile, branch, period, rules):
     records_qs = all_matching_records.filter(branch=branch).order_by("timestamp")
     records_found_count = records_qs.count()
 
-    records = list(records_qs)
+    records = [
+        record for record in records_qs
+        if not _is_rejected_hikvision_record(record)
+    ]
 
     # Group records by local date
     records_by_day = defaultdict(list)
@@ -5189,7 +5192,8 @@ def _build_dtr_and_summary(profile, branch, period, rules):
                         + timedelta(
                             minutes=int(
                                 rules.grace_minutes_normal
-                                or 15
+                                if rules.grace_minutes_normal is not None
+                                else 15
                             )
                         )
                     )
@@ -8040,7 +8044,7 @@ def admin_payroll(request):
         .select_related("profile", "finalized_by", "unlocked_by")
         .filter(
             profile__in=prof_qs,
-            period=selected_period,
+            period=period_obj,
         )
     )
 
@@ -9007,6 +9011,12 @@ def admin_payroll_process_batch(request):
     period = PayrollPeriod.objects.filter(id=period_id).first()
     if not period:
         return JsonResponse({"ok": False, "error": "Invalid payroll period."}, status=400)
+
+    validation_error = payroll_period_validation_error(
+        period.start_date, period.end_date, period.pay_mode,
+    )
+    if validation_error:
+        return JsonResponse({"ok": False, "error": validation_error}, status=400)
 
     # -------------------------
     # Branch scope
