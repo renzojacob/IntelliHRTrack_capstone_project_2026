@@ -185,6 +185,11 @@ urlpatterns = [
         name="admin_payroll",
     ),
     path(
+        "admin-ui/payroll/periods/create/",
+        views.admin_payroll_period_create,
+        name="admin_payroll_period_create",
+    ),
+    path(
         "admin-ui/payroll/preview/",
         views.admin_payroll_preview_api,
         name="admin_payroll_preview_api",
