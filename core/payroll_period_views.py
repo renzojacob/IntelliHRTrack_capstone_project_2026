@@ -1,10 +1,8 @@
-import calendar
 from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -29,7 +27,7 @@ def _payroll_period_branch_for_admin(request):
 @login_required
 @require_POST
 def admin_payroll_period_create(request):
-    """Create one monthly period or both semimonthly periods."""
+    """Create or select the exact payroll date range chosen by an admin."""
     if not (request.user.is_staff or request.user.is_superuser):
         raise PermissionDenied
 
@@ -38,90 +36,66 @@ def admin_payroll_period_create(request):
         messages.error(request, "No valid branch selected or assigned.")
         return redirect("admin_dashboard")
 
-    month_text = str(request.POST.get("month") or "").strip()
-    schedule = str(request.POST.get("schedule") or "").strip().upper()
+    start_text = str(request.POST.get("start_date") or "").strip()
+    end_text = str(request.POST.get("end_date") or "").strip()
+    pay_mode = str(request.POST.get("pay_mode") or "").strip().upper()
     payroll_url = f"{reverse('admin_payroll')}?branch={branch.id}"
 
     try:
-        month_start = datetime.strptime(month_text, "%Y-%m").date().replace(day=1)
+        start_date = datetime.strptime(start_text, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_text, "%Y-%m-%d").date()
     except ValueError:
-        messages.error(request, "Select a valid payroll month.")
+        messages.error(request, "Select a valid payroll start date and end date.")
         return redirect(payroll_url)
 
-    if schedule not in {"MONTHLY", "SEMIMONTHLY"}:
-        messages.error(request, "Select Monthly or Semimonthly.")
+    if start_date > end_date:
+        messages.error(request, "The start date cannot be later than the end date.")
         return redirect(payroll_url)
 
-    last_day = calendar.monthrange(month_start.year, month_start.month)[1]
-    month_end = month_start.replace(day=last_day)
-    month_label = month_start.strftime("%B %Y")
-    existing_for_month = PayrollPeriod.objects.filter(
-        start_date__lte=month_end,
-        end_date__gte=month_start,
+    valid_modes = {
+        PayrollPeriod.PAY_MONTHLY,
+        PayrollPeriod.PAY_FIRST_HALF,
+        PayrollPeriod.PAY_SECOND_HALF,
+    }
+    if pay_mode not in valid_modes:
+        messages.error(request, "Select a valid salary schedule.")
+        return redirect(payroll_url)
+
+    mode_labels = {
+        PayrollPeriod.PAY_MONTHLY: "Monthly",
+        PayrollPeriod.PAY_FIRST_HALF: "Semimonthly - 1st Half",
+        PayrollPeriod.PAY_SECOND_HALF: "Semimonthly - 2nd Half",
+    }
+    period_name = (
+        f"{start_date.strftime('%b %d, %Y')} - "
+        f"{end_date.strftime('%b %d, %Y')} ({mode_labels[pay_mode]})"
     )
 
-    if schedule == "MONTHLY":
-        conflicting = existing_for_month.exclude(
-            pay_mode=PayrollPeriod.PAY_MONTHLY,
-        ).exists()
-        definitions = [
-            (
-                f"{month_label} Monthly",
-                month_start,
-                month_end,
-                PayrollPeriod.PAY_MONTHLY,
-            ),
-        ]
-    else:
-        conflicting = existing_for_month.filter(
-            pay_mode=PayrollPeriod.PAY_MONTHLY,
-        ).exists()
-        definitions = [
-            (
-                f"{month_label} - 1st Half",
-                month_start,
-                month_start.replace(day=15),
-                PayrollPeriod.PAY_FIRST_HALF,
-            ),
-            (
-                f"{month_label} - 2nd Half",
-                month_start.replace(day=16),
-                month_end,
-                PayrollPeriod.PAY_SECOND_HALF,
-            ),
-        ]
+    selected_period = PayrollPeriod.objects.filter(
+        start_date=start_date,
+        end_date=end_date,
+        pay_mode=pay_mode,
+    ).order_by("id").first()
 
-    if conflicting:
-        messages.error(
-            request,
-            f"{month_label} already uses a different payroll schedule. "
-            "Use the existing periods instead.",
+    created = selected_period is None
+    if created:
+        selected_period = PayrollPeriod.objects.create(
+            name=period_name,
+            start_date=start_date,
+            end_date=end_date,
+            pay_mode=pay_mode,
         )
-        return redirect(payroll_url)
-
-    created_periods = []
-    existing_periods = []
-
-    with transaction.atomic():
-        for name, start_date, end_date, pay_mode in definitions:
-            period, created = PayrollPeriod.objects.get_or_create(
-                start_date=start_date,
-                end_date=end_date,
-                pay_mode=pay_mode,
-                defaults={"name": name},
-            )
-            target = created_periods if created else existing_periods
-            target.append(period)
-
-    selected_period = (created_periods or existing_periods)[0]
-
-    if created_periods:
         messages.success(
             request,
-            f"Created {len(created_periods)} payroll period(s) for {month_label}.",
+            f"Payroll dates set to {start_date:%b %d, %Y} through "
+            f"{end_date:%b %d, %Y}.",
         )
     else:
-        messages.info(request, f"The {month_label} payroll period already exists.")
+        messages.info(
+            request,
+            f"Using the existing payroll dates {start_date:%b %d, %Y} through "
+            f"{end_date:%b %d, %Y}.",
+        )
 
     return redirect(
         f"{reverse('admin_payroll')}?branch={branch.id}"
