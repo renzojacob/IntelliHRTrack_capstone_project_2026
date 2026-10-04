@@ -893,7 +893,7 @@
                       title="View DTR details"
                       data-employee-id="{{ employee.id }}"
                       data-employee-name="{{ employee.name|default:employee.full_name|default:employee.user.username }}"
-                      data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escapejs }}'>
+                      data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escape }}'>
                 <iconify-icon icon="ph:calendar-check-duotone" class="text-accent text-lg"></iconify-icon>
               </button>
 
