@@ -9,6 +9,21 @@ from django.utils.dateparse import parse_datetime
 from .models import AttendanceRecord
 
 
+# Hikvision MAJOR_EVENT (5) successful authentication minor codes.
+# Values are decimal forms of the SDK constants:
+#   0x26 -> fingerprint comparison passed
+#   0x36 -> face + fingerprint verification passed
+#   0x4B -> face verification passed
+HIKVISION_MINOR_FINGERPRINT_PASS = 38
+HIKVISION_MINOR_FACE_AND_FINGERPRINT_PASS = 54
+HIKVISION_MINOR_FACE_PASS = 75
+
+# Separate face and fingerprint events must occur close together to form one
+# valid attendance punch. The later timestamp is used because attendance is
+# complete only after both factors have succeeded.
+DUAL_BIOMETRIC_PAIR_WINDOW = timedelta(minutes=2)
+
+
 # =========================================================
 # HIKVISION SYNC HELPERS
 # =========================================================
@@ -285,6 +300,175 @@ def _get_full_name_from_event(event):
     return str(event.get("name") or event.get("employeeName") or "").strip()
 
 
+def _get_authentication_method(event):
+    """Return the successful biometric method represented by an event."""
+    try:
+        major = int(event.get("major") or 0)
+        minor = int(event.get("minor") or 0)
+    except (TypeError, ValueError):
+        return None
+
+    if major != 5:
+        return None
+
+    if minor == HIKVISION_MINOR_FINGERPRINT_PASS:
+        return "fingerprint"
+
+    if minor == HIKVISION_MINOR_FACE_PASS:
+        return "face"
+
+    if minor == HIKVISION_MINOR_FACE_AND_FINGERPRINT_PASS:
+        return "face_and_fingerprint"
+
+    return None
+
+
+def _build_dual_biometric_event(face_event, fingerprint_event):
+    """Combine two successful source events into one auditable punch."""
+    face_time = _parse_timestamp(face_event.get("time"))
+    fingerprint_time = _parse_timestamp(fingerprint_event.get("time"))
+
+    if face_time is None or fingerprint_time is None:
+        return None
+
+    completed_at = max(face_time, fingerprint_time)
+    employee_id = (
+        _get_employee_id_from_event(face_event)
+        or _get_employee_id_from_event(fingerprint_event)
+    )
+    full_name = (
+        _get_full_name_from_event(face_event)
+        or _get_full_name_from_event(fingerprint_event)
+    )
+
+    status = _normalize_attendance_status(face_event)
+    fingerprint_status = _normalize_attendance_status(fingerprint_event)
+
+    if status != fingerprint_status:
+        return None
+
+    if status == AttendanceRecord.STATUS_UNKNOWN:
+        return None
+
+    return {
+        "employee_id": employee_id,
+        "full_name": full_name,
+        "department": "",
+        "timestamp": completed_at.isoformat(),
+        "attendance_status": status,
+        "raw_row": {
+            "time": completed_at.isoformat(),
+            "employeeNoString": employee_id,
+            "name": full_name,
+            "attendanceStatus": face_event.get("attendanceStatus")
+                or fingerprint_event.get("attendanceStatus"),
+            "label": face_event.get("label") or fingerprint_event.get("label"),
+            "dual_biometric_verified": True,
+            "verification_methods": ["face", "fingerprint"],
+            "face_event": face_event,
+            "fingerprint_event": fingerprint_event,
+        },
+    }
+
+
+def pair_dual_biometric_events(events):
+    """
+    Return only attendance punches proven by both face and fingerprint.
+
+    Separate face/fingerprint events are paired when they have the same
+    employee, the same IN/OUT status, the same local date, and occur within
+    DUAL_BIOMETRIC_PAIR_WINDOW. A native face+fingerprint success event is
+    already a complete punch.
+    """
+    grouped = {}
+    completed = []
+
+    for event in events:
+        employee_id = _get_employee_id_from_event(event)
+        event_time = _parse_timestamp(event.get("time"))
+        method = _get_authentication_method(event)
+        status = _normalize_attendance_status(event)
+
+        if (
+            not employee_id
+            or event_time is None
+            or method is None
+            or status == AttendanceRecord.STATUS_UNKNOWN
+        ):
+            continue
+
+        if method == "face_and_fingerprint":
+            full_name = _get_full_name_from_event(event)
+            completed.append({
+                "employee_id": employee_id,
+                "full_name": full_name,
+                "department": "",
+                "timestamp": event_time.isoformat(),
+                "attendance_status": status,
+                "raw_row": {
+                    **event,
+                    "dual_biometric_verified": True,
+                    "verification_methods": ["face", "fingerprint"],
+                    "combined_device_event": True,
+                },
+            })
+            continue
+
+        local_time = (
+            timezone.localtime(event_time)
+            if timezone.is_aware(event_time)
+            else event_time
+        )
+        key = (employee_id, local_time.date(), status)
+        grouped.setdefault(key, []).append((event_time, method, event))
+
+    for candidates in grouped.values():
+        candidates.sort(key=lambda item: item[0])
+        used_indexes = set()
+
+        for index, (event_time, method, event) in enumerate(candidates):
+            if index in used_indexes:
+                continue
+
+            opposite_method = "fingerprint" if method == "face" else "face"
+            best_index = None
+            best_distance = None
+
+            for other_index, (other_time, other_method, _) in enumerate(candidates):
+                if other_index == index or other_index in used_indexes:
+                    continue
+                if other_method != opposite_method:
+                    continue
+
+                distance = abs(other_time - event_time)
+                if distance > DUAL_BIOMETRIC_PAIR_WINDOW:
+                    continue
+
+                if best_distance is None or distance < best_distance:
+                    best_index = other_index
+                    best_distance = distance
+
+            if best_index is None:
+                continue
+
+            _, _, other_event = candidates[best_index]
+            if method == "face":
+                face_event, fingerprint_event = event, other_event
+            else:
+                face_event, fingerprint_event = other_event, event
+
+            combined = _build_dual_biometric_event(
+                face_event,
+                fingerprint_event,
+            )
+            if combined is not None:
+                completed.append(combined)
+                used_indexes.update({index, best_index})
+
+    completed.sort(key=lambda item: item["timestamp"])
+    return completed
+
+
 def _dedupe_events(events):
     """
     Remove duplicate Hikvision events from multiple major searches/pages.
@@ -306,6 +490,8 @@ def _dedupe_events(events):
             ),
             str(e.get("attendanceStatus") or ""),
             str(e.get("label") or ""),
+            str(e.get("major") or ""),
+            str(e.get("minor") or ""),
         )
 
         if key not in seen:
@@ -343,6 +529,7 @@ def fetch_hikvision_attendance(device):
 
         unique_events = _dedupe_events(events)
         person_events = _pick_person_events(unique_events)
+        validated_punches = pair_dual_biometric_events(person_events)
 
         created_count = 0
         skipped_count = 0
@@ -350,11 +537,12 @@ def fetch_hikvision_attendance(device):
         checkin_count = 0
         checkout_count = 0
 
-        for event in person_events:
-            employee_id = _get_employee_id_from_event(event)
-            timestamp = _parse_timestamp(event.get("time"))
-            full_name = _get_full_name_from_event(event)
-            attendance_status = _normalize_attendance_status(event)
+        for punch in validated_punches:
+            employee_id = punch["employee_id"]
+            timestamp = _parse_timestamp(punch["timestamp"])
+            full_name = punch["full_name"]
+            attendance_status = punch["attendance_status"]
+            raw_row = punch["raw_row"]
 
             if not employee_id or not timestamp:
                 skipped_count += 1
@@ -377,7 +565,7 @@ def fetch_hikvision_attendance(device):
                 defaults={
                     "full_name": full_name,
                     "department": "",
-                    "raw_row": event,
+                    "raw_row": raw_row,
                 }
             )
 
@@ -392,7 +580,7 @@ def fetch_hikvision_attendance(device):
                     update_fields.append("full_name")
 
                 if not obj.raw_row:
-                    obj.raw_row = event
+                    obj.raw_row = raw_row
                     update_fields.append("raw_row")
 
                 if update_fields:
@@ -408,6 +596,7 @@ def fetch_hikvision_attendance(device):
         print("RAW EVENTS:", len(events))
         print("UNIQUE EVENTS:", len(unique_events))
         print("PERSON EVENTS:", len(person_events))
+        print("VALID DUAL-BIOMETRIC PUNCHES:", len(validated_punches))
         print("CREATED:", created_count)
         print("SKIPPED/DUPLICATE:", skipped_count)
         print("CHECK IN:", checkin_count)

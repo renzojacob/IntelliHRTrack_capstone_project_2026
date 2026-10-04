@@ -1165,6 +1165,21 @@ def biometric_connector_submit_result(request, request_id):
                         "connector_raw_value": str(raw_row),
                     }
 
+                # Never trust the branch connector alone for this policy.
+                # Every uploaded Hikvision attendance punch must carry the
+                # audit proof produced by pair_dual_biometric_events().
+                if raw_row.get("dual_biometric_verified") is not True:
+                    raise ValueError(
+                        "Attendance punch is not verified by both face "
+                        "and fingerprint."
+                    )
+
+                methods = raw_row.get("verification_methods") or []
+                if not {"face", "fingerprint"}.issubset(set(methods)):
+                    raise ValueError(
+                        "Attendance punch is missing face/fingerprint proof."
+                    )
+
                 _, created = AttendanceRecord.objects.get_or_create(
                     employee_id=employee_id,
                     timestamp=parsed_timestamp,
@@ -4622,6 +4637,23 @@ def _record_attendance_kind(record):
     then fallback to AttendanceRecord.attendance_status.
     """
     raw = record.raw_row or {}
+
+    # Hikvision punches are valid for DTR/payroll only after both face and
+    # fingerprint have succeeded.  CSV/manual records do not contain these
+    # Hikvision event fields, so their existing behavior is preserved.
+    is_hikvision_record = any(
+        key in raw
+        for key in (
+            "major",
+            "minor",
+            "currentVerifyMode",
+            "face_event",
+            "fingerprint_event",
+            "combined_device_event",
+        )
+    )
+    if is_hikvision_record and raw.get("dual_biometric_verified") is not True:
+        return "unknown"
 
     raw_status = _normalize_status_text(raw.get("attendanceStatus"))
     raw_label = _normalize_status_text(raw.get("label"))
@@ -10174,4 +10206,3 @@ def admin_biometric_device_delete(request, device_id):
     )
 
     return redirect("admin_biometrics")
-
