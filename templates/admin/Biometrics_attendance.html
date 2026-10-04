@@ -772,6 +772,51 @@ html.dark .register-device-button:hover {
     {% endif %}
   </section>
 
+  <!-- OVERTIME AUTHORIZATION -->
+  <section id="overtime-authorization" class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl dark:border-white/10 dark:bg-slate-900/80">
+    <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
+      <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Overtime Authorization</h2>
+      <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Staying late does not automatically earn overtime pay. Authorize an employee, date, and maximum payable hours first.</p>
+      <p class="mt-2 text-sm text-gray-600 dark:text-slate-400">Approval is a limit, not guaranteed pay. Payroll checks actual eligible DTR hours. Existing draft/completed payroll must be reprocessed after an authorization change.</p>
+    </div>
+    <form method="post" action="{% url 'admin_overtime_authorize' %}" class="p-5 sm:p-6">
+      {% csrf_token %}
+      <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {% for field in overtime_form %}
+          <div><label for="{{ field.id_for_label }}" class="block text-sm font-bold text-gray-700 dark:text-slate-300">{{ field.label }}</label>{{ field }}</div>
+        {% endfor %}
+      </div>
+      <p class="mt-3 text-xs text-gray-500 dark:text-slate-400">One authorization per employee per date. Authorizing the same date again updates its hours and reason. Locked DTRs and finalized payroll must be reopened/unlocked first.</p>
+      <button type="submit" class="mt-5 rounded-2xl bg-accent px-5 py-3 text-sm font-extrabold text-white">Authorize Overtime</button>
+    </form>
+    <div class="overflow-x-auto border-t border-gray-200/70 dark:border-white/10">
+      <table class="w-full min-w-[850px] text-left text-sm">
+        <thead class="bg-gray-50 dark:bg-slate-950"><tr class="text-gray-600 dark:text-slate-300">
+          <th class="p-4">Employee / Branch</th><th class="p-4">Date</th><th class="p-4">Hours limit</th><th class="p-4">Status</th><th class="p-4">Authorized by</th><th class="p-4">Reason</th><th class="p-4">Action</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-200 text-gray-800 dark:divide-white/10 dark:text-slate-200">
+          {% for ot in overtime_requests %}
+          <tr>
+            <td class="p-4">{{ ot.profile.user.get_full_name|default:ot.profile.user.username }}<div class="text-xs text-gray-500">{{ ot.profile.branch.name }}</div></td>
+            <td class="p-4 whitespace-nowrap">{{ ot.date|date:"M d, Y" }}</td><td class="p-4">{{ ot.hours|floatformat:2 }}</td>
+            <td class="p-4">{% if ot.approved and ot.approved_by_id %}<span class="font-bold text-emerald-600 dark:text-emerald-400">Authorized</span>{% else %}<span class="font-bold text-gray-500">Not authorized</span>{% endif %}</td>
+            <td class="p-4">{{ ot.approved_by.username|default:"—" }}</td><td class="p-4 max-w-xs break-words">{{ ot.reason }}</td>
+            <td class="p-4">
+              {% if ot.approved %}
+              <form method="post" action="{% url 'admin_overtime_revoke' ot.id %}" onsubmit="return confirm('Revoke overtime authorization? Reprocess any existing editable payroll afterward.');" class="space-y-2">
+                {% csrf_token %}<label for="ot-revoke-{{ ot.id }}" class="sr-only">Revocation reason</label>
+                <input id="ot-revoke-{{ ot.id }}" type="text" name="revoke_reason" required minlength="5" maxlength="80" placeholder="Reason for revoking" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-white/10 dark:bg-slate-950 dark:text-white">
+                <button type="submit" class="rounded-lg border border-red-300 px-3 py-2 font-bold text-red-600 dark:text-red-400">Revoke</button>
+              </form>
+              {% else %}<span class="text-xs text-gray-500">Use the form above to authorize.</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}<tr><td colspan="7" class="p-6 text-center text-gray-500">No overtime authorizations for your employees yet.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <!-- TRAVEL ORDER MANAGER -->
   <section class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
     <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">

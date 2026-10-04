@@ -1,11 +1,13 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path, reverse_lazy
 
-from . import views
+from . import views, overtime_views
 from .payroll_period_views import admin_payroll_period_create
 
 
 urlpatterns = [
+    path("admin-ui/biometrics/overtime/authorize/", overtime_views.admin_overtime_authorize, name="admin_overtime_authorize"),
+    path("admin-ui/biometrics/overtime/<int:overtime_id>/revoke/", overtime_views.admin_overtime_revoke, name="admin_overtime_revoke"),
     # =========================================================
     # Landing Page
     # =========================================================
