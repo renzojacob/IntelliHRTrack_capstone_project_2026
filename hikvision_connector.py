@@ -23,6 +23,7 @@ from core.hikvision_sync import (
     _normalize_attendance_status,
     _parse_timestamp,
     _pick_person_events,
+    pair_dual_biometric_events,
     test_hikvision_connection,
 )
 
@@ -162,34 +163,16 @@ def read_hikvision_events(device, start_time, end_time):
     unique_events = _dedupe_events(events)
     person_events = _pick_person_events(unique_events)
 
-    normalized_events = []
-    ignored_events = 0
-
-    for event in person_events:
-        employee_id = _get_employee_id_from_event(event)
-        event_time = _parse_timestamp(event.get("time"))
-
-        if not employee_id or event_time is None:
-            ignored_events += 1
-            continue
-
-        full_name = _get_full_name_from_event(event)
-        attendance_status = _normalize_attendance_status(event)
-
-        normalized_events.append(
-            {
-                "employee_id": employee_id,
-                "full_name": full_name,
-                "department": "",
-                "timestamp": event_time.isoformat(),
-                "attendance_status": attendance_status,
-                "raw_row": event,
-            }
-        )
+    normalized_events = pair_dual_biometric_events(person_events)
+    ignored_events = len(person_events) - (
+        len(normalized_events) * 2
+    )
+    ignored_events = max(0, ignored_events)
 
     print(f"Raw events: {len(events)}")
     print(f"Unique events: {len(unique_events)}")
     print(f"Person events: {len(person_events)}")
+    print(f"Valid dual-biometric punches: {len(normalized_events)}")
     print(f"Events prepared for upload: {len(normalized_events)}")
     print(f"Events ignored: {ignored_events}")
 
