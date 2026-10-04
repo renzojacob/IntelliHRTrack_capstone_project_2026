@@ -3630,6 +3630,9 @@ def admin_biometrics_attendance(request):
         "devices": devices,
     }
 
+    from .overtime_views import overtime_authorization_context
+    context.update(overtime_authorization_context(request.user))
+
     return render(request, "admin/Biometrics_attendance.html", context)
 # =========================
 # Biometrics import (Validate + Import)
@@ -5172,49 +5175,75 @@ def _build_dtr_and_summary(profile, branch, period, rules):
             # -------------------------------------------------
             # Late computation
             # -------------------------------------------------
+            # Morning and afternoon arrivals are evaluated separately.
+            # The configured grace period applies to ordinary arrivals in
+            # both sessions. Flag-ceremony mornings keep their configured
+            # hard cutoff and do not receive the ordinary grace period.
+            grace_minutes = int(
+                rules.grace_minutes_normal
+                if rules.grace_minutes_normal is not None
+                else 15
+            )
+
             if am_in_time:
                 if _is_flag_ceremony_day(
                     current_day,
                     holiday_map,
                 ):
-                    threshold = (
+                    morning_threshold = (
                         rules.flag_ceremony_cutoff_time
                         or time(8, 0)
                     )
-
                 else:
-                    threshold_dt = (
+                    morning_threshold = (
                         datetime.combine(
                             current_day,
-                            rules.work_start_time
-                            or time(8, 0),
+                            rules.work_start_time or time(8, 0),
                         )
-                        + timedelta(
-                            minutes=int(
-                                rules.grace_minutes_normal
-                                if rules.grace_minutes_normal is not None
-                                else 15
-                            )
-                        )
+                        + timedelta(minutes=grace_minutes)
+                    ).time()
+
+                if am_in_time > morning_threshold:
+                    late_minutes += _minutes_between(
+                        morning_threshold,
+                        am_in_time,
+                        current_day,
                     )
 
-                    threshold = threshold_dt.time()
+            if pm_in_time:
+                afternoon_threshold = (
+                    datetime.combine(current_day, lunch_end)
+                    + timedelta(minutes=grace_minutes)
+                ).time()
 
-                if am_in_time > threshold:
-                    late_minutes = _minutes_between(
-                        threshold,
-                        am_in_time,
+                if pm_in_time > afternoon_threshold:
+                    late_minutes += _minutes_between(
+                        afternoon_threshold,
+                        pm_in_time,
                         current_day,
                     )
 
             # -------------------------------------------------
             # Undertime computation
             # -------------------------------------------------
+            # Undertime is based only on leaving before the required end of
+            # a work session. Arrival delays are already handled as late
+            # minutes above and must not be deducted a second time.
             if complete_four_punches:
-                if total_rendered_minutes < required_minutes:
-                    undertime_minutes = (
-                        required_minutes
-                        - total_rendered_minutes
+                work_end = rules.work_end_time or time(17, 0)
+
+                if am_out_time < lunch_start:
+                    undertime_minutes += _minutes_between(
+                        am_out_time,
+                        lunch_start,
+                        current_day,
+                    )
+
+                if pm_out_time < work_end:
+                    undertime_minutes += _minutes_between(
+                        pm_out_time,
+                        work_end,
+                        current_day,
                     )
 
             late_minutes_total += late_minutes
@@ -5609,6 +5638,7 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
         ot_qs = OvertimeRequest.objects.filter(
             profile=profile,
             approved=True,
+            approved_by__isnull=False,
             date__gte=period.start_date,
             date__lte=period.end_date,
         ).order_by("date", "id")

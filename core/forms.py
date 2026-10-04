@@ -1,6 +1,8 @@
+from decimal import Decimal
+
 from django import forms
 
-from .models import AttendanceRecord, Branch, BiometricDevice
+from .models import AttendanceRecord, Branch, BiometricDevice, UserProfile
 
 class AttendanceRecordForm(forms.ModelForm):
     class Meta:
@@ -323,4 +325,29 @@ class BiometricDeviceForm(forms.ModelForm):
             device.save()
 
         return device
-        
+
+
+class OvertimeAuthorizationForm(forms.Form):
+    profile = forms.ModelChoiceField(queryset=UserProfile.objects.none(), label="Employee")
+    date = forms.DateField(label="Overtime date", widget=forms.DateInput(attrs={"type": "date"}))
+    hours = forms.DecimalField(label="Authorized hours", min_value=Decimal("0.01"), max_value=Decimal("16.00"), max_digits=5, decimal_places=2,
+        widget=forms.NumberInput(attrs={"min": "0.01", "max": "16", "step": "0.01"}))
+    reason = forms.CharField(label="Reason / authority reference", max_length=180,
+        widget=forms.TextInput(attrs={"placeholder": "Purpose or overtime authority reference"}))
+
+    def __init__(self, *args, profiles, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["profile"].queryset = profiles
+        self.fields["profile"].label_from_instance = lambda p: f"{p.user.get_full_name() or p.user.username} — {p.branch.name}"
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "mt-2 block w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 dark:border-white/10 dark:bg-slate-950 dark:text-white"
+
+    def clean(self):
+        cleaned = super().clean()
+        profile, day = cleaned.get("profile"), cleaned.get("date")
+        if profile and day:
+            if profile.employment_start_date and day < profile.employment_start_date:
+                self.add_error("date", "Overtime cannot precede the employee's employment start date.")
+            if profile.employment_end_date and day > profile.employment_end_date:
+                self.add_error("date", "Overtime cannot follow the employee's employment end date.")
+        return cleaned
