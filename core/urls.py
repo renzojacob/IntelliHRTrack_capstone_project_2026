@@ -2,6 +2,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path, reverse_lazy
 
 from . import views
+from .payroll_period_views import admin_payroll_period_create
 
 
 urlpatterns = [
@@ -186,7 +187,7 @@ urlpatterns = [
     ),
     path(
         "admin-ui/payroll/periods/create/",
-        views.admin_payroll_period_create,
+        admin_payroll_period_create,
         name="admin_payroll_period_create",
     ),
     path(
