@@ -139,18 +139,36 @@
           </div>
         </div>
 
-        <!-- ✅ Employment Type -->
-        <div>
-          <label class="block text-sm font-medium mb-1">Employment Type</label>
-          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
-            <iconify-icon icon="ph:briefcase-duotone" class="text-teal-600 text-lg"></iconify-icon>
-            <select name="employment_type" required class="w-full bg-transparent outline-none">
-              <option value="" disabled selected>Select employment type</option>
-              <option value="COS">Contract of Service (COS)</option>
-              <option value="JO">Job Order (JO)</option>
-            </select>
-          </div>
-        </div>
+        <!-- Employment Type -->
+<div>
+  <label for="employment_type" class="block text-sm font-medium mb-1">
+    Employment Type
+  </label>
+  <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
+    <iconify-icon icon="ph:briefcase-duotone"
+                  class="text-teal-600 text-lg"></iconify-icon>
+
+    <select id="employment_type" name="employment_type" required
+            class="w-full bg-transparent outline-none">
+      <option value="" disabled
+              {% if not request.POST.employment_type %}selected{% endif %}>
+        Select employment type
+      </option>
+      <option value="COS"
+              {% if request.POST.employment_type == 'COS' %}selected{% endif %}>
+        Contract of Service (COS)
+      </option>
+      <option value="JO"
+              {% if request.POST.employment_type == 'JO' %}selected{% endif %}>
+        Job Order (JO)
+      </option>
+      <option value="PERMANENT"
+              {% if request.POST.employment_type == 'PERMANENT' %}selected{% endif %}>
+        Permanent
+      </option>
+    </select>
+  </div>
+</div>
 
         <!-- Password -->
         <div>
