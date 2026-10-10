@@ -38,16 +38,13 @@ def select_native(events):
                 continue
             if str(event.get("currentVerifyMode", "")).lower() != "faceandfp":
                 continue
-            if str(event.get("attendanceStatus", "")).strip().lower() not in ("checkin", "checkout"):
-                continue
             employee = str(event.get("employeeNoString") or event.get("employeeID")
                            or event.get("employeeNo") or event.get("employeeId") or "").strip()
             stamp = datetime.fromisoformat(event["time"].replace("Z", "+00:00"))
-            if stamp.tzinfo is None:
+            if stamp.tzinfo is None or not employee or len(employee) > 64:
                 continue
-            if not employee or len(employee) > 64:
-                continue
-            key = (employee, stamp, event["attendanceStatus"].lower())
+            status = str(event.get("attendanceStatus") or "").strip().lower()
+            key = (employee, stamp, status)
             if key in seen:
                 continue
             seen.add(key)
@@ -116,7 +113,14 @@ class DeviceReader:
                 self.offset = self.manual_offset
             else:
                 start = datetime.now(timezone.utc)
-                response = self.session.get(self.url + "/ISAPI/System/time", timeout=(3, 8))
+                response = self.session.get(
+                    self.url + "/ISAPI/System/time",
+                    auth=HTTPDigestAuth(
+                        self.device["username"],
+                        self.device["password"],
+                    ),
+                    timeout=(3, 8),
+                )
                 response.raise_for_status()
                 root = ET.fromstring(response.content)
                 local = next((node.text for node in root.iter()
@@ -143,7 +147,13 @@ class DeviceReader:
                     "maxResults": 30, "major": 5, "minor": 0,
                     "startTime": start.astimezone(MANILA).strftime("%Y-%m-%dT%H:%M:%S"),
                     "endTime": end.astimezone(MANILA).strftime("%Y-%m-%dT%H:%M:%S"),
-                }}, timeout=(3, 8),
+                }            },
+            auth=HTTPDigestAuth(
+                self.device["username"],
+                self.device["password"],
+            ),
+            timeout=(3, 8),
+            
             )
             response.raise_for_status()
             data = response.json().get("AcsEvent")
@@ -228,11 +238,6 @@ def cycle(website, reader, state, path, initial_hours=1):
     if selected:
         LOG.info("Device %s read %s events; native combined punches=%s",
                  reader.device["id"], len(events), len(selected))
-    # Surface native success events omitted because their attendance status is missing.
-    invalid = sum(1 for e in events if str(e.get("minor")) == "153"
-                  and str(e.get("attendanceStatus", "")).lower() not in ("checkin", "checkout"))
-    if invalid:
-        LOG.warning("Device %s: %s combined events have unsupported/missing attendance status.", reader.device["id"], invalid)
     upload_pending(website, reader.device, state, path)
 
 

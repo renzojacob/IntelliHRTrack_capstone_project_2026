@@ -57,9 +57,8 @@ def normalize_native(event):
         raise ValueError("Requires native 5/153 faceAndFp success.")
     status = {"checkin": AttendanceRecord.STATUS_CHECKIN,
               "checkout": AttendanceRecord.STATUS_CHECKOUT}.get(
-                  str(event.get("attendanceStatus", "")).strip().lower())
-    if status is None:
-        raise ValueError("Requires an explicit Check In or Check Out status.")
+                  str(event.get("attendanceStatus") or "").strip().lower(),
+                  AttendanceRecord.STATUS_UNKNOWN)
     employee_id = str(event.get("employeeNoString") or event.get("employeeID")
                       or event.get("employeeNo") or event.get("employeeId") or "").strip()
     if not employee_id or len(employee_id) > 64:
