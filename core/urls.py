@@ -398,3 +398,8 @@ urlpatterns = [
         name="employee_profile",
     ),
 ]
+
+from django.urls import include
+urlpatterns += [
+    path("api/biometrics/live/", include("core.biometric_live_urls")),
+]
