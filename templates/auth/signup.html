@@ -1,222 +1,112 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en" class="h-full">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Create Account • IntelliHRTrack</title>
+{% extends "auth/base_auth.html" %}
+{% block title %}Create an account{% endblock %}
+{% block card_class %}au-card--wide{% endblock %}
 
-  <!-- Local Tailwind -->
-<link rel="stylesheet" href="{% static 'css/output.css' %}">
-   
-  <!-- Iconify -->
-  <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+{% block side %}
+  <h2>Create your employee account.</h2>
+  <p>After you sign up, an administrator from your branch reviews your details. You can sign in once they approve.</p>
+  <ol class="au-facts">
+    <li><iconify-icon icon="ph:number-circle-one" aria-hidden="true"></iconify-icon>Fill in your branch and employment details</li>
+    <li><iconify-icon icon="ph:number-circle-two" aria-hidden="true"></iconify-icon>Your branch administrator approves the account</li>
+    <li><iconify-icon icon="ph:number-circle-three" aria-hidden="true"></iconify-icon>Sign in to see your attendance and payslips</li>
+  </ol>
+{% endblock %}
 
-  <style>
-    :root{
-      --primary:#14b8a6;
-      --primary-dark:#0d9488;
-      --bg-left:#d9f7f2;
-      --bg-right:#eefcf9;
-      --card:rgba(255,255,255,.94);
-      --border:rgba(15,23,42,.08);
-    }
-  </style>
-</head>
-
-<body class="h-full text-slate-700">
-
-<div class="min-h-full flex items-center justify-center px-4 py-12"
-     style="background:
-       radial-gradient(900px 500px at 12% 0%, rgba(20,184,166,.15), transparent 60%),
-       radial-gradient(700px 420px at 100% 10%, rgba(14,165,233,.10), transparent 55%),
-       linear-gradient(135deg,var(--bg-left),var(--bg-right));">
-
-  <div class="w-full max-w-md rounded-3xl shadow-xl border"
-       style="background:var(--card); border-color:var(--border);">
-
-    <div class="p-8">
-
-      <!-- ✅ BRAND (RESTORED) -->
-      <div class="flex items-center gap-4 mb-6">
-        <div class="w-12 h-12 rounded-2xl bg-[var(--primary)] text-white flex items-center justify-center font-bold">
-          IH
-        </div>
-        <div>
-          <h1 class="text-xl font-semibold text-slate-900">IntelliHRTrack</h1>
-          <p class="text-sm text-slate-500">Employee Registration</p>
-        </div>
-      </div>
-
-      <!-- Title -->
-      <div class="mb-5">
-        <h2 class="text-lg font-semibold text-slate-900">Create your account</h2>
-        <p class="text-sm text-slate-500">
-          Your account must be approved by your branch admin.
-        </p>
-      </div>
-
-      <!-- Info -->
-      <div class="mb-5 px-4 py-3 rounded-xl text-sm border"
-           style="background:rgba(20,184,166,.08);
-                  border-color:rgba(20,184,166,.25);
-                  color:var(--primary-dark);">
-        <strong>Important:</strong>
-        Select the correct branch and employment details.
-        Only admins of that branch can approve your account.
-      </div>
-
-      <!-- Messages -->
-      {% if messages %}
-        <div class="space-y-2 mb-4">
-          {% for m in messages %}
-            <div class="px-4 py-3 rounded-xl text-sm border
-              {% if m.tags == 'error' %}
-                bg-red-50 text-red-700 border-red-200
-              {% elif m.tags == 'success' %}
-                bg-emerald-50 text-emerald-700 border-emerald-200
-              {% else %}
-                bg-slate-50 text-slate-700 border-slate-200
-              {% endif %}
-            ">
-              {{ m }}
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      <!-- FORM -->
-      <form method="post" class="space-y-4">
-        {% csrf_token %}
-
-        <!-- Username -->
-        <div>
-          <label class="block text-sm font-medium mb-1">Username</label>
-          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
-            <iconify-icon icon="ph:user-duotone" class="text-teal-600 text-lg"></iconify-icon>
-            <input type="text" name="username" required
-                   value="{{ request.POST.username|default:'' }}"
-                   class="w-full bg-transparent outline-none"
-                   placeholder="your.username">
-          </div>
-        </div>
-
-        <!-- Email -->
-        <div>
-          <label class="block text-sm font-medium mb-1">Email (optional)</label>
-          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
-            <iconify-icon icon="ph:envelope-duotone" class="text-teal-600 text-lg"></iconify-icon>
-            <input type="email" name="email"
-                   value="{{ request.POST.email|default:'' }}"
-                   class="w-full bg-transparent outline-none"
-                   placeholder="you@email.com">
-          </div>
-        </div>
-
-        <!-- Branch -->
-        <div>
-          <label class="block text-sm font-medium mb-1">Branch</label>
-          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
-            <iconify-icon icon="ph:buildings-duotone" class="text-teal-600 text-lg"></iconify-icon>
-            <select name="branch" required class="w-full bg-transparent outline-none">
-              <option value="" disabled selected>Select your branch</option>
-              {% for b in branches %}
-                <option value="{{ b.id }}">{{ b.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </div>
-
-        <!-- ✅ Department -->
-        <div>
-          <label class="block text-sm font-medium mb-1">Department</label>
-          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
-            <iconify-icon icon="ph:briefcase-metal-duotone" class="text-teal-600 text-lg"></iconify-icon>
-            <input type="text" name="department"
-                   value="{{ request.POST.department|default:'' }}"
-                   class="w-full bg-transparent outline-none"
-                   placeholder="e.g. HR, Accounting, Kitchen">
-          </div>
-        </div>
-
-        <!-- Employment Type -->
-<div>
-  <label for="employment_type" class="block text-sm font-medium mb-1">
-    Employment Type
-  </label>
-  <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
-    <iconify-icon icon="ph:briefcase-duotone"
-                  class="text-teal-600 text-lg"></iconify-icon>
-
-    <select id="employment_type" name="employment_type" required
-            class="w-full bg-transparent outline-none">
-      <option value="" disabled
-              {% if not request.POST.employment_type %}selected{% endif %}>
-        Select employment type
-      </option>
-      <option value="COS"
-              {% if request.POST.employment_type == 'COS' %}selected{% endif %}>
-        Contract of Service (COS)
-      </option>
-      <option value="JO"
-              {% if request.POST.employment_type == 'JO' %}selected{% endif %}>
-        Job Order (JO)
-      </option>
-      <option value="PERMANENT"
-              {% if request.POST.employment_type == 'PERMANENT' %}selected{% endif %}>
-        Permanent
-      </option>
-    </select>
+{% block card %}
+  <div class="au-head">
+    <h1>Create an account</h1>
+    <p>Only administrators of the branch you choose can approve it, so pick the right one.</p>
   </div>
-</div>
 
-        <!-- Password -->
-        <div>
-          <label class="block text-sm font-medium mb-1">Password</label>
-          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
-            <iconify-icon icon="ph:lock-key-duotone" class="text-teal-600 text-lg"></iconify-icon>
-            <input type="password" name="password" required
-                   class="w-full bg-transparent outline-none"
-                   placeholder="••••••••">
-          </div>
+  {% include "auth/_messages.html" %}
+
+  <form method="post" class="au-form" data-loading>
+    {% csrf_token %}
+
+    <div class="au-grid au-grid--2">
+      <div class="au-field">
+        <label class="au-label" for="su-username">Username</label>
+        <div class="au-input">
+          <iconify-icon icon="ph:user" aria-hidden="true"></iconify-icon>
+          <input id="su-username" type="text" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false"
+                 value="{{ request.POST.username|default:'' }}" placeholder="juan.delacruz">
         </div>
-
-        <!-- Confirm -->
-        <div>
-          <label class="block text-sm font-medium mb-1">Confirm password</label>
-          <div class="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white">
-            <iconify-icon icon="ph:lock-duotone" class="text-teal-600 text-lg"></iconify-icon>
-            <input type="password" name="password2" required
-                   class="w-full bg-transparent outline-none"
-                   placeholder="••••••••">
-          </div>
-        </div>
-
-        <!-- Submit -->
-        <button type="submit"
-                class="w-full py-3 rounded-xl text-white font-semibold transition"
-                style="background:var(--primary);"
-                onmouseover="this.style.background='var(--primary-dark)'"
-                onmouseout="this.style.background='var(--primary)'">
-          Create Account
-        </button>
-      </form>
-
-      <!-- ✅ LOGIN REDIRECT (RESTORED) -->
-      <div class="mt-6 text-sm text-center text-slate-500">
-        Already approved?
-        <a href="{% url 'login_ui' %}" class="font-medium hover:underline text-teal-700">
-          Sign in
-        </a>
       </div>
 
+      <div class="au-field">
+        <label class="au-label" for="su-email">Email <small>Optional</small></label>
+        <div class="au-input">
+          <iconify-icon icon="ph:envelope-simple" aria-hidden="true"></iconify-icon>
+          <input id="su-email" type="email" name="email" autocomplete="email"
+                 value="{{ request.POST.email|default:'' }}" placeholder="you@email.com">
+        </div>
+        <p class="au-help">Needed if you ever have to reset your password.</p>
+      </div>
     </div>
-  </div>
-</div>
 
-<p class="text-center text-xs text-slate-400 mt-6">
-  © IntelliHRTrack • Secure Access
-</p>
+    <div class="au-field">
+      <label class="au-label" for="su-branch">Branch</label>
+      <div class="au-input">
+        <iconify-icon icon="ph:buildings" aria-hidden="true"></iconify-icon>
+        <select id="su-branch" name="branch" required>
+          <option value="" disabled {% if not request.POST.branch %}selected{% endif %}>Select your branch</option>
+          {% for b in branches %}
+            <option value="{{ b.id }}" {% if request.POST.branch == b.id|stringformat:"s" %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
 
-</body>
-</html>
+    <div class="au-grid au-grid--2">
+      <div class="au-field">
+        <label class="au-label" for="su-dept">Department</label>
+        <div class="au-input">
+          <iconify-icon icon="ph:briefcase" aria-hidden="true"></iconify-icon>
+          <input id="su-dept" type="text" name="department"
+                 value="{{ request.POST.department|default:'' }}" placeholder="e.g. Field Operations">
+        </div>
+      </div>
+
+      <div class="au-field">
+        <label class="au-label" for="employment_type">Employment type</label>
+        <div class="au-input">
+          <iconify-icon icon="ph:identification-badge" aria-hidden="true"></iconify-icon>
+          <select id="employment_type" name="employment_type" required>
+            <option value="" disabled {% if not request.POST.employment_type %}selected{% endif %}>Select type</option>
+            <option value="COS" {% if request.POST.employment_type == 'COS' %}selected{% endif %}>Contract of Service (COS)</option>
+            <option value="JO" {% if request.POST.employment_type == 'JO' %}selected{% endif %}>Job Order (JO)</option>
+            <option value="PERMANENT" {% if request.POST.employment_type == 'PERMANENT' %}selected{% endif %}>Permanent</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="au-grid au-grid--2">
+      <div class="au-field">
+        <label class="au-label" for="su-pass">Password</label>
+        <div class="au-input">
+          <iconify-icon icon="ph:lock-key" aria-hidden="true"></iconify-icon>
+          <input id="su-pass" type="password" name="password" required autocomplete="new-password">
+          <button type="button" class="au-reveal" data-reveal="su-pass" aria-pressed="false" aria-label="Show password">Show</button>
+        </div>
+        <p class="au-hint au-hint--warn" data-caps="su-pass" hidden>Caps Lock is on</p>
+      </div>
+
+      <div class="au-field">
+        <label class="au-label" for="su-pass2">Confirm password</label>
+        <div class="au-input">
+          <iconify-icon icon="ph:lock" aria-hidden="true"></iconify-icon>
+          <input id="su-pass2" type="password" name="password2" required autocomplete="new-password">
+          <button type="button" class="au-reveal" data-reveal="su-pass2" aria-pressed="false" aria-label="Show password">Show</button>
+        </div>
+        <p class="au-hint" data-match="su-pass su-pass2" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <button type="submit" class="ihrt-btn ihrt-btn--primary au-submit">Create account</button>
+  </form>
+{% endblock %}
+
+{% block below %}
+  <p class="au-below">Already approved? <a href="{% url 'login_ui' %}">Sign in</a></p>
+{% endblock %}

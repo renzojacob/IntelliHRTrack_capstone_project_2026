@@ -1,0 +1,10 @@
+{% if messages %}
+  <div class="au-alerts" aria-live="polite">
+    {% for message in messages %}
+      <div class="au-alert {% if message.tags == 'error' %}au-alert--bad{% elif message.tags == 'success' %}au-alert--ok{% elif message.tags == 'warning' %}au-alert--warn{% else %}au-alert--info{% endif %}" role="alert">
+        <iconify-icon icon="{% if message.tags == 'error' %}ph:x-circle{% elif message.tags == 'success' %}ph:check-circle{% elif message.tags == 'warning' %}ph:warning{% else %}ph:info{% endif %}" aria-hidden="true"></iconify-icon>
+        <div>{{ message }}</div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
