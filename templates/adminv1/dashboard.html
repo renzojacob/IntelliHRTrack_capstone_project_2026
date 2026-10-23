@@ -1,0 +1,304 @@
+{% extends 'admin/base_admin.html' %}
+
+{% block title %}Dashboard | IntelliHRTrack{% endblock %}
+
+{% block content %}
+
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <h1>Dashboard</h1>
+    <p>Today's attendance, leave, and payroll readiness for your branch.</p>
+    <div class="ad-meta">
+      <span class="ad-meta__item"><iconify-icon icon="ph:buildings" aria-hidden="true"></iconify-icon><strong id="branchName">{{ dashboard_data.branch|default:"—" }}</strong></span>
+      <span class="ad-meta__item"><iconify-icon icon="ph:calendar-blank" aria-hidden="true"></iconify-icon><strong id="headerDate">{{ today }}</strong></span>
+      <span class="ad-meta__item"><iconify-icon icon="ph:clock" aria-hidden="true"></iconify-icon><strong id="headerClock" class="ad-num">--:--</strong></span>
+      <span id="networkLabel" class="ihrt-badge ihrt-badge--ok" style="align-self:center">Online</span>
+    </div>
+  </div>
+  <div class="ad-page-head__actions">
+    <a href="{% url 'admin_biometrics' %}" class="ihrt-btn ihrt-btn--secondary">
+      <iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon> Attendance
+    </a>
+    <a href="{% url 'admin_payroll' %}" class="ihrt-btn ihrt-btn--primary">
+      <iconify-icon icon="ph:wallet" aria-hidden="true"></iconify-icon> Open payroll
+    </a>
+  </div>
+</header>
+
+<!-- Today at a glance -->
+<section aria-label="Today at a glance" class="ad-stats ad-stats--4">
+  <div class="ad-stat ad-tone-field">
+    <p class="ad-stat__label">Employees</p>
+    <p class="ad-stat__value" id="totalEmployeesNum">{{ dashboard_data.total_employees|default:0 }}</p>
+    <p class="ad-stat__hint">Active workforce</p>
+  </div>
+  <div class="ad-stat ad-tone-ok">
+    <p class="ad-stat__label">Present</p>
+    <p class="ad-stat__value" id="presentNum">{{ dashboard_data.present|default:0 }}</p>
+    <p class="ad-stat__hint">Clocked in today</p>
+  </div>
+  <div class="ad-stat ad-tone-warn">
+    <p class="ad-stat__label">Late</p>
+    <p class="ad-stat__value" id="lateNum">{{ dashboard_data.late|default:0 }}</p>
+    <p class="ad-stat__hint" id="lateDept">Based on first scan</p>
+  </div>
+  <div class="ad-stat ad-tone-bad">
+    <p class="ad-stat__label">Absent</p>
+    <p class="ad-stat__value" id="absentNum">{{ dashboard_data.absent|default:0 }}</p>
+    <p class="ad-stat__hint">No scan, no leave</p>
+  </div>
+  <div class="ad-stat ad-tone-info">
+    <p class="ad-stat__label">On leave</p>
+    <p class="ad-stat__value" id="leaveNum">{{ dashboard_data.leave|default:0 }}</p>
+    <p class="ad-stat__hint">Approved for today</p>
+  </div>
+  <div class="ad-stat ad-tone-warn">
+    <p class="ad-stat__label">Pending leave</p>
+    <p class="ad-stat__value" id="pendingLeavesNum">{{ dashboard_data.pending_leaves|default:0 }}</p>
+    <p class="ad-stat__hint">Awaiting your decision</p>
+  </div>
+  <div class="ad-stat ad-tone-field">
+    <p class="ad-stat__label">Payroll ready</p>
+    <p class="ad-stat__value" id="payrollReadyNum">{{ dashboard_data.payroll_ready|default:0 }}</p>
+    <p class="ad-stat__hint">{{ dashboard_data.incomplete_dtr_count|default:0 }} with incomplete DTR</p>
+  </div>
+  <div class="ad-stat {% if dashboard_data.devices_online < dashboard_data.devices_total %}ad-tone-bad{% else %}ad-tone-ok{% endif %}">
+    <p class="ad-stat__label">Devices online</p>
+    <p class="ad-stat__value" id="devicesOnlineNum">{{ dashboard_data.devices_online|default:0 }}<span class="ad-muted" style="font-weight:500">/{{ dashboard_data.devices_total|default:0 }}</span></p>
+    <p class="ad-stat__hint">Biometric terminals</p>
+  </div>
+</section>
+
+<div class="ad-split">
+  <!-- Left column -->
+  <div class="ad-stack">
+
+    <section class="ad-card" aria-labelledby="dept-title">
+      <div class="ad-card__head">
+        <div>
+          <h2 id="dept-title">Attendance by department</h2>
+          <p>Employees present and late today, grouped by department.</p>
+        </div>
+      </div>
+      {% if dashboard_data.department_attendance %}
+        <div class="ad-table-wrap">
+          <table class="ad-table">
+            <thead>
+              <tr>
+                <th scope="col">Department</th>
+                <th scope="col" class="is-num">Present</th>
+                <th scope="col" class="is-num">Late</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in dashboard_data.department_attendance %}
+                <tr>
+                  <td class="is-strong">{{ row.department }}</td>
+                  <td class="is-num">{{ row.present }}</td>
+                  <td class="is-num">
+                    {% if row.late %}<span class="ad-warn-text" style="font-weight:650">{{ row.late }}</span>{% else %}0{% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="ad-empty">
+          <iconify-icon icon="ph:users-three" aria-hidden="true"></iconify-icon>
+          <h3>No attendance recorded yet today</h3>
+          <p>Department totals appear here after the first scans are synced from the terminal.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="ad-card" aria-labelledby="payroll-title">
+      <div class="ad-card__head">
+        <div>
+          <h2 id="payroll-title">Payroll snapshot</h2>
+          <p>From the latest payroll batch.</p>
+        </div>
+        <a href="{% url 'admin_payroll' %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">View payroll</a>
+      </div>
+      <div class="ad-stats ad-stats--2 ad-stats--flat">
+        <div class="ad-stat">
+          <p class="ad-stat__label">Estimated gross</p>
+          <p class="ad-stat__value ad-stat__value--money">&#8369;{{ dashboard_data.estimated_gross|default:"0.00" }}</p>
+        </div>
+        <div class="ad-stat ad-tone-bad">
+          <p class="ad-stat__label">Deductions</p>
+          <p class="ad-stat__value ad-stat__value--money">&#8369;{{ dashboard_data.estimated_deductions|default:"0.00" }}</p>
+        </div>
+        <div class="ad-stat ad-tone-ok">
+          <p class="ad-stat__label">Ready employees</p>
+          <p class="ad-stat__value">{{ dashboard_data.payroll_ready|default:0 }}</p>
+        </div>
+        <div class="ad-stat ad-tone-warn">
+          <p class="ad-stat__label">Incomplete DTR</p>
+          <p class="ad-stat__value">{{ dashboard_data.incomplete_dtr_count|default:0 }}</p>
+        </div>
+      </div>
+      {% if dashboard_data.incomplete_dtr_count %}
+        <div class="ad-card__foot" style="justify-content:flex-start">
+          <iconify-icon icon="ph:warning" class="ad-warn-text" style="font-size:18px" aria-hidden="true"></iconify-icon>
+          <span>{{ dashboard_data.incomplete_dtr_count }} employee{{ dashboard_data.incomplete_dtr_count|pluralize }} have incomplete time records. Review them before releasing payroll.</span>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="ad-card" aria-labelledby="summary-title">
+      <div class="ad-card__head">
+        <div>
+          <h2 id="summary-title">Daily summary</h2>
+          <p>Generated from today's attendance and leave records. Updated <span id="insightTime">now</span>.</p>
+        </div>
+      </div>
+      <div class="ad-card__body">
+        <div id="aiInsightText" style="max-width:72ch">Loading summary…</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Right column -->
+  <div class="ad-stack">
+
+    <section class="ad-card" aria-labelledby="alerts-title">
+      <div class="ad-card__head">
+        <div>
+          <h2 id="alerts-title">Needs attention</h2>
+        </div>
+        {% if dashboard_data.alerts %}<span class="ihrt-badge ihrt-badge--bad">{{ dashboard_data.alerts|length }}</span>{% endif %}
+      </div>
+      {% if dashboard_data.alerts %}
+        <ul class="ad-card__body ad-stack ad-stack--sm">
+          {% for alert in dashboard_data.alerts %}
+            <li class="ad-alert {% if alert.lvl == 'High' %}ad-alert--bad{% elif alert.lvl == 'Medium' %}ad-alert--warn{% else %}ad-alert--info{% endif %}">
+              <iconify-icon icon="{% if alert.lvl == 'High' %}ph:warning-octagon{% elif alert.lvl == 'Medium' %}ph:warning{% else %}ph:info{% endif %}" aria-hidden="true"></iconify-icon>
+              <div class="ad-alert__body">
+                {{ alert.text }}
+                <span class="sr-only">Priority: {{ alert.lvl }}</span>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="ad-empty">
+          <iconify-icon icon="ph:check-circle" aria-hidden="true"></iconify-icon>
+          <h3>Nothing needs attention</h3>
+          <p>Alerts about devices, attendance, and payroll appear here.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="ad-card" aria-labelledby="quick-title">
+      <div class="ad-card__head"><h2 id="quick-title">Go to</h2></div>
+      <nav class="ad-quick" style="grid-template-columns:1fr" aria-label="Quick links">
+        <a href="{% url 'admin_leave' %}">
+          <span class="ad-icon-circle"><iconify-icon icon="ph:calendar-check" aria-hidden="true"></iconify-icon></span>
+          <span><span class="ad-quick__title">Review leave requests</span><span class="ad-quick__sub" style="display:block">{{ dashboard_data.pending_leaves|default:0 }} waiting for approval</span></span>
+          <iconify-icon icon="ph:caret-right" aria-hidden="true"></iconify-icon>
+        </a>
+        <a href="{% url 'admin_biometrics' %}">
+          <span class="ad-icon-circle"><iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon></span>
+          <span><span class="ad-quick__title">Sync and review attendance</span><span class="ad-quick__sub" style="display:block">Terminal logs and imports</span></span>
+          <iconify-icon icon="ph:caret-right" aria-hidden="true"></iconify-icon>
+        </a>
+        <a href="{% url 'admin_employees' %}">
+          <span class="ad-icon-circle"><iconify-icon icon="ph:users-three" aria-hidden="true"></iconify-icon></span>
+          <span><span class="ad-quick__title">Manage employees</span><span class="ad-quick__sub" style="display:block">Accounts, rates, biometric IDs</span></span>
+          <iconify-icon icon="ph:caret-right" aria-hidden="true"></iconify-icon>
+        </a>
+      </nav>
+    </section>
+
+    <section class="ad-card" aria-labelledby="snap-title">
+      <div class="ad-card__head">
+        <div>
+          <h2 id="snap-title">Dashboard snapshot</h2>
+          <p>Save today's figures as a JSON file for records or incident review.</p>
+        </div>
+      </div>
+      <div class="ad-card__body ad-stack ad-stack--sm">
+        <button id="downloadAudit" type="button" class="ihrt-btn ihrt-btn--secondary ihrt-btn--block">
+          <iconify-icon icon="ph:download-simple" aria-hidden="true"></iconify-icon> Download snapshot
+        </button>
+        <p id="auditTime" class="ad-help">Not downloaded yet in this session.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+{{ dashboard_data|json_script:"dashboard-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var state = {};
+  try { state = JSON.parse(document.getElementById('dashboard-data').textContent) || {}; } catch (e) {}
+
+  // Live clock in Philippine time
+  var clock = document.getElementById('headerClock');
+  function tick() {
+    if (!clock) return;
+    try {
+      clock.textContent = new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date());
+    } catch (e) { clock.textContent = new Date().toLocaleTimeString(); }
+  }
+  tick(); setInterval(tick, 15000);
+
+  // Connection status
+  var netLabel = document.getElementById('networkLabel');
+  function updateNet() {
+    var online = navigator.onLine;
+    if (!netLabel) return;
+    netLabel.textContent = online ? 'Online' : 'Offline';
+    netLabel.className = 'ihrt-badge ' + (online ? 'ihrt-badge--ok' : 'ihrt-badge--bad');
+  }
+  window.addEventListener('online', updateNet);
+  window.addEventListener('offline', updateNet);
+  updateNet();
+
+  // Summary text from the server
+  var insight = document.getElementById('aiInsightText');
+  var insightTime = document.getElementById('insightTime');
+  if (insight) {
+    insight.textContent = state.ai_summary || 'No summary is available yet for today.';
+  }
+  if (insightTime) {
+    insightTime.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Snapshot download
+  function buildSnapshot() {
+    return {
+      timestamp: new Date().toISOString(),
+      branch: state.branch,
+      totalEmployees: state.total_employees,
+      present: state.present,
+      late: state.late,
+      leave: state.leave,
+      absent: state.absent,
+      pendingLeaves: state.pending_leaves,
+      payrollReady: state.payroll_ready,
+      devices: state.devices,
+      alerts: state.alerts,
+      departmentAttendance: state.department_attendance || []
+    };
+  }
+  document.getElementById('downloadAudit')?.addEventListener('click', function () {
+    var snap = buildSnapshot();
+    var blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'intellihrtrack_snapshot_' + snap.timestamp.slice(0, 19).replace(/[:T]/g, '-') + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    var t = document.getElementById('auditTime');
+    if (t) t.textContent = 'Downloaded at ' + new Date(snap.timestamp).toLocaleString();
+    window.showToast && window.showToast('Snapshot downloaded', 'success');
+  });
+})();
+</script>
+{% endblock %}

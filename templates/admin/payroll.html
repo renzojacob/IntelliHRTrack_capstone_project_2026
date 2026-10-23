@@ -1,1673 +1,658 @@
 {% extends "admin/base_admin.html" %}
 {% load static %}
 
-{% block title %}Payroll Management | IntelliHRTrack{% endblock %}
+{% block title %}Payroll | IntelliHRTrack{% endblock %}
 
 {% block extra_head %}
 {{ block.super }}
 <style>
-  .kpi-value,
-  .counter-number {
-    font-feature-settings: "tnum";
-    font-variant-numeric: tabular-nums;
-  }
-
-  .glass-premium {
-    background: rgba(255, 255, 255, 0.5);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
-  }
-
-  .dark .glass-premium {
-    background: rgba(15, 23, 42, 0.65);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .card-hover-effect {
-    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease;
-  }
-
-  .card-hover-effect:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.2);
-  }
-
-  .animate-in-up {
-    animation: slideUpFade 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards;
-    opacity: 0;
-  }
-
-  @keyframes slideUpFade {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .expand-detail-row {
-    background: rgba(16, 185, 129, 0.03);
-    border-top: 1px solid rgba(255,255,255,0.1);
-  }
-
-  .status-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.125rem 0.5rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    line-height: 1rem;
-    font-weight: 500;
-    backdrop-filter: blur(4px);
-    white-space: nowrap;
-  }
-
-  .status-chip.green { background: rgba(16,185,129,0.2); color: #10b981; }
-  .status-chip.amber { background: rgba(245,158,11,0.2); color: #f59e0b; }
-  .status-chip.red { background: rgba(244,63,94,0.2); color: #f43f5e; }
-  .status-chip.blue { background: rgba(59,130,246,0.2); color: #3b82f6; }
-  .status-chip.purple { background: rgba(139,92,246,0.2); color: #8b5cf6; }
-  .status-chip.gray { background: rgba(100,116,139,0.2); color: #64748b; }
-
-  .filter-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    background: rgba(255,255,255,0.4);
-    border: 1px solid rgba(255,255,255,0.3);
-    backdrop-filter: blur(8px);
-  }
-
-  .dark .filter-chip {
-    background: rgba(30,41,59,0.6);
-  }
-
-  .filter-chip.active {
-    background: rgba(16,185,129,0.16);
-    color: var(--accent);
-    border-color: rgba(16,185,129,0.45);
-  }
-
-  .btn-loading {
-    position: relative;
-    pointer-events: none;
-    opacity: 0.75;
-  }
-
-  .btn-loading::after {
-    content: "";
-    position: absolute;
-    width: 1rem;
-    height: 1rem;
-    top: 50%;
-    left: 1rem;
-    border: 2px solid white;
-    border-radius: 50%;
-    border-top-color: transparent;
-    animation: spin 0.6s linear infinite;
-    transform: translateY(-50%);
-  }
-
-  @keyframes spin {
-    to { transform: translateY(-50%) rotate(360deg); }
-  }
-
-  .modal-entrance {
-    animation: modalPop 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
-  }
-
-  @keyframes modalPop {
-    from { opacity: 0; transform: scale(0.96); }
-    to { opacity: 1; transform: scale(1); }
-  }
-
-  .gradient-border-bottom {
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    height: 2px;
-    width: 100%;
-  }
-
-  .payroll-scroll {
-    scrollbar-width: thin;
-  }
-
-  .payroll-scroll::-webkit-scrollbar {
-    height: 8px;
-    width: 8px;
-  }
-
-  .payroll-scroll::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.55);
-    border-radius: 9999px;
-  }
-
-  .expand-btn[aria-expanded="true"] iconify-icon {
-    transform: rotate(180deg);
-  }
+  .pr-filters { display: grid; gap: 16px 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); align-items: end; }
+  .pr-period-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; }
+  .pr-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--ihrt-field-soft); color: var(--ihrt-field); }
+  .pr-chip button { width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; display: grid; place-items: center; }
+  .pr-chip button:hover { background: color-mix(in srgb, var(--ihrt-field) 15%, transparent); }
+  .pr-net { font-weight: 750; color: var(--ihrt-field); }
+  .pr-issue { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; }
+  .pr-issue--warn { color: var(--ihrt-warn); }
+  .pr-issue--ok { color: var(--ihrt-ok); }
+  .pr-check-grid { display: grid; gap: 1px; background: var(--ihrt-line); grid-template-columns: 1fr; }
+  @media (min-width: 560px) { .pr-check-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1000px) { .pr-check-grid { grid-template-columns: repeat(3, 1fr); } }
+  .pr-check { display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: var(--ihrt-surface); font-size: 14.5px; }
+  .pr-check strong { margin-left: auto; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .pr-check.is-flag strong { color: var(--ihrt-warn); }
+  .pr-check.is-zero { color: var(--ihrt-muted); }
+  .pr-rules { display: grid; gap: 1px; background: var(--ihrt-line); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .pr-rules > div { background: var(--ihrt-surface); padding: 14px 18px; }
+  .pr-rules dt { font-size: 13px; color: var(--ihrt-muted); }
+  .pr-rules dd { margin: 4px 0 0; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .pr-reference > summary { list-style: none; cursor: pointer; }
+  .pr-reference > summary::-webkit-details-marker { display: none; }
+  .pr-reference > summary .ad-expand-icon { transition: transform .2s ease; color: var(--ihrt-muted); }
+  .pr-reference[open] > summary .ad-expand-icon { transform: rotate(180deg); }
+  .pr-batch-actions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 220px; }
+  .pr-mcard summary { list-style: none; cursor: pointer; }
+  .pr-mcard summary::-webkit-details-marker { display: none; }
+  .pr-scroll-hint { display: none; align-items: center; gap: 6px; padding: 8px 20px; font-size: 13px; color: var(--ihrt-muted); border-bottom: 1px solid var(--ihrt-line); }
+  @media (max-width: 1439px) { .pr-scroll-hint { display: flex; } }
+  #dtrModal .ad-table td, #dtrModal .ad-table th { padding: 8px 10px; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="space-y-7 animate-in-up">
+<form id="csrfOnlyForm" class="hidden">{% csrf_token %}</form>
 
-  <form id="csrfOnlyForm" class="hidden">
-    {% csrf_token %}
-  </form>
+<!-- ===================== Header ===================== -->
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <h1>Payroll</h1>
+    <p>Choose the branch, dates, and employee type, check the warnings, then process. Late and undertime deductions are computed from the DTR.</p>
+    <div class="ad-meta">
+      <span class="ad-meta__item"><iconify-icon icon="ph:buildings" aria-hidden="true"></iconify-icon>
+        <strong>{% if is_superadmin %}{% if selected_branch_name %}{{ selected_branch_name }}{% else %}All branches{% endif %}{% else %}{{ request.user.profile.branch.name|default:"Assigned branch" }}{% endif %}</strong>
+      </span>
+      <span class="ad-meta__item"><iconify-icon icon="ph:calendar-blank" aria-hidden="true"></iconify-icon><strong>{{ selected_period.name|default:"No period selected" }}</strong></span>
+      <span class="ihrt-badge {% if payroll_status == 'Finalized' %}ihrt-badge--info{% elif payroll_status == 'Completed' %}ihrt-badge--ok{% else %}ihrt-badge--warn{% endif %}" style="align-self:center">{{ payroll_status|default:"Draft" }}</span>
+    </div>
+  </div>
+  <div class="ad-page-head__actions">
+    <button id="exportPayrollBtn" type="button" class="ihrt-btn ihrt-btn--secondary">
+      <iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon> Print
+    </button>
+    <button id="openCreatePeriodBtn" type="button" class="ihrt-btn ihrt-btn--secondary">
+      <iconify-icon icon="ph:calendar-plus" aria-hidden="true"></iconify-icon> Set dates
+    </button>
+    <button id="processPayrollBtn" type="button" class="ihrt-btn ihrt-btn--primary" {% if not selected_period %}disabled title="Set the payroll dates first"{% endif %}>
+      <iconify-icon icon="ph:play" aria-hidden="true"></iconify-icon> Process payroll
+    </button>
+  </div>
+</header>
 
-  <!-- Header -->
-  <div class="relative overflow-hidden glass-premium rounded-2xl p-6 border border-white/30 shadow-xl">
-    <div class="absolute inset-0 bg-gradient-to-r from-accent/5 via-transparent to-accent/5 pointer-events-none"></div>
-
-    <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      <div class="flex items-center gap-4">
-        <div class="p-3 rounded-2xl gradient-accent text-white shadow-lg ring-1 ring-white/30">
-          <iconify-icon icon="ph:currency-dollar-duotone" class="text-3xl"></iconify-icon>
-        </div>
-
-        <div>
-          <div class="flex items-center gap-3 flex-wrap">
-            <h1 class="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-              Payroll Management
-            </h1>
-
-            <span class="px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 shadow-sm flex items-center gap-1">
-              <span class="relative flex h-2 w-2">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              {{ payroll_status|default:"Draft Mode" }}
-            </span>
-          </div>
-
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            JO, COS & Permanent Employees · Automatic deductions · Branch-scoped computation          
-          </p>
-
-          <div class="mt-3 flex flex-wrap gap-2">
-            <span class="filter-chip active">
-              <iconify-icon icon="ph:buildings-duotone"></iconify-icon>
-              {% if is_superadmin %}
-                {% if selected_branch_name %}{{ selected_branch_name }}{% else %}Superadmin View{% endif %}
-              {% else %}
-                {{ request.user.profile.branch.name|default:"Assigned Branch" }}
-              {% endif %}
-            </span>
-
-            <span class="filter-chip active">
-              <iconify-icon icon="ph:calendar-duotone"></iconify-icon>
-              {{ selected_period.name|default:"No selected period" }}
-            </span>
-
-            <span class="filter-chip">
-              <iconify-icon icon="ph:lock-simple-duotone"></iconify-icon>
-              Late/undertime auto-computed
-            </span>
-          </div>
-        </div>
+<!-- ===================== Filters ===================== -->
+<section class="ad-card" aria-label="Payroll filters">
+  <form method="get" id="payrollFilterForm" class="ad-form ad-card__body ad-stack ad-stack--sm">
+    <div class="pr-filters">
+      <div class="ad-field">
+        <label class="ad-label" for="branchSelect">Branch</label>
+        {% if is_superadmin %}
+          <select name="branch" id="branchSelect">
+            {% for branch in branches %}
+              <option value="{{ branch.id }}" {% if selected_branch == branch.id %}selected{% endif %}>{{ branch.name }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <div class="ad-readonly" id="branchSelect"><iconify-icon icon="ph:lock-simple" aria-hidden="true"></iconify-icon>{{ request.user.profile.branch.name|default:"Assigned branch" }}</div>
+          <input type="hidden" name="branch" value="{{ request.user.profile.branch.id }}">
+        {% endif %}
       </div>
 
-      <div class="flex flex-wrap gap-3">
-        <button id="openCreatePeriodBtn"
-                type="button"
-                class="px-5 py-2.5 rounded-xl glass-premium border border-white/40 hover:shadow-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium hover:translate-y-[-1px] active:scale-[0.98]">
-          <iconify-icon icon="ph:calendar-plus-duotone" class="text-accent text-lg"></iconify-icon>
-          Set Payroll Dates
+      <div class="ad-field">
+        <span class="ad-label" id="periodLabel">Payroll dates</span>
+        <input type="hidden" name="period" value="{% if selected_period %}{{ selected_period.id }}{% endif %}">
+        <button id="openDatePeriodBtn" type="button" class="ad-input pr-period-btn" aria-labelledby="periodLabel openDatePeriodBtn">
+          <span>{% if selected_period %}{{ selected_period.start_date|date:"M d" }} to {{ selected_period.end_date|date:"M d, Y" }}{% else %}Choose dates{% endif %}</span>
+          <iconify-icon icon="ph:calendar-blank" aria-hidden="true"></iconify-icon>
         </button>
+      </div>
 
-        <button id="previewPayrollBtn"
-                type="button"
-                class="px-5 py-2.5 rounded-xl glass-premium border border-white/40 hover:shadow-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium hover:translate-y-[-1px] active:scale-[0.98]">
-          <iconify-icon icon="ph:eye-duotone" class="text-accent text-lg"></iconify-icon>
-          Preview Payroll
-        </button>
+      <div class="ad-field">
+        <label class="ad-label" for="typeSelect">Employee type</label>
+        <select name="type" id="typeSelect">
+          <option value="ALL" {% if selected_emp_type == "ALL" or request.GET.type == "ALL" or not request.GET.type %}selected{% endif %}>All types</option>
+          <option value="JO" {% if selected_emp_type == "JO" or request.GET.type == "JO" %}selected{% endif %}>Job Order (JO)</option>
+          <option value="COS" {% if selected_emp_type == "COS" or request.GET.type == "COS" %}selected{% endif %}>Contract of Service (COS)</option>
+          <option value="PERMANENT" {% if selected_emp_type == "PERMANENT" or request.GET.type == "PERMANENT" %}selected{% endif %}>Permanent</option>
+        </select>
+      </div>
 
-        <button id="processPayrollBtn"
-                type="button"
-                class="px-5 py-2.5 rounded-xl gradient-accent text-white shadow-md hover:shadow-glow transition-all duration-200 flex items-center gap-2 text-sm font-medium hover:translate-y-[-1px] active:scale-[0.98]">
-          <iconify-icon icon="ph:play-circle-duotone" class="text-lg"></iconify-icon>
-          Process Payroll
-        </button>
-
-        <button id="exportPayrollBtn"
-                type="button"
-                class="px-5 py-2.5 rounded-xl glass-premium border border-white/40 hover:shadow-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium hover:translate-y-[-1px] active:scale-[0.98]">
-          <iconify-icon icon="ph:printer-duotone" class="text-accent text-lg"></iconify-icon>
-          Export / Print
-        </button>
+      <div class="ad-field">
+        <label class="ad-label" for="searchInput">Employee</label>
+        <input type="search" id="searchInput" name="search" value="{{ request.GET.search }}" placeholder="Name or ID">
       </div>
     </div>
 
-    <div class="gradient-border-bottom mt-4 opacity-60"></div>
-  </div>
-
-  <!-- Set Payroll Dates Modal -->
-  <div id="createPeriodModal"
-       class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-    <div class="w-full max-w-lg rounded-3xl border border-white/15 bg-slate-900 p-6 text-white shadow-2xl">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <h2 class="text-xl font-bold">Set Payroll Dates</h2>
-          <p class="mt-1 text-sm text-slate-400">
-            Choose the exact start and end dates that this payroll should cover.
-          </p>
-        </div>
-        <button id="closeCreatePeriodBtn" type="button"
-                class="rounded-xl p-2 text-slate-400 hover:bg-white/10 hover:text-white"
-                aria-label="Close">
-          <iconify-icon icon="ph:x-bold" class="text-xl"></iconify-icon>
+    <div class="ad-row ad-row--between">
+      <div id="activeFilterChips" class="ad-row" style="gap:6px">
+        {% if request.GET.type and request.GET.type != "ALL" %}
+          <span class="pr-chip">Type: {{ request.GET.type }}<button type="button" class="remove-chip" data-filter="type" aria-label="Remove type filter"><iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon></button></span>
+        {% endif %}
+        {% if request.GET.search %}
+          <span class="pr-chip">Search: {{ request.GET.search }}<button type="button" class="remove-chip" data-filter="search" aria-label="Remove search"><iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon></button></span>
+        {% endif %}
+      </div>
+      <div class="ad-row">
+        <button type="button" id="resetFilters" class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm">Reset</button>
+        <button type="submit" id="previewPayrollBtn" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">
+          <iconify-icon icon="ph:eye" aria-hidden="true"></iconify-icon> Preview payroll
         </button>
       </div>
+    </div>
+  </form>
+</section>
 
-      <form method="post" action="{% url 'admin_payroll_period_create' %}" class="mt-6 space-y-5">
-        {% csrf_token %}
-        <input type="hidden" name="branch" value="{{ selected_branch }}">
+{% if dtr_locked_count %}
+  <div class="ad-alert ad-alert--warn">
+    <iconify-icon icon="ph:lock-simple" aria-hidden="true"></iconify-icon>
+    <div class="ad-alert__body"><strong>{{ dtr_locked_count }}</strong> DTR record{{ dtr_locked_count|pluralize }} for this period {{ dtr_locked_count|pluralize:"is,are" }} locked. Reprocessing is blocked until {{ dtr_locked_count|pluralize:"it is,they are" }} unlocked.</div>
+  </div>
+{% endif %}
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label for="payrollStartDate" class="mb-2 block text-sm font-semibold text-slate-200">
-              Start date
-            </label>
-            <input id="payrollStartDate" name="start_date" type="date" required
-                   value="{% if selected_period %}{{ selected_period.start_date|date:'Y-m-d' }}{% else %}{% now 'Y-m-01' %}{% endif %}"
-                   class="w-full rounded-xl border border-white/15 bg-slate-800 px-4 py-3 text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20">
+<!-- ===================== Totals ===================== -->
+<section aria-label="Payroll totals" class="ad-stats ad-stats--3">
+  <div class="ad-stat ad-stat--emph ad-tone-field">
+    <p class="ad-stat__label">Total net pay</p>
+    <p class="ad-stat__value ad-stat__value--money counter-number" data-prefix="&#8369;" data-decimals="2" data-target="{{ total_payroll|default:'0' }}">&#8369;{{ total_payroll|default:"0.00" }}</p>
+    <p class="ad-stat__hint">{% if payroll_trend_percent %}{{ payroll_trend_percent }}% compared with the previous period{% else %}For the selected period{% endif %}</p>
+  </div>
+  <div class="ad-stat ad-tone-bad">
+    <p class="ad-stat__label">Late and undertime deductions</p>
+    <p class="ad-stat__value ad-stat__value--money counter-number" data-prefix="&#8369;" data-decimals="2" data-target="{{ attendance_deductions|default:'0' }}">&#8369;{{ attendance_deductions|default:"0.00" }}</p>
+    <p class="ad-stat__hint">Computed from the DTR</p>
+  </div>
+  <div class="ad-stat ad-tone-info">
+    <p class="ad-stat__label">Government contributions</p>
+    <p class="ad-stat__value ad-stat__value--money counter-number" data-prefix="&#8369;" data-decimals="2" data-target="{{ gov_contributions|default:'0' }}">&#8369;{{ gov_contributions|default:"0.00" }}</p>
+    <p class="ad-stat__hint">SSS, GSIS, PhilHealth, Pag-IBIG</p>
+  </div>
+  <div class="ad-stat ad-tone-field">
+    <p class="ad-stat__label">Employees included</p>
+    <p class="ad-stat__value">{{ employees|length }}</p>
+  </div>
+  <div class="ad-stat ad-tone-info">
+    <p class="ad-stat__label">Official travel days</p>
+    <p class="ad-stat__value">{% firstof travel_count "0" %}</p>
+  </div>
+  <div class="ad-stat ad-tone-ok">
+    <p class="ad-stat__label">DTRs locked</p>
+    <p class="ad-stat__value">{% firstof dtr_locked_count "0" %}<span class="ad-muted" style="font-weight:500;font-size:.6em"> locked</span> &middot; {% firstof dtr_unlocked_count "0" %}<span class="ad-muted" style="font-weight:500;font-size:.6em"> unlocked</span></p>
+  </div>
+</section>
+
+<!-- ===================== Checks before processing ===================== -->
+<section class="ad-card" aria-labelledby="check-title">
+  <div class="ad-card__head">
+    <div>
+      <h2 id="check-title">Check before processing</h2>
+      <p>Resolve these first. Each one can make an employee's computed pay wrong.</p>
+    </div>
+  </div>
+  <div class="pr-check-grid">
+    <div class="pr-check {% if missing_checkout_count %}is-flag{% else %}is-zero{% endif %}"><iconify-icon icon="ph:sign-out" aria-hidden="true"></iconify-icon>Missing time-out scans<strong>{% firstof missing_checkout_count "0" %}</strong></div>
+    <div class="pr-check {% if missing_lunch_count %}is-flag{% else %}is-zero{% endif %}"><iconify-icon icon="ph:fork-knife" aria-hidden="true"></iconify-icon>Missing lunch scans<strong>{% firstof missing_lunch_count "0" %}</strong></div>
+    <div class="pr-check {% if no_salary_count %}is-flag{% else %}is-zero{% endif %}"><iconify-icon icon="ph:money" aria-hidden="true"></iconify-icon>No salary set<strong>{% firstof no_salary_count "0" %}</strong></div>
+    <div class="pr-check {% if missing_contribution_count %}is-flag{% else %}is-zero{% endif %}"><iconify-icon icon="ph:shield" aria-hidden="true"></iconify-icon>Contributions not set<strong>{% firstof missing_contribution_count "0" %}</strong></div>
+    <div class="pr-check {% if ot_disqualified_count %}is-flag{% else %}is-zero{% endif %}"><iconify-icon icon="ph:clock-countdown" aria-hidden="true"></iconify-icon>Overtime not payable<strong>{% firstof ot_disqualified_count "0" %}</strong></div>
+    <div class="pr-check is-zero"><iconify-icon icon="ph:airplane-tilt" aria-hidden="true"></iconify-icon>Active travel orders<strong>{% firstof travel_count "0" %}</strong></div>
+  </div>
+</section>
+
+<!-- ===================== Employee payroll ===================== -->
+<section class="ad-card" aria-labelledby="emp-pay-title">
+  <div class="ad-card__head">
+    <div>
+      <h2 id="emp-pay-title">Employee payroll</h2>
+      <p>Expand a row for rates and every deduction. Open the DTR to see the days behind the numbers.</p>
+    </div>
+    <span class="ihrt-badge ihrt-badge--neutral">{{ employees|length }} employee{{ employees|length|pluralize }}</span>
+  </div>
+
+  {% if employees %}
+    <!-- Wide screens: table -->
+    <div class="ad-only-wide">
+      <p class="pr-scroll-hint"><iconify-icon icon="ph:arrows-left-right" aria-hidden="true"></iconify-icon> Scroll sideways to see every column. Employee names stay in place.</p>
+      <div class="ad-table-wrap">
+        <table class="ad-table ad-table--sticky-first" id="payrollTable" style="min-width: 860px">
+          <thead>
+            <tr>
+              <th scope="col">Employee</th>
+              <th scope="col" class="is-num" title="Days present / days absent">Present / absent</th>
+              <th scope="col" class="is-num" title="Late minutes / undertime minutes">Late / UT min</th>
+              <th scope="col" class="is-num">Deductions</th>
+              <th scope="col" class="is-num">Net pay</th>
+              <th scope="col">DTR and issues</th>
+              <th scope="col" class="is-actions"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for employee in employees %}
+              {% firstof employee.employment_type employee.emp_type employee.type "" as et %}{% firstof employee.name employee.full_name employee.user.username "Employee" as ename %}{% firstof employee.attendance_summary.total_late_minutes employee.late_minutes "0" as late %}{% firstof employee.attendance_summary.total_undertime_minutes employee.undertime_minutes "0" as ut %}
+              <tr class="payroll-row" data-employee-id="{{ employee.id }}">
+                <td>
+                  <div class="ad-row" style="flex-wrap:nowrap;gap:10px">
+                    <button type="button" class="expand-btn ad-expand ad-icon-btn ad-icon-btn--sm" aria-expanded="false" data-target="{{ employee.id }}" aria-controls="detail-{{ employee.id }}">
+                      <iconify-icon icon="ph:caret-down" aria-hidden="true"></iconify-icon><span class="sr-only">Show breakdown for {{ ename }}</span>
+                    </button>
+                    <div style="min-width:0">
+                      <p class="ad-cell-primary ad-truncate" style="--ad-trunc:220px" title="{{ ename }}">{{ ename }}</p>
+                      <p class="ad-cell-sub">{% include "admin/_emp_type_tag.html" with t=et %} &nbsp;ID {% firstof employee.employee_id employee.id %}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="is-num">{% firstof employee.attendance_summary.days_present employee.days_present "0" %} / {% firstof employee.attendance_summary.days_absent employee.absences "0" %}</td>
+                <td class="is-num"><span class="{% if late != "0" %}ad-neg{% endif %}">{{ late }}</span> / <span class="{% if ut != "0" %}ad-warn-text{% endif %}">{{ ut }}</span></td>
+                <td class="is-num">&#8369;{% firstof employee.deductions employee.deductions_total "0.00" %}</td>
+                <td class="is-num pr-net" title="Gross earnings minus deductions">&#8369;{% firstof employee.net_pay employee.computed_payroll.net "0.00" %}</td>
+                <td>
+                  {% if employee.dtr_locked %}
+                    <span class="ihrt-badge ihrt-badge--ok" title="Finalized by {{ employee.dtr_finalized_by }} on {{ employee.dtr_finalized_at|date:'M d, Y H:i' }}"><iconify-icon icon="ph:lock-simple" aria-hidden="true"></iconify-icon>Locked</span>
+                  {% elif employee.dtr_finalized %}
+                    <span class="ihrt-badge ihrt-badge--warn" title="Unlocked by {{ employee.dtr_unlocked_by }}: {{ employee.dtr_unlock_reason }}"><iconify-icon icon="ph:lock-open" aria-hidden="true"></iconify-icon>Unlocked</span>
+                  {% else %}
+                    <span class="ihrt-badge ihrt-badge--neutral">Not final</span>
+                  {% endif %}
+                  <div style="margin-top:4px">
+                  {% if employee.issues %}
+                    <span class="pr-issue pr-issue--warn" title="{{ employee.issues }}"><iconify-icon icon="ph:warning" aria-hidden="true"></iconify-icon>Review</span>
+                  {% elif employee.attendance_summary.has_missing_logs %}
+                    <span class="pr-issue pr-issue--warn" title="Missing attendance scans"><iconify-icon icon="ph:warning" aria-hidden="true"></iconify-icon>Missing scans</span>
+                  {% else %}
+                    <span class="ad-cell-sub">No issues</span>
+                  {% endif %}
+                  </div>
+                </td>
+                <td class="is-actions">
+                  <div class="ad-row">
+                    <button type="button" class="view-dtr-btn ihrt-btn ihrt-btn--secondary ihrt-btn--sm" title="View daily time record"
+                            data-employee-id="{{ employee.id }}" data-employee-name="{{ ename }}"
+                            data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escape }}'>DTR</button>
+                    {% if employee.payroll_item_id %}
+                      <a href="{% url 'admin_payroll_item_dtr_print' employee.payroll_item_id %}" target="_blank" rel="noopener" class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm" title="Print the saved Civil Service Form No. 48">
+                        <iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon><span class="sr-only">Print DTR</span>
+                      </a>
+                    {% else %}
+                      <button type="button" class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm" disabled title="Process payroll first to print the saved DTR">
+                        <iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon><span class="sr-only">Print DTR (process payroll first)</span>
+                      </button>
+                    {% endif %}
+                    {% if selected_period %}
+                      <a href="{% url 'admin_payslip' employee.profile_id selected_period.id %}" target="_blank" rel="noopener" class="ihrt-btn ihrt-btn--soft ihrt-btn--sm">Payslip</a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              <tr class="expand-detail-row ad-detail-row hidden" data-detail-for="{{ employee.id }}" id="detail-{{ employee.id }}">
+                <td colspan="7">
+                  {% include "admin/_payroll_breakdown.html" with e=employee et=et %}
+                </td>
+              </tr>
+              
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Narrow screens: one card per employee -->
+    <div class="ad-cards ad-only-narrow">
+      {% for employee in employees %}
+        {% firstof employee.employment_type employee.emp_type employee.type "" as et %}{% firstof employee.name employee.full_name employee.user.username "Employee" as ename %}
+        <article class="ad-rec pr-mcard">
+          <div class="ad-rec__top">
+            <div style="min-width:0">
+              <p class="ad-rec__title">{{ ename }}</p>
+              <p class="ad-rec__sub">{% include "admin/_emp_type_tag.html" with t=et %} &nbsp;ID {% firstof employee.employee_id employee.id %}</p>
+            </div>
+            <div style="text-align:right">
+              <p class="ad-cell-sub">Net pay</p>
+              <p class="pr-net ad-money" style="font-size:17px">&#8369;{% firstof employee.net_pay employee.computed_payroll.net "0.00" %}</p>
+            </div>
           </div>
+          <dl class="ad-rec__kv">
+            <div><dt>Present / absent</dt><dd>{% firstof employee.attendance_summary.days_present employee.days_present "0" %} / {% firstof employee.attendance_summary.days_absent employee.absences "0" %}</dd></div>
+            <div><dt>Late / UT minutes</dt><dd>{% firstof employee.attendance_summary.total_late_minutes employee.late_minutes "0" %} / {% firstof employee.attendance_summary.total_undertime_minutes employee.undertime_minutes "0" %}</dd></div>
+            <div><dt>Deductions</dt><dd>&#8369;{% firstof employee.deductions employee.deductions_total "0.00" %}</dd></div>
+            <div><dt>DTR</dt><dd>{% if employee.dtr_locked %}Locked{% elif employee.dtr_finalized %}Unlocked{% else %}Not final{% endif %}</dd></div>
+          </dl>
+          {% if employee.issues or employee.attendance_summary.has_missing_logs %}
+            <p class="pr-issue pr-issue--warn" style="margin-top:10px"><iconify-icon icon="ph:warning" aria-hidden="true"></iconify-icon>{{ employee.issues|default:"Missing attendance scans" }}</p>
+          {% endif %}
+          <details style="margin-top:12px">
+            <summary class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm" style="width:100%;justify-content:space-between">Full breakdown <iconify-icon icon="ph:caret-down" aria-hidden="true"></iconify-icon></summary>
+            <div style="margin-top:10px">{% include "admin/_payroll_breakdown.html" with e=employee et=et %}</div>
+          </details>
+          <div class="ad-rec__actions">
+            <button type="button" class="view-dtr-btn ihrt-btn ihrt-btn--secondary ihrt-btn--sm"
+                    data-employee-id="{{ employee.id }}" data-employee-name="{{ ename }}"
+                    data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escape }}'>View DTR</button>
+            {% if selected_period %}
+              <a href="{% url 'admin_payslip' employee.profile_id selected_period.id %}" target="_blank" rel="noopener" class="ihrt-btn ihrt-btn--soft ihrt-btn--sm">Payslip</a>
+            {% endif %}
+          </div>
+        </article>
+        
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="ad-empty">
+      <iconify-icon icon="ph:users-three" aria-hidden="true"></iconify-icon>
+      <h3>No employees match these filters</h3>
+      <p>Check the branch, the payroll dates, and the employee type, or clear the search.</p>
+    </div>
+  {% endif %}
+</section>
 
-          <div>
-            <label for="payrollEndDate" class="mb-2 block text-sm font-semibold text-slate-200">
-              End date
-            </label>
-            <input id="payrollEndDate" name="end_date" type="date" required
-                   value="{% if selected_period %}{{ selected_period.end_date|date:'Y-m-d' }}{% else %}{% now 'Y-m-d' %}{% endif %}"
-                   class="w-full rounded-xl border border-white/15 bg-slate-800 px-4 py-3 text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20">
+<!-- ===================== Batch history ===================== -->
+<section class="ad-card" aria-labelledby="batch-title">
+  <div class="ad-card__head">
+    <div>
+      <h2 id="batch-title">Payroll batches</h2>
+      <p>A completed batch can be finalized only after every included employee's DTR is locked. Finalized batches can be reopened with a recorded reason.</p>
+    </div>
+    <span class="ihrt-badge ihrt-badge--neutral">{{ payroll_batches|length }} batch{{ payroll_batches|length|pluralize:"es" }}</span>
+  </div>
+  {% if payroll_batches %}
+    <div class="ad-table-wrap">
+      <table class="ad-table" style="min-width: 980px">
+        <thead>
+          <tr>
+            <th scope="col">Batch</th>
+            <th scope="col">Period</th>
+            <th scope="col">Scope</th>
+            <th scope="col">Status</th>
+            <th scope="col">Processed</th>
+            <th scope="col" class="is-num">Total net</th>
+            <th scope="col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for batch in payroll_batches %}
+            <tr style="vertical-align:top">
+              <td>
+                <p class="ad-cell-primary">{{ batch.name }}</p>
+                <p class="ad-cell-sub">{% firstof batch.branch.name batch.branch_name "—" %}</p>
+                {% if batch.reopened_by %}<p class="ad-cell-sub ad-warn-text">Previously reopened</p>{% endif %}
+              </td>
+              <td>{% firstof batch.period.name batch.period_name "—" %}</td>
+              <td>{% firstof batch.employee_type_scope "ALL" as scope %}{% include "admin/_emp_type_tag.html" with t=scope %}</td>
+              <td>
+                {% if batch.is_finalized %}
+                  <span class="ihrt-badge ihrt-badge--info"><iconify-icon icon="ph:seal-check" aria-hidden="true"></iconify-icon>Finalized</span>
+                {% elif batch.status == "completed" or batch.status == "Completed" %}
+                  <span class="ihrt-badge ihrt-badge--ok">Completed</span>
+                {% else %}
+                  <span class="ihrt-badge ihrt-badge--warn">{{ batch.status|default:"Draft"|capfirst }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <p>{% firstof batch.processed_by.username batch.processed_by "—" %}</p>
+                <p class="ad-cell-sub">{% if batch.processed_at %}{{ batch.processed_at|date:"M d, Y H:i" }}{% else %}Not processed{% endif %}</p>
+              </td>
+              <td class="is-num pr-net">&#8369;{{ batch.total_net|default:"0.00" }}</td>
+              <td>
+                <div class="pr-batch-actions">
+                  <a href="{% url 'admin_payroll_batch_detail' batch.id %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">
+                    <iconify-icon icon="ph:file-text" aria-hidden="true"></iconify-icon> Open register
+                  </a>
+                  {% if batch.is_finalized %}
+                    <p class="ad-help">Finalized by {{ batch.finalized_by|default:"—" }}{% if batch.finalized_at %} on {{ batch.finalized_at|date:"M d, Y H:i" }}{% endif %}</p>
+                    <form method="post" action="{% url 'admin_reopen_payroll_batch' batch.id %}" class="ad-stack ad-stack--sm" style="gap:6px"
+                          onsubmit="return confirm('Reopen this finalized batch? Your reason is saved in the audit trail.');">
+                      {% csrf_token %}
+                      <label for="reopen-{{ batch.id }}" class="sr-only">Reason for reopening</label>
+                      <input id="reopen-{{ batch.id }}" type="text" name="reopen_reason" required minlength="5" placeholder="Reason for reopening" class="ad-input ad-input--sm">
+                      <button type="submit" class="ihrt-btn ihrt-btn--warn-soft ihrt-btn--sm"><iconify-icon icon="ph:lock-open" aria-hidden="true"></iconify-icon> Reopen batch</button>
+                    </form>
+                  {% elif batch.status == "completed" or batch.status == "Completed" %}
+                    <form method="post" action="{% url 'admin_finalize_payroll_batch' batch.id %}"
+                          onsubmit="return confirm('Finalize this batch? Every included employee must have a locked DTR, and the official record will be locked.');">
+                      {% csrf_token %}
+                      <button type="submit" class="ihrt-btn ihrt-btn--primary ihrt-btn--sm ihrt-btn--block"><iconify-icon icon="ph:seal-check" aria-hidden="true"></iconify-icon> Finalize batch</button>
+                    </form>
+                    {% if batch.reopened_by %}
+                      <p class="ad-help">Last reopened by {{ batch.reopened_by }}{% if batch.reopened_at %} on {{ batch.reopened_at|date:"M d, Y H:i" }}{% endif %}. Reason: {{ batch.reopen_reason|default:"—" }}</p>
+                    {% endif %}
+                  {% else %}
+                    <p class="ad-help">Process payroll before finalizing.</p>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="ad-empty">
+      <iconify-icon icon="ph:stack" aria-hidden="true"></iconify-icon>
+      <h3>No batches yet</h3>
+      <p>Processing payroll creates a batch you can review, print, and finalize.</p>
+    </div>
+  {% endif %}
+</section>
+
+<!-- ===================== Rates and rules reference ===================== -->
+<details class="ad-card pr-reference">
+  <summary class="ad-card__head" style="border-bottom:0">
+    <div>
+      <h2>Rates and rules used in computation</h2>
+      <p>Values come from the payroll configuration. "Not set" means no value was provided to this page.</p>
+    </div>
+    <iconify-icon icon="ph:caret-down" class="ad-expand-icon" style="font-size:20px" aria-hidden="true"></iconify-icon>
+  </summary>
+  <dl class="pr-rules" style="border-top:1px solid var(--ihrt-line)">
+    <div><dt>Salary divisor</dt><dd>{% if salary_divisor %}{{ salary_divisor }} days{% else %}Not set{% endif %}</dd></div>
+    <div><dt>Premium rate</dt><dd>{% if payroll_rules.premium_rate_percent %}{{ payroll_rules.premium_rate_percent }}%{% else %}Not set{% endif %}</dd></div>
+    <div><dt>PhilHealth default</dt><dd>{% if payroll_rules.philhealth_default_value %}{{ payroll_rules.philhealth_default_value }}%{% else %}Not set{% endif %}</dd></div>
+    <div><dt>Tax rate (JO/COS)</dt><dd>{% if payroll_rules.tax_rate_percent %}{{ payroll_rules.tax_rate_percent }}%{% else %}Not set{% endif %}</dd></div>
+    <div><dt>SSS minimum</dt><dd>{% if sss_minimum %}&#8369;{{ sss_minimum }}{% else %}Not set{% endif %}</dd></div>
+    <div><dt>Pag-IBIG minimum</dt><dd>{% if pagibig_minimum %}&#8369;{{ pagibig_minimum }}{% else %}Not set{% endif %}</dd></div>
+    <div><dt>Overtime multiplier</dt><dd>{% if ot_multiplier %}{{ ot_multiplier }}&times;{% else %}Not set{% endif %}</dd></div>
+  </dl>
+  <div class="ad-card__body" style="border-top:1px solid var(--ihrt-line)">
+    <p class="ad-help" style="color:var(--ihrt-ink)">
+      Daily rate = monthly rate &divide; {{ salary_divisor|default:"salary divisor" }}. Hourly rate = daily rate &divide; 8. Per-minute rate = hourly rate &divide; 60.
+      Late and undertime deductions use the per-minute rate; they cannot be overridden by hand.
+    </p>
+  </div>
+</details>
+
+<!-- ===================== Payroll dates dialog ===================== -->
+<div id="createPeriodModal" class="ad-modal hidden" role="dialog" aria-modal="true" aria-labelledby="periodTitle">
+  <div class="ad-modal__panel">
+    <div class="ad-modal__head">
+      <div>
+        <h2 id="periodTitle">Set payroll dates</h2>
+        <p>Choose the exact dates this payroll covers. Matching dates that already exist are reused, so this never creates duplicates.</p>
+      </div>
+      <button id="closeCreatePeriodBtn" type="button" class="ad-icon-btn ad-icon-btn--sm" data-modal-close><iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon><span class="sr-only">Close</span></button>
+    </div>
+    <form method="post" action="{% url 'admin_payroll_period_create' %}" class="ad-form" style="display:contents">
+      {% csrf_token %}
+      <input type="hidden" name="branch" value="{{ selected_branch }}">
+      <div class="ad-modal__body ad-stack ad-stack--sm">
+        <div class="ad-form-grid" style="--ad-field-min: 180px">
+          <div class="ad-field">
+            <label for="payrollStartDate" class="ad-label">Start date</label>
+            <input id="payrollStartDate" name="start_date" type="date" required value="{% if selected_period %}{{ selected_period.start_date|date:'Y-m-d' }}{% else %}{% now 'Y-m-01' %}{% endif %}">
+          </div>
+          <div class="ad-field">
+            <label for="payrollEndDate" class="ad-label">End date</label>
+            <input id="payrollEndDate" name="end_date" type="date" required value="{% if selected_period %}{{ selected_period.end_date|date:'Y-m-d' }}{% else %}{% now 'Y-m-d' %}{% endif %}">
           </div>
         </div>
-
-        <fieldset>
-          <legend class="mb-2 block text-sm font-semibold text-slate-200">Salary schedule</legend>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <label class="cursor-pointer rounded-xl border border-white/15 bg-slate-800 p-3 text-sm hover:border-teal-400">
-              <input type="radio" name="pay_mode" value="MONTHLY" required
-                     {% if not selected_period or selected_period.pay_mode == 'MONTHLY' %}checked{% endif %}
-                     class="mr-2 accent-teal-500">
-              Monthly
-            </label>
-            <label class="cursor-pointer rounded-xl border border-white/15 bg-slate-800 p-3 text-sm hover:border-teal-400">
-              <input type="radio" name="pay_mode" value="FIRST_HALF"
-                     {% if selected_period.pay_mode == 'FIRST_HALF' %}checked{% endif %}
-                     class="mr-2 accent-teal-500">
-              1st half
-            </label>
-            <label class="cursor-pointer rounded-xl border border-white/15 bg-slate-800 p-3 text-sm hover:border-teal-400">
-              <input type="radio" name="pay_mode" value="SECOND_HALF"
-                     {% if selected_period.pay_mode == 'SECOND_HALF' %}checked{% endif %}
-                     class="mr-2 accent-teal-500">
-              2nd half
-            </label>
+        <fieldset class="ad-field" style="border:0;padding:0;margin:0">
+          <legend class="ad-label" style="margin-bottom:6px">Salary schedule</legend>
+          <div class="ad-choice-row">
+            <label class="ad-check"><input type="radio" name="pay_mode" value="MONTHLY" required {% if not selected_period or selected_period.pay_mode == 'MONTHLY' %}checked{% endif %}><span class="ad-check__label">Monthly</span></label>
+            <label class="ad-check"><input type="radio" name="pay_mode" value="FIRST_HALF" {% if selected_period.pay_mode == 'FIRST_HALF' %}checked{% endif %}><span class="ad-check__label">1st half</span></label>
+            <label class="ad-check"><input type="radio" name="pay_mode" value="SECOND_HALF" {% if selected_period.pay_mode == 'SECOND_HALF' %}checked{% endif %}><span class="ad-check__label">2nd half</span></label>
           </div>
         </fieldset>
-
-        <div class="rounded-2xl border border-teal-400/20 bg-teal-400/10 p-4 text-sm text-teal-100">
-          You control both dates. Existing matching dates are reused, so clicking this again will not create duplicates.
-        </div>
-
-        <div class="flex justify-end gap-3">
-          <button id="cancelCreatePeriodBtn" type="button"
-                  class="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/10">
-            Cancel
-          </button>
-          <button type="submit"
-                  class="rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-teal-400">
-            Use These Dates
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Filters -->
-  <div class="glass-premium rounded-2xl p-5 border border-white/30">
-    <form method="get" id="payrollFilterForm" class="space-y-5">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-
-        <div>
-  <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1">
-    <iconify-icon icon="ph:buildings-duotone" class="text-accent"></iconify-icon>
-    Branch
-  </label>
-
-  {% if is_superadmin %}
-    <select
-      name="branch"
-      id="branchSelect"
-      class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60 transition"
-    >
-      {% for branch in branches %}
-        <option
-          value="{{ branch.id }}"
-          {% if selected_branch == branch.id %}selected{% endif %}
-        >
-          {{ branch.name }}
-        </option>
-      {% endfor %}
-    </select>
-  {% else %}
-    <div class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm bg-white/30 dark:bg-slate-800/40 flex items-center gap-2">
-      <iconify-icon icon="ph:lock-simple-duotone" class="text-accent"></iconify-icon>
-
-      <span>
-        {{ request.user.profile.branch.name|default:"Assigned Branch" }}
-      </span>
-    </div>
-
-    <input
-      type="hidden"
-      name="branch"
-      value="{{ request.user.profile.branch.id }}"
-    >
-  {% endif %}
-</div>
-
-
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1">
-            <iconify-icon icon="ph:calendar-duotone" class="text-accent"></iconify-icon>
-            Payroll Period
-          </label>
-
-          <input type="hidden" name="period" value="{% if selected_period %}{{ selected_period.id }}{% endif %}">
-          <button id="openDatePeriodBtn" type="button"
-                  class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-left text-sm focus:outline-none focus:ring-2 focus:ring-accent/60">
-            {% if selected_period %}
-              <span class="flex items-center justify-between gap-2">
-                <span>{{ selected_period.start_date|date:"M d, Y" }} – {{ selected_period.end_date|date:"M d, Y" }}</span>
-                <iconify-icon icon="ph:calendar-blank-duotone" class="text-accent text-lg"></iconify-icon>
-              </span>
-            {% else %}
-              <span class="flex items-center justify-between gap-2">
-                <span>Click to choose dates</span>
-                <iconify-icon icon="ph:calendar-plus-duotone" class="text-accent text-lg"></iconify-icon>
-              </span>
-            {% endif %}
-          </button>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
-            Employee Type
-          </label>
-            <select name="type"
-                    class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60">
-              <option value="ALL" {% if selected_emp_type == "ALL" or request.GET.type == "ALL" or not request.GET.type %}selected{% endif %}>
-                All Employee Types
-              </option>
-              <option value="JO" {% if selected_emp_type == "JO" or request.GET.type == "JO" %}selected{% endif %}>
-                Job Order (JO)
-              </option>
-              <option value="COS" {% if selected_emp_type == "COS" or request.GET.type == "COS" %}selected{% endif %}>
-                Contract of Service (COS)
-              </option>
-              <option value="PERMANENT" {% if selected_emp_type == "PERMANENT" or request.GET.type == "PERMANENT" %}selected{% endif %}>
-                Permanent
-              </option>
-            </select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
-            Search Employee
-          </label>
-
-          <input type="text"
-                 name="search"
-                 value="{{ request.GET.search }}"
-                 placeholder="Name or ID..."
-                 class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60">
-        </div>
+        <p class="ad-help" id="periodDateError" hidden style="color:var(--ihrt-bad);font-weight:600">The end date must be on or after the start date.</p>
       </div>
-
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div id="activeFilterChips" class="flex flex-wrap gap-2 text-xs">
-          {% if request.GET.type and request.GET.type != "ALL" %}
-            <span class="filter-chip active">
-              <iconify-icon icon="ph:users-duotone"></iconify-icon>
-              {{ request.GET.type }}
-              <button type="button" class="remove-chip ml-1" data-filter="type">✕</button>
-            </span>
-          {% endif %}
-
-          {% if request.GET.search %}
-            <span class="filter-chip active">
-              <iconify-icon icon="ph:magnifying-glass-duotone"></iconify-icon>
-              {{ request.GET.search }}
-              <button type="button" class="remove-chip ml-1" data-filter="search">✕</button>
-            </span>
-          {% endif %}
-        </div>
-
-        <div class="flex justify-end gap-3">
-          <button type="submit"
-                  class="px-5 py-2 rounded-xl gradient-accent text-white shadow-md hover:shadow-glow text-sm transition">
-            Apply
-          </button>
-
-          <button type="button"
-                  id="resetFilters"
-                  class="px-5 py-2 rounded-xl glass-premium border border-white/30 hover:shadow-md text-sm transition">
-            Reset
-          </button>
-        </div>
+      <div class="ad-modal__foot">
+        <button id="cancelCreatePeriodBtn" type="button" class="ihrt-btn ihrt-btn--secondary" data-modal-close>Cancel</button>
+        <button type="submit" class="ihrt-btn ihrt-btn--primary">Use these dates</button>
       </div>
     </form>
   </div>
-  
-  {% if dtr_locked_count %}
-    <div class="mt-3 rounded-xl border border-amber-300/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-      <strong>{{ dtr_locked_count }}</strong> DTR record(s) are locked/finalized for this period.
-      Payroll reprocessing will be blocked until they are unlocked.
-    </div>
-  {% endif %}
-
-
-  <!-- KPI Cards -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
-
-    <div class="glass-premium rounded-2xl p-5 border border-white/30 card-hover-effect">
-      <div class="flex justify-between items-start">
-        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Net Payroll</span>
-        <div class="p-2 rounded-xl bg-accent/10 text-accent">
-          <iconify-icon icon="ph:currency-circle-dollar-duotone" class="text-xl"></iconify-icon>
-        </div>
-      </div>
-
-      <div class="mt-3">
-        <span class="text-2xl font-bold kpi-value counter-number"
-              data-prefix="₱"
-              data-decimals="2"
-              data-target="{{ total_payroll|default:'0' }}">₱0.00</span>
-      </div>
-
-      <div class="text-xs text-gray-400 mt-2">
-        {% if payroll_trend_percent %}
-          Trend: {{ payroll_trend_percent }}%
-        {% else %}
-          Current selected period
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="glass-premium rounded-2xl p-5 card-hover-effect">
-      <div class="flex justify-between">
-        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Employees Included</span>
-        <iconify-icon icon="ph:users-three-duotone" class="text-accent text-xl"></iconify-icon>
-      </div>
-
-      <div class="mt-3">
-        <span class="text-2xl font-bold counter-number"
-              data-prefix=""
-              data-decimals="0"
-              data-target="{{ employees|length|default:'0' }}">0</span>
-      </div>
-
-        <div class="text-xs text-gray-400 mt-2">JO / COS / Permanent</div>
-    </div>
-
-    <div class="glass-premium rounded-2xl p-5 card-hover-effect">
-      <div class="flex justify-between">
-        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Attendance Deductions</span>
-        <iconify-icon icon="ph:clock-duotone" class="text-rose-400 text-xl"></iconify-icon>
-      </div>
-
-      <div class="mt-3">
-        <span class="text-2xl font-bold counter-number"
-              data-prefix="₱"
-              data-decimals="2"
-              data-target="{{ attendance_deductions|default:'0' }}">₱0.00</span>
-      </div>
-
-      <div class="text-xs text-rose-400 flex items-center gap-1 mt-2">
-        <iconify-icon icon="ph:warning-duotone"></iconify-icon>
-        Late + undertime
-      </div>
-    </div>
-
-    <div class="glass-premium rounded-2xl p-5 card-hover-effect">
-      <div class="flex justify-between">
-        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Gov Contributions</span>
-        <iconify-icon icon="ph:shield-duotone" class="text-blue-400 text-xl"></iconify-icon>
-      </div>
-
-      <div class="mt-3">
-        <span class="text-2xl font-bold counter-number"
-              data-prefix="₱"
-              data-decimals="2"
-              data-target="{{ gov_contributions|default:'0' }}">₱0.00</span>
-      </div>
-
-<div class="text-xs text-gray-400 mt-2">SSS / GSIS / PhilHealth / Pag-IBIG</div>
-    </div>
-
-    <div class="glass-premium rounded-2xl p-5 card-hover-effect">
-      <div class="flex justify-between">
-        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">On Travel Count</span>
-        <iconify-icon icon="ph:airplane-tilt-duotone" class="text-amber-400 text-xl"></iconify-icon>
-      </div>
-
-      <div class="mt-3">
-        <span class="text-2xl font-bold counter-number"
-              data-prefix=""
-              data-decimals="0"
-              data-target="{{ travel_count|default:'0' }}">0</span>
-      </div>
-
-      <div class="text-xs text-gray-400 mt-2">Official travel days</div>
-    </div>
-
-    <div class="glass-premium rounded-2xl p-5 card-hover-effect">
-      <div class="flex justify-between">
-        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Payroll Status</span>
-        <iconify-icon icon="ph:circle-wavy-check-duotone" class="text-emerald-400 text-xl"></iconify-icon>
-      </div>
-
-      <div class="mt-3">
-        <span class="text-xl font-bold">{{ payroll_status|default:"Draft" }}</span>
-      </div>
-
-      <div class="text-xs text-gray-400 mt-2">
-  {{ selected_period.name|default:"No period" }}
 </div>
 
-<div class="mt-2 flex flex-wrap gap-1 text-[10px]">
-  <span class="status-chip green">
-    Locked: {{ dtr_locked_count|default:0 }}
-  </span>
-
-  <span class="status-chip amber">
-    Unlocked: {{ dtr_unlocked_count|default:0 }}
-  </span>
-</div>
-
-    </div>
-  </div>
-
-  <!-- Payroll Rules -->
-  <div class="glass-premium rounded-2xl p-5 border border-white/30">
-    <div class="flex items-center justify-between flex-wrap gap-2 border-b border-white/20 pb-3 mb-4">
-      <h2 class="text-lg font-semibold flex items-center gap-2">
-        <iconify-icon icon="ph:gear-duotone" class="text-accent"></iconify-icon>
-        Payroll Rules & Configuration
-      </h2>
-
-      <div class="text-xs bg-accent/10 px-3 py-1.5 rounded-full backdrop-blur-sm">
-        Auto-computed deductions
-      </div>
-    </div>
-
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
-      <div class="glass-premium p-3 rounded-xl text-center group relative">
-        <iconify-icon icon="ph:calculator-duotone" class="text-accent text-lg mx-auto"></iconify-icon>
-        <div class="text-xs text-gray-500 mt-1">Salary Divisor</div>
-        <div class="font-bold">{{ salary_divisor|default:"22" }} days</div>
-      </div>
-
-      <div class="glass-premium p-3 rounded-xl text-center">
-        <iconify-icon icon="ph:percent-duotone" class="text-accent text-lg"></iconify-icon>
-        <div class="text-xs">Premium Rate</div>
-        <div class="font-bold">{{ payroll_rules.premium_rate_percent|default:"20" }}%</div>
-      </div>
-
-      <div class="glass-premium p-3 rounded-xl text-center">
-        <iconify-icon icon="ph:heartbeat-duotone" class="text-accent text-lg"></iconify-icon>
-        <div class="text-xs">PhilHealth</div>
-        <div class="font-bold">
-          {{ payroll_rules.philhealth_default_value|default:"5" }}%
-        </div>
-      </div>
-
-      <div class="glass-premium p-3 rounded-xl text-center">
-        <iconify-icon icon="ph:receipt-duotone" class="text-accent text-lg"></iconify-icon>
-        <div class="text-xs">Tax Rate</div>
-        <div class="font-bold">{{ payroll_rules.tax_rate_percent|default:"5" }}%</div>
-      </div>
-
-      <div class="glass-premium p-3 rounded-xl text-center">
-        <iconify-icon icon="ph:building-office-duotone" class="text-accent text-lg"></iconify-icon>
-        <div class="text-xs">SSS Min</div>
-        <div class="font-bold">₱{{ sss_minimum|default:"760.00" }}</div>
-      </div>
-
-      <div class="glass-premium p-3 rounded-xl text-center">
-        <iconify-icon icon="ph:house-duotone" class="text-accent text-lg"></iconify-icon>
-        <div class="text-xs">Pag-IBIG Min</div>
-        <div class="font-bold">₱{{ pagibig_minimum|default:"400.00" }}</div>
-      </div>
-
-      <div class="glass-premium p-3 rounded-xl text-center">
-        <iconify-icon icon="ph:clock-duotone" class="text-accent text-lg"></iconify-icon>
-        <div class="text-xs">OT Multiplier</div>
-        <div class="font-bold">{{ ot_multiplier|default:"1.25" }}x</div>
-      </div>
-    </div>
-
-    <div class="mt-5 p-3 rounded-xl bg-accent/5 border border-accent/20 text-sm flex items-start gap-3">
-      <iconify-icon icon="ph:info-duotone" class="text-accent text-xl shrink-0"></iconify-icon>
+<!-- ===================== DTR dialog ===================== -->
+<div id="dtrModal" class="ad-modal hidden" role="dialog" aria-modal="true" aria-labelledby="dtrTitle" style="--ad-modal-w: 1100px">
+  <div class="ad-modal__panel">
+    <div class="ad-modal__head">
       <div>
-        <strong class="text-accent">Late & undertime deductions are automatic.</strong>
-        Daily Rate = Monthly Rate / {{ salary_divisor|default:"22" }} → Hourly Rate = Daily Rate / 8 → Per-Minute Rate = Hourly Rate / 60.
-        No manual deduction-per-minute override is allowed.
+        <h2 id="dtrTitle">Daily time record</h2>
+        <p id="dtrEmployeeName"></p>
+      </div>
+      <div class="ad-row" style="flex-wrap:nowrap">
+        <button type="button" id="printDtrFromModal" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm"><iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon> Print</button>
+        <button type="button" id="closeDtrModal" class="ad-icon-btn ad-icon-btn--sm" data-modal-close><iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon><span class="sr-only">Close</span></button>
       </div>
     </div>
-  </div>
-
-<!-- Employee Payroll Table -->
-<div class="glass-premium rounded-2xl p-5 border border-white/30 overflow-hidden">
-  <div class="flex justify-between items-center flex-wrap gap-3 mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <iconify-icon icon="ph:table-duotone" class="text-accent"></iconify-icon>
-      Employee Payroll Summary
-    </h2>
-
-    <span class="text-xs bg-accent/10 px-3 py-1 rounded-full">
-      JO / COS / Permanent
-    </span>
-  </div>
-
-  <div class="overflow-x-auto payroll-scroll">
-    <table class="w-full min-w-[1750px] text-sm" id="payrollTable">
-      <thead class="sticky top-0 z-10 glass-premium backdrop-blur-md">
-        <tr class="text-left text-gray-600 dark:text-gray-300 border-b border-white/20">
-          <th class="py-3 pr-3 font-semibold">Details</th>
-          <th class="py-3 pr-3 font-semibold">Employee</th>
-          <th class="py-3 pr-3 font-semibold">Type</th>
-          <th class="py-3 pr-3 font-semibold">Branch</th>
-          <th class="py-3 pr-3 font-semibold">Present</th>
-          <th class="py-3 pr-3 font-semibold">Travel</th>
-          <th class="py-3 pr-3 font-semibold">Holiday/Susp.</th>
-          <th class="py-3 pr-3 font-semibold">Late</th>
-          <th class="py-3 pr-3 font-semibold">Undertime</th>
-          <th class="py-3 pr-3 font-semibold">Absences</th>
-          <th class="py-3 pr-3 font-semibold">Base / Basic</th>
-          <th class="py-3 pr-3 font-semibold">PERA / Premium</th>
-          <th class="py-3 pr-3 font-semibold">OT Pay</th>
-          <th class="py-3 pr-3 font-semibold">Gov / GSIS</th>
-          <th class="py-3 pr-3 font-semibold">Tax / WTAX</th>
-          <th class="py-3 pr-3 font-semibold">Deductions</th>
-          <th class="py-3 pr-3 font-semibold">Net Pay</th>
-          <th class="py-3 pr-3 font-semibold">DTR Status</th>
-          <th class="py-3 pr-3 font-semibold">Issues</th>
-          <th class="py-3 pr-3 font-semibold">Actions</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {% for employee in employees %}
-        <tr class="border-b border-white/10 hover:bg-white/10 dark:hover:bg-slate-800/40 transition-all duration-150 payroll-row"
-            data-employee-id="{{ employee.id }}">
-
-          <td class="py-3 pr-3">
-            <button type="button"
-                    class="expand-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
-                    aria-expanded="false"
-                    data-target="{{ employee.id }}">
-              <iconify-icon icon="ph:caret-down-bold" class="text-accent transition-transform"></iconify-icon>
-            </button>
-          </td>
-
-          <td class="py-3 pr-3 font-medium">
-            {{ employee.name|default:employee.full_name|default:employee.user.username }}
-            <div class="text-xs text-gray-400">
-              ID: {{ employee.employee_id|default:employee.id }}
-            </div>
-          </td>
-
-          <td class="py-3 pr-3">
-            {% if employee.employment_type == "JO" or employee.emp_type == "JO" or employee.type == "JO" %}
-              <span class="status-chip amber">JO</span>
-            {% elif employee.employment_type == "COS" or employee.emp_type == "COS" or employee.type == "COS" %}
-              <span class="status-chip green">COS</span>
-            {% elif employee.employment_type == "PERMANENT" or employee.emp_type == "PERMANENT" or employee.type == "PERMANENT" %}
-              <span class="status-chip purple">PERMANENT</span>
-            {% else %}
-              <span class="status-chip gray">{{ employee.employment_type|default:employee.emp_type|default:employee.type|default:"—" }}</span>
-            {% endif %}
-          </td>
-
-          <td class="py-3 pr-3">
-            {{ employee.branch_name|default:employee.branch.name }}
-          </td>
-
-          <td class="py-3 pr-3">
-            {{ employee.attendance_summary.days_present|default:employee.days_present|default:0 }}
-          </td>
-
-          <td class="py-3 pr-3">
-            {{ employee.travel_days|default:0 }}
-          </td>
-
-          <td class="py-3 pr-3">
-            {{ employee.holidays_suspensions|default:employee.holiday_days|default:0 }}
-          </td>
-
-          <td class="py-3 pr-3 {% if employee.attendance_summary.total_late_minutes > 0 or employee.late_minutes > 0 %}text-rose-400 font-medium{% endif %}">
-            {{ employee.attendance_summary.total_late_minutes|default:employee.late_minutes|default:0 }}
-          </td>
-
-          <td class="py-3 pr-3 {% if employee.attendance_summary.total_undertime_minutes > 0 or employee.undertime_minutes > 0 %}text-orange-400 font-medium{% endif %}">
-            {{ employee.attendance_summary.total_undertime_minutes|default:employee.undertime_minutes|default:0 }}
-          </td>
-
-          <td class="py-3 pr-3">
-            {{ employee.attendance_summary.days_absent|default:employee.absences|default:0 }}
-          </td>
-
-          <td class="py-3 pr-3">
-            ₱{{ employee.base_pay|default:employee.basic_salary|default:employee.computed_payroll.base|default:"0.00" }}
-          </td>
-
-          <td class="py-3 pr-3">
-            {% if employee.employment_type == "PERMANENT" or employee.emp_type == "PERMANENT" or employee.type == "PERMANENT" %}
-              ₱{{ employee.pera|default:"0.00" }}
-              <div class="text-[10px] text-gray-400">PERA</div>
-            {% else %}
-              ₱{{ employee.premium|default:employee.computed_payroll.premium|default:"0.00" }}
-              <div class="text-[10px] text-gray-400">Premium</div>
-            {% endif %}
-          </td>
-
-          <td class="py-3 pr-3">
-            ₱{{ employee.ot_pay|default:employee.computed_payroll.ot|default:"0.00" }}
-          </td>
-
-          <td class="py-3 pr-3">
-            ₱{{ employee.gov_contributions|default:employee.gov_contributions_total|default:"0.00" }}
-            {% if employee.employment_type == "PERMANENT" or employee.emp_type == "PERMANENT" or employee.type == "PERMANENT" %}
-              <div class="text-[10px] text-gray-400">GSIS/PhilHealth/Pag-IBIG</div>
-            {% else %}
-              <div class="text-[10px] text-gray-400">SSS/PhilHealth/Pag-IBIG</div>
-            {% endif %}
-          </td>
-
-          <td class="py-3 pr-3">
-            ₱{{ employee.tax|default:employee.tax_total|default:"0.00" }}
-            {% if employee.employment_type == "PERMANENT" or employee.emp_type == "PERMANENT" or employee.type == "PERMANENT" %}
-              <div class="text-[10px] text-gray-400">WTAX</div>
-            {% else %}
-              <div class="text-[10px] text-gray-400">Tax</div>
-            {% endif %}
-          </td>
-
-          <td class="py-3 pr-3">
-            ₱{{ employee.deductions|default:employee.deductions_total|default:"0.00" }}
-          </td>
-
-          <td class="py-3 pr-3 font-bold text-accent" title="Gross earnings minus deductions">
-            ₱{{ employee.net_pay|default:employee.computed_payroll.net|default:"0.00" }}
-          </td>
-
-          
-          <!-- DTR Status -->
-              <td class="py-3 pr-3">
-                {% if employee.dtr_locked %}
-                  <span
-                    class="status-chip green"
-                    title="Finalized by {{ employee.dtr_finalized_by }} at {{ employee.dtr_finalized_at|date:'Y-m-d H:i' }}"
-                  >
-                    <iconify-icon icon="ph:lock-simple-duotone"></iconify-icon>
-                    Locked
-                  </span>
-
-                {% elif employee.dtr_finalized %}
-                  <span
-                    class="status-chip amber"
-                    title="Unlocked by {{ employee.dtr_unlocked_by }}. Reason: {{ employee.dtr_unlock_reason }}"
-                  >
-                    <iconify-icon icon="ph:lock-open-duotone"></iconify-icon>
-                    Unlocked
-                  </span>
-
-                {% else %}
-                  <span class="status-chip gray">
-                    <iconify-icon icon="ph:clock-duotone"></iconify-icon>
-                    Not Finalized
-                  </span>
-                {% endif %}
-              </td>
-
-              <!-- Issues -->
-              <td class="py-3 pr-3">
-                {% if employee.issues %}
-                  <span
-                    class="inline-flex items-center gap-1 text-amber-400"
-                    title="{{ employee.issues }}"
-                  >
-                    <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
-                  </span>
-
-                {% elif employee.attendance_summary.has_missing_logs %}
-                  <span
-                    class="inline-flex items-center gap-1 text-amber-400"
-                    title="Missing attendance logs"
-                  >
-                    <iconify-icon icon="ph:warning-circle-duotone"></iconify-icon>
-                  </span>
-
-                {% else %}
-                  <iconify-icon
-                    icon="ph:check-circle-duotone"
-                    class="text-emerald-400"
-                  ></iconify-icon>
-                {% endif %}
-              </td>
-
-              <!-- Actions -->
-
-          <td class="py-3 pr-3">
-            <div class="flex gap-2">
-              <button type="button"
-                      class="view-dtr-btn p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition"
-                      title="View DTR details"
-                      data-employee-id="{{ employee.id }}"
-                      data-employee-name="{{ employee.name|default:employee.full_name|default:employee.user.username }}"
-                      data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escape }}'>
-                <iconify-icon icon="ph:calendar-check-duotone" class="text-accent text-lg"></iconify-icon>
-              </button>
-
-              {% if employee.payroll_item_id %}
-                <a href="{% url 'admin_payroll_item_dtr_print' employee.payroll_item_id %}"
-                   target="_blank"
-                   class="p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition inline-flex items-center justify-center"
-                   title="Print saved Civil Service Form No. 48 DTR">
-                  <iconify-icon icon="ph:printer-duotone" class="text-accent text-lg"></iconify-icon>
-                </a>
-              {% else %}
-                <button type="button"
-                        class="p-1.5 rounded-lg bg-slate-100 text-slate-400 cursor-not-allowed inline-flex items-center justify-center"
-                        title="Process payroll first before printing saved DTR"
-                        disabled>
-                  <iconify-icon icon="ph:printer-duotone" class="text-lg"></iconify-icon>
-                </button>
-              {% endif %}
-
-              <a href="{% url 'admin_payslip' employee.profile_id selected_period.id %}"
-                 target="_blank"
-                 class="p-1.5 rounded-lg glass-premium hover:bg-accent/20 transition inline-flex items-center justify-center"
-                 title="View / Print Payslip">
-                <iconify-icon icon="ph:receipt-duotone" class="text-accent text-lg"></iconify-icon>
-              </a>
-            </div>
-          </td>
-        </tr>
-
-        <tr class="expand-detail-row hidden" data-detail-for="{{ employee.id }}">
-          <td colspan="20" class="p-4">
-            <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">Daily Rate</span>
-                <strong class="block mt-1">₱{{ employee.daily_rate|default:"0.00" }}</strong>
-              </div>
-
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">Hourly Rate</span>
-                <strong class="block mt-1">₱{{ employee.hourly_rate|default:"0.00" }}</strong>
-              </div>
-
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">Per-Minute Rate</span>
-                <strong class="block mt-1">₱{{ employee.per_minute_rate|default:"0.00" }}</strong>
-              </div>
-
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">Late Deduction</span>
-                <strong class="block mt-1 text-rose-400">₱{{ employee.late_deduction|default:"0.00" }}</strong>
-              </div>
-
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">Undertime Deduction</span>
-                <strong class="block mt-1 text-orange-400">₱{{ employee.undertime_deduction|default:"0.00" }}</strong>
-              </div>
-
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">Other Earnings</span>
-                <strong class="block mt-1">₱{{ employee.other_earnings|default:"0.00" }}</strong>
-              </div>
-
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">WTAX</span>
-                <strong class="block mt-1 text-rose-400">₱{{ employee.wtax|default:"0.00" }}</strong>
-              </div>
-
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">GSIS Employee Share</span>
-                <strong class="block mt-1 text-rose-400">₱{{ employee.gsis_employee|default:"0.00" }}</strong>
-              </div>
-
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">GSIS Employer Share</span>
-                <strong class="block mt-1 text-blue-400">₱{{ employee.gsis_employer|default:"0.00" }}</strong>
-              </div>
-
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">Loan Deduction</span>
-                <strong class="block mt-1 text-rose-400">₱{{ employee.loan_deduction|default:"0.00" }}</strong>
-              </div>
-
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">Other Deduction</span>
-                <strong class="block mt-1 text-rose-400">₱{{ employee.other_deduction|default:"0.00" }}</strong>
-              </div>
-
-              <div class="glass-premium p-3 rounded-lg">
-                <span class="text-gray-500">Employer Contributions</span>
-                <strong class="block mt-1 text-blue-400">₱{{ employee.employer_contributions_total|default:"0.00" }}</strong>
-              </div>
-            </div>
-
-            <div class="glass-premium p-3 rounded-lg">
-              <span class="text-gray-500">DTR Lock Status</span>
-
-              {% if employee.dtr_locked %}
-                <strong class="block mt-1 text-emerald-400">Locked / Finalized</strong>
-                <div class="text-[10px] text-gray-400 mt-1">
-                  By {{ employee.dtr_finalized_by|default:"—" }}
-                  {% if employee.dtr_finalized_at %}
-                    · {{ employee.dtr_finalized_at|date:"Y-m-d H:i" }}
-                  {% endif %}
-                </div>
-              {% elif employee.dtr_finalized %}
-                <strong class="block mt-1 text-amber-400">Unlocked for Correction</strong>
-                <div class="text-[10px] text-gray-400 mt-1">
-                  Reason: {{ employee.dtr_unlock_reason|default:"—" }}
-                </div>
-              {% else %}
-                <strong class="block mt-1 text-gray-400">Not Finalized</strong>
-              {% endif %}
-            </div>
-            <div class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-              For permanent employees, employer contributions are shown for records/costing only and are not deducted from net pay.
-            </div>
-          </td>
-        </tr>
-
-        {% empty %}
-        <tr>
-          <td colspan="20" class="text-center py-10 text-gray-400">
-            No employees match the selected filters.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="ad-modal__body ad-stack ad-stack--sm" id="dtrPrintArea">
+      <div id="dtrSummary" class="ad-stats ad-stats--4"></div>
+      <div class="ad-table-wrap" style="border:1px solid var(--ihrt-line);border-radius:var(--ihrt-radius-sm)">
+        <table class="ad-table" style="min-width:880px">
+          <thead>
+            <tr>
+              <th scope="col">Date</th><th scope="col">Day</th>
+              <th scope="col">AM in</th><th scope="col">AM out</th><th scope="col">PM in</th><th scope="col">PM out</th>
+              <th scope="col" class="is-num">Hours</th><th scope="col" class="is-num">Late</th><th scope="col" class="is-num">UT</th>
+              <th scope="col">Status</th><th scope="col">Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="dtrTableBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
+{% endblock %}
 
-  <!-- DTR Modal -->
-  <div id="dtrModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 backdrop-blur-md transition-all duration-300">
-    <div class="absolute inset-0 bg-slate-900/70" id="dtrModalBackdrop"></div>
-
-    <div class="relative glass-premium rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl modal-entrance">
-      <div class="flex justify-between items-center p-5 border-b border-white/20 bg-white/20 dark:bg-slate-800/30 sticky top-0">
-        <h3 class="text-xl font-bold flex items-center gap-2">
-          <iconify-icon icon="ph:calendar-duotone" class="text-accent"></iconify-icon>
-          Daily Time Record —
-          <span id="dtrEmployeeName"></span>
-        </h3>
-
-        <button type="button" id="closeDtrModal" class="p-2 rounded-full glass-premium hover:bg-white/30 transition">
-          <iconify-icon icon="ph:x-duotone" class="text-xl"></iconify-icon>
-        </button>
-      </div>
-
-      <div class="overflow-y-auto p-5 payroll-scroll max-h-[75vh]">
-        <div id="dtrSummary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"></div>
-
-        <div class="flex justify-end mb-3">
-          <button type="button"
-                  id="printDtrFromModal"
-                  class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white text-teal-600 hover:bg-teal-50"
-                  title="Print modal DTR summary">
-            <iconify-icon icon="ph:printer-duotone"></iconify-icon>
-          </button>
-        </div>
-
-        <div class="overflow-x-auto payroll-scroll">
-          <table class="w-full min-w-[1000px] text-sm">
-            <thead class="sticky top-0 glass-premium">
-              <tr class="text-left text-gray-600 dark:text-gray-300">
-                <th class="p-2">Date</th>
-                <th>Day</th>
-                <th>AM In</th>
-                <th>AM Out</th>
-                <th>PM In</th>
-                <th>PM Out</th>
-                <th>Total Hrs</th>
-                <th>Late</th>
-                <th>Undertime</th>
-                <th>Status</th>
-                <th>Remarks</th>
-              </tr>
-            </thead>
-            <tbody id="dtrTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Batch History -->
-<div class="glass-premium rounded-2xl p-5 border border-white/30">
-  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
-    <div>
-      <h2 class="text-lg font-semibold flex items-center gap-2">
-        <iconify-icon icon="ph:history-duotone" class="text-accent"></iconify-icon>
-        Payroll Batch History
-      </h2>
-
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Completed batches can be finalized only after every included employee DTR is locked.
-      </p>
-    </div>
-
-    <span class="status-chip blue">
-      {{ payroll_batches|length }} Batch{{ payroll_batches|length|pluralize:"es" }}
-    </span>
-  </div>
-
-  <!-- Django messages produced by finalize/reopen views -->
-  {% if messages %}
-    <div class="mb-4 space-y-2">
-      {% for message in messages %}
-        <div class="
-          rounded-xl border px-4 py-3 text-sm
-          {% if message.tags == 'success' %}
-            border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300
-          {% elif message.tags == 'error' %}
-            border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300
-          {% elif message.tags == 'warning' %}
-            border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300
-          {% else %}
-            border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300
-          {% endif %}
-        ">
-          {{ message }}
-        </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-
-  <div class="overflow-x-auto payroll-scroll">
-    <table class="w-full min-w-[1450px] text-sm">
-      <thead class="border-b border-white/20">
-        <tr class="text-left text-gray-500 dark:text-gray-400">
-          <th class="pb-3 pr-4">Batch Name</th>
-          <th class="pb-3 pr-4">Branch</th>
-          <th class="pb-3 pr-4">Period</th>
-          <th class="pb-3 pr-4">Scope</th>
-          <th class="pb-3 pr-4">Status</th>
-          <th class="pb-3 pr-4">Processed By</th>
-          <th class="pb-3 pr-4">Processed At</th>
-          <th class="pb-3 pr-4">Total Net</th>
-          <th class="pb-3 pr-4">Actions</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {% for batch in payroll_batches %}
-          <tr class="border-b border-white/10 align-top hover:bg-white/5 transition">
-
-            <!-- Batch Name -->
-            <td class="py-3 pr-4 font-medium">
-              {{ batch.name }}
-
-              {% if batch.reopened_by %}
-                <div class="mt-1 text-[10px] text-amber-600 dark:text-amber-300">
-                  Previously reopened
-                </div>
-              {% endif %}
-            </td>
-
-            <!-- Branch -->
-            <td class="py-3 pr-4">
-              {{ batch.branch.name|default:batch.branch_name|default:"—" }}
-            </td>
-
-            <!-- Period -->
-            <td class="py-3 pr-4">
-              {{ batch.period.name|default:batch.period_name|default:"—" }}
-            </td>
-
-            <!-- Scope -->
-            <td class="py-3 pr-4">
-              <span class="status-chip blue">
-                {{ batch.employee_type_scope|default:"ALL" }}
-              </span>
-            </td>
-
-            <!-- Status -->
-            <td class="py-3 pr-4">
-              {% if batch.is_finalized %}
-                <span class="status-chip purple">
-                  <iconify-icon icon="ph:seal-check-duotone"></iconify-icon>
-                  Finalized
-                </span>
-
-              {% elif batch.status == "completed" or batch.status == "Completed" %}
-                <span class="status-chip green">
-                  <iconify-icon icon="ph:check-circle-duotone"></iconify-icon>
-                  Completed
-                </span>
-
-              {% else %}
-                <span class="status-chip amber">
-                  <iconify-icon icon="ph:clock-duotone"></iconify-icon>
-                  {{ batch.status|default:"Draft" }}
-                </span>
-              {% endif %}
-            </td>
-
-            <!-- Processed By -->
-            <td class="py-3 pr-4">
-              {{ batch.processed_by.username|default:batch.processed_by|default:"—" }}
-            </td>
-
-            <!-- Processed At -->
-            <td class="py-3 pr-4 whitespace-nowrap">
-              {% if batch.processed_at %}
-                {{ batch.processed_at|date:"Y-m-d H:i" }}
-              {% else %}
-                —
-              {% endif %}
-            </td>
-
-            <!-- Total Net -->
-            <td class="py-3 pr-4 whitespace-nowrap font-semibold text-accent">
-              ₱{{ batch.total_net|default:"0.00" }}
-            </td>
-
-            <!-- Actions -->
-            <td class="py-3 pr-4">
-              <div class="flex min-w-[230px] flex-col items-start gap-2">
-
-              <a
-              href="{% url 'admin_payroll_batch_detail' batch.id %}"
-              class="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-500 hover:text-white dark:text-blue-300">
-              <iconify-icon icon="ph:file-text-duotone"></iconify-icon>
-              View / Print Register
-            </a>
-
-                {% if batch.is_finalized %}
-
-                  <!-- Finalized audit information -->
-                  <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs">
-                    <div class="font-semibold text-emerald-700 dark:text-emerald-300">
-                      Officially Finalized
-                    </div>
-
-                    <div class="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
-                      By {{ batch.finalized_by|default:"—" }}
-
-                      {% if batch.finalized_at %}
-                        on {{ batch.finalized_at|date:"Y-m-d H:i" }}
-                      {% endif %}
-                    </div>
-                  </div>
-
-                  <!-- Reopen form -->
-                  <form
-                    method="post"
-                    action="{% url 'admin_reopen_payroll_batch' batch.id %}"
-                    onsubmit="return confirm('Reopen this finalized payroll batch? The reason will be recorded in the audit trail.');"
-                    class="w-full space-y-2"
-                  >
-                    {% csrf_token %}
-
-                    <input
-                      type="text"
-                      name="reopen_reason"
-                      required
-                      minlength="5"
-                      placeholder="Reason for reopening"
-                      class="w-full rounded-lg border border-white/20 bg-white/30 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 dark:bg-slate-900/40"
-                    >
-
-                    <button
-                      type="submit"
-                      class="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-500 hover:text-white dark:text-amber-300"
-                    >
-                      <iconify-icon icon="ph:lock-open-duotone"></iconify-icon>
-                      Reopen Batch
-                    </button>
-                  </form>
-
-                {% elif batch.status == "completed" or batch.status == "Completed" %}
-
-                  <!-- Finalize form -->
-                  <form
-                    method="post"
-                    action="{% url 'admin_finalize_payroll_batch' batch.id %}"
-                    onsubmit="return confirm('Officially finalize this payroll batch? Every included employee must have a locked DTR.');"
-                  >
-                    {% csrf_token %}
-
-                    <button
-                      type="submit"
-                      class="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-500 hover:text-white dark:text-emerald-300"
-                    >
-                      <iconify-icon icon="ph:seal-check-duotone"></iconify-icon>
-                      Finalize Batch
-                    </button>
-                  </form>
-
-                  <!-- Show last reopening information -->
-                  {% if batch.reopened_by %}
-                    <div class="max-w-[230px] rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[10px] text-amber-700 dark:text-amber-300">
-                      <strong>Last reopened by:</strong>
-                      {{ batch.reopened_by }}
-
-                      {% if batch.reopened_at %}
-                        on {{ batch.reopened_at|date:"Y-m-d H:i" }}
-                      {% endif %}
-
-                      <br>
-
-                      <strong>Reason:</strong>
-                      {{ batch.reopen_reason|default:"—" }}
-                    </div>
-                  {% endif %}
-
-                {% else %}
-
-                  <span class="text-xs text-gray-400">
-                    Process payroll before finalization.
-                  </span>
-
-                {% endif %}
-              </div>
-            </td>
-          </tr>
-
-        {% empty %}
-          <tr>
-            <td colspan="9" class="py-8 text-center text-gray-400">
-              No payroll batches found for the selected filters.
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-
-  <!-- Validation Panel -->
-  <div class="rounded-2xl p-5 border border-amber-200/50 bg-amber-50/40 dark:bg-amber-900/20 dark:border-amber-800/30 backdrop-blur-sm">
-    <div class="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-4">
-      <iconify-icon icon="ph:warning-triangle-duotone" class="text-2xl"></iconify-icon>
-      <h3 class="font-semibold">Validation & Warnings</h3>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
-        <iconify-icon icon="ph:clock-countdown-duotone" class="text-amber-500"></iconify-icon>
-        Missing checkout logs:
-        <span class="font-mono font-bold ml-auto">{{ missing_checkout_count|default:0 }}</span>
-      </div>
-
-      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
-        <iconify-icon icon="ph:fork-knife-duotone" class="text-amber-500"></iconify-icon>
-        Missing lunch logs:
-        <span class="font-mono font-bold ml-auto">{{ missing_lunch_count|default:0 }}</span>
-      </div>
-
-      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
-        <iconify-icon icon="ph:currency-circle-dollar-duotone" class="text-amber-500"></iconify-icon>
-        No salary configured:
-        <span class="font-mono font-bold ml-auto">{{ no_salary_count|default:0 }}</span>
-      </div>
-
-      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
-        <iconify-icon icon="ph:shield-duotone" class="text-blue-500"></iconify-icon>
-        Contribution missing:
-        <span class="font-mono font-bold ml-auto">{{ missing_contribution_count|default:0 }}</span>
-      </div>
-
-      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
-        <iconify-icon icon="ph:airplane-tilt-duotone" class="text-purple-500"></iconify-icon>
-        Active travel orders:
-        <span class="font-mono font-bold ml-auto">{{ travel_count|default:0 }}</span>
-      </div>
-
-      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/20 dark:bg-black/20">
-        <iconify-icon icon="ph:calendar-x-duotone" class="text-rose-500"></iconify-icon>
-        OT disqualified:
-        <span class="font-mono font-bold ml-auto">{{ ot_disqualified_count|default:0 }}</span>
-      </div>
-    </div>
-  </div>
-
-</div>
-
+{% block extra_js %}
 <script>
 (function () {
-  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || "";
+  var csrfToken = document.querySelector('#csrfOnlyForm [name=csrfmiddlewaretoken]')?.value || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+  var toast = function (m, t) { window.showToast ? window.showToast(m, t) : alert(m); };
+  var esc = function (s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
 
-  function showToast(message, type = "info") {
-    if (window.showToast) {
-      window.showToast(message, type);
-    } else {
-      alert(message);
-    }
-  }
-
-  function formatNumber(value, decimals = 2, prefix = "") {
-    const numeric = Number(value || 0);
-    return prefix + numeric.toLocaleString(undefined, {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals
-    });
-  }
-
-  function animateCounter(element, target) {
-    const prefix = element.getAttribute("data-prefix") || "";
-    const decimals = Number(element.getAttribute("data-decimals") || 0);
-    const numericTarget = Number(target || 0);
-    const duration = 700;
-    const startTime = performance.now();
-
-    function update(now) {
-      const progress = Math.min((now - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = numericTarget * eased;
-
-      element.innerText = formatNumber(current, decimals, prefix);
-
-      if (progress < 1) {
-        requestAnimationFrame(update);
-      } else {
-        element.innerText = formatNumber(numericTarget, decimals, prefix);
-      }
-    }
-
-    requestAnimationFrame(update);
-  }
-
-  document.querySelectorAll(".counter-number").forEach(el => {
-    const target = el.getAttribute("data-target") || "0";
-    animateCounter(el, target);
+  // ---------- Money formatting for the totals (server values, no fake counting animation) ----------
+  document.querySelectorAll('.counter-number').forEach(function (el) {
+    var n = Number(el.getAttribute('data-target') || 0);
+    if (!isFinite(n)) return;
+    var dec = Number(el.getAttribute('data-decimals') || 0);
+    el.textContent = (el.getAttribute('data-prefix') || '') + n.toLocaleString('en-PH', { minimumFractionDigits: dec, maximumFractionDigits: dec });
   });
 
-  document.querySelectorAll(".expand-btn").forEach(btn => {
-    btn.addEventListener("click", function () {
-      const employeeId = this.getAttribute("data-target");
-      const row = document.querySelector(`.expand-detail-row[data-detail-for="${employeeId}"]`);
-      const expanded = this.getAttribute("aria-expanded") === "true";
-
-      this.setAttribute("aria-expanded", expanded ? "false" : "true");
-
-      if (row) {
-        row.classList.toggle("hidden");
-      }
+  // ---------- Expandable breakdown rows ----------
+  document.querySelectorAll('.expand-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var row = document.querySelector('.expand-detail-row[data-detail-for="' + this.dataset.target + '"]');
+      var open = this.getAttribute('aria-expanded') === 'true';
+      this.setAttribute('aria-expanded', String(!open));
+      row && row.classList.toggle('hidden', open);
     });
   });
 
-  const filterForm = document.getElementById("payrollFilterForm");
-  if (filterForm) {
-    filterForm.querySelectorAll("select").forEach(select => {
-      select.addEventListener("change", () => {
-        filterForm.submit();
-      });
-    });
-  }
-
-  document.querySelectorAll(".remove-chip").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const filterName = btn.getAttribute("data-filter");
-      const url = new URL(window.location.href);
-      url.searchParams.delete(filterName);
+  // ---------- Filters ----------
+  var filterForm = document.getElementById('payrollFilterForm');
+  filterForm?.querySelectorAll('select').forEach(function (s) { s.addEventListener('change', function () { filterForm.submit(); }); });
+  document.querySelectorAll('.remove-chip').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var url = new URL(window.location.href);
+      url.searchParams.delete(btn.dataset.filter);
       window.location.href = url.toString();
     });
   });
+  document.getElementById('resetFilters')?.addEventListener('click', function () { window.location.href = window.location.pathname; });
+  document.getElementById('exportPayrollBtn')?.addEventListener('click', function () { window.print(); });
 
-  document.getElementById("resetFilters")?.addEventListener("click", () => {
-    window.location.href = window.location.pathname;
+  // ---------- Payroll dates dialog ----------
+  var periodModal = document.getElementById('createPeriodModal');
+  ['openCreatePeriodBtn', 'openDatePeriodBtn'].forEach(function (id) {
+    document.getElementById(id)?.addEventListener('click', function () { window.adModal.open(periodModal); });
+  });
+  periodModal?.querySelector('form')?.addEventListener('submit', function (e) {
+    var s = document.getElementById('payrollStartDate').value, en = document.getElementById('payrollEndDate').value;
+    var bad = s && en && en < s;
+    document.getElementById('periodDateError').hidden = !bad;
+    if (bad) e.preventDefault();
   });
 
-  const dtrModal = document.getElementById("dtrModal");
-  const dtrBody = document.getElementById("dtrTableBody");
-  const dtrSummary = document.getElementById("dtrSummary");
-  const dtrEmployeeSpan = document.getElementById("dtrEmployeeName");
-
-  function statusClass(status) {
-    const normalized = String(status || "").toLowerCase();
-
-    if (normalized.includes("late")) return "amber";
-    if (normalized.includes("absent")) return "red";
-    if (normalized.includes("travel")) return "purple";
-    if (normalized.includes("holiday")) return "blue";
-    if (normalized.includes("suspension")) return "blue";
-    if (normalized.includes("missing")) return "red";
-    return "green";
+  // ---------- DTR dialog ----------
+  var dtrModal = document.getElementById('dtrModal');
+  var dtrBody = document.getElementById('dtrTableBody');
+  var dtrSummary = document.getElementById('dtrSummary');
+  var dtrName = document.getElementById('dtrEmployeeName');
+  function badge(status) {
+    var s = String(status || '').toLowerCase(), cls = 'ihrt-badge--ok';
+    if (s.indexOf('late') > -1) cls = 'ihrt-badge--warn';
+    else if (s.indexOf('absent') > -1 || s.indexOf('missing') > -1) cls = 'ihrt-badge--bad';
+    else if (s.indexOf('travel') > -1 || s.indexOf('holiday') > -1 || s.indexOf('suspension') > -1) cls = 'ihrt-badge--info';
+    else if (s.indexOf('weekend') > -1) cls = 'ihrt-badge--neutral';
+    return '<span class="ihrt-badge ' + cls + '">' + esc(status || 'Present') + '</span>';
   }
-
-  function closeDtrModal() {
-    if (!dtrModal) return;
-    dtrModal.classList.add("hidden");
-    dtrModal.classList.remove("flex");
-    dtrBody.innerHTML = "";
-    dtrSummary.innerHTML = "";
+  function stat(label, value, tone) {
+    return '<div class="ad-stat ' + (tone || '') + '"><p class="ad-stat__label">' + label + '</p><p class="ad-stat__value">' + value + '</p></div>';
   }
-
-  document.getElementById("closeDtrModal")?.addEventListener("click", closeDtrModal);
-  document.getElementById("dtrModalBackdrop")?.addEventListener("click", closeDtrModal);
-
-  function openDtrModal(employeeName, records) {
-    dtrEmployeeSpan.innerText = employeeName || "Employee";
-
-    if (!records || records.length === 0) {
-      dtrBody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-gray-400">No DTR records for this period.</td></tr>`;
-      dtrSummary.innerHTML = `<div class="glass-premium p-3 rounded-xl col-span-4 text-center">No data available yet</div>`;
-      dtrModal.classList.remove("hidden");
-      dtrModal.classList.add("flex");
-      return;
-    }
-
-    let totalHours = 0;
-    let totalLate = 0;
-    let totalUndertime = 0;
-    let presentDays = 0;
-
-    let rowsHtml = "";
-
-    records.forEach(rec => {
-      const total = Number(rec.total_hours || rec.totalHours || 0);
-      const late = Number(rec.late || 0);
-      const undertime = Number(rec.undertime || 0);
-      const status = rec.status || "Present";
-
-      totalHours += total;
-      totalLate += late;
-      totalUndertime += undertime;
-
-      if (["present", "official travel", "official business"].includes(String(status).trim().toLowerCase())) {
-        presentDays += 1;
-      }
-
-      rowsHtml += `
-        <tr class="border-b border-white/10">
-          <td class="p-2">${rec.date || ""}</td>
-          <td>${rec.day || ""}</td>
-          <td>${rec.am_in || rec.timeIn || "--"}</td>
-          <td>${rec.am_out || rec.lunchOut || "--"}</td>
-          <td>${rec.pm_in || rec.lunchIn || "--"}</td>
-          <td>${rec.pm_out || rec.timeOut || "--"}</td>
-          <td>${total.toFixed(2)}</td>
-          <td class="${late > 0 ? "text-rose-400 font-medium" : ""}">${late}</td>
-          <td class="${undertime > 0 ? "text-orange-400 font-medium" : ""}">${undertime}</td>
-          <td><span class="status-chip ${statusClass(status)}">${status}</span></td>
-          <td>${rec.remarks || ""}</td>
-        </tr>
-      `;
-    });
-
-    dtrBody.innerHTML = rowsHtml;
-    dtrSummary.innerHTML = `
-      <div class="glass-premium p-3 rounded-xl text-center">
-        <div class="text-xs text-gray-500">Total Hours</div>
-        <div class="text-xl font-bold">${totalHours.toFixed(2)}</div>
-      </div>
-      <div class="glass-premium p-3 rounded-xl text-center">
-        <div class="text-xs text-gray-500">Present Days</div>
-        <div class="text-xl font-bold text-emerald-400">${presentDays}</div>
-      </div>
-      <div class="glass-premium p-3 rounded-xl text-center">
-        <div class="text-xs text-gray-500">Late Minutes</div>
-        <div class="text-xl font-bold text-rose-400">${totalLate}</div>
-      </div>
-      <div class="glass-premium p-3 rounded-xl text-center">
-        <div class="text-xs text-gray-500">Undertime</div>
-        <div class="text-xl font-bold text-orange-400">${totalUndertime}</div>
-      </div>
-    `;
-
-    dtrModal.classList.remove("hidden");
-    dtrModal.classList.add("flex");
-  }
-
-  document.querySelectorAll(".view-dtr-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const employeeName = btn.getAttribute("data-employee-name") || "Employee";
-      let records = [];
-
-      try {
-        records = JSON.parse(btn.getAttribute("data-dtr-records") || "[]");
-      } catch (e) {
-        records = [];
-      }
-
-      openDtrModal(employeeName, records);
-    });
-  });
-
-  document.getElementById("printDtrFromModal")?.addEventListener("click", () => {
-    const content = document.querySelector("#dtrModal .overflow-y-auto")?.cloneNode(true);
-    const employee = dtrEmployeeSpan?.innerText || "Employee";
-
-    if (!content) return;
-
-    const win = window.open("", "_blank");
-    win.document.write(`
-      <html>
-        <head>
-          <title>DTR_${employee}</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 24px; color: #111827; }
-            h1 { font-size: 18px; margin-bottom: 12px; }
-            table { width: 100%; border-collapse: collapse; font-size: 12px; }
-            th, td { border: 1px solid #d1d5db; padding: 6px; text-align: left; }
-            th { background: #f3f4f6; }
-            .glass-premium { box-shadow: none !important; border: none !important; background: transparent !important; }
-            button { display: none !important; }
-          </style>
-        </head>
-        <body>
-          <h1>Daily Time Record - ${employee}</h1>
-          ${content.innerHTML}
-        </body>
-      </html>
-    `);
-    win.document.close();
-    win.print();
-  });
-
-  
-
-  document.getElementById("previewPayrollBtn")?.addEventListener("click", () => {
-    const form = document.getElementById("payrollFilterForm");
-    if (form) form.submit();
-  });
-
-  document.getElementById("exportPayrollBtn")?.addEventListener("click", () => {
-    window.print();
-  });
-
-  const createPeriodModal = document.getElementById("createPeriodModal");
-
-  function openCreatePeriodModal() {
-    createPeriodModal?.classList.remove("hidden");
-    createPeriodModal?.classList.add("flex");
-  }
-
-  function closeCreatePeriodModal() {
-    createPeriodModal?.classList.add("hidden");
-    createPeriodModal?.classList.remove("flex");
-  }
-
-  document.getElementById("openCreatePeriodBtn")?.addEventListener(
-    "click",
-    openCreatePeriodModal,
-  );
-  document.getElementById("openDatePeriodBtn")?.addEventListener(
-    "click",
-    openCreatePeriodModal,
-  );
-  document.getElementById("closeCreatePeriodBtn")?.addEventListener(
-    "click",
-    closeCreatePeriodModal,
-  );
-  document.getElementById("cancelCreatePeriodBtn")?.addEventListener(
-    "click",
-    closeCreatePeriodModal,
-  );
-  createPeriodModal?.addEventListener("click", event => {
-    if (event.target === createPeriodModal) closeCreatePeriodModal();
-  });
-
-  document.getElementById("processPayrollBtn")?.addEventListener("click", async function () {
-    const btn = this;
-
-    const hasCriticalWarnings = Number("{{ no_salary_count|default:0 }}") > 0 ||
-                                Number("{{ missing_checkout_count|default:0 }}") > 0;
-
-    let warning = "This will process payroll for the selected branch and period.";
-    if (hasCriticalWarnings) {
-      warning += "\n\nWarning: There are validation issues. Review them before finalizing.";
-    }
-
-    if (!confirm(warning + "\n\nContinue?")) return;
-
-    btn.classList.add("btn-loading");
-
-    try {
-      const form = document.getElementById("payrollFilterForm");
-      const formData = new FormData(form || undefined);
-
-      const response = await fetch("{% url 'admin_payroll_process_batch' %}", {
-        method: "POST",
-        headers: {
-          "X-CSRFToken": csrfToken,
-          "Accept": "application/json"
-        },
-        body: formData
+  function openDtr(name, records) {
+    dtrName.textContent = name || 'Employee';
+    if (!records || !records.length) {
+      dtrSummary.innerHTML = '';
+      dtrBody.innerHTML = '<tr><td colspan="11"><div class="ad-empty" style="padding:24px"><p>No DTR entries for this period yet.</p></div></td></tr>';
+    } else {
+      var hours = 0, late = 0, ut = 0, present = 0, rows = '';
+      records.forEach(function (r) {
+        var total = Number(r.total_hours || r.totalHours || 0), l = Number(r.late || 0), u = Number(r.undertime || 0), st = r.status || 'Present';
+        hours += total; late += l; ut += u;
+        // A late or undertime day is still a day worked, so it counts as present
+        if (/present|late|undertime|travel|official business/.test(String(st).toLowerCase())) present++;
+        rows += '<tr><td class="is-nowrap">' + esc(r.date) + '</td><td>' + esc(r.day) + '</td>' +
+          '<td class="ad-num">' + esc(r.am_in || r.timeIn || '—') + '</td><td class="ad-num">' + esc(r.am_out || r.lunchOut || '—') + '</td>' +
+          '<td class="ad-num">' + esc(r.pm_in || r.lunchIn || '—') + '</td><td class="ad-num">' + esc(r.pm_out || r.timeOut || '—') + '</td>' +
+          '<td class="is-num">' + total.toFixed(2) + '</td><td class="is-num' + (l ? ' ad-neg' : '') + '">' + l + '</td><td class="is-num' + (u ? ' ad-warn-text' : '') + '">' + u + '</td>' +
+          '<td>' + badge(st) + '</td><td class="is-muted">' + esc(r.remarks || '') + '</td></tr>';
       });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Payroll processing failed.");
-      }
-
-      showToast("Payroll processed successfully.", "success");
-      window.location.reload();
-
-    } catch (error) {
-      showToast(error.message || "Payroll processing failed.", "error");
-    } finally {
-      btn.classList.remove("btn-loading");
+      dtrBody.innerHTML = rows;
+      dtrSummary.innerHTML = stat('Hours worked', hours.toFixed(2), 'ad-tone-field') + stat('Days attended', present, 'ad-tone-ok') + stat('Late minutes', late, 'ad-tone-bad') + stat('Undertime minutes', ut, 'ad-tone-warn');
     }
+    window.adModal.open(dtrModal);
+  }
+  document.querySelectorAll('.view-dtr-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var records = [];
+      try { records = JSON.parse(btn.getAttribute('data-dtr-records') || '[]'); } catch (e) {}
+      openDtr(btn.getAttribute('data-employee-name'), records);
+    });
+  });
+  document.getElementById('printDtrFromModal')?.addEventListener('click', function () {
+    var area = document.getElementById('dtrPrintArea');
+    var name = dtrName.textContent || 'Employee';
+    var win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write('<html><head><title>DTR ' + esc(name) + '</title><style>' +
+      'body{font-family:Arial,sans-serif;padding:24px;color:#111}h1{font-size:18px;margin:0 0 12px}' +
+      '.ad-stats{display:flex;gap:24px;margin-bottom:16px}.ad-stat__label{font-size:11px;color:#555;margin:0}.ad-stat__value{font-size:18px;font-weight:700;margin:2px 0 0}' +
+      'table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ccc;padding:5px;text-align:left}th{background:#f2f2f2}.ihrt-badge{font-weight:600}' +
+      '</style></head><body><h1>Daily time record: ' + esc(name) + '</h1>' + area.innerHTML + '</body></html>');
+    win.document.close(); win.focus(); win.print();
   });
 
+  // ---------- Process payroll ----------
+  document.getElementById('processPayrollBtn')?.addEventListener('click', async function () {
+    var btn = this;
+    var critical = Number('{% firstof no_salary_count "0" %}') > 0 || Number('{% firstof missing_checkout_count "0" %}') > 0;
+    var msg = 'Process payroll for the selected branch, dates, and employee type?';
+    if (critical) msg += '\n\nSome checks above still need attention. You can process now and review before finalizing, but those employees may be computed incorrectly.';
+    if (!confirm(msg)) return;
+    btn.classList.add('btn-loading');
+    try {
+      var res = await fetch("{% url 'admin_payroll_process_batch' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken, 'Accept': 'application/json' },
+        body: new FormData(filterForm || undefined)
+      });
+      var data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Payroll could not be processed.');
+      toast('Payroll processed', 'success');
+      setTimeout(function () { window.location.reload(); }, 600);
+    } catch (err) {
+      toast(err.message || 'Payroll could not be processed.', 'error');
+      btn.classList.remove('btn-loading');
+    }
+  });
 })();
 </script>
 {% endblock %}

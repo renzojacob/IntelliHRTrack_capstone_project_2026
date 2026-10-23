@@ -1,0 +1,451 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DTR: {{ employee_name }} | IntelliHRTrack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    /* ---------- Screen-only toolbar (hidden when printing) ---------- */
+    .screen-only { font-family: "Schibsted Grotesk", "Segoe UI", system-ui, Arial, sans-serif; color: #10261C; }
+    .dtr-bar {
+      position: sticky; top: 0; z-index: 5;
+      margin: 0 -16px 20px; padding: 12px 16px;
+      background: #fff; border-bottom: 1px solid #DAE2D8;
+    }
+    .dtr-bar__inner { max-width: 760px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .dtr-bar__title { flex: 1 1 200px; min-width: 0; }
+    .dtr-bar__title strong { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dtr-bar__title span { font-size: 13px; color: #52645A; }
+    .dtr-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      min-height: 40px; padding: 8px 14px; border-radius: 8px;
+      border: 1px solid #DAE2D8; background: #fff; color: #10261C;
+      font: 600 14px/1.2 inherit; text-decoration: none; cursor: pointer; white-space: nowrap;
+    }
+    .dtr-btn:hover { border-color: #52645A; }
+    .dtr-btn--primary { background: #1E5A3C; border-color: #1E5A3C; color: #fff; }
+    .dtr-btn--primary:hover { background: #174A31; }
+    .dtr-btn--danger { background: #FBE4E2; border-color: #FBE4E2; color: #B3261E; }
+    .dtr-btn:focus-visible, .dtr-input:focus-visible { outline: 2px solid #1E5A3C; outline-offset: 2px; }
+    .dtr-input { min-height: 40px; padding: 8px 10px; border: 1px solid #DAE2D8; border-radius: 8px; font: 14px inherit; min-width: 0; width: 180px; }
+    .dtr-inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; }
+    .dtr-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+    .dtr-badge--ok { background: #E1F2E7; color: #1E7A4A; }
+    .dtr-badge--warn { background: #FBEFD2; color: #8A5A00; }
+    .dtr-badge--neutral { background: #EEF2EC; color: #52645A; }
+    .dtr-panel { max-width: 760px; margin: 0 auto 16px; padding: 14px 16px; border: 1px solid #DAE2D8; border-radius: 12px; background: #fff; font-size: 14px; }
+    .dtr-panel dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; }
+    .dtr-panel dt { color: #52645A; }
+    .dtr-panel dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+    .dtr-msg { max-width: 760px; margin: 0 auto 10px; padding: 10px 14px; border-radius: 10px; background: #E1F2E7; color: #1E7A4A; font-size: 14px; }
+    .dtr-msg--error { background: #FBE4E2; color: #B3261E; }
+    .dtr-msg--warning { background: #FBEFD2; color: #8A5A00; }
+    @media (max-width: 560px) { .dtr-inline { width: 100%; } .dtr-input { flex: 1; width: auto; } }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Times New Roman", serif;
+      color: #111;
+      background: #EEF2EC;
+      margin: 0;
+      padding: 0 16px 32px;
+    }
+
+    .page {
+      width: 720px;
+      max-width: 100%;
+      overflow-x: auto;
+      min-height: 1050px;
+      background: white;
+      margin: 0 auto;
+      padding: 26px 34px;
+      border: 1px solid #222;
+      position: relative;
+    }
+
+    .form-no {
+      font-size: 12px;
+      text-align: center;
+      margin-bottom: 2px;
+    }
+
+    .bio-no {
+      position: absolute;
+      right: 44px;
+      top: 34px;
+      font-size: 12px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 24px;
+      margin: 0;
+      letter-spacing: .5px;
+    }
+
+    .name {
+      text-align: center;
+      font-size: 16px;
+      font-weight: bold;
+      text-decoration: underline;
+      margin-top: 6px;
+      text-transform: uppercase;
+    }
+
+    .label-name {
+      text-align: center;
+      font-size: 11px;
+      margin-top: 0;
+    }
+
+    .division {
+      text-align: center;
+      font-size: 15px;
+      font-weight: bold;
+      text-decoration: underline;
+      margin-top: 8px;
+    }
+
+    .label-division {
+      text-align: center;
+      font-size: 11px;
+      margin-top: 0;
+    }
+
+    .month {
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    .month span {
+      font-weight: bold;
+      text-decoration: underline;
+    }
+
+    .hours-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      margin-top: 8px;
+      font-size: 13px;
+      gap: 16px;
+    }
+
+    .line {
+      display: inline-block;
+      border-bottom: 1px solid #111;
+      min-width: 180px;
+      height: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      table-layout: fixed;
+    }
+
+    th, td {
+      border: 1px solid #111;
+      text-align: center;
+      font-size: 12px;
+      height: 22px;
+      padding: 2px;
+      vertical-align: middle;
+    }
+
+    th {
+      font-weight: bold;
+    }
+
+    .day-col {
+      width: 42px;
+    }
+
+    .time-col {
+      width: 92px;
+    }
+
+    .under-col {
+      width: 60px;
+    }
+
+    .subhead {
+      font-size: 11px;
+      font-weight: normal;
+    }
+
+    .status-text {
+      font-size: 11px;
+      font-style: italic;
+    }
+
+    .total-row td {
+      font-weight: bold;
+      height: 24px;
+    }
+
+    .certification {
+      margin-top: 18px;
+      font-size: 12px;
+      text-align: justify;
+      line-height: 1.25;
+    }
+
+    .signature-block {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .signature {
+      width: 280px;
+      text-align: center;
+    }
+
+    .signature-line {
+      border-bottom: 1px solid #111;
+      height: 28px;
+    }
+
+    .employee-label {
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .verified {
+      margin-top: 28px;
+      font-size: 12px;
+    }
+
+    .verified-signature {
+      width: 300px;
+      margin-top: 18px;
+      text-align: center;
+    }
+
+    .verified-line {
+      border-bottom: 1px solid #111;
+      height: 26px;
+    }
+
+    .print-meta {
+      margin-top: 14px;
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      color: #64748b;
+      text-align: right;
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+
+      .screen-only {
+        display: none !important;
+      }
+
+      .page {
+        border: none;
+        margin: 0;
+        width: 100%;
+        min-height: auto;
+        padding: 18px 22px;
+      }
+
+      @page {
+        size: A4 portrait;
+        margin: 10mm;
+      }
+    }
+    </style>
+</head>
+
+<body>
+
+<div class="screen-only">
+  <div class="dtr-bar">
+    <div class="dtr-bar__inner">
+      <a class="dtr-btn" href="{% url 'admin_payroll' %}?branch={{ branch.id }}&period={{ period.id }}&type={{ employee_type_scope|default:'ALL' }}">&larr; Payroll</a>
+      <div class="dtr-bar__title">
+        <strong>{{ employee_name }}</strong>
+        <span>{{ month_label }}</span>
+      </div>
+      {% if dtr_locked %}
+        <span class="dtr-badge dtr-badge--ok">Locked</span>
+      {% elif finalized_dtr %}
+        <span class="dtr-badge dtr-badge--warn">Unlocked for correction</span>
+      {% else %}
+        <span class="dtr-badge dtr-badge--neutral">Not finalized</span>
+      {% endif %}
+
+      {% if not dtr_locked %}
+        <form method="post" action="{% url 'admin_finalize_payroll_item_dtr' item.id %}" class="dtr-inline" onsubmit="return confirm('Finalize and lock this DTR? Payroll for this employee cannot be reprocessed until it is unlocked.');">
+          {% csrf_token %}
+          <button type="submit" class="dtr-btn">Finalize and lock</button>
+        </form>
+      {% endif %}
+
+      {% if dtr_locked and finalized_dtr %}
+        <form method="post" action="{% url 'admin_unlock_finalized_dtr' finalized_dtr.id %}" class="dtr-inline" onsubmit="return confirm('Unlock this DTR? Do this only to correct it. Your reason is recorded.');">
+          {% csrf_token %}
+          <label for="unlockReason" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Reason for unlocking</label>
+          <input id="unlockReason" name="unlock_reason" class="dtr-input" placeholder="Reason for unlocking" required>
+          <button type="submit" class="dtr-btn dtr-btn--danger">Unlock</button>
+        </form>
+      {% endif %}
+
+      <button type="button" class="dtr-btn dtr-btn--primary" onclick="window.print()">Print DTR</button>
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="dtr-msg {% if message.tags == 'error' %}dtr-msg--error{% elif message.tags == 'warning' %}dtr-msg--warning{% endif %}" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="dtr-panel">
+    <dl>
+      <dt>Status</dt>
+      <dd>{% if dtr_locked %}Locked and finalized{% elif finalized_dtr %}Unlocked for correction{% else %}Not finalized yet{% endif %}</dd>
+      <dt>Source</dt>
+      <dd>{{ dtr_source_label }}</dd>
+      {% if finalized_dtr and finalized_dtr.finalized_by %}
+        <dt>Finalized</dt>
+        <dd>{{ finalized_dtr.finalized_by.username }}, {{ finalized_dtr.finalized_at|date:"M d, Y H:i" }}</dd>
+      {% endif %}
+      {% if finalized_dtr and finalized_dtr.unlocked_by %}
+        <dt>Last unlocked</dt>
+        <dd>{{ finalized_dtr.unlocked_by.username }}, {{ finalized_dtr.unlocked_at|date:"M d, Y H:i" }}</dd>
+        <dt>Reason</dt>
+        <dd>{{ finalized_dtr.unlock_reason }}</dd>
+      {% endif %}
+    </dl>
+  </div>
+</div>
+
+  <div class="page">
+
+    <div class="form-no">CIVIL SERVICE FORM NO. 48</div>
+    <div class="bio-no">Biometric No. <strong>{{ biometric_employee_id|default:"—" }}</strong></div>
+
+    <h1>DAILY TIME RECORD</h1>
+
+    <div class="name">{{ employee_name }}</div>
+    <div class="label-name">(NAME)</div>
+
+    <div class="division">{{ division }}</div>
+    <div class="label-division">(DIVISION)</div>
+
+    <div class="month">
+      For the month of&nbsp; <span>{{ month_label }}</span>
+    </div>
+
+    <div class="hours-row">
+      <div>
+        <strong>Official hours of arrival</strong><br>
+        and departure <span class="line"></span>
+      </div>
+      <div>
+        <strong>Regular days</strong> <span class="line"></span><br>
+        <strong>Saturdays</strong> <span class="line"></span>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th rowspan="2" class="day-col">Day</th>
+          <th colspan="2">A.M.</th>
+          <th colspan="2">P.M.</th>
+          <th colspan="2">UNDERTIME</th>
+        </tr>
+        <tr>
+          <th class="time-col subhead">Arrival</th>
+          <th class="time-col subhead">Departure</th>
+          <th class="time-col subhead">Arrival</th>
+          <th class="time-col subhead">Departure</th>
+          <th class="under-col subhead">Hour</th>
+          <th class="under-col subhead">Minute</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for row in dtr_rows %}
+          <tr>
+            <td>{{ row.day }}</td>
+
+            {% if row.status == "Weekend" or row.status == "Holiday/Suspension" %}
+              <td colspan="4" class="status-text">
+                {{ row.remarks|default:row.status }}
+              </td>
+              <td></td>
+              <td></td>
+            {% else %}
+              <td>{{ row.am_in|default:"" }}</td>
+              <td>{{ row.am_out|default:"" }}</td>
+              <td>{{ row.pm_in|default:"" }}</td>
+              <td>{{ row.pm_out|default:"" }}</td>
+              <td>
+                {% if row.undertime_hour %}
+                  {{ row.undertime_hour }}
+                {% endif %}
+              </td>
+              <td>
+                {% if row.undertime_minute %}
+                  {{ row.undertime_minute }}
+                {% endif %}
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+
+        <tr class="total-row">
+          <td colspan="5" style="text-align:left; padding-left:8px;">TOTAL</td>
+          <td>{{ total_undertime_hours }}</td>
+          <td>{{ total_undertime_minutes }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="certification">
+      I certify on my honor that the above is a true and correct report of the hours of work
+      performed, record of which was made daily as the time of arrival and departure from office.
+    </div>
+
+    <div class="signature-block">
+      <div class="signature">
+        <div class="signature-line"></div>
+        <div><strong>{{ employee_name }}</strong></div>
+        <div class="employee-label">(Employee)</div>
+      </div>
+    </div>
+
+    <div class="verified">
+      VERIFIED as to the prescribed office hours:
+    </div>
+
+    <div class="verified-signature">
+      <div class="verified-line"></div>
+      <div><strong>Authorized Official</strong></div>
+      <div class="employee-label">(Supervisor / Admin)</div>
+    </div>
+
+    <div class="print-meta">
+      Payroll Batch: {{ batch.name }} |
+      Printed by {{ printed_by }} on {{ printed_at|date:"Y-m-d H:i" }}
+    </div>
+
+  </div>
+
+</body>
+</html>

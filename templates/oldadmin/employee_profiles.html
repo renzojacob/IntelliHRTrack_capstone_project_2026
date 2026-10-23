@@ -1,0 +1,385 @@
+{% extends 'admin/base_admin.html' %}
+
+{% block title %}intellihrtrack — employee management{% endblock %}
+
+{% block extra_head %}
+<style>
+  .status-badge {
+    padding: .25rem .75rem;
+    border-radius: 9999px;
+    font-size: .75rem;
+    font-weight: 600;
+  }
+  .status-pending { background: rgba(245,158,11,.15); color: rgb(202,138,4); }
+  .status-approved { background: rgba(34,197,94,.15); color: rgb(22,163,74); }
+
+  .pill { padding:.25rem .6rem; border-radius:9999px; font-size:.75rem; font-weight:600; }
+  .pill-cos { background: rgba(59,130,246,.15); color: rgb(37,99,235); }
+  .pill-jo { background: rgba(139,92,246,.15); color: rgb(124,58,237); }
+
+  .btn { padding: .35rem .75rem; border-radius: .6rem; font-weight: 600; font-size: .85rem; }
+  .btn-primary { background: rgb(13 148 136); color: white; }
+  .btn-primary:hover { opacity: .92; }
+  .btn-danger { background: rgb(225 29 72); color: white; }
+  .btn-danger:hover { opacity: .92; }
+  .btn-soft { background: rgba(2,6,23,.06); }
+  .dark .btn-soft { background: rgba(255,255,255,.08); }
+
+  .input {
+    width: 100%;
+    padding: .55rem .7rem;
+    border-radius: .8rem;
+    border: 1px solid rgba(148,163,184,.6);
+    background: rgba(255,255,255,.7);
+  }
+  .dark .input {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.15);
+    color: #e5e7eb;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen p-6 space-y-6">
+
+  <!-- HEADER -->
+  <div class="glass rounded-3xl p-6 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-extrabold">Employee Management</h1>
+      <p class="text-sm text-slate-500">
+        approve accounts and manage employee profiles
+      </p>
+    </div>
+
+    <a href="{% url 'signup_ui' %}"
+       class="px-4 py-2 rounded-xl text-white bg-teal-600 hover:bg-teal-700 flex items-center gap-2">
+      <iconify-icon icon="ph:user-plus-duotone"></iconify-icon>
+      signup page
+    </a>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="glass rounded-xl p-4">
+      <div class="text-xs text-slate-500">Pending</div>
+      <div class="text-2xl font-bold">{{ pending_profiles|length }}</div>
+    </div>
+    <div class="glass rounded-xl p-4">
+      <div class="text-xs text-slate-500">Approved</div>
+      <div class="text-2xl font-bold">{{ approved_profiles|length }}</div>
+    </div>
+    <div class="glass rounded-xl p-4">
+      <div class="text-xs text-slate-500">Your Branch</div>
+      <div class="text-lg font-semibold">
+        {% if request.user.is_superuser %}
+          All Branches
+        {% else %}
+          {{ request.user.profile.branch|default:"—" }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- APPROVAL TABLE (pending + approved) -->
+  <div class="glass rounded-2xl p-4 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="text-xs uppercase text-slate-500 border-b">
+        <tr>
+          <th class="px-3 py-2 text-left">Username</th>
+          <th class="px-3 py-2 text-left">Email</th>
+          <th class="px-3 py-2 text-left">Branch</th>
+          <th class="px-3 py-2 text-left">Department</th>
+          <th class="px-3 py-2 text-left">Job Type</th>
+          <th class="px-3 py-2 text-left">Status</th>
+          <th class="px-3 py-2 text-left">Created</th>
+          <th class="px-3 py-2 text-right">Action</th>
+        </tr>
+      </thead>
+
+      <tbody class="divide-y">
+
+        <!-- PENDING -->
+        <tr class="bg-amber-50/40 dark:bg-amber-500/10">
+          <td colspan="8" class="px-3 py-2 font-semibold text-amber-700 dark:text-amber-300">
+            Pending Accounts
+          </td>
+        </tr>
+
+        {% for p in pending_profiles %}
+        <tr class="hover:bg-slate-50 dark:hover:bg-white/5">
+          <td class="px-3 py-2 font-medium">{{ p.user.username }}</td>
+          <td class="px-3 py-2">{{ p.user.email|default:"—" }}</td>
+          <td class="px-3 py-2">{{ p.branch|default:"—" }}</td>
+          <td class="px-3 py-2">{{ p.department|default:"—" }}</td>
+
+          <td class="px-3 py-2">
+            {% if p.employment_type == "COS" %}
+              <span class="pill pill-cos">COS</span>
+            {% elif p.employment_type == "JO" %}
+              <span class="pill pill-jo">JO</span>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+
+          <td class="px-3 py-2">
+            <span class="status-badge status-pending">PENDING</span>
+          </td>
+
+          <td class="px-3 py-2">{{ p.created_at|date:"Y-m-d H:i" }}</td>
+
+          <td class="px-3 py-2 text-right space-x-2">
+            <form method="post" action="{% url 'approve_user' p.id %}" class="inline">
+              {% csrf_token %}
+              <button class="btn bg-green-600 text-white text-xs">Approve</button>
+            </form>
+
+            <form method="post"
+                  action="{% url 'reject_user' p.id %}"
+                  class="inline"
+                  onsubmit="return confirm('Reject this account?');">
+              {% csrf_token %}
+              <button class="btn bg-rose-600 text-white text-xs">Reject</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="text-center py-6 text-slate-400">
+            No pending accounts
+          </td>
+        </tr>
+        {% endfor %}
+
+        <!-- APPROVED -->
+        <tr class="bg-emerald-50/40 dark:bg-emerald-500/10">
+          <td colspan="8" class="px-3 py-2 font-semibold text-emerald-700 dark:text-emerald-300">
+            Approved Employees
+          </td>
+        </tr>
+
+        {% for p in approved_profiles %}
+        <tr class="hover:bg-slate-50 dark:hover:bg-white/5">
+          <td class="px-3 py-2 font-medium">{{ p.user.username }}</td>
+          <td class="px-3 py-2">{{ p.user.email|default:"—" }}</td>
+          <td class="px-3 py-2">{{ p.branch|default:"—" }}</td>
+          <td class="px-3 py-2">{{ p.department|default:"—" }}</td>
+
+          <td class="px-3 py-2">
+            {% if p.employment_type == "COS" %}
+              <span class="pill pill-cos">COS</span>
+            {% elif p.employment_type == "JO" %}
+              <span class="pill pill-jo">JO</span>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+
+          <td class="px-3 py-2">
+            <span class="status-badge status-approved">APPROVED</span>
+          </td>
+
+          <td class="px-3 py-2">{{ p.created_at|date:"Y-m-d H:i" }}</td>
+
+          <td class="px-3 py-2 text-right text-xs text-slate-400">
+            —
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="text-center py-6 text-slate-400">
+            No approved employees
+          </td>
+        </tr>
+        {% endfor %}
+
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===================================================== -->
+  <!-- ✅ EMPLOYEE PROFILES (SAME PAGE) -->
+  <!-- ===================================================== -->
+  <div class="glass rounded-3xl p-6 space-y-4">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 class="text-xl font-extrabold">Employee Profiles</h2>
+        <p class="text-sm text-slate-500">
+          Create, update, and delete employee profiles.
+        </p>
+      </div>
+    </div>
+
+    <!-- CREATE FORM -->
+    <details class="glass rounded-2xl p-4">
+      <summary class="cursor-pointer font-semibold flex items-center gap-2">
+        <iconify-icon icon="ph:plus-circle-duotone"></iconify-icon>
+        Add Employee
+      </summary>
+
+      <form method="post" action="{% url 'admin_employees' %}" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_employee">
+
+        <div>
+          <label class="text-xs text-slate-500">Username</label>
+          <input class="input" name="username" required>
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-500">Email</label>
+          <input class="input" type="email" name="email">
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-500">Password (min 8 chars)</label>
+          <input class="input" type="password" name="password" required minlength="8">
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-500">Department</label>
+          <input class="input" name="department" placeholder="e.g., HR, Admin, Payroll">
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-500">Employment Type</label>
+          <select class="input" name="employment_type" required>
+            <option value="">Select</option>
+            <option value="COS">COS</option>
+            <option value="JO">JO</option>
+          </select>
+        </div>
+
+        {% if request.user.is_superuser %}
+        <div>
+          <label class="text-xs text-slate-500">Branch</label>
+          <select class="input" name="branch_id" required>
+            <option value="">Select branch</option>
+            {% for b in branches %}
+              <option value="{{ b.id }}">{{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% else %}
+          <div class="md:col-span-2 text-xs text-slate-500">
+            Branch will automatically be set to your branch.
+          </div>
+        {% endif %}
+
+        <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+          <button type="submit" class="btn btn-primary">Create Employee</button>
+        </div>
+      </form>
+    </details>
+
+    <!-- CRUD TABLE -->
+    <div class="overflow-x-auto fancy-scroll">
+      <table class="w-full text-sm">
+        <thead class="text-xs uppercase text-slate-500 border-b">
+          <tr>
+            <th class="px-3 py-2 text-left">Username</th>
+            <th class="px-3 py-2 text-left">Email</th>
+            <th class="px-3 py-2 text-left">Branch</th>
+            <th class="px-3 py-2 text-left">Department</th>
+            <th class="px-3 py-2 text-left">Job Type</th>
+            <th class="px-3 py-2 text-right">Actions</th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y">
+          {% for p in employee_profiles %}
+          <tr class="hover:bg-slate-50 dark:hover:bg-white/5">
+            <td class="px-3 py-2 font-medium">{{ p.user.username }}</td>
+            <td class="px-3 py-2">{{ p.user.email|default:"—" }}</td>
+            <td class="px-3 py-2">{{ p.branch|default:"—" }}</td>
+            <td class="px-3 py-2">{{ p.department|default:"—" }}</td>
+            <td class="px-3 py-2">
+              {% if p.employment_type == "COS" %}
+                <span class="pill pill-cos">COS</span>
+              {% elif p.employment_type == "JO" %}
+                <span class="pill pill-jo">JO</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <td class="px-3 py-2 text-right">
+              <!-- UPDATE (inline modal-ish using <details>) -->
+              <details class="inline-block text-left">
+                <summary class="btn btn-soft cursor-pointer inline-flex items-center gap-2">
+                  <iconify-icon icon="ph:pencil-duotone"></iconify-icon>
+                  Edit
+                </summary>
+
+                <div class="mt-2 w-[320px] max-w-full glass rounded-2xl p-3">
+                  <form method="post" action="{% url 'admin_employees' %}" class="space-y-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_employee">
+                    <input type="hidden" name="profile_id" value="{{ p.id }}">
+
+                    <div>
+                      <label class="text-xs text-slate-500">Email</label>
+                      <input class="input" type="email" name="email" value="{{ p.user.email|default:'' }}">
+                    </div>
+
+                    <div>
+                      <label class="text-xs text-slate-500">Department</label>
+                      <input class="input" name="department" value="{{ p.department|default:'' }}">
+                    </div>
+
+                    <div>
+                      <label class="text-xs text-slate-500">Employment Type</label>
+                      <select class="input" name="employment_type" required>
+                        <option value="COS" {% if p.employment_type == "COS" %}selected{% endif %}>COS</option>
+                        <option value="JO" {% if p.employment_type == "JO" %}selected{% endif %}>JO</option>
+                      </select>
+                    </div>
+
+                    {% if request.user.is_superuser %}
+                    <div>
+                      <label class="text-xs text-slate-500">Branch</label>
+                      <select class="input" name="branch_id">
+                        {% for b in branches %}
+                          <option value="{{ b.id }}" {% if p.branch and p.branch.id == b.id %}selected{% endif %}>{{ b.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="flex justify-end gap-2 pt-1">
+                      <!-- ✅ MUST BE UPDATE (not Save) -->
+                      <button type="submit" class="btn btn-primary">Update</button>
+                    </div>
+                  </form>
+                </div>
+              </details>
+
+              <!-- DELETE -->
+              <form method="post" action="{% url 'admin_employees' %}" class="inline"
+                    onsubmit="return confirm('Delete employee {{ p.user.username }}?');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_employee">
+                <input type="hidden" name="profile_id" value="{{ p.id }}">
+                <button class="btn btn-danger inline-flex items-center gap-2">
+                  <iconify-icon icon="ph:trash-duotone"></iconify-icon>
+                  Delete
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-8 text-slate-400">
+              No employees yet. Use “Add Employee”.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

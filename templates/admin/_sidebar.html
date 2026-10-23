@@ -1,150 +1,85 @@
-{% load static %}
-<aside data-resizable class="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col gap-6 p-6 pr-3 overflow-y-auto fancy-scroll big-scroll">
-  <div class="glass rounded-2xl p-4 shadow-glow text-slate-800 dark:text-slate-100">
+<aside class="ad-sidebar" id="adSidebar" aria-label="Admin navigation">
+  <div class="ad-sidebar__head">
+    <span class="ad-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 15.5c0-4.4 3.1-8 7-8s7 3.6 7 8"/><path d="M8.5 17c0-3 1.6-5.5 3.5-5.5s3.5 2.5 3.5 5.5"/><path d="M12 15v4"/></svg>
+    </span>
+    <span class="ad-sidebar__name">
+      IntelliHRTrack
+      <span class="ad-sidebar__sub">Administrator</span>
+    </span>
+    <button type="button" class="ad-icon-btn ad-icon-btn--sm ad-sidebar__close" id="adNavClose">
+      <iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon>
+      <span class="sr-only">Close menu</span>
+    </button>
+  </div>
 
-    <!-- Brand -->
-    <div class="flex items-center gap-3 mb-6">
-      <div class="w-11 h-11 rounded-xl gradient-accent text-white flex items-center justify-center font-extrabold shadow-lg">IH</div>
-      <div>
-        <h1 class="text-lg font-semibold tracking-tight">IntelliHRTrack</h1>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Admin Command Center</p>
+  <nav class="ad-nav">
+    <div class="ad-nav__group">
+      <p class="ad-nav__label">Overview</p>
+      <a href="{% url 'admin_dashboard' %}" class="ad-nav__link" {% if current == 'dashboard' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:squares-four" aria-hidden="true"></iconify-icon>
+        Dashboard
+      </a>
+      <a href="{% url 'admin_analytics' %}" class="ad-nav__link" {% if current == 'analytics' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:chart-line-up" aria-hidden="true"></iconify-icon>
+        Workforce analytics
+      </a>
+    </div>
+
+    <div class="ad-nav__group">
+      <p class="ad-nav__label">People and time</p>
+      <a href="{% url 'admin_employees' %}" class="ad-nav__link" {% if current == 'employees' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:users-three" aria-hidden="true"></iconify-icon>
+        Employees
+      </a>
+      <a href="{% url 'admin_biometrics' %}" class="ad-nav__link" {% if current == 'biometrics' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon>
+        Biometrics and attendance
+      </a>
+      <a href="{% url 'admin_leave' %}" class="ad-nav__link" {% if current == 'leave' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:calendar-check" aria-hidden="true"></iconify-icon>
+        Leave requests
+      </a>
+    </div>
+
+    <div class="ad-nav__group">
+      <p class="ad-nav__label">Payroll</p>
+      <a href="{% url 'admin_payroll' %}" class="ad-nav__link" {% if current == 'payroll' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:wallet" aria-hidden="true"></iconify-icon>
+        Payroll
+      </a>
+    </div>
+  </nav>
+
+  <div class="ad-sidebar__foot">
+    <div class="ad-user">
+      <span class="ad-user__avatar" aria-hidden="true">{{ request.user.username|slice:":2" }}</span>
+      <div style="min-width:0">
+        <p class="ad-user__name">{{ request.user.get_full_name|default:request.user.username }}</p>
+        <p class="ad-user__meta">
+          {% if request.user.is_superuser %}All branches{% else %}{{ request.user.profile.branch|default:"Branch administrator" }}{% endif %}
+        </p>
       </div>
     </div>
 
-    <div class="neon-divider"></div>
+    <button type="button" class="ad-side-action" data-theme-toggle>
+      <iconify-icon icon="ph:moon" class="ad-theme-light" aria-hidden="true"></iconify-icon>
+      <iconify-icon icon="ph:sun" class="ad-theme-dark" aria-hidden="true"></iconify-icon>
+      <span class="ad-theme-light">Dark mode</span>
+      <span class="ad-theme-dark">Light mode</span>
+    </button>
 
-    <!-- Navigation -->
-    <nav class="mt-3">
-      <ul class="space-y-1">
+    <a href="{% url 'change_password' %}" class="ad-side-action">
+      <iconify-icon icon="ph:key" aria-hidden="true"></iconify-icon>
+      Change password
+    </a>
 
-        <li>
-          <a href="{% url 'admin_dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'dashboard' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:squares-four-duotone" class="text-accent"></iconify-icon>
-            <span class="font-medium">Dashboard</span>
-          </a>
-        </li>
-
-        <li>
-          <a href="{% url 'admin_biometrics' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'biometrics' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:fingerprint-simple-duotone" class="text-accent"></iconify-icon>
-            <span>Biometrics & Attendance</span>
-          </a>
-        </li>
-
-        <li>
-          <a href="{% url 'admin_employees' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'employees' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:users-three-duotone" class="text-accent"></iconify-icon>
-            <span>Employee Management</span>
-          </a>
-        </li>
-
-        <!-- ❌ REMOVED SHIFT SCHEDULING BUTTON -->
-
-        <li>
-          <a href="{% url 'admin_leave' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'leave' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:airplane-tilt-duotone" class="text-accent"></iconify-icon>
-            <span>Leave Approval</span>
-          </a>
-        </li>
-
-        <li>
-          <a href="{% url 'admin_payroll' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'payroll' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:currency-dollar-duotone" class="text-accent"></iconify-icon>
-            <span>Payroll</span>
-          </a>
-        </li>
-        
-        <!-- Reports 
-        <li>
-          <a href="{% url 'admin_reports' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'reports' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:graph-duotone" class="text-accent"></iconify-icon>
-            <span>Reports</span>
-          </a>
-        </li>
-        -->
-
-        <li>
-          <a href="{% url 'admin_analytics' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'analytics' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:brain-duotone" class="text-accent"></iconify-icon>
-            <span>AI Analytics</span>
-          </a>
-        </li>
-
-        <li>
-          <a href="{% url 'change_password' %}"
-            class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition">
-            <iconify-icon icon="ph:key-duotone" class="text-accent"></iconify-icon>
-            <span>Change Password</span>
-          </a>
-        </li>
-
-        <!-- System Administration 
-        <li>
-          <a href="{% url 'admin_system' %}" class="flex items-center gap-3 px-3 py-2 rounded-xl glass hover:shadow-glow transition {% if current == 'system' %}ring ring-white/30 bg-accent/10{% endif %}">
-            <iconify-icon icon="ph:gear-six-duotone" class="text-accent"></iconify-icon>
-            <span>System Administration</span>
-          </a>
-        </li>
-      </ul>
-    </nav>
-    -->
-
-    <div class="neon-divider my-4"></div>
-
-    <!-- Customization Section -->
-    <div class="space-y-3">
-      <button id="customizeLayout" class="w-full px-3 py-2 text-white rounded-xl gradient-accent hover:shadow-glow ring-1 ring-white/30 transition flex items-center justify-center gap-2">
-        <iconify-icon icon="ph:sliders-duotone"></iconify-icon>
-        <span>Customize Layout</span>
-      </button>
-
-      <button id="shortcutsBtn" class="w-full px-3 py-2 rounded-xl glass hover:shadow-glow transition flex items-center justify-center gap-2">
-        <iconify-icon icon="ph:keyboard-duotone"></iconify-icon>
-        <span>Keyboard Shortcuts</span>
-      </button>
-
-      <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300">
-        <span class="flex items-center gap-2">
-          <iconify-icon icon="ph:sun-dim-duotone" class="hidden dark:inline"></iconify-icon>
-          <iconify-icon icon="ph:moon-stars-duotone" class="dark:hidden"></iconify-icon>
-          Light / Dark
-        </span>
-        <button data-theme-toggle type="button" class="w-full px-3 py-2 rounded-xl glass flex items-center justify-between">
-          <span>Light / Dark</span>
-          <span>Toggle</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="neon-divider my-4"></div>
-
-    <!-- Logout -->
     <form method="post" action="{% url 'logout' %}">
       {% csrf_token %}
-      <button type="submit"
-        class="w-full flex items-center justify-center gap-3 px-3 py-2 rounded-xl
-               bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white
-               transition ring-1 ring-red-500/30 hover:shadow-glow">
-        <iconify-icon icon="ph:sign-out-duotone"></iconify-icon>
-        <span class="font-medium">Logout</span>
+      <button type="submit" class="ad-side-action ad-side-action--danger">
+        <iconify-icon icon="ph:sign-out" aria-hidden="true"></iconify-icon>
+        Sign out
       </button>
     </form>
-
-    <div class="neon-divider my-4"></div>
-
-    <!-- Footer -->
-    <div class="text-xs text-gray-500 dark:text-gray-400 text-center">
-      <p>© IntelliHRTrack</p>
-      <p class="mt-1 text-xs opacity-60">v2.0 • Premium Admin</p>
-    </div>
-
   </div>
 </aside>
-
-<!-- Mobile header toggle -->
-<div class="lg:hidden mb-4">
-  <button onclick="document.querySelector('#mobileMenuFab').click()" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl glass shadow-glow">
-    <iconify-icon icon="ph:list-duotone"></iconify-icon>
-    <span>Menu</span>
-  </button>
-</div>

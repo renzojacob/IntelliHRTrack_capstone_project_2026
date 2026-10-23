@@ -1,806 +1,378 @@
 {% extends 'admin/base_admin.html' %}
 
-{% block title %}IntelliHRTrack — AI Workforce Analytics{% endblock %}
+{% block title %}Workforce analytics | IntelliHRTrack{% endblock %}
 
 {% block extra_head %}
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+  <style>
+    .an-chart { position: relative; height: 300px; }
+    .an-chart--tall { height: 340px; }
+    .an-gauge { position: relative; width: 220px; height: 220px; margin: 8px auto 0; }
+    .an-gauge__label { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; pointer-events: none; }
+    .an-gauge__label strong { display: block; font-size: 2.1rem; font-weight: 750; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    .an-parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--ihrt-line); border-top: 1px solid var(--ihrt-line); margin-top: 20px; }
+    .an-parts > div { background: var(--ihrt-surface); padding: 12px; text-align: center; }
+    .an-parts dt { font-size: 12.5px; color: var(--ihrt-muted); }
+    .an-parts dd { margin: 2px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .an-charts { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 1100px) { .an-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .an-insights { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+    .an-insights .ad-alert { height: 100%; }
+  </style>
 {% endblock %}
 
 {% block content %}
-<header class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-lg reveal">
-  <div class="absolute inset-0 opacity-40 animate-shine"></div>
 
-  <div class="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-    <div>
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-300 text-xs font-semibold mb-3">
-        <iconify-icon icon="ph:brain-duotone"></iconify-icon>
-        Rule-Based AI Analytics
-      </div>
-
-      <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">
-        AI Workforce Analytics
-      </h1>
-
-      <p class="mt-1 text-sm md:text-base text-gray-600 dark:text-gray-300 max-w-3xl">
-        Attendance trend detection, absenteeism risk scoring, payroll cost forecasting, and actionable HR insights using real biometric and payroll data.
-      </p>
-
-      <div class="mt-3 flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
-        <span class="px-3 py-1 rounded-full glass">
-          Branch: <b>{{ branch_label|default:"—" }}</b>
-        </span>
-        <span class="px-3 py-1 rounded-full glass">
-          Range: <b>{{ range_label|default:"—" }}</b>
-        </span>
-        <span class="px-3 py-1 rounded-full glass">
-          Generated: <b id="generatedAt">—</b>
-        </span>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-3">
-      <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-xl glass text-xs">
-        <span id="netDot" class="inline-block w-2.5 h-2.5 rounded-full bg-green-500" title="Online"></span>
-        <span id="headerClock">--:--:--</span>
-      </div>
-
-      <button data-theme-toggle type="button" class="p-2 rounded-xl glass hover:shadow-lg transition">
-        <iconify-icon icon="ph:sun-dim-duotone" class="hidden dark:inline text-accent"></iconify-icon>
-        <iconify-icon icon="ph:moon-stars-duotone" class="dark:hidden text-accent"></iconify-icon>
-      </button>
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <h1>Workforce analytics</h1>
+    <p>Rule-based scores computed from recorded attendance, leave, and payroll. Each score is explained by the reasons listed next to it.</p>
+    <div class="ad-meta">
+      <span class="ad-meta__item"><iconify-icon icon="ph:buildings" aria-hidden="true"></iconify-icon><strong>{{ branch_label|default:"—" }}</strong></span>
+      <span class="ad-meta__item"><iconify-icon icon="ph:calendar-blank" aria-hidden="true"></iconify-icon><strong>{{ range_label|default:"—" }}</strong></span>
+      <span class="ad-meta__item"><iconify-icon icon="ph:clock" aria-hidden="true"></iconify-icon>Generated <strong id="generatedAt">—</strong></span>
     </div>
   </div>
 </header>
 
-<section class="glass rounded-3xl p-5 shadow-lg reveal">
-  <form method="get" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-end">
-    <div>
-      <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">Branch</label>
-      <select name="branch" class="mt-1 w-full rounded-2xl glass px-4 py-3 text-sm outline-none">
-        {% if request.user.is_superuser %}
-          <option value="">All Branches</option>
-        {% endif %}
-
-        {% for branch in branches %}
-          <option value="{{ branch.id }}" {% if selected_branch_id == branch.id|stringformat:"s" %}selected{% endif %}>
-            {{ branch.name }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">Start Date</label>
-      <input type="date" name="start" value="{{ selected_start }}" class="mt-1 w-full rounded-2xl glass px-4 py-3 text-sm outline-none">
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">End Date</label>
-      <input type="date" name="end" value="{{ selected_end }}" class="mt-1 w-full rounded-2xl glass px-4 py-3 text-sm outline-none">
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">Employee Type</label>
-      <select name="emp_type" class="mt-1 w-full rounded-2xl glass px-4 py-3 text-sm outline-none">
-        <option value="ALL" {% if selected_emp_type == "ALL" %}selected{% endif %}>All</option>
-        <option value="JO" {% if selected_emp_type == "JO" %}selected{% endif %}>Job Order</option>
-        <option value="COS" {% if selected_emp_type == "COS" %}selected{% endif %}>Contract of Service</option>
-      </select>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">Department</label>
-      <select name="department" class="mt-1 w-full rounded-2xl glass px-4 py-3 text-sm outline-none">
-        <option value="">All Departments</option>
-        {% for department in departments %}
-          <option value="{{ department }}" {% if selected_department == department %}selected{% endif %}>
-            {{ department }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="xl:col-span-5 flex flex-wrap gap-3">
-      <button type="submit" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-purple-600 text-white text-sm font-semibold shadow hover:bg-purple-700 transition">
-        <iconify-icon icon="ph:funnel-duotone"></iconify-icon>
-        Apply Analytics Filter
-      </button>
-
-      <a href="{% url 'admin_analytics' %}" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl glass text-sm font-semibold hover:shadow transition">
-        <iconify-icon icon="ph:arrow-counter-clockwise-duotone"></iconify-icon>
-        Reset
-      </a>
+<!-- ===================== Filters ===================== -->
+<section class="ad-card" aria-label="Filters">
+  <form method="get" class="ad-form ad-card__body">
+    <div class="ad-form-grid" style="--ad-field-min: 190px; align-items:end">
+      <div class="ad-field">
+        <label class="ad-label" for="anBranch">Branch</label>
+        <select id="anBranch" name="branch">
+          {% if request.user.is_superuser %}<option value="">All branches</option>{% endif %}
+          {% for branch in branches %}
+            <option value="{{ branch.id }}" {% if selected_branch_id == branch.id|stringformat:"s" %}selected{% endif %}>{{ branch.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="ad-field">
+        <label class="ad-label" for="anStart">From</label>
+        <input id="anStart" type="date" name="start" value="{{ selected_start }}">
+      </div>
+      <div class="ad-field">
+        <label class="ad-label" for="anEnd">To</label>
+        <input id="anEnd" type="date" name="end" value="{{ selected_end }}">
+      </div>
+      <div class="ad-field">
+        <label class="ad-label" for="anType">Employee type</label>
+        <select id="anType" name="emp_type">
+          <option value="ALL" {% if selected_emp_type == "ALL" %}selected{% endif %}>All types</option>
+          <option value="JO" {% if selected_emp_type == "JO" %}selected{% endif %}>Job Order</option>
+          <option value="COS" {% if selected_emp_type == "COS" %}selected{% endif %}>Contract of Service</option>
+        </select>
+      </div>
+      <div class="ad-field">
+        <label class="ad-label" for="anDept">Department</label>
+        <select id="anDept" name="department">
+          <option value="">All departments</option>
+          {% for department in departments %}
+            <option value="{{ department }}" {% if selected_department == department %}selected{% endif %}>{{ department }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="ad-row" style="flex-wrap:nowrap">
+        <a href="{% url 'admin_analytics' %}" class="ihrt-btn ihrt-btn--ghost">Reset</a>
+        <button type="submit" class="ihrt-btn ihrt-btn--primary" style="flex:1">Apply</button>
+      </div>
     </div>
   </form>
 </section>
 
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 reveal">
-  <div class="glass rounded-2xl p-4 shadow transition hover:shadow-lg hover-lift">
-    <div class="flex items-center justify-between">
-      <div class="text-xs text-gray-500 dark:text-gray-400">Workforce Stability</div>
-      <iconify-icon icon="ph:shield-check-duotone" class="text-2xl text-emerald-500"></iconify-icon>
-    </div>
-    <div id="kpiStability" class="mt-2 text-3xl font-extrabold">--%</div>
-    <div id="kpiStabilityHint" class="text-sm text-emerald-500">Live rule-based score</div>
+<!-- ===================== Scores ===================== -->
+<section aria-label="Scores" class="ad-stats ad-stats--4">
+  <div class="ad-stat ad-tone-ok">
+    <p class="ad-stat__label">Workforce stability</p>
+    <p class="ad-stat__value" id="kpiStability">--%</p>
+    <p class="ad-stat__hint" id="kpiStabilityHint">Attendance, punctuality, consistency</p>
   </div>
-
-  <div class="glass rounded-2xl p-4 shadow transition hover:shadow-lg hover-lift">
-    <div class="flex items-center justify-between">
-      <div class="text-xs text-gray-500 dark:text-gray-400">Absenteeism Risk</div>
-      <iconify-icon icon="ph:warning-duotone" class="text-2xl text-amber-500"></iconify-icon>
-    </div>
-    <div id="kpiAbsRisk" class="mt-2 text-3xl font-extrabold text-amber-600">--%</div>
-    <div class="text-sm text-amber-500">Average employee risk</div>
+  <div class="ad-stat ad-tone-warn">
+    <p class="ad-stat__label">Absenteeism risk</p>
+    <p class="ad-stat__value" id="kpiAbsRisk">--%</p>
+    <p class="ad-stat__hint">Average across employees</p>
   </div>
-
-  <div class="glass rounded-2xl p-4 shadow transition hover:shadow-lg hover-lift">
-    <div class="flex items-center justify-between">
-      <div class="text-xs text-gray-500 dark:text-gray-400">Projected Net Payroll</div>
-      <iconify-icon icon="ph:money-duotone" class="text-2xl text-blue-500"></iconify-icon>
-    </div>
-    <div id="kpiNetPayroll" class="mt-2 text-3xl font-extrabold">₱--</div>
-    <div id="kpiPayrollDeduction" class="text-sm text-blue-500">Estimated deductions: ₱--</div>
+  <div class="ad-stat ad-tone-field">
+    <p class="ad-stat__label">Projected net payroll</p>
+    <p class="ad-stat__value ad-stat__value--money" id="kpiNetPayroll">&#8369;--</p>
+    <p class="ad-stat__hint" id="kpiPayrollDeduction">Estimated deductions: &#8369;--</p>
   </div>
-
-  <div class="glass rounded-2xl p-4 shadow transition hover:shadow-lg hover-lift">
-    <div class="flex items-center justify-between">
-      <div class="text-xs text-gray-500 dark:text-gray-400">AI Confidence</div>
-      <iconify-icon icon="ph:brain-duotone" class="text-2xl text-purple-500"></iconify-icon>
-    </div>
-    <div id="kpiAI" class="mt-2 text-3xl font-extrabold text-purple-600">--%</div>
-    <div class="text-sm text-purple-500">Based on data completeness</div>
+  <div class="ad-stat ad-tone-info">
+    <p class="ad-stat__label">Data completeness</p>
+    <p class="ad-stat__value" id="kpiAI">--%</p>
+    <p class="ad-stat__hint">How much of the period has complete records</p>
   </div>
-</div>
-
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 reveal">
-  <div class="glass rounded-2xl p-4 shadow">
-    <div class="text-xs text-gray-500 dark:text-gray-400">Employees</div>
-    <div id="kpiEmployees" class="mt-1 text-2xl font-bold">--</div>
+  <div class="ad-stat">
+    <p class="ad-stat__label">Employees</p>
+    <p class="ad-stat__value" id="kpiEmployees">--</p>
   </div>
-
-  <div class="glass rounded-2xl p-4 shadow">
-    <div class="text-xs text-gray-500 dark:text-gray-400">Attendance Rate</div>
-    <div id="kpiAvgAttendance" class="mt-1 text-2xl font-bold">--%</div>
+  <div class="ad-stat">
+    <p class="ad-stat__label">Attendance rate</p>
+    <p class="ad-stat__value" id="kpiAvgAttendance">--%</p>
   </div>
-
-  <div class="glass rounded-2xl p-4 shadow">
-    <div class="text-xs text-gray-500 dark:text-gray-400">Late Minutes</div>
-    <div id="kpiLateMinutes" class="mt-1 text-2xl font-bold">--</div>
+  <div class="ad-stat">
+    <p class="ad-stat__label">Late minutes</p>
+    <p class="ad-stat__value" id="kpiLateMinutes">--</p>
   </div>
-
-  <div class="glass rounded-2xl p-4 shadow">
-    <div class="text-xs text-gray-500 dark:text-gray-400">Incomplete DTR</div>
-    <div id="kpiMissingLogs" class="mt-1 text-2xl font-bold">--</div>
+  <div class="ad-stat">
+    <p class="ad-stat__label">Incomplete DTRs</p>
+    <p class="ad-stat__value" id="kpiMissingLogs">--</p>
   </div>
-</div>
-
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
-  <section class="xl:col-span-2 glass rounded-3xl p-6 shadow-lg reveal">
-    <div class="flex items-center justify-between gap-3 mb-4">
-      <div>
-        <h2 class="text-xl font-bold">Attendance Trend Analysis</h2>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Daily present, absent, late, and undertime counts.</p>
-      </div>
-    </div>
-
-    <div class="h-80">
-      <canvas id="attendanceTrendChart"></canvas>
-    </div>
-  </section>
-
-  <section class="glass rounded-3xl p-6 shadow-lg reveal">
-    <h2 class="text-xl font-bold mb-4">Workforce Stability Index</h2>
-
-    <div class="flex items-center justify-center">
-      <div class="relative w-56 h-56">
-        <canvas id="stabilityGauge"></canvas>
-        <div class="absolute inset-0 flex flex-col items-center justify-center">
-          <span id="stabilityText" class="text-4xl font-extrabold">--%</span>
-          <span class="text-sm text-gray-500 dark:text-gray-400">Stability</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-3 gap-3 mt-5 text-center">
-      <div class="rounded-2xl glass p-3">
-        <p class="text-xs text-gray-500 dark:text-gray-400">Attendance</p>
-        <p id="stPartAtt" class="font-bold">--%</p>
-      </div>
-      <div class="rounded-2xl glass p-3">
-        <p class="text-xs text-gray-500 dark:text-gray-400">Punctuality</p>
-        <p id="stPartSched" class="font-bold">--%</p>
-      </div>
-      <div class="rounded-2xl glass p-3">
-        <p class="text-xs text-gray-500 dark:text-gray-400">Consistency</p>
-        <p id="stPartLeave" class="font-bold">--%</p>
-      </div>
-    </div>
-  </section>
-</div>
-
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-  <section class="glass rounded-3xl p-6 shadow-lg reveal">
-    <h2 class="text-xl font-bold mb-4">Attendance vs Productivity Proxy</h2>
-    <div class="h-72">
-      <canvas id="attendanceChart"></canvas>
-    </div>
-  </section>
-
-  <section class="glass rounded-3xl p-6 shadow-lg reveal">
-    <h2 class="text-xl font-bold mb-4">Risk Distribution</h2>
-    <div class="h-72">
-      <canvas id="riskDistributionChart"></canvas>
-    </div>
-  </section>
-
-  <section class="glass rounded-3xl p-6 shadow-lg reveal">
-    <h2 class="text-xl font-bold mb-4">Department Risk & Attendance</h2>
-    <div class="h-72">
-      <canvas id="departmentChart"></canvas>
-    </div>
-  </section>
-
-  <section class="glass rounded-3xl p-6 shadow-lg reveal">
-    <h2 class="text-xl font-bold mb-4">Late Arrival Risk by Department</h2>
-    <div class="h-72">
-      <canvas id="lateDepartmentChart"></canvas>
-    </div>
-  </section>
-
-  <section class="glass rounded-3xl p-6 shadow-lg reveal">
-    <h2 class="text-xl font-bold mb-4">Payroll Cost Forecasting</h2>
-    <div class="h-72">
-      <canvas id="payrollChart"></canvas>
-    </div>
-  </section>
-
-  <section class="glass rounded-3xl p-6 shadow-lg reveal">
-    <h2 class="text-xl font-bold mb-4">Attendance-to-Payroll Correlation</h2>
-    <div class="h-72">
-      <canvas id="salaryAttendanceChart"></canvas>
-    </div>
-  </section>
-
-  <section class="glass rounded-3xl p-6 shadow-lg reveal">
-    <h2 class="text-xl font-bold mb-4">Top Deduction Drivers</h2>
-    <div class="h-72">
-      <canvas id="deductionDriverChart"></canvas>
-    </div>
-  </section>
-
-  <section class="glass rounded-3xl p-6 shadow-lg reveal">
-    <h2 class="text-xl font-bold mb-4">Leave Pattern Analytics</h2>
-    <div class="h-72">
-      <canvas id="leavePatternChart"></canvas>
-    </div>
-  </section>
-</div>
-
-<section class="glass rounded-3xl p-6 shadow-lg reveal mt-6">
-  <div class="flex items-center justify-between gap-3 mb-4">
-    <div>
-      <h2 class="text-xl font-bold">Actionable AI Insights</h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Generated by backend rule-based analytics.</p>
-    </div>
-  </div>
-
-  <div id="insightGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
 </section>
 
-<section class="glass rounded-3xl p-6 shadow-lg reveal mt-6">
-  <div class="flex items-center justify-between gap-3 mb-4">
+<!-- ===================== Trend + stability ===================== -->
+<div class="ad-split">
+  <section class="ad-card" aria-labelledby="trend-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="trend-title">Daily attendance</h2>
+        <p>Employees present, absent, late, and with undertime each day.</p>
+      </div>
+    </div>
+    <div class="ad-card__body"><div class="an-chart an-chart--tall"><canvas id="attendanceTrendChart" role="img" aria-label="Stacked bar chart of daily attendance"></canvas></div></div>
+  </section>
+
+  <section class="ad-card" aria-labelledby="stab-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="stab-title">Stability index</h2>
+        <p>Combined from three parts.</p>
+      </div>
+    </div>
+    <div class="an-gauge">
+      <canvas id="stabilityGauge" aria-hidden="true"></canvas>
+      <div class="an-gauge__label"><div><strong id="stabilityText">--%</strong><span class="ad-help">stability</span></div></div>
+    </div>
+    <dl class="an-parts">
+      <div><dt>Attendance</dt><dd id="stPartAtt">--%</dd></div>
+      <div><dt>Punctuality</dt><dd id="stPartSched">--%</dd></div>
+      <div><dt>Consistency</dt><dd id="stPartLeave">--%</dd></div>
+    </dl>
+  </section>
+</div>
+
+<!-- ===================== Insights ===================== -->
+<section class="ad-card" aria-labelledby="ins-title">
+  <div class="ad-card__head">
     <div>
-      <h2 class="text-xl font-bold">Absenteeism Prediction / Risk Scoring</h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Risk level is based on absences, late arrivals, missing check-outs, leave frequency, and Monday/Friday patterns.</p>
+      <h2 id="ins-title">Findings</h2>
+      <p>Patterns the rules flagged in this period, with the figures behind them.</p>
     </div>
   </div>
+  <div class="ad-card__body"><div id="insightGrid" class="an-insights"></div></div>
+</section>
 
-  <div class="overflow-x-auto rounded-2xl border border-white/20 dark:border-white/10">
-    <table class="min-w-full text-sm">
-      <thead class="bg-gray-100/70 dark:bg-white/5 text-gray-600 dark:text-gray-300">
-        <tr>
-          <th class="text-left px-4 py-3">Employee</th>
-          <th class="text-left px-4 py-3">Department</th>
-          <th class="text-left px-4 py-3">Type</th>
-          <th class="text-left px-4 py-3">Risk</th>
-          <th class="text-left px-4 py-3">Attendance</th>
-          <th class="text-left px-4 py-3">Absences</th>
-          <th class="text-left px-4 py-3">Late Days</th>
-          <th class="text-left px-4 py-3">Reasons</th>
-        </tr>
-      </thead>
-      <tbody id="riskTableBody" class="divide-y divide-gray-200/60 dark:divide-white/10"></tbody>
+<!-- ===================== Charts ===================== -->
+<div class="an-charts">
+  <section class="ad-card"><div class="ad-card__head"><div><h2>Attendance and productivity proxy</h2><p>Productivity proxy is a rule-based estimate from recorded hours, not a measured output.</p></div></div><div class="ad-card__body"><div class="an-chart"><canvas id="attendanceChart"></canvas></div></div></section>
+  <section class="ad-card"><div class="ad-card__head"><div><h2>Risk distribution</h2><p>Employees by absenteeism risk level.</p></div></div><div class="ad-card__body"><div class="an-chart"><canvas id="riskDistributionChart"></canvas></div></div></section>
+  <section class="ad-card"><div class="ad-card__head"><div><h2>Departments: attendance and risk</h2></div></div><div class="ad-card__body"><div class="an-chart"><canvas id="departmentChart"></canvas></div></div></section>
+  <section class="ad-card"><div class="ad-card__head"><div><h2>Late days by department</h2></div></div><div class="ad-card__body"><div class="an-chart"><canvas id="lateDepartmentChart"></canvas></div></div></section>
+  <section class="ad-card"><div class="ad-card__head"><div><h2>Projected net payroll</h2><p>Estimated from attendance to date.</p></div></div><div class="ad-card__body"><div class="an-chart"><canvas id="payrollChart"></canvas></div></div></section>
+  <section class="ad-card"><div class="ad-card__head"><div><h2>Attendance and estimated gross pay</h2><p>One point per employee.</p></div></div><div class="ad-card__body"><div class="an-chart"><canvas id="salaryAttendanceChart"></canvas></div></div></section>
+  <section class="ad-card"><div class="ad-card__head"><div><h2>Largest deduction drivers</h2></div></div><div class="ad-card__body"><div class="an-chart"><canvas id="deductionDriverChart"></canvas></div></div></section>
+  <section class="ad-card"><div class="ad-card__head"><div><h2>Leave by weekday</h2><p>Approved leave days falling on each weekday.</p></div></div><div class="ad-card__body"><div class="an-chart"><canvas id="leavePatternChart"></canvas></div></div></section>
+</div>
+
+<!-- ===================== Risk tables ===================== -->
+<section class="ad-card" aria-labelledby="risk-title">
+  <div class="ad-card__head">
+    <div>
+      <h2 id="risk-title">Absenteeism risk by employee</h2>
+      <p>Scored from absences, late arrivals, missing time-outs, leave frequency, and Monday or Friday patterns.</p>
+    </div>
+  </div>
+  <div class="ad-table-wrap">
+    <table class="ad-table" style="min-width: 900px">
+      <thead><tr><th scope="col">Employee</th><th scope="col">Department</th><th scope="col">Type</th><th scope="col">Risk</th><th scope="col" class="is-num">Attendance</th><th scope="col" class="is-num">Absences</th><th scope="col" class="is-num">Late days</th><th scope="col">Why</th></tr></thead>
+      <tbody id="riskTableBody"></tbody>
     </table>
   </div>
 </section>
 
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-  <section class="glass rounded-3xl p-6 shadow-lg reveal">
-    <h2 class="text-xl font-bold mb-4">Late Arrival Risk Analysis</h2>
-    <div class="overflow-x-auto rounded-2xl border border-white/20 dark:border-white/10">
-      <table class="min-w-full text-sm">
-        <thead class="bg-gray-100/70 dark:bg-white/5 text-gray-600 dark:text-gray-300">
-          <tr>
-            <th class="text-left px-4 py-3">Employee</th>
-            <th class="text-left px-4 py-3">Late Days</th>
-            <th class="text-left px-4 py-3">Late Minutes</th>
-            <th class="text-left px-4 py-3">Risk</th>
-            <th class="text-left px-4 py-3">Pattern</th>
-          </tr>
-        </thead>
-        <tbody id="lateTableBody" class="divide-y divide-gray-200/60 dark:divide-white/10"></tbody>
+<div class="ad-split ad-split--even">
+  <section class="ad-card" aria-labelledby="late-title">
+    <div class="ad-card__head"><h2 id="late-title">Late arrival patterns</h2></div>
+    <div class="ad-table-wrap">
+      <table class="ad-table" style="min-width: 560px">
+        <thead><tr><th scope="col">Employee</th><th scope="col" class="is-num">Late days</th><th scope="col" class="is-num">Minutes</th><th scope="col">Risk</th><th scope="col">Pattern</th></tr></thead>
+        <tbody id="lateTableBody"></tbody>
       </table>
     </div>
   </section>
-
-  <section class="glass rounded-3xl p-6 shadow-lg reveal">
-    <h2 class="text-xl font-bold mb-4">Overtime / Workload Analysis</h2>
-    <div class="overflow-x-auto rounded-2xl border border-white/20 dark:border-white/10">
-      <table class="min-w-full text-sm">
-        <thead class="bg-gray-100/70 dark:bg-white/5 text-gray-600 dark:text-gray-300">
-          <tr>
-            <th class="text-left px-4 py-3">Employee</th>
-            <th class="text-left px-4 py-3">Total Hours</th>
-            <th class="text-left px-4 py-3">Long Days</th>
-            <th class="text-left px-4 py-3">Risk</th>
-            <th class="text-left px-4 py-3">Recommendation</th>
-          </tr>
-        </thead>
-        <tbody id="overworkTableBody" class="divide-y divide-gray-200/60 dark:divide-white/10"></tbody>
+  <section class="ad-card" aria-labelledby="ot-title">
+    <div class="ad-card__head"><h2 id="ot-title">Workload</h2></div>
+    <div class="ad-table-wrap">
+      <table class="ad-table" style="min-width: 560px">
+        <thead><tr><th scope="col">Employee</th><th scope="col" class="is-num">Hours</th><th scope="col" class="is-num">Long days</th><th scope="col">Risk</th><th scope="col">Suggestion</th></tr></thead>
+        <tbody id="overworkTableBody"></tbody>
       </table>
     </div>
   </section>
 </div>
 
-<footer class="pb-8 pt-6 text-xs text-gray-500 dark:text-gray-400 text-center reveal">
-  © IntelliHRTrack • AI Workforce Analytics Dashboard
-</footer>
-
-<script id="analytics-payload" type="application/json">
-  {{ chart_payload_json|safe }}
-</script>
-
-<script>
-  window.ANALYTICS_PAYLOAD = JSON.parse(document.getElementById("analytics-payload").textContent || "{}");
-  console.log("ANALYTICS_PAYLOAD:", window.ANALYTICS_PAYLOAD);
-</script>
+<script id="analytics-payload" type="application/json">{{ chart_payload_json|safe }}</script>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const payload = window.ANALYTICS_PAYLOAD || {};
+  var payload = {};
+  try { payload = JSON.parse(document.getElementById('analytics-payload').textContent || '{}'); } catch (e) {}
+  window.ANALYTICS_PAYLOAD = payload;
 
-  const peso = new Intl.NumberFormat('en-PH', {
-    style: 'currency',
-    currency: 'PHP',
-    maximumFractionDigits: 2
+  var esc = function (s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+  var num = function (v, d) { var n = Number(v); return isFinite(n) ? n : (d || 0); };
+  var arr = function (v) { return Array.isArray(v) ? v : []; };
+  var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+  var peso = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 });
+
+  var summary = payload.summary || {};
+  var stability = num(payload.stability_value);
+  set('generatedAt', payload.generated_at || '—');
+  set('kpiStability', stability.toFixed(1) + '%');
+  set('kpiAbsRisk', num(payload.absenteeism_risk).toFixed(1) + '%');
+  set('kpiNetPayroll', peso.format(num(summary.estimated_net)));
+  set('kpiPayrollDeduction', 'Estimated deductions: ' + peso.format(num(summary.estimated_deductions)));
+  set('kpiAI', num(payload.ai_confidence).toFixed(1) + '%');
+  set('kpiEmployees', String(num(summary.total_employees)));
+  set('kpiAvgAttendance', num(payload.attendance).toFixed(1) + '%');
+  set('kpiLateMinutes', num(summary.late_minutes_total).toLocaleString());
+  set('kpiMissingLogs', String(num(summary.missing_logs_total)));
+  set('stabilityText', stability.toFixed(1) + '%');
+  set('stPartAtt', num(payload.stability_parts_attendance).toFixed(1) + '%');
+  set('stPartSched', num(payload.stability_parts_schedule).toFixed(1) + '%');
+  set('stPartLeave', num(payload.stability_parts_leave).toFixed(1) + '%');
+
+  // ---------- Chart styling from the design tokens (follows light and dark mode) ----------
+  var css = getComputedStyle(document.documentElement);
+  var tok = function (n) { return css.getPropertyValue(n).trim(); };
+  var C = { field: tok('--ihrt-field'), ok: tok('--ihrt-ok'), warn: tok('--ihrt-harvest'), bad: tok('--ihrt-bad'), info: tok('--ihrt-info'), muted: tok('--ihrt-muted'), line: tok('--ihrt-line'), ink: tok('--ihrt-ink') };
+  var violet = '#8E6BC7';
+  if (window.Chart) {
+    Chart.defaults.font.family = tok('--ihrt-font');
+    Chart.defaults.font.size = 12.5;
+    Chart.defaults.color = C.muted;
+    Chart.defaults.borderColor = C.line;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.boxWidth = 8;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.maintainAspectRatio = false;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) Chart.defaults.animation = false;
+  }
+  var ctx = function (id) { var el = document.getElementById(id); return el && window.Chart ? el.getContext('2d') : null; };
+  var labels = arr(payload.timeline_labels);
+  var pct = { y: { beginAtZero: true, max: 100, ticks: { callback: function (v) { return v + '%'; } } } };
+
+  if (ctx('attendanceTrendChart')) new Chart(ctx('attendanceTrendChart'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [
+      { label: 'Present', data: arr(payload.present_count), backgroundColor: C.ok, borderRadius: 3 },
+      { label: 'Late', data: arr(payload.late_count), backgroundColor: C.warn, borderRadius: 3 },
+      { label: 'Undertime', data: arr(payload.undertime_count), backgroundColor: violet, borderRadius: 3 },
+      { label: 'Absent', data: arr(payload.absent_count), backgroundColor: C.bad, borderRadius: 3 }
+    ] },
+    options: { scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } } }
   });
 
-  const setText = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
-  };
+  if (ctx('stabilityGauge')) new Chart(ctx('stabilityGauge'), {
+    type: 'doughnut',
+    data: { datasets: [{ data: [stability, Math.max(0, 100 - stability)], backgroundColor: [C.field, C.line], borderWidth: 0 }] },
+    options: { cutout: '78%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+  });
 
-  const num = (v, d = 0) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : d;
-  };
+  if (ctx('attendanceChart')) new Chart(ctx('attendanceChart'), {
+    type: 'line',
+    data: { labels: labels, datasets: [
+      { label: 'Attendance rate', data: arr(payload.attendance_rate), borderColor: C.ok, backgroundColor: C.ok, tension: .3, pointRadius: 2 },
+      { label: 'Productivity proxy', data: arr(payload.productivity_rate), borderColor: C.info, backgroundColor: C.info, borderDash: [5, 4], tension: .3, pointRadius: 2 }
+    ] },
+    options: { scales: pct }
+  });
 
-  const labels = Array.isArray(payload.timeline_labels) ? payload.timeline_labels : [];
-  const present = Array.isArray(payload.present_count) ? payload.present_count : [];
-  const absent = Array.isArray(payload.absent_count) ? payload.absent_count : [];
-  const late = Array.isArray(payload.late_count) ? payload.late_count : [];
-  const undertime = Array.isArray(payload.undertime_count) ? payload.undertime_count : [];
-  const attRate = Array.isArray(payload.attendance_rate) ? payload.attendance_rate : [];
-  const prodRate = Array.isArray(payload.productivity_rate) ? payload.productivity_rate : [];
+  var rb = payload.risk_buckets || {};
+  if (ctx('riskDistributionChart')) new Chart(ctx('riskDistributionChart'), {
+    type: 'doughnut',
+    data: { labels: ['Low', 'Medium', 'High'], datasets: [{ data: [num(rb.low), num(rb.medium), num(rb.high)], backgroundColor: [C.ok, C.warn, C.bad], borderWidth: 0 }] },
+    options: { cutout: '62%', plugins: { legend: { position: 'bottom' } } }
+  });
 
-  const summary = payload.summary || {};
-  const riskBuckets = payload.risk_buckets || {};
-  const insights = Array.isArray(payload.insights) ? payload.insights : [];
+  if (ctx('departmentChart')) new Chart(ctx('departmentChart'), {
+    type: 'bar',
+    data: { labels: arr(payload.dept_labels), datasets: [
+      { label: 'Attendance rate (%)', data: arr(payload.dept_attendance), backgroundColor: C.ok, borderRadius: 3 },
+      { label: 'Average risk score', data: arr(payload.dept_risk), backgroundColor: C.bad, borderRadius: 3 }
+    ] },
+    options: { scales: { y: { beginAtZero: true, max: 100 }, x: { grid: { display: false } } } }
+  });
 
-  const stability = num(payload.stability_value, 0);
+  if (ctx('lateDepartmentChart')) new Chart(ctx('lateDepartmentChart'), {
+    type: 'bar',
+    data: { labels: arr(payload.dept_labels), datasets: [{ label: 'Late days', data: arr(payload.dept_late), backgroundColor: C.warn, borderRadius: 3 }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true }, y: { grid: { display: false } } } }
+  });
 
-  setText('generatedAt', payload.generated_at || '—');
+  if (ctx('payrollChart')) new Chart(ctx('payrollChart'), {
+    type: 'line',
+    data: { labels: arr(payload.payroll_labels).length ? payload.payroll_labels : labels, datasets: [{ label: 'Projected net payroll', data: arr(payload.payroll_series), borderColor: C.field, backgroundColor: 'transparent', tension: .3, pointRadius: 2 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return peso.format(c.parsed.y || 0); } } } }, scales: { y: { beginAtZero: true, ticks: { callback: function (v) { return peso.format(v); } } } } }
+  });
 
-  setText('kpiStability', stability.toFixed(1) + '%');
-  setText('kpiAbsRisk', num(payload.absenteeism_risk, 0).toFixed(1) + '%');
-  setText('kpiNetPayroll', peso.format(num(summary.estimated_net, 0)));
-  setText('kpiPayrollDeduction', 'Estimated deductions: ' + peso.format(num(summary.estimated_deductions, 0)));
-  setText('kpiAI', num(payload.ai_confidence, 0).toFixed(1) + '%');
-
-  setText('kpiEmployees', String(num(summary.total_employees, 0)));
-  setText('kpiAvgAttendance', num(payload.attendance, 0).toFixed(1) + '%');
-  setText('kpiLateMinutes', String(num(summary.late_minutes_total, 0)));
-  setText('kpiMissingLogs', String(num(summary.missing_logs_total, 0)));
-
-  setText('stabilityText', stability.toFixed(1) + '%');
-  setText('stPartAtt', num(payload.stability_parts_attendance, 0).toFixed(1) + '%');
-  setText('stPartSched', num(payload.stability_parts_schedule, 0).toFixed(1) + '%');
-  setText('stPartLeave', num(payload.stability_parts_leave, 0).toFixed(1) + '%');
-
-  const ctx = (id) => {
-    const el = document.getElementById(id);
-    return el ? el.getContext('2d') : null;
-  };
-
-  const defaultOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        labels: {
-          usePointStyle: true,
-          boxWidth: 8
-        }
-      }
+  if (ctx('salaryAttendanceChart')) new Chart(ctx('salaryAttendanceChart'), {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Employees', data: arr(payload.salary_att_points), backgroundColor: C.field }] },
+    options: {
+      parsing: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { var r = c.raw || {}; return (r.name || 'Employee') + ': ' + r.x + '% attendance, ' + peso.format(r.y || 0); } } } },
+      scales: { x: { title: { display: true, text: 'Attendance rate (%)' }, beginAtZero: true, max: 100 }, y: { title: { display: true, text: 'Estimated gross pay' }, beginAtZero: true, ticks: { callback: function (v) { return peso.format(v); } } } }
     }
+  });
+
+  if (ctx('deductionDriverChart')) new Chart(ctx('deductionDriverChart'), {
+    type: 'bar',
+    data: { labels: arr(payload.deduction_labels), datasets: [{ label: 'Estimated deduction', data: arr(payload.deduction_values), backgroundColor: [C.warn, violet, C.bad, C.info], borderRadius: 3 }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return peso.format(c.parsed.x || 0); } } } }, scales: { x: { beginAtZero: true }, y: { grid: { display: false } } } }
+  });
+
+  if (ctx('leavePatternChart')) new Chart(ctx('leavePatternChart'), {
+    type: 'bar',
+    data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], datasets: [{ label: 'Leave days', data: arr(payload.leave_weekday).length ? payload.leave_weekday : [0, 0, 0, 0, 0], backgroundColor: C.info, borderRadius: 3 }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } } }
+  });
+
+  // ---------- Findings and tables (all text escaped) ----------
+  var riskBadge = function (level, score) {
+    var cls = level === 'High' ? 'ihrt-badge--bad' : level === 'Medium' ? 'ihrt-badge--warn' : 'ihrt-badge--ok';
+    return '<span class="ihrt-badge ' + cls + '">' + esc(level || 'Low') + (score != null ? ' &middot; ' + esc(score) : '') + '</span>';
   };
+  var empty = function (cols, text) { return '<tr><td colspan="' + cols + '"><div class="ad-empty" style="padding:24px"><p>' + text + '</p></div></td></tr>'; };
 
-  if (ctx('attendanceTrendChart')) {
-    new Chart(ctx('attendanceTrendChart'), {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          { label: 'Present', data: present, backgroundColor: '#10b981' },
-          { label: 'Absent', data: absent, backgroundColor: '#ef4444' },
-          { label: 'Late', data: late, backgroundColor: '#f59e0b' },
-          { label: 'Undertime', data: undertime, backgroundColor: '#8b5cf6' },
-        ]
-      },
-      options: {
-        ...defaultOptions,
-        scales: {
-          x: { stacked: true },
-          y: { stacked: true, beginAtZero: true }
-        }
-      }
-    });
+  var insights = arr(payload.insights);
+  var grid = document.getElementById('insightGrid');
+  if (grid) {
+    grid.innerHTML = insights.length ? insights.map(function (it) {
+      var cls = it.level === 'danger' ? 'ad-alert--bad' : it.level === 'warning' ? 'ad-alert--warn' : it.level === 'success' ? 'ad-alert--ok' : 'ad-alert--info';
+      return '<div class="ad-alert ' + cls + '"><div class="ad-alert__body"><p class="ad-alert__title">' + esc(it.title || 'Finding') + '</p><p style="margin-top:4px">' + esc(it.text || '') + '</p></div></div>';
+    }).join('') : '<p class="ad-help">No findings for the selected filters.</p>';
   }
 
-  if (ctx('stabilityGauge')) {
-    new Chart(ctx('stabilityGauge'), {
-      type: 'doughnut',
-      data: {
-        datasets: [{
-          data: [stability, Math.max(0, 100 - stability)],
-          backgroundColor: ['#10b981', '#e5e7eb'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '75%',
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: false }
-        }
-      }
-    });
-  }
+  var rows = arr(payload.risk_rows), body = document.getElementById('riskTableBody');
+  if (body) body.innerHTML = rows.length ? rows.map(function (r) {
+    return '<tr><td class="is-strong">' + esc(r.name) + '</td><td class="is-muted">' + esc(r.department || 'Unassigned') + '</td><td>' + esc(r.employment_type || '—') + '</td>' +
+      '<td>' + riskBadge(r.risk_level, r.risk_score) + '</td><td class="is-num">' + num(r.attendance_rate).toFixed(1) + '%</td><td class="is-num">' + esc(r.absences) + '</td><td class="is-num">' + esc(r.late_days) + '</td>' +
+      '<td class="is-muted" style="max-width:340px">' + esc(arr(r.reasons).slice(0, 2).join(' ')) + '</td></tr>';
+  }).join('') : empty(8, 'No risk data for the selected filters.');
 
-  if (ctx('attendanceChart')) {
-    new Chart(ctx('attendanceChart'), {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Attendance Rate (%)',
-            data: attRate,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16,185,129,0.12)',
-            tension: 0.35,
-            fill: true
-          },
-          {
-            label: 'Productivity Proxy (%)',
-            data: prodRate,
-            borderColor: '#8b5cf6',
-            backgroundColor: 'rgba(139,92,246,0.12)',
-            tension: 0.35,
-            fill: true
-          }
-        ]
-      },
-      options: {
-        ...defaultOptions,
-        scales: {
-          y: { beginAtZero: true, max: 100 }
-        }
-      }
-    });
-  }
+  rows = arr(payload.late_rows); body = document.getElementById('lateTableBody');
+  if (body) body.innerHTML = rows.length ? rows.map(function (r) {
+    return '<tr><td class="is-strong">' + esc(r.name) + '</td><td class="is-num">' + esc(r.late_days) + '</td><td class="is-num">' + esc(r.late_minutes) + '</td><td>' + riskBadge(r.late_risk_level, r.late_risk_score) + '</td><td class="is-muted">' + esc(r.late_pattern) + '</td></tr>';
+  }).join('') : empty(5, 'No late arrival patterns found.');
 
-  if (ctx('riskDistributionChart')) {
-    new Chart(ctx('riskDistributionChart'), {
-      type: 'doughnut',
-      data: {
-        labels: ['Low Risk', 'Medium Risk', 'High Risk'],
-        datasets: [{
-          data: [
-            num(riskBuckets.low, 0),
-            num(riskBuckets.medium, 0),
-            num(riskBuckets.high, 0)
-          ],
-          backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        ...defaultOptions,
-        cutout: '62%',
-        plugins: {
-          legend: { position: 'bottom' }
-        }
-      }
-    });
-  }
-
-  if (ctx('departmentChart')) {
-    new Chart(ctx('departmentChart'), {
-      type: 'bar',
-      data: {
-        labels: payload.dept_labels || [],
-        datasets: [
-          {
-            label: 'Attendance Rate (%)',
-            data: payload.dept_attendance || [],
-            backgroundColor: '#10b981'
-          },
-          {
-            label: 'Average Risk Score',
-            data: payload.dept_risk || [],
-            backgroundColor: '#ef4444'
-          }
-        ]
-      },
-      options: {
-        ...defaultOptions,
-        scales: {
-          y: { beginAtZero: true, max: 100 }
-        }
-      }
-    });
-  }
-
-  if (ctx('lateDepartmentChart')) {
-    new Chart(ctx('lateDepartmentChart'), {
-      type: 'bar',
-      data: {
-        labels: payload.dept_labels || [],
-        datasets: [{
-          label: 'Late Days',
-          data: payload.dept_late || [],
-          backgroundColor: '#f59e0b'
-        }]
-      },
-      options: {
-        ...defaultOptions,
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-  }
-
-  if (ctx('payrollChart')) {
-    new Chart(ctx('payrollChart'), {
-      type: 'line',
-      data: {
-        labels: payload.payroll_labels || labels,
-        datasets: [{
-          label: 'Projected Net Payroll',
-          data: payload.payroll_series || [],
-          borderColor: '#2563eb',
-          backgroundColor: 'rgba(37,99,235,0.12)',
-          tension: 0.35,
-          fill: true
-        }]
-      },
-      options: {
-        ...defaultOptions,
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-  }
-
-  if (ctx('salaryAttendanceChart')) {
-    new Chart(ctx('salaryAttendanceChart'), {
-      type: 'scatter',
-      data: {
-        datasets: [{
-          label: 'Employees',
-          data: payload.salary_att_points || [],
-          backgroundColor: '#8b5cf6'
-        }]
-      },
-      options: {
-        ...defaultOptions,
-        parsing: false,
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                const raw = context.raw || {};
-                return `${raw.name || 'Employee'}: ${raw.x}% attendance, ${peso.format(raw.y || 0)}`;
-              }
-            }
-          }
-        },
-        scales: {
-          x: {
-            title: { display: true, text: 'Attendance Rate (%)' },
-            beginAtZero: true,
-            max: 100
-          },
-          y: {
-            title: { display: true, text: 'Estimated Gross Pay' },
-            beginAtZero: true
-          }
-        }
-      }
-    });
-  }
-
-  if (ctx('deductionDriverChart')) {
-    new Chart(ctx('deductionDriverChart'), {
-      type: 'bar',
-      data: {
-        labels: payload.deduction_labels || [],
-        datasets: [{
-          label: 'Estimated Deduction',
-          data: payload.deduction_values || [],
-          backgroundColor: ['#f59e0b', '#8b5cf6', '#ef4444']
-        }]
-      },
-      options: {
-        ...defaultOptions,
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-  }
-
-  if (ctx('leavePatternChart')) {
-    new Chart(ctx('leavePatternChart'), {
-      type: 'polarArea',
-      data: {
-        labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-        datasets: [{
-          data: payload.leave_weekday || [0, 0, 0, 0, 0],
-          backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6']
-        }]
-      },
-      options: defaultOptions
-    });
-  }
-
-  function badgeClass(level) {
-    if (level === 'High') return 'bg-red-500/10 text-red-600 dark:text-red-300';
-    if (level === 'Medium') return 'bg-amber-500/10 text-amber-600 dark:text-amber-300';
-    return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300';
-  }
-
-  function insightClass(level) {
-    if (level === 'danger') return 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200';
-    if (level === 'warning') return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200';
-    if (level === 'success') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200';
-    return 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-200';
-  }
-
-  const insightGrid = document.getElementById('insightGrid');
-  if (insightGrid) {
-    insightGrid.innerHTML = insights.map(item => `
-      <div class="rounded-2xl border p-4 ${insightClass(item.level)}">
-        <div class="flex items-center gap-2 font-bold">
-          <iconify-icon icon="ph:sparkle-duotone"></iconify-icon>
-          ${item.title || 'Insight'}
-        </div>
-        <p class="mt-2 text-sm leading-relaxed">${item.text || ''}</p>
-      </div>
-    `).join('');
-  }
-
-  const riskTableBody = document.getElementById('riskTableBody');
-  if (riskTableBody) {
-    const rows = payload.risk_rows || [];
-
-    riskTableBody.innerHTML = rows.length ? rows.map(row => `
-      <tr class="hover:bg-gray-50/60 dark:hover:bg-white/5">
-        <td class="px-4 py-3 font-semibold">${row.name}</td>
-        <td class="px-4 py-3">${row.department || 'Unassigned'}</td>
-        <td class="px-4 py-3">${row.employment_type || '—'}</td>
-        <td class="px-4 py-3">
-          <span class="px-3 py-1 rounded-full text-xs font-bold ${badgeClass(row.risk_level)}">
-            ${row.risk_level} • ${row.risk_score}
-          </span>
-        </td>
-        <td class="px-4 py-3">${num(row.attendance_rate, 0).toFixed(1)}%</td>
-        <td class="px-4 py-3">${row.absences}</td>
-        <td class="px-4 py-3">${row.late_days}</td>
-        <td class="px-4 py-3 max-w-md text-gray-600 dark:text-gray-300">
-          ${(row.reasons || []).slice(0, 2).join(' ')}
-        </td>
-      </tr>
-    `).join('') : `
-      <tr>
-        <td colspan="8" class="px-4 py-6 text-center text-gray-500">No employee risk data found for the selected filter.</td>
-      </tr>
-    `;
-  }
-
-  const lateTableBody = document.getElementById('lateTableBody');
-  if (lateTableBody) {
-    const rows = payload.late_rows || [];
-
-    lateTableBody.innerHTML = rows.length ? rows.map(row => `
-      <tr class="hover:bg-gray-50/60 dark:hover:bg-white/5">
-        <td class="px-4 py-3 font-semibold">${row.name}</td>
-        <td class="px-4 py-3">${row.late_days}</td>
-        <td class="px-4 py-3">${row.late_minutes}</td>
-        <td class="px-4 py-3">
-          <span class="px-3 py-1 rounded-full text-xs font-bold ${badgeClass(row.late_risk_level)}">
-            ${row.late_risk_level} • ${row.late_risk_score}
-          </span>
-        </td>
-        <td class="px-4 py-3">${row.late_pattern}</td>
-      </tr>
-    `).join('') : `
-      <tr>
-        <td colspan="5" class="px-4 py-6 text-center text-gray-500">No late arrival risk detected.</td>
-      </tr>
-    `;
-  }
-
-  const overworkTableBody = document.getElementById('overworkTableBody');
-  if (overworkTableBody) {
-    const rows = payload.overwork_rows || [];
-
-    overworkTableBody.innerHTML = rows.length ? rows.map(row => `
-      <tr class="hover:bg-gray-50/60 dark:hover:bg-white/5">
-        <td class="px-4 py-3 font-semibold">${row.name}</td>
-        <td class="px-4 py-3">${num(row.total_hours, 0).toFixed(2)}</td>
-        <td class="px-4 py-3">${row.long_work_days}</td>
-        <td class="px-4 py-3">
-          <span class="px-3 py-1 rounded-full text-xs font-bold ${badgeClass(row.overwork_level)}">
-            ${row.overwork_level} • ${row.overwork_score}
-          </span>
-        </td>
-        <td class="px-4 py-3">${row.overwork_note}</td>
-      </tr>
-    `).join('') : `
-      <tr>
-        <td colspan="5" class="px-4 py-6 text-center text-gray-500">No workload risk detected.</td>
-      </tr>
-    `;
-  }
-
-  
-  const headerClock = document.getElementById('headerClock');
-
-  function updateClock() {
-    if (headerClock) headerClock.textContent = new Date().toLocaleTimeString();
-  }
-
-  setInterval(updateClock, 1000);
-  updateClock();
-
-  const netDot = document.getElementById('netDot');
-
-  function updateNet() {
-    const on = navigator.onLine;
-
-    if (netDot) {
-      netDot.classList.toggle('bg-green-500', on);
-      netDot.classList.toggle('bg-rose-500', !on);
-      netDot.title = on ? 'Online' : 'Offline';
-    }
-  }
-
-  window.addEventListener('online', updateNet);
-  window.addEventListener('offline', updateNet);
-  updateNet();
+  rows = arr(payload.overwork_rows); body = document.getElementById('overworkTableBody');
+  if (body) body.innerHTML = rows.length ? rows.map(function (r) {
+    return '<tr><td class="is-strong">' + esc(r.name) + '</td><td class="is-num">' + num(r.total_hours).toFixed(2) + '</td><td class="is-num">' + esc(r.long_work_days) + '</td><td>' + riskBadge(r.overwork_level, r.overwork_score) + '</td><td class="is-muted">' + esc(r.overwork_note) + '</td></tr>';
+  }).join('') : empty(5, 'No workload concerns found.');
 });
 </script>
 {% endblock %}

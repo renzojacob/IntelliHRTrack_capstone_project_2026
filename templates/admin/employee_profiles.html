@@ -1,385 +1,204 @@
 {% extends 'admin/base_admin.html' %}
-
-{% block title %}intellihrtrack — employee management{% endblock %}
-
-{% block extra_head %}
-<style>
-  .status-badge {
-    padding: .25rem .75rem;
-    border-radius: 9999px;
-    font-size: .75rem;
-    font-weight: 600;
-  }
-  .status-pending { background: rgba(245,158,11,.15); color: rgb(202,138,4); }
-  .status-approved { background: rgba(34,197,94,.15); color: rgb(22,163,74); }
-
-  .pill { padding:.25rem .6rem; border-radius:9999px; font-size:.75rem; font-weight:600; }
-  .pill-cos { background: rgba(59,130,246,.15); color: rgb(37,99,235); }
-  .pill-jo { background: rgba(139,92,246,.15); color: rgb(124,58,237); }
-
-  .btn { padding: .35rem .75rem; border-radius: .6rem; font-weight: 600; font-size: .85rem; }
-  .btn-primary { background: rgb(13 148 136); color: white; }
-  .btn-primary:hover { opacity: .92; }
-  .btn-danger { background: rgb(225 29 72); color: white; }
-  .btn-danger:hover { opacity: .92; }
-  .btn-soft { background: rgba(2,6,23,.06); }
-  .dark .btn-soft { background: rgba(255,255,255,.08); }
-
-  .input {
-    width: 100%;
-    padding: .55rem .7rem;
-    border-radius: .8rem;
-    border: 1px solid rgba(148,163,184,.6);
-    background: rgba(255,255,255,.7);
-  }
-  .dark .input {
-    background: rgba(255,255,255,.08);
-    border-color: rgba(255,255,255,.15);
-    color: #e5e7eb;
-  }
-</style>
-{% endblock %}
+{% block title %}Employee profiles | IntelliHRTrack{% endblock %}
 
 {% block content %}
-<div class="min-h-screen p-6 space-y-6">
-
-  <!-- HEADER -->
-  <div class="glass rounded-3xl p-6 flex items-center justify-between">
-    <div>
-      <h1 class="text-2xl font-extrabold">Employee Management</h1>
-      <p class="text-sm text-slate-500">
-        approve accounts and manage employee profiles
-      </p>
-    </div>
-
-    <a href="{% url 'signup_ui' %}"
-       class="px-4 py-2 rounded-xl text-white bg-teal-600 hover:bg-teal-700 flex items-center gap-2">
-      <iconify-icon icon="ph:user-plus-duotone"></iconify-icon>
-      signup page
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <h1>Employee profiles</h1>
+    <p>Approve accounts and manage basic employee details.</p>
+  </div>
+  <div class="ad-page-head__actions">
+    <a href="{% url 'signup_ui' %}" class="ihrt-btn ihrt-btn--secondary">
+      <iconify-icon icon="ph:arrow-square-out" aria-hidden="true"></iconify-icon> Open sign-up page
     </a>
   </div>
+</header>
 
-  <!-- SUMMARY -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div class="glass rounded-xl p-4">
-      <div class="text-xs text-slate-500">Pending</div>
-      <div class="text-2xl font-bold">{{ pending_profiles|length }}</div>
-    </div>
-    <div class="glass rounded-xl p-4">
-      <div class="text-xs text-slate-500">Approved</div>
-      <div class="text-2xl font-bold">{{ approved_profiles|length }}</div>
-    </div>
-    <div class="glass rounded-xl p-4">
-      <div class="text-xs text-slate-500">Your Branch</div>
-      <div class="text-lg font-semibold">
-        {% if request.user.is_superuser %}
-          All Branches
-        {% else %}
-          {{ request.user.profile.branch|default:"—" }}
-        {% endif %}
-      </div>
-    </div>
-  </div>
+<section aria-label="Summary" class="ad-stats ad-stats--3">
+  <div class="ad-stat ad-tone-warn"><p class="ad-stat__label">Pending</p><p class="ad-stat__value">{{ pending_profiles|length }}</p></div>
+  <div class="ad-stat ad-tone-ok"><p class="ad-stat__label">Approved</p><p class="ad-stat__value">{{ approved_profiles|length }}</p></div>
+  <div class="ad-stat ad-tone-field"><p class="ad-stat__label">Your access</p><p class="ad-stat__value ad-stat__value--sm">{% if request.user.is_superuser %}All branches{% else %}{{ request.user.profile.branch|default:"—" }}{% endif %}</p></div>
+</section>
 
-  <!-- APPROVAL TABLE (pending + approved) -->
-  <div class="glass rounded-2xl p-4 overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead class="text-xs uppercase text-slate-500 border-b">
+<section class="ad-card" aria-labelledby="acc-title">
+  <div class="ad-card__head"><h2 id="acc-title">Accounts</h2></div>
+  <div class="ad-table-wrap">
+    <table class="ad-table" style="min-width: 820px">
+      <thead>
         <tr>
-          <th class="px-3 py-2 text-left">Username</th>
-          <th class="px-3 py-2 text-left">Email</th>
-          <th class="px-3 py-2 text-left">Branch</th>
-          <th class="px-3 py-2 text-left">Department</th>
-          <th class="px-3 py-2 text-left">Job Type</th>
-          <th class="px-3 py-2 text-left">Status</th>
-          <th class="px-3 py-2 text-left">Created</th>
-          <th class="px-3 py-2 text-right">Action</th>
+          <th scope="col">Account</th>
+          <th scope="col">Branch</th>
+          <th scope="col">Department</th>
+          <th scope="col">Type</th>
+          <th scope="col">Status</th>
+          <th scope="col">Created</th>
+          <th scope="col" class="is-actions"><span class="sr-only">Action</span></th>
         </tr>
       </thead>
-
-      <tbody class="divide-y">
-
-        <!-- PENDING -->
-        <tr class="bg-amber-50/40 dark:bg-amber-500/10">
-          <td colspan="8" class="px-3 py-2 font-semibold text-amber-700 dark:text-amber-300">
-            Pending Accounts
-          </td>
-        </tr>
-
+      <tbody>
+        <tr class="ad-group-row"><td colspan="7">Waiting for approval</td></tr>
         {% for p in pending_profiles %}
-        <tr class="hover:bg-slate-50 dark:hover:bg-white/5">
-          <td class="px-3 py-2 font-medium">{{ p.user.username }}</td>
-          <td class="px-3 py-2">{{ p.user.email|default:"—" }}</td>
-          <td class="px-3 py-2">{{ p.branch|default:"—" }}</td>
-          <td class="px-3 py-2">{{ p.department|default:"—" }}</td>
-
-          <td class="px-3 py-2">
-            {% if p.employment_type == "COS" %}
-              <span class="pill pill-cos">COS</span>
-            {% elif p.employment_type == "JO" %}
-              <span class="pill pill-jo">JO</span>
-            {% else %}
-              —
-            {% endif %}
-          </td>
-
-          <td class="px-3 py-2">
-            <span class="status-badge status-pending">PENDING</span>
-          </td>
-
-          <td class="px-3 py-2">{{ p.created_at|date:"Y-m-d H:i" }}</td>
-
-          <td class="px-3 py-2 text-right space-x-2">
-            <form method="post" action="{% url 'approve_user' p.id %}" class="inline">
-              {% csrf_token %}
-              <button class="btn bg-green-600 text-white text-xs">Approve</button>
-            </form>
-
-            <form method="post"
-                  action="{% url 'reject_user' p.id %}"
-                  class="inline"
-                  onsubmit="return confirm('Reject this account?');">
-              {% csrf_token %}
-              <button class="btn bg-rose-600 text-white text-xs">Reject</button>
-            </form>
-          </td>
-        </tr>
+          <tr>
+            <td><p class="ad-cell-primary">{{ p.user.username }}</p><p class="ad-cell-sub">{{ p.user.email|default:"No email" }}</p></td>
+            <td class="is-muted">{{ p.branch|default:"—" }}</td>
+            <td class="is-muted">{{ p.department|default:"—" }}</td>
+            <td>{% include "admin/_emp_type_tag.html" with t=p.employment_type %}</td>
+            <td><span class="ihrt-badge ihrt-badge--warn">Pending</span></td>
+            <td class="is-nowrap is-muted">{{ p.created_at|date:"M d, Y H:i" }}</td>
+            <td class="is-actions">
+              <div class="ad-row">
+                <form method="post" action="{% url 'reject_user' p.id %}" onsubmit="return confirm('Reject this account?');">
+                  {% csrf_token %}<button class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Reject</button>
+                </form>
+                <form method="post" action="{% url 'approve_user' p.id %}">
+                  {% csrf_token %}<button class="ihrt-btn ihrt-btn--primary ihrt-btn--sm">Approve</button>
+                </form>
+              </div>
+            </td>
+          </tr>
         {% empty %}
-        <tr>
-          <td colspan="8" class="text-center py-6 text-slate-400">
-            No pending accounts
-          </td>
-        </tr>
+          <tr><td colspan="7" class="is-muted" style="text-align:center;padding:20px">No accounts waiting for approval</td></tr>
         {% endfor %}
 
-        <!-- APPROVED -->
-        <tr class="bg-emerald-50/40 dark:bg-emerald-500/10">
-          <td colspan="8" class="px-3 py-2 font-semibold text-emerald-700 dark:text-emerald-300">
-            Approved Employees
-          </td>
-        </tr>
-
+        <tr class="ad-group-row"><td colspan="7">Approved</td></tr>
         {% for p in approved_profiles %}
-        <tr class="hover:bg-slate-50 dark:hover:bg-white/5">
-          <td class="px-3 py-2 font-medium">{{ p.user.username }}</td>
-          <td class="px-3 py-2">{{ p.user.email|default:"—" }}</td>
-          <td class="px-3 py-2">{{ p.branch|default:"—" }}</td>
-          <td class="px-3 py-2">{{ p.department|default:"—" }}</td>
-
-          <td class="px-3 py-2">
-            {% if p.employment_type == "COS" %}
-              <span class="pill pill-cos">COS</span>
-            {% elif p.employment_type == "JO" %}
-              <span class="pill pill-jo">JO</span>
-            {% else %}
-              —
-            {% endif %}
-          </td>
-
-          <td class="px-3 py-2">
-            <span class="status-badge status-approved">APPROVED</span>
-          </td>
-
-          <td class="px-3 py-2">{{ p.created_at|date:"Y-m-d H:i" }}</td>
-
-          <td class="px-3 py-2 text-right text-xs text-slate-400">
-            —
-          </td>
-        </tr>
+          <tr>
+            <td><p class="ad-cell-primary">{{ p.user.username }}</p><p class="ad-cell-sub">{{ p.user.email|default:"No email" }}</p></td>
+            <td class="is-muted">{{ p.branch|default:"—" }}</td>
+            <td class="is-muted">{{ p.department|default:"—" }}</td>
+            <td>{% include "admin/_emp_type_tag.html" with t=p.employment_type %}</td>
+            <td><span class="ihrt-badge ihrt-badge--ok">Approved</span></td>
+            <td class="is-nowrap is-muted">{{ p.created_at|date:"M d, Y H:i" }}</td>
+            <td></td>
+          </tr>
         {% empty %}
-        <tr>
-          <td colspan="8" class="text-center py-6 text-slate-400">
-            No approved employees
-          </td>
-        </tr>
+          <tr><td colspan="7" class="is-muted" style="text-align:center;padding:20px">No approved employees</td></tr>
         {% endfor %}
-
       </tbody>
     </table>
   </div>
+</section>
 
-  <!-- ===================================================== -->
-  <!-- ✅ EMPLOYEE PROFILES (SAME PAGE) -->
-  <!-- ===================================================== -->
-  <div class="glass rounded-3xl p-6 space-y-4">
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <h2 class="text-xl font-extrabold">Employee Profiles</h2>
-        <p class="text-sm text-slate-500">
-          Create, update, and delete employee profiles.
-        </p>
-      </div>
+<section class="ad-card" aria-labelledby="prof-title">
+  <div class="ad-card__head">
+    <div>
+      <h2 id="prof-title">Edit profiles</h2>
+      <p>Update an employee's email, department, type, or branch.</p>
     </div>
-
-    <!-- CREATE FORM -->
-    <details class="glass rounded-2xl p-4">
-      <summary class="cursor-pointer font-semibold flex items-center gap-2">
-        <iconify-icon icon="ph:plus-circle-duotone"></iconify-icon>
-        Add Employee
-      </summary>
-
-      <form method="post" action="{% url 'admin_employees' %}" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="create_employee">
-
-        <div>
-          <label class="text-xs text-slate-500">Username</label>
-          <input class="input" name="username" required>
-        </div>
-
-        <div>
-          <label class="text-xs text-slate-500">Email</label>
-          <input class="input" type="email" name="email">
-        </div>
-
-        <div>
-          <label class="text-xs text-slate-500">Password (min 8 chars)</label>
-          <input class="input" type="password" name="password" required minlength="8">
-        </div>
-
-        <div>
-          <label class="text-xs text-slate-500">Department</label>
-          <input class="input" name="department" placeholder="e.g., HR, Admin, Payroll">
-        </div>
-
-        <div>
-          <label class="text-xs text-slate-500">Employment Type</label>
-          <select class="input" name="employment_type" required>
-            <option value="">Select</option>
-            <option value="COS">COS</option>
-            <option value="JO">JO</option>
-          </select>
-        </div>
-
-        {% if request.user.is_superuser %}
-        <div>
-          <label class="text-xs text-slate-500">Branch</label>
-          <select class="input" name="branch_id" required>
-            <option value="">Select branch</option>
-            {% for b in branches %}
-              <option value="{{ b.id }}">{{ b.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        {% else %}
-          <div class="md:col-span-2 text-xs text-slate-500">
-            Branch will automatically be set to your branch.
-          </div>
-        {% endif %}
-
-        <div class="md:col-span-2 flex justify-end gap-2 pt-2">
-          <button type="submit" class="btn btn-primary">Create Employee</button>
-        </div>
-      </form>
-    </details>
-
-    <!-- CRUD TABLE -->
-    <div class="overflow-x-auto fancy-scroll">
-      <table class="w-full text-sm">
-        <thead class="text-xs uppercase text-slate-500 border-b">
+  </div>
+  {% if employee_profiles %}
+    <div class="ad-table-wrap">
+      <table class="ad-table" style="min-width: 720px">
+        <thead>
           <tr>
-            <th class="px-3 py-2 text-left">Username</th>
-            <th class="px-3 py-2 text-left">Email</th>
-            <th class="px-3 py-2 text-left">Branch</th>
-            <th class="px-3 py-2 text-left">Department</th>
-            <th class="px-3 py-2 text-left">Job Type</th>
-            <th class="px-3 py-2 text-right">Actions</th>
+            <th scope="col">Account</th>
+            <th scope="col">Branch</th>
+            <th scope="col">Department</th>
+            <th scope="col">Type</th>
+            <th scope="col" class="is-actions"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
-
-        <tbody class="divide-y">
+        <tbody>
           {% for p in employee_profiles %}
-          <tr class="hover:bg-slate-50 dark:hover:bg-white/5">
-            <td class="px-3 py-2 font-medium">{{ p.user.username }}</td>
-            <td class="px-3 py-2">{{ p.user.email|default:"—" }}</td>
-            <td class="px-3 py-2">{{ p.branch|default:"—" }}</td>
-            <td class="px-3 py-2">{{ p.department|default:"—" }}</td>
-            <td class="px-3 py-2">
-              {% if p.employment_type == "COS" %}
-                <span class="pill pill-cos">COS</span>
-              {% elif p.employment_type == "JO" %}
-                <span class="pill pill-jo">JO</span>
-              {% else %}
-                —
-              {% endif %}
-            </td>
-
-            <td class="px-3 py-2 text-right">
-              <!-- UPDATE (inline modal-ish using <details>) -->
-              <details class="inline-block text-left">
-                <summary class="btn btn-soft cursor-pointer inline-flex items-center gap-2">
-                  <iconify-icon icon="ph:pencil-duotone"></iconify-icon>
-                  Edit
-                </summary>
-
-                <div class="mt-2 w-[320px] max-w-full glass rounded-2xl p-3">
-                  <form method="post" action="{% url 'admin_employees' %}" class="space-y-2">
+            <tr>
+              <td><p class="ad-cell-primary">{{ p.user.username }}</p><p class="ad-cell-sub">{{ p.user.email|default:"No email" }}</p></td>
+              <td class="is-muted">{{ p.branch|default:"—" }}</td>
+              <td class="is-muted">{{ p.department|default:"—" }}</td>
+              <td>{% include "admin/_emp_type_tag.html" with t=p.employment_type %}</td>
+              <td class="is-actions">
+                <div class="ad-row">
+                  <button type="button" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm" data-open-edit="edit-{{ p.id }}">
+                    <iconify-icon icon="ph:pencil-simple" aria-hidden="true"></iconify-icon> Edit
+                  </button>
+                  <form method="post" action="{% url 'admin_employees' %}" onsubmit="return confirm('Delete employee {{ p.user.username|escapejs }}?');">
                     {% csrf_token %}
-                    <input type="hidden" name="action" value="update_employee">
+                    <input type="hidden" name="action" value="delete_employee">
                     <input type="hidden" name="profile_id" value="{{ p.id }}">
-
-                    <div>
-                      <label class="text-xs text-slate-500">Email</label>
-                      <input class="input" type="email" name="email" value="{{ p.user.email|default:'' }}">
-                    </div>
-
-                    <div>
-                      <label class="text-xs text-slate-500">Department</label>
-                      <input class="input" name="department" value="{{ p.department|default:'' }}">
-                    </div>
-
-                    <div>
-                      <label class="text-xs text-slate-500">Employment Type</label>
-                      <select class="input" name="employment_type" required>
-                        <option value="COS" {% if p.employment_type == "COS" %}selected{% endif %}>COS</option>
-                        <option value="JO" {% if p.employment_type == "JO" %}selected{% endif %}>JO</option>
-                      </select>
-                    </div>
-
-                    {% if request.user.is_superuser %}
-                    <div>
-                      <label class="text-xs text-slate-500">Branch</label>
-                      <select class="input" name="branch_id">
-                        {% for b in branches %}
-                          <option value="{{ b.id }}" {% if p.branch and p.branch.id == b.id %}selected{% endif %}>{{ b.name }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    {% endif %}
-
-                    <div class="flex justify-end gap-2 pt-1">
-                      <!-- ✅ MUST BE UPDATE (not Save) -->
-                      <button type="submit" class="btn btn-primary">Update</button>
-                    </div>
+                    <button class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Delete</button>
                   </form>
                 </div>
-              </details>
 
-              <!-- DELETE -->
-              <form method="post" action="{% url 'admin_employees' %}" class="inline"
-                    onsubmit="return confirm('Delete employee {{ p.user.username }}?');">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="delete_employee">
-                <input type="hidden" name="profile_id" value="{{ p.id }}">
-                <button class="btn btn-danger inline-flex items-center gap-2">
-                  <iconify-icon icon="ph:trash-duotone"></iconify-icon>
-                  Delete
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="6" class="text-center py-8 text-slate-400">
-              No employees yet. Use “Add Employee”.
-            </td>
-          </tr>
+                <div id="edit-{{ p.id }}" class="ad-modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-{{ p.id }}-title" style="text-align:left;white-space:normal">
+                  <div class="ad-modal__panel" style="--ad-modal-w: 480px">
+                    <div class="ad-modal__head">
+                      <div><h2 id="edit-{{ p.id }}-title">Edit {{ p.user.username }}</h2></div>
+                      <button type="button" class="ad-icon-btn ad-icon-btn--sm" data-modal-close><iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon><span class="sr-only">Close</span></button>
+                    </div>
+                    <form method="post" action="{% url 'admin_employees' %}" class="ad-form" style="display:contents">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="update_employee">
+                      <input type="hidden" name="profile_id" value="{{ p.id }}">
+                      <div class="ad-modal__body ad-stack ad-stack--sm">
+                        <div class="ad-field"><label class="ad-label" for="pe-{{ p.id }}-email">Email</label><input id="pe-{{ p.id }}-email" type="email" name="email" value="{{ p.user.email|default:'' }}"></div>
+                        <div class="ad-field"><label class="ad-label" for="pe-{{ p.id }}-dept">Department</label><input id="pe-{{ p.id }}-dept" name="department" value="{{ p.department|default:'' }}"></div>
+                        <div class="ad-field">
+                          <label class="ad-label" for="pe-{{ p.id }}-type">Employment type</label>
+                          <select id="pe-{{ p.id }}-type" name="employment_type" required>
+                            <option value="COS" {% if p.employment_type == "COS" %}selected{% endif %}>Contract of Service (COS)</option>
+                            <option value="JO" {% if p.employment_type == "JO" %}selected{% endif %}>Job Order (JO)</option>
+                          </select>
+                        </div>
+                        {% if request.user.is_superuser %}
+                          <div class="ad-field">
+                            <label class="ad-label" for="pe-{{ p.id }}-branch">Branch</label>
+                            <select id="pe-{{ p.id }}-branch" name="branch_id">
+                              {% for b in branches %}<option value="{{ b.id }}" {% if p.branch and p.branch.id == b.id %}selected{% endif %}>{{ b.name }}</option>{% endfor %}
+                            </select>
+                          </div>
+                        {% endif %}
+                      </div>
+                      <div class="ad-modal__foot">
+                        <button type="button" class="ihrt-btn ihrt-btn--secondary" data-modal-close>Cancel</button>
+                        <button type="submit" class="ihrt-btn ihrt-btn--primary">Update</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </td>
+            </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+  {% else %}
+    <div class="ad-empty"><iconify-icon icon="ph:users-three" aria-hidden="true"></iconify-icon><h3>No employees yet</h3><p>Use Add employee below to create the first one.</p></div>
+  {% endif %}
+</section>
 
-  </div>
+<section class="ad-card" aria-labelledby="add-title">
+  <div class="ad-card__head"><h2 id="add-title">Add employee</h2></div>
+  <form method="post" action="{% url 'admin_employees' %}" class="ad-form ad-card__body">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create_employee">
+    <div class="ad-form-grid">
+      <div class="ad-field"><label class="ad-label" for="np-user">Username<span class="ad-req" aria-hidden="true">*</span></label><input id="np-user" name="username" required></div>
+      <div class="ad-field"><label class="ad-label" for="np-email">Email</label><input id="np-email" type="email" name="email"></div>
+      <div class="ad-field"><label class="ad-label" for="np-pass">Password<span class="ad-req" aria-hidden="true">*</span></label><input id="np-pass" type="password" name="password" required minlength="8"><p class="ad-help">At least 8 characters</p></div>
+      <div class="ad-field"><label class="ad-label" for="np-dept">Department</label><input id="np-dept" name="department" placeholder="e.g. Administrative and Finance Division"></div>
+      <div class="ad-field">
+        <label class="ad-label" for="np-type">Employment type<span class="ad-req" aria-hidden="true">*</span></label>
+        <select id="np-type" name="employment_type" required><option value="">Select</option><option value="COS">Contract of Service (COS)</option><option value="JO">Job Order (JO)</option></select>
+      </div>
+      {% if request.user.is_superuser %}
+        <div class="ad-field">
+          <label class="ad-label" for="np-branch">Branch<span class="ad-req" aria-hidden="true">*</span></label>
+          <select id="np-branch" name="branch_id" required><option value="">Select branch</option>{% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select>
+        </div>
+      {% else %}
+        <div class="ad-field"><span class="ad-label">Branch</span><div class="ad-readonly"><iconify-icon icon="ph:lock-simple" aria-hidden="true"></iconify-icon>{{ request.user.profile.branch|default:"Your branch" }}</div></div>
+      {% endif %}
+    </div>
+    <div class="ad-form-actions" style="margin-top:20px">
+      <button type="submit" class="ihrt-btn ihrt-btn--primary"><iconify-icon icon="ph:user-plus" aria-hidden="true"></iconify-icon> Create employee</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
 
-</div>
+{% block extra_js %}
+<script>
+  document.querySelectorAll('[data-open-edit]').forEach(function (btn) {
+    btn.addEventListener('click', function () { window.adModal.open(document.getElementById(btn.dataset.openEdit)); });
+  });
+</script>
 {% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Attendance record | IntelliHRTrack{% endblock %}
+{% block content %}
+
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <a href="{% url 'admin_biometrics' %}" class="ad-crumb"><iconify-icon icon="ph:arrow-left" aria-hidden="true"></iconify-icon> Biometrics and attendance</a>
+    <h1>{{ obj.full_name|default:"Attendance record" }}</h1>
+    <p>Scan recorded {{ obj.timestamp }}</p>
+  </div>
+  <div class="ad-page-head__actions">
+    <a class="ihrt-btn ihrt-btn--danger-soft" href="{% url 'admin_attendance_delete' obj.id %}">
+      <iconify-icon icon="ph:trash" aria-hidden="true"></iconify-icon> Delete
+    </a>
+    <a class="ihrt-btn ihrt-btn--primary" href="{% url 'admin_attendance_update' obj.id %}">
+      <iconify-icon icon="ph:pencil-simple" aria-hidden="true"></iconify-icon> Edit
+    </a>
+  </div>
+</header>
+
+<section class="ad-card" style="max-width: 760px">
+  <div class="ad-card__body">
+    <dl class="ad-kv">
+      <div><dt>Person ID</dt><dd>{{ obj.employee_id }}</dd></div>
+      <div><dt>Name</dt><dd>{{ obj.full_name }}</dd></div>
+      <div><dt>Department</dt><dd>{{ obj.department|default:"—" }}</dd></div>
+      <div><dt>Branch</dt><dd>{{ obj.branch|default:"—" }}</dd></div>
+      <div><dt>Time</dt><dd>{{ obj.timestamp }}</dd></div>
+      <div><dt>Attendance status</dt><dd><span class="ihrt-badge ihrt-badge--info">{{ obj.get_attendance_status_display }}</span></dd></div>
+    </dl>
+  </div>
+</section>
+{% endblock %}
