@@ -1,0 +1,16 @@
+# IntelliHRTrack
+
+> IntelliHRTrack is a web-based employee management, biometric attendance, and payroll system developed for the Department of Agriculture MIMAROPA Region in the Philippines, as a capstone project at Mindoro State University, Calapan Campus.
+
+## What it does
+
+- Records attendance from Hikvision face and fingerprint terminals and matches each scan to an employee.
+- Builds each employee's daily time record (Civil Service Form No. 48) from those scans.
+- Computes worked hours, late arrivals, and undertime against assigned schedules.
+- Handles leave requests and approvals, official travel, holidays, and work suspensions.
+- Computes payroll for Job Order (JO), Contract of Service (COS), and Permanent employees, and produces payslips and payroll registers.
+- Limits access by branch: administrators manage their own office, and employees see only their own records.
+
+## Pages
+
+- [Home](https://intellihrtrack-mimaropa.up.railway.app/): overview of the system. All other pages require an approved account.

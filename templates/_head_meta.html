@@ -1,0 +1,19 @@
+{% load static %}
+{% comment %}
+  Shared <head> tags: favicons, app manifest, theme color, and search-engine rules.
+  Include it once in every template that has its own <head>:
+      {% include "_head_meta.html" %}                 private page (not indexed)
+      {% include "_head_meta.html" with indexable=1 %}  public page (indexed)
+{% endcomment %}
+<link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="32x32">
+<link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+<link rel="manifest" href="{% static 'manifest.json' %}">
+<meta name="application-name" content="IntelliHRTrack">
+<meta name="apple-mobile-web-app-title" content="IntelliHRTrack">
+<meta name="theme-color" content="#0F3324">
+{% if indexable %}
+<meta name="robots" content="index, follow, max-image-preview:large">
+{% else %}
+<meta name="robots" content="noindex, nofollow">
+{% endif %}
