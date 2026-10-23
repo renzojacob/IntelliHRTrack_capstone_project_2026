@@ -1,1195 +1,655 @@
 {% extends 'admin/base_admin.html' %}
-{% block title %}Biometrics & Attendance | IntelliHRTrack{% endblock %}
+{% block title %}Biometrics and attendance | IntelliHRTrack{% endblock %}
+
 {% block extra_head %}
 <style>
-  :root {
-    --registered-panel: #ffffff;
-    --registered-card: #f8fafc;
-    --registered-row: #ffffff;
-    --registered-text: #0f172a;
-    --registered-muted: #475569;
-    --registered-border: #cbd5e1;
-    --registered-shadow: rgba(15, 23, 42, 0.10);
-  }
-
-  html.dark {
-    --registered-panel: #0f172a;
-    --registered-card: #172033;
-    --registered-row: #0b1220;
-    --registered-text: #f8fafc;
-    --registered-muted: #cbd5e1;
-    --registered-border: #334155;
-    --registered-shadow: rgba(0, 0, 0, 0.35);
-  }
-
-  .registered-device-section {
-    color: var(--registered-text);
-    border: 1px solid var(--registered-border);
-    background: var(--registered-panel);
-    box-shadow: 0 18px 40px var(--registered-shadow);
-  }
-
-  .registered-device-header {
-    border-bottom: 1px solid var(--registered-border);
-  }
-
-  .registered-device-muted {
-    color: var(--registered-muted);
-  }
-
-  .registered-device-card {
-    color: var(--registered-text);
-    border: 1px solid var(--registered-border);
-    background: var(--registered-card);
-    box-shadow: 0 8px 20px var(--registered-shadow);
-  }
-
-  .registered-device-row {
-    border: 1px solid var(--registered-border);
-    background: var(--registered-row);
-  }
-
-  .registered-device-action {
-    display: inline-flex;
-    min-height: 2.5rem;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid transparent;
-    border-radius: 0.75rem;
-    padding: 0.55rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 800;
-    transition:
-      transform 150ms ease,
-      background-color 150ms ease,
-      border-color 150ms ease;
-  }
-
-  .registered-device-action:hover {
-    transform: translateY(-1px);
-  }
-
-  .device-action-test {
-    color: #1d4ed8;
-    border-color: #93c5fd;
-    background: #dbeafe;
-  }
-
-  .device-action-edit {
-    color: #0e7490;
-    border-color: #67e8f9;
-    background: #cffafe;
-  }
-
-  .device-action-toggle {
-    color: #92400e;
-    border-color: #fcd34d;
-    background: #fef3c7;
-  }
-
-  .device-action-delete {
-    color: #be123c;
-    border-color: #fda4af;
-    background: #ffe4e6;
-  }
-
-  html.dark .device-action-test {
-    color: #bfdbfe;
-    border-color: #1d4ed8;
-    background: #172554;
-  }
-
-  html.dark .device-action-edit {
-    color: #a5f3fc;
-    border-color: #0e7490;
-    background: #164e63;
-  }
-
-  html.dark .device-action-toggle {
-    color: #fde68a;
-    border-color: #b45309;
-    background: #451a03;
-  }
-
-  html.dark .device-action-delete {
-    color: #fecdd3;
-    border-color: #be123c;
-    background: #4c0519;
-  }
-
-.register-device-button {
-  display: inline-flex !important;
-  min-height: 2.75rem;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem !important;
-  border: 1px solid #0e7490 !important;
-  border-radius: 1rem !important;
-  background: linear-gradient(
-    135deg,
-    #0891b2,
-    #0f766e
-  ) !important;
-  color: #ffffff !important;
-  font-size: 0.875rem;
-  font-weight: 800;
-  text-decoration: none !important;
-  box-shadow: 0 8px 20px rgba(8, 145, 178, 0.25);
-  transition:
-    transform 150ms ease,
-    box-shadow 150ms ease,
-    background 150ms ease;
-}
-
-.register-device-button,
-.register-device-button span,
-.register-device-button iconify-icon {
-  color: #ffffff !important;
-}
-
-.register-device-button:hover {
-  background: linear-gradient(
-    135deg,
-    #0e7490,
-    #115e59
-  ) !important;
-  color: #ffffff !important;
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(8, 145, 178, 0.35);
-}
-
-.register-device-button:focus-visible {
-  outline: 3px solid rgba(6, 182, 212, 0.35);
-  outline-offset: 3px;
-}
-
-html.dark .register-device-button {
-  border-color: #22d3ee !important;
-  background: linear-gradient(
-    135deg,
-    #0e7490,
-    #0f766e
-  ) !important;
-  color: #ffffff !important;
-  box-shadow: 0 8px 22px rgba(34, 211, 238, 0.20);
-}
-
-html.dark .register-device-button:hover {
-  background: linear-gradient(
-    135deg,
-    #0891b2,
-    #0d9488
-  ) !important;
-}
-
+  .bio-sections { position: sticky; top: 0; z-index: 30; margin: -8px calc(var(--ad-pad) * -1) 0; padding: 8px var(--ad-pad); background: color-mix(in srgb, var(--ihrt-paper) 94%, transparent); border-bottom: 1px solid var(--ihrt-line); }
+  @media (max-width: 1023px) { .bio-sections { top: var(--ad-topbar-h); } }
+  .bio-sections ul { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .bio-sections ul::-webkit-scrollbar { display: none; }
+  .bio-sections a { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--ihrt-muted); white-space: nowrap; }
+  .bio-sections a:hover { background: var(--ihrt-surface); color: var(--ihrt-ink); }
+  .bio-anchor { scroll-margin-top: 72px; }
+  @media (max-width: 1023px) { .bio-anchor { scroll-margin-top: calc(var(--ad-topbar-h) + 64px); } }
+  .bio-device { display: flex; flex-direction: column; }
+  .bio-device__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; padding-top: 16px; }
+  .bio-device__actions form, .bio-device__actions .ihrt-btn { width: 100%; }
+  .bio-holiday { display: flex; flex-direction: column; gap: 8px; }
+  .bio-holiday__impact { font-size: 13px; padding: 8px 10px; border-radius: var(--ihrt-radius-sm); background: var(--ihrt-surface-2); }
 </style>
 {% endblock %}
 
-
 {% block content %}
-<div class="space-y-6" data-can-import="{{ can_import|yesno:'1,0' }}">
+<div class="ad-stack" data-can-import="{{ can_import|yesno:'1,0' }}">
 
-
-  <!-- DJANGO NOTIFICATIONS -->
-  {% if messages %}
-    <div class="space-y-3" aria-live="polite">
-      {% for message in messages %}
-        <div
-          class="flex items-start justify-between gap-4 rounded-2xl border px-4 py-3 shadow-sm
-          {% if message.tags == 'success' %}
-            border-emerald-300 bg-emerald-50 text-emerald-800
-            dark:border-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-200
-          {% elif message.tags == 'error' %}
-            border-red-300 bg-red-50 text-red-800
-            dark:border-red-700 dark:bg-red-950/70 dark:text-red-200
-          {% elif message.tags == 'warning' %}
-            border-amber-300 bg-amber-50 text-amber-800
-            dark:border-amber-700 dark:bg-amber-950/70 dark:text-amber-200
-          {% else %}
-            border-cyan-300 bg-cyan-50 text-cyan-800
-            dark:border-cyan-700 dark:bg-cyan-950/70 dark:text-cyan-200
-          {% endif %}"
-          role="alert"
-        >
-          <div class="flex min-w-0 items-start gap-3">
-            <iconify-icon
-              icon="{% if message.tags == 'success' %}ph:check-circle-duotone{% elif message.tags == 'error' %}ph:x-circle-duotone{% elif message.tags == 'warning' %}ph:warning-circle-duotone{% else %}ph:info-duotone{% endif %}"
-              class="mt-0.5 shrink-0 text-xl"
-            ></iconify-icon>
-
-            <p class="break-words text-sm font-bold">
-              {{ message }}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            class="notification-close shrink-0 rounded-lg px-2 py-1 text-lg leading-none opacity-60 transition hover:opacity-100"
-            aria-label="Close notification"
-          >
-            &times;
-          </button>
-        </div>
-      {% endfor %}
+  <!-- ===================== Header ===================== -->
+  <header class="ad-page-head">
+    <div class="ad-page-head__text">
+      <h1>Biometrics and attendance</h1>
+      <p>Scans from the Hikvision terminals and imported files, plus overtime, travel, and non-working days that affect payroll.</p>
     </div>
-  {% endif %}
-
-
-  <!-- PAGE HERO -->
-  <section class="relative overflow-hidden rounded-3xl border border-gray-200/70 bg-gradient-to-br from-white/95 via-cyan-50/80 to-teal-50/70 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-gradient-to-br dark:from-slate-900/90 dark:via-slate-900/80 dark:to-cyan-950/70 dark:shadow-2xl sm:p-6 lg:p-8">
-    <div class="absolute inset-0 opacity-30 dark:opacity-20"
-         style="background-image:
-         radial-gradient(circle at 18% 20%, rgba(20,184,166,.35), transparent 34%),
-         radial-gradient(circle at 86% 25%, rgba(59,130,246,.25), transparent 30%),
-         radial-gradient(circle at 48% 85%, rgba(168,85,247,.18), transparent 35%);">
-    </div>
-
-    <div class="relative z-10 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-      <div class="max-w-3xl">
-        <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-          <span class="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
-          Biometric Attendance Control
-        </div>
-
-        <h1 class="text-3xl font-black tracking-tight text-gray-950 dark:text-white md:text-4xl">
-          Biometrics & Attendance
-        </h1>
-
-        <p class="mt-2 max-w-3xl text-sm leading-6 text-gray-600 dark:text-slate-300 md:text-base">
-          Import, validate, sync, review, and manage attendance logs from your Hikvision biometric device, CSV/Excel files, travel orders, and non-working dates.
-        </p>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2">
-                <form
-          method="post"
-          action="{% url 'admin_biometrics_sync' %}"
-          class="contents"
-        >
-          {% csrf_token %}
-
-          <button
-            type="submit"
-            class="inline-flex items-center justify-center gap-2 rounded-2xl bg-accent px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-[1.02] hover:shadow-glow"
-          >
-            <iconify-icon icon="ph:arrows-clockwise-duotone"></iconify-icon>
-            Sync Device
-          </button>
-        </form>
-
-        <a href="{% url 'admin_attendance_create' %}"
-           class="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200/70 bg-white/80 px-4 py-3 text-sm font-bold text-gray-800 shadow-sm transition hover:bg-white hover:shadow-lg dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
-          <iconify-icon icon="ph:plus-circle-duotone" class="text-accent"></iconify-icon>
-          Add Record
-        </a>
-
-        <a href="{% url 'admin_biometrics_template' %}"
-           class="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-sm font-bold text-cyan-700 transition hover:bg-cyan-500/20 dark:text-cyan-300">
-          <iconify-icon icon="ph:file-arrow-down-duotone"></iconify-icon>
-          Template
-        </a>
-
-        <a href="{% url 'admin_biometrics_export' %}"
-           class="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm font-bold text-blue-700 transition hover:bg-blue-500/20 dark:text-blue-300">
-          <iconify-icon icon="ph:export-duotone"></iconify-icon>
-          Export
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- KPI CARDS -->
-  <section class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-    <div class="rounded-2xl border border-cyan-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80">
-      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Today Present</p>
-      <p class="mt-2 text-3xl font-black text-cyan-600 dark:text-cyan-300">{{ kpi.present|default:"—" }}</p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Based on check-in</p>
-    </div>
-
-    <div class="rounded-2xl border border-amber-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80">
-      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Late</p>
-      <p class="mt-2 text-3xl font-black text-amber-600 dark:text-amber-300">{{ kpi.late|default:"—" }}</p>
-      <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">After grace period</p>
-    </div>
-
-    <div class="rounded-2xl border border-rose-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80">
-      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Absent</p>
-      <p class="mt-2 text-3xl font-black text-rose-600 dark:text-rose-300">{{ kpi.absent|default:"—" }}</p>
-      <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">Excludes official travel</p>
-    </div>
-
-    <div class="rounded-2xl border border-blue-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80">
-      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">On Travel</p>
-      <p class="mt-2 text-3xl font-black text-blue-600 dark:text-blue-300">{{ kpi.on_travel|default:"0" }}</p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Official travel today</p>
-    </div>
-
-    <div class="col-span-2 rounded-2xl border border-emerald-500/20 bg-white/80 p-4 shadow-lg shadow-slate-200/60 dark:bg-slate-900/80 sm:col-span-1">
-      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Last Import / Sync</p>
-      <p class="mt-2 text-lg font-black text-gray-950 dark:text-white">{{ kpi.last_sync|default:"—" }}</p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Most recent import time</p>
-    </div>
-  </section>
-
-<!-- REGISTERED HIKVISION DEVICES -->
-<section class="registered-device-section overflow-hidden rounded-3xl">
-
-  <div class="registered-device-header flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-
-    <div>
-      <h2 class="text-xl font-extrabold">
-        Registered Hikvision Devices
-      </h2>
-
-      <p class="registered-device-muted mt-1 text-sm">
-        Register and manage the biometric devices assigned to your branch.
-      </p>
-    </div>
-
-    <a href="{% url 'admin_biometric_device_create' %}"
-      class="register-device-button">
-
-      <iconify-icon
-        icon="ph:plus-circle-duotone"
-        class="text-lg">
-      </iconify-icon>
-
-      <span>Register Device</span>
-    </a>
-  </div>
-
-  {% if devices %}
-
-    <div class="grid grid-cols-1 gap-5 p-5 md:grid-cols-2 xl:grid-cols-3 sm:p-6">
-
-      {% for device in devices %}
-        <article class="registered-device-card rounded-3xl p-5">
-
-          <div class="flex items-start justify-between gap-4">
-
-            <div class="flex min-w-0 items-center gap-3">
-
-              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/15 text-cyan-700 dark:text-cyan-300">
-                <iconify-icon
-                  icon="ph:fingerprint-duotone"
-                  class="text-2xl">
-                </iconify-icon>
-              </div>
-
-              <div class="min-w-0">
-                <h3 class="truncate font-black">
-                  {{ device.name }}
-                </h3>
-
-                <p class="registered-device-muted mt-1 truncate text-xs">
-                  {{ device.branch.name }}
-                </p>
-              </div>
-            </div>
-
-            {% if device.is_active %}
-              <span class="shrink-0 rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
-                Active
-              </span>
-            {% else %}
-              <span class="shrink-0 rounded-full border border-slate-300 bg-slate-200 px-3 py-1 text-xs font-extrabold text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200">
-                Inactive
-              </span>
-            {% endif %}
-
-          </div>
-
-          <div class="mt-5 space-y-3 text-sm">
-
-            <div class="registered-device-row flex items-center justify-between gap-4 rounded-xl p-3">
-              <span class="registered-device-muted">
-                IP Address
-              </span>
-
-              <span class="break-all text-right font-bold">
-                {{ device.ip_address }}
-              </span>
-            </div>
-
-            <div class="registered-device-row flex items-center justify-between gap-4 rounded-xl p-3">
-              <span class="registered-device-muted">
-                Port
-              </span>
-
-              <span class="font-bold">
-                {{ device.port }}
-              </span>
-            </div>
-
-            <div class="registered-device-row flex items-center justify-between gap-4 rounded-xl p-3">
-              <span class="registered-device-muted">
-                Username
-              </span>
-
-              <span class="break-all text-right font-bold">
-                {{ device.username }}
-              </span>
-            </div>
-
-          </div>
-
-          <div class="mt-5 grid grid-cols-2 gap-2">
-
-            <form method="post"
-                  action="{% url 'admin_biometric_device_test' device.id %}">
-              {% csrf_token %}
-
-              <button type="submit"
-                      class="registered-device-action device-action-test">
-                <iconify-icon
-                  icon="ph:plugs-connected-duotone"
-                  class="mr-1">
-                </iconify-icon>
-
-                Test
-              </button>
-            </form>
-
-            <a href="{% url 'admin_biometric_device_update' device.id %}"
-               class="registered-device-action device-action-edit">
-              <iconify-icon
-                icon="ph:pencil-simple-duotone"
-                class="mr-1">
-              </iconify-icon>
-
-              Edit
-            </a>
-
-            <form method="post"
-                  action="{% url 'admin_biometric_device_toggle' device.id %}">
-              {% csrf_token %}
-
-              <button type="submit"
-                      class="registered-device-action device-action-toggle">
-
-                <iconify-icon
-                  icon="ph:power-duotone"
-                  class="mr-1">
-                </iconify-icon>
-
-                {% if device.is_active %}
-                  Deactivate
-                {% else %}
-                  Activate
-                {% endif %}
-              </button>
-            </form>
-
-            <form method="post"
-                  action="{% url 'admin_biometric_device_delete' device.id %}"
-                  onsubmit="return confirm('Remove this Hikvision device?');">
-
-              {% csrf_token %}
-
-              <button type="submit"
-                      class="registered-device-action device-action-delete">
-
-                <iconify-icon
-                  icon="ph:trash-duotone"
-                  class="mr-1">
-                </iconify-icon>
-
-                Remove
-              </button>
-            </form>
-
-          </div>
-        </article>
-      {% endfor %}
-
-    </div>
-
-  {% else %}
-
-    <div class="p-6">
-      <div class="registered-device-card rounded-3xl border-2 border-dashed p-8 text-center">
-
-        <iconify-icon
-          icon="ph:fingerprint-duotone"
-          class="text-5xl text-slate-400">
-        </iconify-icon>
-
-        <h3 class="mt-4 font-black">
-          No Hikvision device registered
-        </h3>
-
-        <p class="registered-device-muted mt-2 text-sm">
-          Register the Hikvision device used by your branch before
-          synchronizing attendance.
-        </p>
-
-      </div>
-    </div>
-
-  {% endif %}
-</section>
-
-
-  <!-- TOP WORK AREA -->
-  <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
-
-    <!-- IMPORT CARD -->
-    <section class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl xl:col-span-8">
-      <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Import Attendance File</h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Upload CSV, XLS, or XLSX files from your attendance exporter.</p>
-          </div>
-
-          <span class="w-fit rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-bold text-accent">
-            CSV / Excel
-          </span>
-        </div>
-      </div>
-
-      <form id="importForm" method="post" enctype="multipart/form-data" action="{% url 'admin_biometrics_import' %}" class="p-5 sm:p-6">
+    <div class="ad-page-head__actions">
+      <a href="{% url 'admin_biometrics_export' %}" class="ihrt-btn ihrt-btn--secondary">
+        <iconify-icon icon="ph:export" aria-hidden="true"></iconify-icon> Export
+      </a>
+      <a href="{% url 'admin_attendance_create' %}" class="ihrt-btn ihrt-btn--secondary">
+        <iconify-icon icon="ph:plus" aria-hidden="true"></iconify-icon> Add record
+      </a>
+      <form method="post" action="{% url 'admin_biometrics_sync' %}">
         {% csrf_token %}
-
-        <div id="dropZone" class="group relative rounded-3xl border-2 border-dashed border-gray-300 bg-gray-50/80 p-6 text-center transition hover:border-accent hover:bg-accent/5 dark:border-white/10 dark:bg-white/5 sm:p-8">
-          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-accent/10 text-accent ring-1 ring-accent/20 sm:h-16 sm:w-16">
-            <iconify-icon icon="ph:cloud-arrow-up-duotone" class="text-3xl"></iconify-icon>
-          </div>
-
-          <label for="file" class="mt-5 inline-block cursor-pointer text-base font-extrabold text-accent hover:text-accent/80">
-            Upload a file
-            <input id="file" name="file" type="file" accept=".csv,.xls,.xlsx" class="sr-only" />
-          </label>
-
-          <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">or drag and drop here</p>
-          <p class="mt-3 text-xs text-gray-500 dark:text-slate-400">CSV/Excel up to 10MB</p>
-          <p class="mt-1 break-all text-xs text-gray-500 dark:text-slate-400" id="fileName">No file selected</p>
-        </div>
-
-        <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
-          <label class="rounded-2xl border border-gray-200/70 bg-white/70 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
-            <div class="flex items-start gap-3">
-              <input type="checkbox" name="skip_duplicates" checked class="mt-1 h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent">
-              <div>
-                <span class="block text-sm font-bold text-gray-800 dark:text-white">Skip duplicates</span>
-                <span class="mt-1 block text-xs text-gray-500 dark:text-slate-400">Person ID + Time + Status + Branch</span>
-              </div>
-            </div>
-          </label>
-
-          <div>
-            <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Branch</label>
-            <select name="branch" id="branchSelect"
-                    class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-              <option value="">Select branch</option>
-              {% for val, label in branches %}
-                <option value="{{ val }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Branch must be selected.</p>
-          </div>
-        </div>
-
-        <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <button type="submit" name="action" value="validate"
-                  class="rounded-2xl bg-accent px-5 py-3 text-sm font-extrabold text-white shadow-lg transition hover:scale-[1.01] hover:shadow-glow">
-            Validate & Preview
-          </button>
-
-          <button id="importBtn" type="submit" name="action" value="import"
-                  class="cursor-not-allowed rounded-2xl border border-gray-200 bg-gray-100 px-5 py-3 text-sm font-extrabold text-gray-400 transition dark:border-white/10 dark:bg-white/5 dark:text-slate-500"
-                  disabled>
-            Import to Database
-          </button>
-        </div>
+        <button type="submit" class="ihrt-btn ihrt-btn--primary" data-loading>
+          <iconify-icon icon="ph:arrows-clockwise" aria-hidden="true"></iconify-icon> Sync device
+        </button>
       </form>
-    </section>
+    </div>
+  </header>
 
-    <!-- DEVICE GUIDE -->
-    <section class="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl xl:col-span-4">
-      <div class="flex items-start gap-4">
-        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent ring-1 ring-accent/20">
-          <iconify-icon icon="ph:fingerprint-duotone" class="text-2xl"></iconify-icon>
-        </div>
-
-        <div>
-          <h2 class="text-base font-extrabold text-gray-950 dark:text-white">Direct Device Sync</h2>
-          <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-slate-300">
-            Fetch logs directly from Hikvision into Django.
-          </p>
-        </div>
-      </div>
-
-      <div class="mt-5 flex flex-wrap gap-2 text-xs">
-        <span class="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-bold text-accent">Device → Django</span>
-        <span class="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 font-bold text-emerald-700 dark:text-emerald-300">LAN Ready</span>
-      </div>
-
-      <div class="mt-5 rounded-2xl border border-accent/20 bg-accent/10 p-4">
-        <p class="text-xs font-extrabold uppercase text-accent">Recommended Setup</p>
-        <p class="mt-1 text-sm text-gray-700 dark:text-slate-300">
-          Connect the Hikvision device directly to the same network using Ethernet.
-        </p>
-      </div>
-
-      <ol class="mt-5 space-y-3 text-sm text-gray-600 dark:text-slate-400">
-        <li class="flex gap-3"><span class="font-black text-accent">1.</span> Connect device and laptop.</li>
-        <li class="flex gap-3"><span class="font-black text-accent">2.</span> Click <span class="font-bold text-accent">Sync Device</span>.</li>
-        <li class="flex gap-3"><span class="font-black text-accent">3.</span> Refresh records.</li>
-      </ol>
-    </section>
-  </div>
-
-  {% if import_errors %}
-  <section id="importErrorsBox" class="rounded-3xl border border-red-400/30 bg-red-500/10 p-5 shadow-lg">
-    <h3 class="text-sm font-extrabold text-red-800 dark:text-red-300">Validation / Import Error</h3>
-    <pre class="mt-3 whitespace-pre-wrap text-sm text-red-700 dark:text-red-300">{% for e in import_errors %}{{ e }}{% if not forloop.last %}\n{% endif %}{% endfor %}</pre>
+  <!-- ===================== Today ===================== -->
+  <section aria-label="Today" class="ad-stats ad-stats--5">
+    <div class="ad-stat ad-tone-ok">
+      <p class="ad-stat__label">Present today</p>
+      <p class="ad-stat__value">{{ kpi.present|default:"—" }}</p>
+      <p class="ad-stat__hint">Based on time&#8209;in scans</p>
+    </div>
+    <div class="ad-stat ad-tone-warn">
+      <p class="ad-stat__label">Late</p>
+      <p class="ad-stat__value">{{ kpi.late|default:"—" }}</p>
+      <p class="ad-stat__hint">After the grace period</p>
+    </div>
+    <div class="ad-stat ad-tone-bad">
+      <p class="ad-stat__label">Absent</p>
+      <p class="ad-stat__value">{{ kpi.absent|default:"—" }}</p>
+      <p class="ad-stat__hint">Excludes official travel</p>
+    </div>
+    <div class="ad-stat ad-tone-info">
+      <p class="ad-stat__label">On travel</p>
+      <p class="ad-stat__value">{{ kpi.on_travel|default:"0" }}</p>
+      <p class="ad-stat__hint">Official travel today</p>
+    </div>
+    <div class="ad-stat ad-tone-field">
+      <p class="ad-stat__label">Last import or sync</p>
+      <p class="ad-stat__value ad-stat__value--sm">{{ kpi.last_sync|default:"Never" }}</p>
+    </div>
   </section>
-  {% else %}
-  <div id="importErrorsBox" class="hidden"></div>
+
+  {% if import_errors or import_summary or preview_rows %}
+    <div class="ad-alert ad-alert--info">
+      <iconify-icon icon="ph:file-magnifying-glass" aria-hidden="true"></iconify-icon>
+      <div class="ad-alert__body">Your file results are ready. <a href="#import" style="font-weight:700;text-decoration:underline">Go to the import section</a></div>
+    </div>
   {% endif %}
 
-  {% if import_summary %}
-  <section class="rounded-3xl border border-green-400/30 bg-green-500/10 p-5 shadow-lg">
-    <h3 class="text-sm font-extrabold text-green-800 dark:text-green-300">Import Summary</h3>
-    <div id="importSummaryText" class="mt-2 text-sm text-green-700 dark:text-green-300">{{ import_summary }}</div>
-  </section>
-  {% endif %}
+  <!-- ===================== Section menu ===================== -->
+  <nav class="bio-sections" aria-label="Sections on this page">
+    <ul>
+      <li><a href="#records"><iconify-icon icon="ph:list-bullets" aria-hidden="true"></iconify-icon>Records</a></li>
+      <li><a href="#import"><iconify-icon icon="ph:upload-simple" aria-hidden="true"></iconify-icon>Import file</a></li>
+      <li><a href="#devices"><iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon>Devices</a></li>
+      <li><a href="#overtime-authorization"><iconify-icon icon="ph:clock-clockwise" aria-hidden="true"></iconify-icon>Overtime</a></li>
+      <li><a href="#travel"><iconify-icon icon="ph:airplane-tilt" aria-hidden="true"></iconify-icon>Travel orders</a></li>
+      <li><a href="#holidays"><iconify-icon icon="ph:calendar-x" aria-hidden="true"></iconify-icon>Holidays</a></li>
+    </ul>
+  </nav>
 
-  <!-- PREVIEW SECTION -->
-  <section class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
-    <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
-      <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Preview</h2>
-      <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">First 20 rows after validation.</p>
+  <!-- ===================== Attendance records ===================== -->
+  <section class="ad-card bio-anchor" id="records" aria-labelledby="records-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="records-title">Attendance records</h2>
+        <p>Every scan synced from a terminal, imported from a file, or added by hand.</p>
+      </div>
+      {% if records %}<span class="ihrt-badge ihrt-badge--neutral">{{ records.paginator.count }} record{{ records.paginator.count|pluralize }}</span>{% endif %}
     </div>
 
-    {% if preview_rows %}
-      <!-- DESKTOP TABLE -->
-      <div class="hidden overflow-x-auto lg:block">
-        <table class="w-full table-auto text-sm">
-          <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-slate-400">
-            <tr>
-              <th class="w-[11%] px-3 py-3 text-left">Person ID</th>
-              <th class="w-[18%] px-3 py-3 text-left">Name</th>
-              <th class="w-[15%] px-3 py-3 text-left">Department</th>
-              <th class="w-[13%] px-3 py-3 text-left">Branch</th>
-              <th class="w-[18%] px-3 py-3 text-left">Time</th>
-              <th class="w-[15%] px-3 py-3 text-left">Attendance</th>
-              <th class="w-[10%] px-3 py-3 text-left">Status</th>
-            </tr>
-          </thead>
-
-          <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-            {% for row in preview_rows %}
-            <tr class="transition hover:bg-gray-50 dark:hover:bg-white/5">
-              <td class="px-3 py-3 font-bold text-gray-950 dark:text-white">{{ row.employee_id }}</td>
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[190px] truncate" title="{{ row.full_name }}">{{ row.full_name }}</div>
-              </td>
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[150px] truncate" title="{{ row.department }}">{{ row.department }}</div>
-              </td>
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[150px] truncate" title="{{ row.branch }}">{{ row.branch }}</div>
-              </td>
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[190px] truncate" title="{{ row.timestamp }}">{{ row.timestamp }}</div>
-              </td>
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[150px] truncate" title="{{ row.attendance_status }}">{{ row.attendance_status }}</div>
-              </td>
-              <td class="px-3 py-3">
-                <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-extrabold {% if row.status == 'valid' %}bg-green-500/10 text-green-700 dark:text-green-300{% else %}bg-red-500/10 text-red-700 dark:text-red-300{% endif %}">
-                  {{ row.status }}
-                </span>
-                {% if row.errors %}
-                  <div class="mt-1 max-w-[160px] truncate text-xs text-red-600 dark:text-red-400" title="{{ row.errors }}">{{ row.errors }}</div>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    {% if records %}
+      <div class="ad-only-wide">
+        <div class="ad-table-wrap">
+          <table class="ad-table">
+            <thead>
+              <tr>
+                <th scope="col">Time</th>
+                <th scope="col">Employee</th>
+                <th scope="col">Branch</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="is-actions"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in records %}
+                <tr>
+                  <td class="is-nowrap ad-num">{{ row.timestamp }}</td>
+                  <td>
+                    <span class="ad-cell-primary ad-truncate" style="--ad-trunc:300px" title="{{ row.full_name }}">{{ row.full_name }}</span>
+                    <span class="ad-cell-sub ad-truncate" style="--ad-trunc:300px" title="{{ row.department }}">ID {{ row.employee_id }} &middot; {{ row.department|default:"No department" }}</span>
+                  </td>
+                  <td class="is-muted"><span class="ad-truncate" style="--ad-trunc:200px" title="{{ row.branch }}">{{ row.branch|default:"—" }}</span></td>
+                  <td><span class="ihrt-badge ihrt-badge--info">{{ row.get_attendance_status_display }}</span></td>
+                  <td class="is-actions">
+                    <div class="ad-row">
+                      <a href="{% url 'admin_attendance_detail' row.id %}" class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm">View</a>
+                      <a href="{% url 'admin_attendance_update' row.id %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">Edit</a>
+                      <a href="{% url 'admin_attendance_delete' row.id %}" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Delete</a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <!-- MOBILE CARDS -->
-      <div class="grid gap-3 p-4 lg:hidden">
-        {% for row in preview_rows %}
-        <article class="rounded-2xl border border-gray-200 bg-white/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">Person ID</p>
-              <h3 class="truncate text-base font-black text-gray-950 dark:text-white">{{ row.employee_id }}</h3>
-              <p class="mt-1 truncate text-sm text-gray-600 dark:text-slate-300">{{ row.full_name }}</p>
-            </div>
-
-            <span class="shrink-0 rounded-full px-3 py-1 text-xs font-extrabold {% if row.status == 'valid' %}bg-green-500/10 text-green-700 dark:text-green-300{% else %}bg-red-500/10 text-red-700 dark:text-red-300{% endif %}">
-              {{ row.status }}
-            </span>
-          </div>
-
-          <div class="mt-4 grid grid-cols-1 gap-3 text-sm">
-            <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/5">
-              <p class="text-xs font-bold uppercase text-gray-500 dark:text-slate-400">Time</p>
-              <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ row.timestamp }}</p>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div class="rounded-xl bg-cyan-500/10 p-3">
-                <p class="text-xs font-bold uppercase text-cyan-700 dark:text-cyan-300">Branch</p>
-                <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ row.branch }}</p>
+      <div class="ad-cards ad-only-narrow">
+        {% for row in records %}
+          <article class="ad-rec">
+            <div class="ad-rec__top">
+              <div style="min-width:0">
+                <p class="ad-rec__title">{{ row.full_name }}</p>
+                <p class="ad-rec__sub ad-num">{{ row.timestamp }}</p>
               </div>
-
-              <div class="rounded-xl bg-blue-500/10 p-3">
-                <p class="text-xs font-bold uppercase text-blue-700 dark:text-blue-300">Department</p>
-                <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ row.department }}</p>
-              </div>
+              <span class="ihrt-badge ihrt-badge--info">{{ row.get_attendance_status_display }}</span>
             </div>
-
-            <div class="rounded-xl bg-accent/10 p-3">
-              <p class="text-xs font-bold uppercase text-accent">Attendance Status</p>
-              <p class="mt-1 break-words font-semibold text-gray-800 dark:text-slate-200">{{ row.attendance_status }}</p>
+            <dl class="ad-rec__kv">
+              <div><dt>Person ID</dt><dd>{{ row.employee_id }}</dd></div>
+              <div><dt>Branch</dt><dd>{{ row.branch|default:"—" }}</dd></div>
+              <div style="grid-column:1/-1"><dt>Department</dt><dd>{{ row.department|default:"—" }}</dd></div>
+            </dl>
+            <div class="ad-rec__actions">
+              <a href="{% url 'admin_attendance_detail' row.id %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">View</a>
+              <a href="{% url 'admin_attendance_update' row.id %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">Edit</a>
+              <a href="{% url 'admin_attendance_delete' row.id %}" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Delete</a>
             </div>
-
-            {% if row.errors %}
-            <div class="rounded-xl bg-red-500/10 p-3">
-              <p class="text-xs font-bold uppercase text-red-700 dark:text-red-300">Errors</p>
-              <p class="mt-1 break-words text-sm text-red-700 dark:text-red-300">{{ row.errors }}</p>
-            </div>
-            {% endif %}
-          </div>
-        </article>
+          </article>
         {% endfor %}
       </div>
+
+      {% if records.has_other_pages %}
+        <div class="ad-card__foot">
+          <span>Page {{ records.number }} of {{ records.paginator.num_pages }}</span>
+          <div class="ad-pager">
+            {% if records.has_previous %}
+              <a href="?page={{ records.previous_page_number }}#records" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm"><iconify-icon icon="ph:caret-left" aria-hidden="true"></iconify-icon> Previous</a>
+            {% endif %}
+            {% if records.has_next %}
+              <a href="?page={{ records.next_page_number }}#records" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">Next <iconify-icon icon="ph:caret-right" aria-hidden="true"></iconify-icon></a>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
     {% else %}
-      <div class="px-6 py-16 text-center">
-        <iconify-icon icon="ph:table-duotone" class="text-4xl text-gray-400"></iconify-icon>
-        <h3 class="mt-3 text-sm font-extrabold text-gray-950 dark:text-white">No preview data</h3>
-        <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Upload a file then click “Validate & Preview”.</p>
+      <div class="ad-empty">
+        <iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon>
+        <h3>No attendance records yet</h3>
+        <p>Sync a registered terminal or import a CSV or Excel file to bring scans in.</p>
       </div>
     {% endif %}
   </section>
 
-  <!-- OVERTIME AUTHORIZATION -->
-  <section id="overtime-authorization" class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl dark:border-white/10 dark:bg-slate-900/80">
-    <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
-      <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Overtime Authorization</h2>
-      <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Staying late does not automatically earn overtime pay. Authorize an employee, date, and maximum payable hours first.</p>
-      <p class="mt-2 text-sm text-gray-600 dark:text-slate-400">Approval is a limit, not guaranteed pay. Payroll checks actual eligible DTR hours. Existing draft/completed payroll must be reprocessed after an authorization change.</p>
+  <!-- ===================== Import ===================== -->
+  <section class="ad-card bio-anchor" id="import" aria-labelledby="import-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="import-title">Import attendance file</h2>
+        <p>Upload a CSV, XLS, or XLSX export. Validate it first, check the preview, then import.</p>
+      </div>
+      <a href="{% url 'admin_biometrics_template' %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">
+        <iconify-icon icon="ph:file-arrow-down" aria-hidden="true"></iconify-icon> Download template
+      </a>
     </div>
-    <form method="post" action="{% url 'admin_overtime_authorize' %}" class="p-5 sm:p-6">
+
+    <form id="importForm" method="post" enctype="multipart/form-data" action="{% url 'admin_biometrics_import' %}" class="ad-form ad-card__body ad-stack ad-stack--sm">
       {% csrf_token %}
-      <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {% for field in overtime_form %}
-          <div><label for="{{ field.id_for_label }}" class="block text-sm font-bold text-gray-700 dark:text-slate-300">{{ field.label }}</label>{{ field }}</div>
+
+      <div id="dropZone" class="ad-drop">
+        <iconify-icon icon="ph:cloud-arrow-up" aria-hidden="true"></iconify-icon>
+        <p>
+          <label for="file" class="ad-drop__pick">Choose a file</label>
+          <span class="ad-muted">or drag it here</span>
+          <input id="file" name="file" type="file" accept=".csv,.xls,.xlsx" class="sr-only">
+        </p>
+        <p class="ad-help">CSV or Excel, up to 10 MB. Required columns: Person ID, Name, Department, Time, Attendance Status.</p>
+        <p class="ad-drop__file" id="fileName">No file selected</p>
+      </div>
+
+      <div class="ad-form-grid" style="--ad-field-min: 260px">
+        <div class="ad-field">
+          <label for="branchSelect" class="ad-label">Branch<span class="ad-req" aria-hidden="true">*</span></label>
+          <select name="branch" id="branchSelect">
+            <option value="">Select branch</option>
+            {% for val, label in branches %}
+              <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+          <p class="ad-help">Every row in the file is recorded under this branch.</p>
+        </div>
+
+        <label class="ad-check" style="align-self:end">
+          <input type="checkbox" name="skip_duplicates" checked>
+          <span>
+            <span class="ad-check__label">Skip duplicate scans</span>
+            <span class="ad-check__help">Same person ID, time, status, and branch</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="ad-row ad-row--end">
+        <button type="submit" name="action" value="validate" class="ihrt-btn ihrt-btn--secondary">
+          <iconify-icon icon="ph:magnifying-glass" aria-hidden="true"></iconify-icon> Validate and preview
+        </button>
+        <button id="importBtn" type="submit" name="action" value="import" class="ihrt-btn ihrt-btn--primary" disabled>
+          <iconify-icon icon="ph:database" aria-hidden="true"></iconify-icon> Import records
+        </button>
+      </div>
+      <p class="ad-help" style="text-align:right">Import is available once a branch is selected and a file is chosen or validated.</p>
+    </form>
+
+    {% if import_errors %}
+      <div id="importErrorsBox" class="ad-card__body" style="padding-top:0">
+        <div class="ad-alert ad-alert--bad" role="alert">
+          <iconify-icon icon="ph:x-circle" aria-hidden="true"></iconify-icon>
+          <div class="ad-alert__body">
+            <p class="ad-alert__title">The file has problems</p>
+            <ul>{% for e in import_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div id="importErrorsBox" class="hidden"></div>
+    {% endif %}
+
+    {% if import_summary %}
+      <div class="ad-card__body" style="padding-top:0">
+        <div class="ad-alert ad-alert--ok">
+          <iconify-icon icon="ph:check-circle" aria-hidden="true"></iconify-icon>
+          <div class="ad-alert__body">
+            <p class="ad-alert__title">Import summary</p>
+            <div id="importSummaryText">{{ import_summary }}</div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <div style="border-top:1px solid var(--ihrt-line)">
+      <div class="ad-card__head" style="border-bottom:0;padding-bottom:8px">
+        <div>
+          <h3>Preview</h3>
+          <p>The first 20 rows after validation.</p>
+        </div>
+      </div>
+
+      {% if preview_rows %}
+        <div class="ad-only-wide">
+          <div class="ad-table-wrap">
+            <table class="ad-table ad-table--dense">
+              <thead>
+                <tr>
+                  <th scope="col">Person ID</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Department</th>
+                  <th scope="col">Branch</th>
+                  <th scope="col">Time</th>
+                  <th scope="col">Attendance</th>
+                  <th scope="col">Check</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in preview_rows %}
+                  <tr>
+                    <td class="is-strong ad-num">{{ row.employee_id }}</td>
+                    <td><span class="ad-truncate" style="--ad-trunc:200px" title="{{ row.full_name }}">{{ row.full_name }}</span></td>
+                    <td class="is-muted"><span class="ad-truncate" style="--ad-trunc:160px" title="{{ row.department }}">{{ row.department }}</span></td>
+                    <td class="is-muted"><span class="ad-truncate" style="--ad-trunc:160px" title="{{ row.branch }}">{{ row.branch }}</span></td>
+                    <td class="is-nowrap ad-num">{{ row.timestamp }}</td>
+                    <td>{{ row.attendance_status }}</td>
+                    <td>
+                      <span class="ihrt-badge {% if row.status == 'valid' %}ihrt-badge--ok{% else %}ihrt-badge--bad{% endif %}">{{ row.status|capfirst }}</span>
+                      {% if row.errors %}<p class="ad-error" style="margin-top:4px;max-width:240px">{{ row.errors }}</p>{% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="ad-cards ad-only-narrow">
+          {% for row in preview_rows %}
+            <article class="ad-rec">
+              <div class="ad-rec__top">
+                <div style="min-width:0">
+                  <p class="ad-rec__title">{{ row.full_name }}</p>
+                  <p class="ad-rec__sub">Person ID {{ row.employee_id }}</p>
+                </div>
+                <span class="ihrt-badge {% if row.status == 'valid' %}ihrt-badge--ok{% else %}ihrt-badge--bad{% endif %}">{{ row.status|capfirst }}</span>
+              </div>
+              <dl class="ad-rec__kv">
+                <div style="grid-column:1/-1"><dt>Time</dt><dd>{{ row.timestamp }}</dd></div>
+                <div><dt>Attendance</dt><dd>{{ row.attendance_status }}</dd></div>
+                <div><dt>Branch</dt><dd>{{ row.branch }}</dd></div>
+                <div style="grid-column:1/-1"><dt>Department</dt><dd>{{ row.department }}</dd></div>
+              </dl>
+              {% if row.errors %}<p class="ad-error" style="margin-top:10px">{{ row.errors }}</p>{% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="ad-empty" style="padding-top:16px">
+          <iconify-icon icon="ph:table" aria-hidden="true"></iconify-icon>
+          <h3>Nothing to preview yet</h3>
+          <p>Choose a file and a branch, then select Validate and preview.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- ===================== Devices ===================== -->
+  <section class="ad-card bio-anchor" id="devices" aria-labelledby="devices-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="devices-title">Hikvision terminals</h2>
+        <p>Terminals registered for your branch. Connect each one to the office network by Ethernet, then use Sync device to pull scans.</p>
+      </div>
+      <a href="{% url 'admin_biometric_device_create' %}" class="ihrt-btn ihrt-btn--primary ihrt-btn--sm">
+        <iconify-icon icon="ph:plus" aria-hidden="true"></iconify-icon> Register terminal
+      </a>
+    </div>
+
+    {% if devices %}
+      <div class="ad-card__body ad-grid" style="--ad-min: 280px">
+        {% for device in devices %}
+          <article class="ad-rec bio-device">
+            <div class="ad-rec__top">
+              <div class="ad-row" style="flex-wrap:nowrap;min-width:0;gap:12px">
+                <span class="ad-icon-circle"><iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon></span>
+                <div style="min-width:0">
+                  <p class="ad-rec__title">{{ device.name }}</p>
+                  <p class="ad-rec__sub">{{ device.branch.name }}</p>
+                </div>
+              </div>
+              {% if device.is_active %}
+                <span class="ihrt-badge ihrt-badge--ok">Active</span>
+              {% else %}
+                <span class="ihrt-badge ihrt-badge--neutral">Inactive</span>
+              {% endif %}
+            </div>
+            <dl class="ad-kv" style="margin-top:8px">
+              <div><dt>IP address</dt><dd class="ad-num">{{ device.ip_address }}</dd></div>
+              <div><dt>Port</dt><dd class="ad-num">{{ device.port }}</dd></div>
+              <div><dt>Username</dt><dd>{{ device.username }}</dd></div>
+            </dl>
+            <div class="bio-device__actions">
+              <form method="post" action="{% url 'admin_biometric_device_test' device.id %}">
+                {% csrf_token %}
+                <button type="submit" class="ihrt-btn ihrt-btn--soft ihrt-btn--sm ihrt-btn--block" data-loading>
+                  <iconify-icon icon="ph:plugs-connected" aria-hidden="true"></iconify-icon> Test connection
+                </button>
+              </form>
+              <a href="{% url 'admin_biometric_device_update' device.id %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">
+                <iconify-icon icon="ph:pencil-simple" aria-hidden="true"></iconify-icon> Edit
+              </a>
+              <form method="post" action="{% url 'admin_biometric_device_toggle' device.id %}">
+                {% csrf_token %}
+                <button type="submit" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm ihrt-btn--block">
+                  <iconify-icon icon="ph:power" aria-hidden="true"></iconify-icon>
+                  {% if device.is_active %}Deactivate{% else %}Activate{% endif %}
+                </button>
+              </form>
+              <form method="post" action="{% url 'admin_biometric_device_delete' device.id %}" onsubmit="return confirm('Remove {{ device.name|escapejs }}? Scans already imported are kept.');">
+                {% csrf_token %}
+                <button type="submit" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm ihrt-btn--block">
+                  <iconify-icon icon="ph:trash" aria-hidden="true"></iconify-icon> Remove
+                </button>
+              </form>
+            </div>
+          </article>
         {% endfor %}
       </div>
-      <p class="mt-3 text-xs text-gray-500 dark:text-slate-400">One authorization per employee per date. Authorizing the same date again updates its hours and reason. Locked DTRs and finalized payroll must be reopened/unlocked first.</p>
-      <button type="submit" class="mt-5 rounded-2xl bg-accent px-5 py-3 text-sm font-extrabold text-white">Authorize Overtime</button>
+    {% else %}
+      <div class="ad-empty">
+        <iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon>
+        <h3>No terminal registered</h3>
+        <p>Register the Hikvision terminal your branch uses before syncing attendance.</p>
+        <a href="{% url 'admin_biometric_device_create' %}" class="ihrt-btn ihrt-btn--primary">Register terminal</a>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- ===================== Overtime ===================== -->
+  <section class="ad-card bio-anchor" id="overtime-authorization" aria-labelledby="ot-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="ot-title">Overtime authorization</h2>
+        <p>Staying late does not earn overtime pay by itself. Authorize the employee, date, and maximum payable hours first.</p>
+      </div>
+    </div>
+
+    <form method="post" action="{% url 'admin_overtime_authorize' %}" class="ad-form ad-card__body ad-stack ad-stack--sm">
+      {% csrf_token %}
+      <div class="ad-form-grid">
+        {% for field in overtime_form %}
+          <div class="ad-field">
+            <label for="{{ field.id_for_label }}" class="ad-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<p class="ad-error">{{ field.errors|striptags }}</p>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="ad-alert ad-alert--neutral">
+        <iconify-icon icon="ph:info" aria-hidden="true"></iconify-icon>
+        <div class="ad-alert__body ad-help" style="color:inherit">
+          The hours are a limit, not guaranteed pay: payroll pays only eligible hours actually recorded in the DTR.
+          One authorization per employee per date; authorizing the same date again updates it.
+          Locked DTRs and finalized payroll must be unlocked first, and existing draft payroll must be reprocessed after any change.
+        </div>
+      </div>
+      <div class="ad-row ad-row--end">
+        <button type="submit" class="ihrt-btn ihrt-btn--primary">
+          <iconify-icon icon="ph:check" aria-hidden="true"></iconify-icon> Authorize overtime
+        </button>
+      </div>
     </form>
-    <div class="overflow-x-auto border-t border-gray-200/70 dark:border-white/10">
-      <table class="w-full min-w-[850px] text-left text-sm">
-        <thead class="bg-gray-50 dark:bg-slate-950"><tr class="text-gray-600 dark:text-slate-300">
-          <th class="p-4">Employee / Branch</th><th class="p-4">Date</th><th class="p-4">Hours limit</th><th class="p-4">Status</th><th class="p-4">Authorized by</th><th class="p-4">Reason</th><th class="p-4">Action</th>
-        </tr></thead>
-        <tbody class="divide-y divide-gray-200 text-gray-800 dark:divide-white/10 dark:text-slate-200">
-          {% for ot in overtime_requests %}
+
+    <div class="ad-table-wrap" style="border-top:1px solid var(--ihrt-line)">
+      <table class="ad-table" style="min-width: 860px">
+        <thead>
           <tr>
-            <td class="p-4">{{ ot.profile.user.get_full_name|default:ot.profile.user.username }}<div class="text-xs text-gray-500">{{ ot.profile.branch.name }}</div></td>
-            <td class="p-4 whitespace-nowrap">{{ ot.date|date:"M d, Y" }}</td><td class="p-4">{{ ot.hours|floatformat:2 }}</td>
-            <td class="p-4">{% if ot.approved and ot.approved_by_id %}<span class="font-bold text-emerald-600 dark:text-emerald-400">Authorized</span>{% else %}<span class="font-bold text-gray-500">Not authorized</span>{% endif %}</td>
-            <td class="p-4">{{ ot.approved_by.username|default:"—" }}</td><td class="p-4 max-w-xs break-words">{{ ot.reason }}</td>
-            <td class="p-4">
-              {% if ot.approved %}
-              <form method="post" action="{% url 'admin_overtime_revoke' ot.id %}" onsubmit="return confirm('Revoke overtime authorization? Reprocess any existing editable payroll afterward.');" class="space-y-2">
-                {% csrf_token %}<label for="ot-revoke-{{ ot.id }}" class="sr-only">Revocation reason</label>
-                <input id="ot-revoke-{{ ot.id }}" type="text" name="revoke_reason" required minlength="5" maxlength="80" placeholder="Reason for revoking" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-white/10 dark:bg-slate-950 dark:text-white">
-                <button type="submit" class="rounded-lg border border-red-300 px-3 py-2 font-bold text-red-600 dark:text-red-400">Revoke</button>
-              </form>
-              {% else %}<span class="text-xs text-gray-500">Use the form above to authorize.</span>{% endif %}
-            </td>
+            <th scope="col">Employee</th>
+            <th scope="col">Date</th>
+            <th scope="col" class="is-num">Hour limit</th>
+            <th scope="col">Status</th>
+            <th scope="col">Authorized by</th>
+            <th scope="col">Reason</th>
+            <th scope="col"><span class="sr-only">Action</span></th>
           </tr>
-          {% empty %}<tr><td colspan="7" class="p-6 text-center text-gray-500">No overtime authorizations for your employees yet.</td></tr>{% endfor %}
+        </thead>
+        <tbody>
+          {% for ot in overtime_requests %}
+            <tr>
+              <td>
+                <p class="ad-cell-primary">{{ ot.profile.user.get_full_name|default:ot.profile.user.username }}</p>
+                <p class="ad-cell-sub">{{ ot.profile.branch.name }}</p>
+              </td>
+              <td class="is-nowrap">{{ ot.date|date:"M d, Y" }}</td>
+              <td class="is-num">{{ ot.hours|floatformat:2 }}</td>
+              <td>
+                {% if ot.approved and ot.approved_by_id %}
+                  <span class="ihrt-badge ihrt-badge--ok">Authorized</span>
+                {% else %}
+                  <span class="ihrt-badge ihrt-badge--neutral">Not authorized</span>
+                {% endif %}
+              </td>
+              <td class="is-muted">{{ ot.approved_by.username|default:"—" }}</td>
+              <td style="max-width:260px;overflow-wrap:anywhere">{{ ot.reason }}</td>
+              <td>
+                {% if ot.approved %}
+                  <form method="post" action="{% url 'admin_overtime_revoke' ot.id %}" onsubmit="return confirm('Revoke this overtime authorization? Reprocess any editable payroll afterward.');" class="ad-row" style="flex-wrap:nowrap">
+                    {% csrf_token %}
+                    <label for="ot-revoke-{{ ot.id }}" class="sr-only">Reason for revoking</label>
+                    <input id="ot-revoke-{{ ot.id }}" type="text" name="revoke_reason" required minlength="5" maxlength="80" placeholder="Reason for revoking" class="ad-input ad-input--sm" style="min-width:170px">
+                    <button type="submit" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Revoke</button>
+                  </form>
+                {% else %}
+                  <span class="ad-help">Authorize with the form above</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7"><div class="ad-empty" style="padding:24px"><p>No overtime authorizations yet.</p></div></td></tr>
+          {% endfor %}
         </tbody>
       </table>
     </div>
   </section>
 
-  <!-- TRAVEL ORDER MANAGER -->
-  <section class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
-    <div class="border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:px-6">
-      <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Travel Order Manager</h2>
-      <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Assign official travel without editing attendance logs.</p>
+  <!-- ===================== Travel ===================== -->
+  <section class="ad-card bio-anchor" id="travel" aria-labelledby="travel-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="travel-title">Travel orders</h2>
+        <p>Mark official travel so those days count as present without editing any scans.</p>
+      </div>
     </div>
 
-    <form id="travelForm" class="p-5 sm:p-6">
+    <form id="travelForm" class="ad-form ad-card__body">
       {% csrf_token %}
-
-      <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <div>
-          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Employee</label>
-          <select name="profile_id" id="travelEmployee"
-                  class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+      <div class="ad-form-grid" style="--ad-field-min: 200px">
+        <div class="ad-field">
+          <label for="travelEmployee" class="ad-label">Employee<span class="ad-req" aria-hidden="true">*</span></label>
+          <select name="profile_id" id="travelEmployee" required>
             <option value="">Select employee</option>
             {% for emp in employees %}
-              <option value="{{ emp.id }}">{{ emp.user.get_full_name|default:emp.user.username }} — {{ emp.branch.name }}</option>
+              <option value="{{ emp.id }}">{{ emp.user.get_full_name|default:emp.user.username }} ({{ emp.branch.name }})</option>
             {% endfor %}
           </select>
         </div>
-
-        <div>
-          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Start Date</label>
-          <input type="date" name="start_date" id="travelStart"
-                 class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+        <div class="ad-field">
+          <label for="travelStart" class="ad-label">Start date<span class="ad-req" aria-hidden="true">*</span></label>
+          <input type="date" name="start_date" id="travelStart" required>
         </div>
-
-        <div>
-          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">End Date</label>
-          <input type="date" name="end_date" id="travelEnd"
-                 class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+        <div class="ad-field">
+          <label for="travelEnd" class="ad-label">End date<span class="ad-req" aria-hidden="true">*</span></label>
+          <input type="date" name="end_date" id="travelEnd" required>
         </div>
-
-        <div>
-          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Reason</label>
-          <input type="text" name="reason" id="travelReason" placeholder="Official Travel"
-                 class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
+        <div class="ad-field">
+          <label for="travelReason" class="ad-label">Purpose</label>
+          <input type="text" name="reason" id="travelReason" placeholder="Official travel">
         </div>
       </div>
-
-      <button type="submit"
-              class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3 text-sm font-extrabold text-white shadow-lg transition hover:scale-[1.01] hover:shadow-glow sm:w-auto">
-        <iconify-icon icon="ph:airplane-takeoff-duotone"></iconify-icon>
-        Assign Travel
-      </button>
+      <div class="ad-row ad-row--end" style="margin-top:16px">
+        <button type="submit" class="ihrt-btn ihrt-btn--primary" id="travelSubmit">
+          <iconify-icon icon="ph:airplane-takeoff" aria-hidden="true"></iconify-icon> Add travel order
+        </button>
+      </div>
     </form>
 
-    <div class="border-t border-gray-200/70 p-5 dark:border-white/10 sm:p-6">
-      <h3 class="text-base font-extrabold text-gray-950 dark:text-white">Current / Recent Travel Orders</h3>
-
+    <div style="border-top:1px solid var(--ihrt-line)">
+      <div class="ad-card__head" style="border-bottom:0;padding-bottom:8px"><h3>Current and recent travel</h3></div>
       {% if travel_orders %}
-        <div class="mt-4 hidden overflow-x-auto rounded-2xl border border-gray-200/70 dark:border-white/10 lg:block">
-          <table class="w-full table-auto text-sm">
-            <thead class="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-white/5 dark:text-slate-400">
-              <tr>
-                <th class="w-[24%] px-4 py-3 text-left">Employee</th>
-                <th class="w-[18%] px-4 py-3 text-left">Branch</th>
-                <th class="w-[22%] px-4 py-3 text-left">Date Range</th>
-                <th class="w-[24%] px-4 py-3 text-left">Reason</th>
-                <th class="w-[12%] px-4 py-3 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-              {% for travel in travel_orders %}
-              <tr class="hover:bg-gray-50 dark:hover:bg-white/5">
-                <td class="px-4 py-3 font-semibold text-gray-950 dark:text-white">
-                  <div class="max-w-[240px] truncate" title="{{ travel.employee.user.get_full_name|default:travel.employee.user.username }}">
-                    {{ travel.employee.user.get_full_name|default:travel.employee.user.username }}
-                  </div>
-                </td>
-                <td class="px-4 py-3 text-gray-600 dark:text-slate-300">
-                  <div class="max-w-[180px] truncate" title="{{ travel.employee.branch.name }}">{{ travel.employee.branch.name }}</div>
-                </td>
-                <td class="px-4 py-3 text-gray-600 dark:text-slate-300">{{ travel.start_date }} to {{ travel.end_date }}</td>
-                <td class="px-4 py-3 text-gray-600 dark:text-slate-300">
-                  <div class="max-w-[240px] truncate" title="{{ travel.reason|default:'Official Travel' }}">{{ travel.reason|default:"Official Travel" }}</div>
-                </td>
-                <td class="px-4 py-3 text-center">
-                  <button type="button" onclick="deleteTravel('{{ travel.id }}')" class="inline-flex items-center justify-center rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600 transition hover:bg-red-500 hover:text-white">
-                    Delete
-                  </button>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        <div class="ad-only-wide">
+          <div class="ad-table-wrap">
+            <table class="ad-table">
+              <thead>
+                <tr>
+                  <th scope="col">Employee</th>
+                  <th scope="col">Branch</th>
+                  <th scope="col">Dates</th>
+                  <th scope="col">Purpose</th>
+                  <th scope="col" class="is-actions"><span class="sr-only">Action</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for travel in travel_orders %}
+                  <tr>
+                    <td class="is-strong"><span class="ad-truncate" style="--ad-trunc:240px">{{ travel.employee.user.get_full_name|default:travel.employee.user.username }}</span></td>
+                    <td class="is-muted"><span class="ad-truncate" style="--ad-trunc:200px">{{ travel.employee.branch.name }}</span></td>
+                    <td class="is-nowrap">{{ travel.start_date }} to {{ travel.end_date }}</td>
+                    <td><span class="ad-truncate" style="--ad-trunc:260px" title="{{ travel.reason|default:'Official travel' }}">{{ travel.reason|default:"Official travel" }}</span></td>
+                    <td class="is-actions">
+                      <button type="button" onclick="deleteTravel('{{ travel.id }}')" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Delete</button>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
-
-        <div class="mt-4 grid gap-3 lg:hidden">
+        <div class="ad-cards ad-only-narrow">
           {% for travel in travel_orders %}
-          <article class="rounded-2xl border border-gray-200 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <h4 class="truncate font-black text-gray-950 dark:text-white">{{ travel.employee.user.get_full_name|default:travel.employee.user.username }}</h4>
-                <p class="mt-1 text-sm text-gray-600 dark:text-slate-300">{{ travel.employee.branch.name }}</p>
+            <article class="ad-rec">
+              <div class="ad-rec__top">
+                <div style="min-width:0">
+                  <p class="ad-rec__title">{{ travel.employee.user.get_full_name|default:travel.employee.user.username }}</p>
+                  <p class="ad-rec__sub">{{ travel.employee.branch.name }}</p>
+                </div>
               </div>
-              <button type="button" onclick="deleteTravel('{{ travel.id }}')" class="shrink-0 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600">
-                Delete
-              </button>
-            </div>
-
-            <div class="mt-4 grid gap-3">
-              <div class="rounded-xl bg-blue-500/10 p-3">
-                <p class="text-xs font-bold uppercase text-blue-700 dark:text-blue-300">Date Range</p>
-                <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-200">{{ travel.start_date }} to {{ travel.end_date }}</p>
+              <dl class="ad-rec__kv">
+                <div style="grid-column:1/-1"><dt>Dates</dt><dd>{{ travel.start_date }} to {{ travel.end_date }}</dd></div>
+                <div style="grid-column:1/-1"><dt>Purpose</dt><dd>{{ travel.reason|default:"Official travel" }}</dd></div>
+              </dl>
+              <div class="ad-rec__actions">
+                <button type="button" onclick="deleteTravel('{{ travel.id }}')" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Delete travel order</button>
               </div>
-
-              <div class="rounded-xl bg-accent/10 p-3">
-                <p class="text-xs font-bold uppercase text-accent">Reason</p>
-                <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-200">{{ travel.reason|default:"Official Travel" }}</p>
-              </div>
-            </div>
-          </article>
+            </article>
           {% endfor %}
         </div>
       {% else %}
-        <p class="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
-          No travel orders yet.
-        </p>
+        <div class="ad-empty" style="padding-top:16px">
+          <iconify-icon icon="ph:airplane-tilt" aria-hidden="true"></iconify-icon>
+          <h3>No travel orders</h3>
+          <p>Travel orders you add appear here.</p>
+        </div>
       {% endif %}
     </div>
   </section>
 
-  <!-- ATTENDANCE RECORDS -->
-  <section class="overflow-hidden rounded-3xl border border-gray-200/70 bg-white/80 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
-    <div class="flex flex-col gap-4 border-b border-gray-200/70 px-5 py-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+  <!-- ===================== Holidays ===================== -->
+  <section class="ad-card bio-anchor" id="holidays" aria-labelledby="holiday-title">
+    <div class="ad-card__head">
       <div>
-        <h2 class="text-xl font-extrabold text-gray-950 dark:text-white">Attendance Records</h2>
-        <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Imported and synced records from your device or files.</p>
+        <h2 id="holiday-title">Holidays and work suspensions</h2>
+        <p>Non-working days used when computing attendance and payroll. A date affects payroll only after it is verified against an official source.</p>
       </div>
-
-      <form method="post" action="{% url 'admin_biometrics_sync' %}">
-        {% csrf_token %}
-
-        <button type="submit"
-                class="inline-flex items-center justify-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm font-extrabold text-accent transition hover:bg-accent/20">
-
-          <iconify-icon icon="ph:arrows-clockwise-duotone"></iconify-icon>
-          Sync Now
-        </button>
-      </form>
-
+      <button id="openHolidayModal" type="button" class="ihrt-btn ihrt-btn--primary ihrt-btn--sm">
+        <iconify-icon icon="ph:calendar-plus" aria-hidden="true"></iconify-icon> Add date
+      </button>
     </div>
 
-    {% if records %}
-      <!-- DESKTOP TABLE -->
-      <div class="hidden overflow-x-auto xl:block">
-        <table class="w-full table-auto text-sm">
-          <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-slate-400">
-            <tr>
-              <th class="w-[15%] px-3 py-3 text-left">Time</th>
-              <th class="w-[10%] px-3 py-3 text-left">Person ID</th>
-              <th class="w-[18%] px-3 py-3 text-left">Name</th>
-              <th class="w-[13%] px-3 py-3 text-left">Department</th>
-              <th class="w-[12%] px-3 py-3 text-left">Branch</th>
-              <th class="w-[14%] px-3 py-3 text-left">Status</th>
-              <th class="w-[18%] px-3 py-3 text-center">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-            {% for row in records %}
-            <tr class="transition hover:bg-gray-50 dark:hover:bg-white/5">
-              <td class="px-3 py-3 text-gray-950 dark:text-white">
-                <div class="max-w-[170px] truncate" title="{{ row.timestamp }}">{{ row.timestamp }}</div>
-              </td>
-
-              <td class="px-3 py-3 font-bold text-gray-950 dark:text-white">{{ row.employee_id }}</td>
-
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[210px] truncate" title="{{ row.full_name }}">{{ row.full_name }}</div>
-              </td>
-
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[150px] truncate" title="{{ row.department }}">{{ row.department }}</div>
-              </td>
-
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[150px] truncate" title="{{ row.branch }}">{{ row.branch }}</div>
-              </td>
-
-              <td class="px-3 py-3 text-gray-600 dark:text-slate-300">
-                <div class="max-w-[150px] truncate" title="{{ row.get_attendance_status_display }}">{{ row.get_attendance_status_display }}</div>
-              </td>
-
-              <td class="px-3 py-3">
-                <div class="flex items-center justify-center gap-2 whitespace-nowrap">
-                  <a href="{% url 'admin_attendance_detail' row.id %}" class="inline-flex min-w-[56px] items-center justify-center rounded-xl bg-accent/10 px-3 py-2 text-xs font-extrabold text-accent transition hover:bg-accent/20">
-                    View
-                  </a>
-                  <a href="{% url 'admin_attendance_update' row.id %}" class="inline-flex min-w-[56px] items-center justify-center rounded-xl bg-blue-500/10 px-3 py-2 text-xs font-extrabold text-blue-700 transition hover:bg-blue-500/20 dark:text-blue-300">
-                    Edit
-                  </a>
-                  <a href="{% url 'admin_attendance_delete' row.id %}" class="inline-flex min-w-[64px] items-center justify-center rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600 transition hover:bg-red-500 hover:text-white dark:text-red-300">
-                    Delete
-                  </a>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-      <!-- TABLET + PHONE CARDS -->
-      <div class="grid gap-3 p-4 xl:hidden">
-        {% for row in records %}
-        <article class="rounded-2xl border border-gray-200 bg-white/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">Person ID: {{ row.employee_id }}</p>
-              <h3 class="mt-1 truncate text-base font-black text-gray-950 dark:text-white">{{ row.full_name }}</h3>
-              <p class="mt-1 break-words text-sm text-gray-600 dark:text-slate-300">{{ row.timestamp }}</p>
-            </div>
-
-            <span class="shrink-0 rounded-full bg-accent/10 px-3 py-1 text-xs font-extrabold text-accent">
-              {{ row.get_attendance_status_display }}
-            </span>
-          </div>
-
-          <div class="mt-4 grid gap-3 sm:grid-cols-2">
-            <div class="rounded-xl bg-cyan-500/10 p-3">
-              <p class="text-xs font-bold uppercase text-cyan-700 dark:text-cyan-300">Branch</p>
-              <p class="mt-1 break-words text-sm font-semibold text-gray-800 dark:text-slate-200">{{ row.branch }}</p>
-            </div>
-
-            <div class="rounded-xl bg-blue-500/10 p-3">
-              <p class="text-xs font-bold uppercase text-blue-700 dark:text-blue-300">Department</p>
-              <p class="mt-1 break-words text-sm font-semibold text-gray-800 dark:text-slate-200">{{ row.department }}</p>
-            </div>
-          </div>
-
-          <div class="mt-4 grid grid-cols-3 gap-2">
-            <a href="{% url 'admin_attendance_detail' row.id %}" class="inline-flex items-center justify-center rounded-xl bg-accent/10 px-3 py-2 text-xs font-extrabold text-accent">
-              View
-            </a>
-            <a href="{% url 'admin_attendance_update' row.id %}" class="inline-flex items-center justify-center rounded-xl bg-blue-500/10 px-3 py-2 text-xs font-extrabold text-blue-700 dark:text-blue-300">
-              Edit
-            </a>
-            <a href="{% url 'admin_attendance_delete' row.id %}" class="inline-flex items-center justify-center rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600 dark:text-red-300">
-              Delete
-            </a>
-          </div>
-        </article>
-        {% endfor %}
-      </div>
-
-      {% if records.has_other_pages %}
-      <div class="flex flex-col gap-3 border-t border-gray-200/70 px-6 py-4 text-sm text-gray-600 dark:border-white/10 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-        <div>Page {{ records.number }} of {{ records.paginator.num_pages }}</div>
-        <div class="flex gap-2">
-          {% if records.has_previous %}
-            <a href="?page={{ records.previous_page_number }}" class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 font-bold text-accent dark:border-white/10 dark:bg-white/5">Previous</a>
-          {% endif %}
-          {% if records.has_next %}
-            <a href="?page={{ records.next_page_number }}" class="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 font-bold text-accent dark:border-white/10 dark:bg-white/5">Next</a>
-          {% endif %}
-        </div>
-      </div>
-      {% endif %}
-
-    {% else %}
-      <div class="px-6 py-16 text-center">
-        <iconify-icon icon="ph:fingerprint-simple-duotone" class="text-4xl text-gray-400"></iconify-icon>
-        <h3 class="mt-3 text-sm font-extrabold text-gray-950 dark:text-white">No records found</h3>
-        <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Import attendance data or sync the device to get started.</p>
-      </div>
-    {% endif %}
-  </section>
-
-  <!-- HOLIDAY MANAGER + REQUIRED COLUMNS -->
-  <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-
-    <section class="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl xl:col-span-2">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h3 class="text-lg font-extrabold text-gray-950 dark:text-white">Holiday & Suspension Manager</h3>
-          <p class="mt-1 text-sm text-gray-600 dark:text-slate-400">Manage non-working dates that affect attendance and payroll computation.</p>
-        </div>
-
-        <button id="openHolidayModal" type="button"
-                class="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-4 py-2 text-sm font-extrabold text-white shadow-lg transition hover:shadow-glow sm:w-auto">
-          <iconify-icon icon="ph:calendar-plus-duotone"></iconify-icon>
-          Add
-        </button>
-      </div>
-
-      <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div class="rounded-2xl border border-green-400/30 bg-green-500/10 p-4">
-          <p class="text-xs font-extrabold uppercase text-green-700 dark:text-green-300">Upcoming</p>
-          <p class="mt-2 text-3xl font-black text-green-800 dark:text-green-200">{{ holidays|length|default:"0" }}</p>
-          <p class="mt-1 text-xs text-green-700/80 dark:text-green-300/80">Configured holidays and suspensions</p>
-        </div>
-
-        <div class="rounded-2xl border border-blue-400/30 bg-blue-500/10 p-4">
-          <p class="text-xs font-extrabold uppercase text-blue-700 dark:text-blue-300">Payroll Impact</p>
-          <p class="mt-2 text-sm font-bold text-blue-800 dark:text-blue-200">Source of truth for payroll exclusions</p>
-          <p class="mt-1 text-xs text-blue-700/80 dark:text-blue-300/80">Used to explain non-working dates.</p>
-        </div>
-      </div>
-
-      <div class="mt-5">
-        <label class="mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300">Branch Filter</label>
-        <select id="attendanceBranchFilter"
-                class="w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-          <option value="">All Branches</option>
-          {% for val, label in branches %}
-            <option value="{{ val }}">{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="mt-5 grid max-h-[520px] gap-3 overflow-y-auto pr-2 fancy-scroll sm:grid-cols-2">
-        {% if holidays %}
-          {% for holiday in holidays %}
-          <div class="rounded-2xl border p-4
-            {% if holiday.type == 'holiday' %}border-green-400/30 bg-green-500/10
-            {% elif holiday.type == 'suspension' %}border-red-400/30 bg-red-500/10
-            {% else %}border-amber-400/30 bg-amber-500/10{% endif %}">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-2">
-                  <h4 class="break-words text-sm font-extrabold text-gray-950 dark:text-white">{{ holiday.name }}</h4>
-                  <span class="rounded-full px-2 py-1 text-xs font-extrabold
-                    {% if holiday.type == 'holiday' %}bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300
-                    {% elif holiday.type == 'suspension' %}bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300
-                    {% else %}bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300{% endif %}">
-                    {{ holiday.get_type_display }}
-                  </span>
-                  <span class="rounded-full px-2 py-1 text-xs font-extrabold {% if holiday.is_payroll_verified %}bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300{% else %}bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-slate-300{% endif %}">
-                    {% if holiday.is_payroll_verified %}Payroll Verified{% else %}Not Verified{% endif %}
-                  </span>
-                </div>
-
-                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">{{ holiday.date|date:"M d, Y" }}</p>
-
-                <p class="mt-2 text-xs text-gray-600 dark:text-slate-400">
-                  {% if holiday.scope == 'branch' and holiday.branch %}
-                    {{ holiday.branch.name }}
-                  {% else %}
-                    {{ holiday.get_scope_display }}
-                  {% endif %}
+    {% if holidays %}
+      <div class="ad-card__body ad-grid ad-scroll-y" style="--ad-min: 280px; --ad-max-h: 640px">
+        {% for holiday in holidays %}
+          <article class="ad-rec bio-holiday">
+            <div class="ad-rec__top">
+              <div style="min-width:0">
+                <p class="ad-rec__title">{{ holiday.name }}</p>
+                <p class="ad-rec__sub">
+                  {{ holiday.date|date:"D, M d, Y" }} &middot;
+                  {% if holiday.scope == 'branch' and holiday.branch %}{{ holiday.branch.name }}{% else %}{{ holiday.get_scope_display }}{% endif %}
                 </p>
-
-                {% if holiday.notes %}
-                  <p class="mt-2 break-words text-xs text-gray-600 dark:text-slate-400">{{ holiday.notes }}</p>
-                {% endif %}
-                {% if holiday.source_reference %}
-                  <p class="mt-2 break-words text-xs text-gray-600 dark:text-slate-400"><strong>Source:</strong> {{ holiday.source_reference }}</p>
-                {% endif %}
               </div>
             </div>
-
-            <p class="mt-3 text-xs font-extrabold
-              {% if holiday.type == 'holiday' %}text-green-700 dark:text-green-300
-              {% elif holiday.type == 'suspension' %}text-red-700 dark:text-red-300
-              {% else %}text-amber-700 dark:text-amber-300{% endif %}">
-              Payroll impact:
+            <div class="ad-row" style="gap:6px">
+              <span class="ihrt-badge {% if holiday.type == 'holiday' %}ihrt-badge--ok{% elif holiday.type == 'suspension' %}ihrt-badge--bad{% else %}ihrt-badge--warn{% endif %}">{{ holiday.get_type_display }}</span>
+              {% if holiday.is_payroll_verified %}
+                <span class="ihrt-badge ihrt-badge--info">Verified for payroll</span>
+              {% else %}
+                <span class="ihrt-badge ihrt-badge--neutral">Not verified</span>
+              {% endif %}
+            </div>
+            {% if holiday.notes %}<p class="ad-help">{{ holiday.notes }}</p>{% endif %}
+            {% if holiday.source_reference %}<p class="ad-help"><strong>Source:</strong> {{ holiday.source_reference }}</p>{% endif %}
+            <p class="bio-holiday__impact">
+              <strong>Payroll effect:</strong>
               {% if not holiday.is_payroll_verified %}
-                None until an official source is verified
+                None until the official source is verified
               {% elif holiday.type == 'holiday' %}
                 Excluded from JO actual-days pay and from absence counting
               {% elif holiday.type == 'suspension' %}
                 Excluded from expected attendance
               {% else %}
-                Special non-working day behavior
+                Special non-working day rules apply
               {% endif %}
             </p>
-
-            <div class="mt-4 grid grid-cols-2 gap-2">
-              <button type="button"
-                      class="edit-holiday-btn rounded-xl bg-white/70 px-3 py-2 text-xs font-extrabold text-accent shadow-sm transition hover:bg-white dark:bg-white/5"
+            <div class="ad-rec__actions" style="margin-top:4px">
+              <button type="button" class="edit-holiday-btn ihrt-btn ihrt-btn--secondary ihrt-btn--sm"
                       data-holiday-id="{{ holiday.id }}"
                       data-name="{{ holiday.name }}"
                       data-date="{{ holiday.date|date:'Y-m-d' }}"
@@ -1198,413 +658,258 @@ html.dark .register-device-button:hover {
                       data-branch="{{ holiday.branch_id|default:'' }}"
                       data-notes="{{ holiday.notes|default:'' }}"
                       data-source-reference="{{ holiday.source_reference|default:'' }}"
-                      data-payroll-verified="{% if holiday.is_payroll_verified %}1{% else %}0{% endif %}">
-                Edit
-              </button>
-
-              <button type="button"
-                      class="delete-holiday-btn rounded-xl bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-600 transition hover:bg-red-500 hover:text-white"
-                      data-holiday-id="{{ holiday.id }}">
-                Delete
-              </button>
+                      data-payroll-verified="{% if holiday.is_payroll_verified %}1{% else %}0{% endif %}">Edit</button>
+              <button type="button" class="delete-holiday-btn ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm" data-holiday-id="{{ holiday.id }}">Delete</button>
             </div>
-          </div>
-          {% endfor %}
-        {% else %}
-          <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center dark:border-white/10 dark:bg-white/5 sm:col-span-2">
-            <iconify-icon icon="ph:calendar-blank-duotone" class="text-3xl text-gray-400"></iconify-icon>
-            <p class="mt-2 text-sm text-gray-600 dark:text-slate-400">No holidays or suspensions configured yet.</p>
-          </div>
-        {% endif %}
+          </article>
+        {% endfor %}
       </div>
-    </section>
-
-    <section class="rounded-3xl border border-gray-200/70 bg-white/80 p-5 shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-xl">
-      <h3 class="text-lg font-extrabold text-gray-950 dark:text-white">Required Columns</h3>
-
-      <div class="mt-4 rounded-2xl bg-gray-50 p-4 dark:bg-white/5">
-        <code class="break-words text-sm text-gray-700 dark:text-slate-300">
-          Person ID, Name, Department, Time, Attendance Status
-        </code>
+    {% else %}
+      <div class="ad-empty">
+        <iconify-icon icon="ph:calendar-blank" aria-hidden="true"></iconify-icon>
+        <h3>No holidays or suspensions yet</h3>
+        <p>Add regular holidays, special non-working days, and suspension orders as they are announced.</p>
       </div>
-
-      <p class="mt-3 text-sm text-gray-600 dark:text-slate-400">
-        Branch is selected from the dropdown.
-      </p>
-    </section>
-  </div>
+    {% endif %}
+  </section>
 </div>
 
-<!-- HOLIDAY MODAL -->
-<div id="holidayModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-  <div class="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-white/20 bg-white/90 p-6 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/90">
-    <div class="flex items-center justify-between">
-      <h3 id="holidayModalTitle" class="text-lg font-extrabold text-gray-950 dark:text-white">Add Holiday / Suspension</h3>
-      <button type="button" id="closeHolidayModal" class="rounded-2xl border border-gray-200 bg-white/80 p-2 text-gray-500 transition hover:text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
-        <iconify-icon icon="ph:x-bold"></iconify-icon>
+<!-- ===================== Holiday dialog ===================== -->
+<div id="holidayModal" class="ad-modal hidden" role="dialog" aria-modal="true" aria-labelledby="holidayModalTitle">
+  <div class="ad-modal__panel">
+    <div class="ad-modal__head">
+      <div>
+        <h2 id="holidayModalTitle">Add holiday or suspension</h2>
+        <p>Check the date against the proclamation or memorandum before saving.</p>
+      </div>
+      <button type="button" id="closeHolidayModal" class="ad-icon-btn ad-icon-btn--sm" data-modal-close>
+        <iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon><span class="sr-only">Close</span>
       </button>
     </div>
 
-    <form id="holidayForm" class="mt-5 space-y-4">
+    <form id="holidayForm" class="ad-form" style="display:contents">
       {% csrf_token %}
       <input type="hidden" id="holidayId" name="holiday_id">
-
-      <div>
-        <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Name</label>
-        <input id="holidayName" name="name" type="text" required
-               class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-      </div>
-
-      <div>
-        <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Date</label>
-        <input id="holidayDate" name="date" type="date" required
-               class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-      </div>
-
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Type</label>
-          <select id="holidayType" name="type"
-                  class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-            <option value="holiday">Regular Holiday</option>
-            <option value="suspension">Work Suspension</option>
-            <option value="special">Special Non-Working Day</option>
-          </select>
+      <div class="ad-modal__body ad-stack ad-stack--sm">
+        <div class="ad-field">
+          <label for="holidayName" class="ad-label">Name<span class="ad-req" aria-hidden="true">*</span></label>
+          <input id="holidayName" name="name" type="text" required placeholder="For example: Bonifacio Day">
         </div>
-
-        <div>
-          <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Scope</label>
-          <select id="holidayScope" name="scope"
-                  class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-            <option value="nationwide">Nationwide</option>
-            <option value="region">MIMAROPA Region</option>
-            <option value="branch">Specific Branch</option>
-          </select>
+        <div class="ad-form-grid" style="--ad-field-min: 180px">
+          <div class="ad-field">
+            <label for="holidayDate" class="ad-label">Date<span class="ad-req" aria-hidden="true">*</span></label>
+            <input id="holidayDate" name="date" type="date" required>
+          </div>
+          <div class="ad-field">
+            <label for="holidayType" class="ad-label">Type</label>
+            <select id="holidayType" name="type">
+              <option value="holiday">Regular holiday</option>
+              <option value="suspension">Work suspension</option>
+              <option value="special">Special non-working day</option>
+            </select>
+          </div>
+          <div class="ad-field">
+            <label for="holidayScope" class="ad-label">Applies to</label>
+            <select id="holidayScope" name="scope">
+              <option value="nationwide">Nationwide</option>
+              <option value="region">MIMAROPA Region</option>
+              <option value="branch">One branch</option>
+            </select>
+          </div>
+          <div class="ad-field" id="holidayBranchWrap">
+            <label for="holidayBranch" class="ad-label">Branch</label>
+            <select id="holidayBranch" name="branch">
+              <option value="">Select branch</option>
+              {% for val, label in branches %}
+                <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
         </div>
+        <div class="ad-field">
+          <label for="holidaySourceReference" class="ad-label">Official source</label>
+          <input id="holidaySourceReference" name="source_reference" type="text" placeholder="Proclamation, memorandum, or suspension order number">
+        </div>
+        <div class="ad-field">
+          <label for="holidayNotes" class="ad-label">Notes</label>
+          <textarea id="holidayNotes" name="notes" rows="3"></textarea>
+        </div>
+        <label class="ad-check">
+          <input id="holidayPayrollVerified" name="is_payroll_verified" type="checkbox">
+          <span>
+            <span class="ad-check__label">Verified for payroll</span>
+            <span class="ad-check__help">Check only after the official source and exact coverage are confirmed.</span>
+          </span>
+        </label>
       </div>
-
-      <div id="holidayBranchWrap">
-        <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Branch</label>
-        <select id="holidayBranch" name="branch"
-                class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-          <option value="">Select branch</option>
-          {% for val, label in branches %}
-            <option value="{{ val }}">{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div>
-        <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Notes</label>
-        <textarea id="holidayNotes" name="notes" rows="3"
-                  class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white"></textarea>
-      </div>
-
-      <div>
-        <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Official Source Reference</label>
-        <input id="holidaySourceReference" name="source_reference" type="text" placeholder="Proclamation, memorandum, or suspension order"
-               class="mt-2 block w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-white">
-      </div>
-
-      <label class="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 text-sm dark:border-blue-500/20 dark:bg-blue-500/10">
-        <input id="holidayPayrollVerified" name="is_payroll_verified" type="checkbox" class="mt-1 h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent">
-        <span><strong>Verified for payroll</strong><br><span class="text-gray-600 dark:text-slate-300">Only check this after the official source and exact coverage have been confirmed.</span></span>
-      </label>
-
-      <div class="flex justify-end gap-3 pt-2">
-        <button type="button" id="cancelHolidayModal"
-                class="rounded-2xl border border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-          Cancel
-        </button>
-        <button type="submit"
-                class="rounded-2xl bg-accent px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:shadow-glow">
-          Save
-        </button>
+      <div class="ad-modal__foot">
+        <button type="button" id="cancelHolidayModal" class="ihrt-btn ihrt-btn--secondary" data-modal-close>Cancel</button>
+        <button type="submit" class="ihrt-btn ihrt-btn--primary" id="holidaySave">Save date</button>
       </div>
     </form>
   </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
-  const root = document.querySelector('[data-can-import]');
-  const serverCanImport = root && root.getAttribute('data-can-import') === '1';
+(function () {
+  var csrf = function () { return document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''; };
+  var root = document.querySelector('[data-can-import]');
+  var serverCanImport = root && root.getAttribute('data-can-import') === '1';
 
-  const dropZone = document.getElementById('dropZone');
-  const fileInput = document.getElementById('file');
-  const fileName = document.getElementById('fileName');
-  const importBtn = document.getElementById('importBtn');
-  const branchSelect = document.getElementById('branchSelect');
+  // Show a spinner on buttons that start a slow server action
+  document.querySelectorAll('[data-loading]').forEach(function (btn) {
+    btn.closest('form')?.addEventListener('submit', function () { btn.classList.add('btn-loading'); });
+  });
 
-  function setImportEnabled(enabled) {
-    if (!importBtn) return;
-    importBtn.disabled = !enabled;
-
-    if (enabled) {
-      importBtn.classList.remove('cursor-not-allowed', 'bg-white/30', 'text-gray-400');
-      importBtn.classList.add('cursor-pointer', 'bg-accent', 'text-white', 'hover:bg-opacity-90');
-    } else {
-      importBtn.classList.add('cursor-not-allowed', 'bg-white/30', 'text-gray-400');
-      importBtn.classList.remove('cursor-pointer', 'bg-accent', 'text-white', 'hover:bg-opacity-90');
-    }
-  }
-
-  function updateFileLabel() {
-    if (fileInput && fileInput.files && fileInput.files.length) {
-      fileName.textContent = fileInput.files[0].name;
-      fileName.classList.remove('text-gray-500');
-      fileName.classList.add('text-accent', 'font-medium');
-    } else {
-      fileName.textContent = 'No file selected';
-      fileName.classList.remove('text-accent', 'font-medium');
-      fileName.classList.add('text-gray-500');
-    }
-  }
+  // ---------- Import ----------
+  var dropZone = document.getElementById('dropZone');
+  var fileInput = document.getElementById('file');
+  var fileName = document.getElementById('fileName');
+  var importBtn = document.getElementById('importBtn');
+  var branchSelect = document.getElementById('branchSelect');
 
   function canImportNow() {
-    const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
-    const hasBranch = branchSelect && branchSelect.value && branchSelect.value.trim().length > 0;
+    var hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+    var hasBranch = branchSelect && branchSelect.value.trim().length > 0;
     return hasBranch && (hasFile || serverCanImport);
   }
-
+  function refreshImport() {
+    if (fileInput && fileInput.files && fileInput.files.length) {
+      fileName.textContent = fileInput.files[0].name;
+      fileName.classList.add('is-set');
+    } else {
+      fileName.textContent = 'No file selected';
+      fileName.classList.remove('is-set');
+    }
+    if (importBtn) importBtn.disabled = !canImportNow();
+  }
   if (dropZone && fileInput) {
-    ['dragenter', 'dragover'].forEach(eventName => {
-      dropZone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        dropZone.classList.add('border-accent', 'bg-accent/5');
-      });
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.add('is-over'); });
     });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-      dropZone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('border-accent', 'bg-accent/5');
-      });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.remove('is-over'); });
     });
-
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      const files = e.dataTransfer.files;
-      if (files.length) {
-        fileInput.files = files;
-        updateFileLabel();
-        setImportEnabled(canImportNow());
-      }
+    dropZone.addEventListener('drop', function (e) {
+      if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; refreshImport(); }
     });
-
-    fileInput.addEventListener('change', () => {
-      updateFileLabel();
-      setImportEnabled(canImportNow());
-    });
+    fileInput.addEventListener('change', refreshImport);
   }
+  branchSelect?.addEventListener('change', refreshImport);
+  refreshImport();
 
-  if (branchSelect) {
-    branchSelect.addEventListener('change', () => setImportEnabled(canImportNow()));
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    updateFileLabel();
-    setImportEnabled(canImportNow());
-  });
-
-  const attendanceBranchFilter = document.getElementById('attendanceBranchFilter');
-
-  attendanceBranchFilter?.addEventListener('change', function() {
-    localStorage.setItem('payroll_selected_branch', this.value);
-  });
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const savedBranch = localStorage.getItem('payroll_selected_branch');
-    if (savedBranch && attendanceBranchFilter) {
-      attendanceBranchFilter.value = savedBranch;
-    }
-  });
-
-  const travelForm = document.getElementById("travelForm");
-
-  travelForm?.addEventListener("submit", async function(e) {
+  // ---------- Travel orders ----------
+  var travelForm = document.getElementById('travelForm');
+  travelForm?.addEventListener('submit', async function (e) {
     e.preventDefault();
-
-    const formData = new FormData(travelForm);
-
+    var btn = document.getElementById('travelSubmit');
+    btn?.classList.add('btn-loading');
     try {
-      const res = await fetch("{% url 'admin_add_travel' %}", {
-        method: "POST",
-        headers: {
-          "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
-          "Accept": "application/json",
-        },
-        body: formData,
+      var res = await fetch("{% url 'admin_add_travel' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf(), 'Accept': 'application/json' },
+        body: new FormData(travelForm)
       });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Failed to assign travel.");
-      }
-
-      alert("✅ " + data.message);
-      window.location.reload();
+      var data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'The travel order could not be added.');
+      window.showToast(data.message || 'Travel order added', 'success');
+      setTimeout(function () { window.location.reload(); }, 600);
     } catch (err) {
-      alert("❌ " + err.message);
+      window.showToast(err.message, 'error');
+      btn?.classList.remove('btn-loading');
     }
   });
 
-  window.deleteTravel = async function(travelId) {
-    if (!confirm("Delete this travel order?")) return;
-
+  window.deleteTravel = async function (travelId) {
+    if (!confirm('Delete this travel order? Those days will count as regular workdays again.')) return;
     try {
-      const res = await fetch(`/admin-ui/travel/${travelId}/delete/`, {
-        method: "POST",
-        headers: {
-          "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
-          "Accept": "application/json",
-        },
+      var res = await fetch('/admin-ui/travel/' + travelId + '/delete/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf(), 'Accept': 'application/json' }
       });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Failed to delete travel order.");
-      }
-
+      var data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'The travel order could not be deleted.');
       window.location.reload();
     } catch (err) {
-      alert("❌ " + err.message);
+      window.showToast(err.message, 'error');
     }
   };
 
-  const holidayModal = document.getElementById("holidayModal");
-  const openHolidayModal = document.getElementById("openHolidayModal");
-  const closeHolidayModal = document.getElementById("closeHolidayModal");
-  const cancelHolidayModal = document.getElementById("cancelHolidayModal");
-  const holidayForm = document.getElementById("holidayForm");
-  const holidayModalTitle = document.getElementById("holidayModalTitle");
+  // ---------- Holidays ----------
+  var modal = document.getElementById('holidayModal');
+  var form = document.getElementById('holidayForm');
+  var title = document.getElementById('holidayModalTitle');
+  var f = {
+    id: document.getElementById('holidayId'),
+    name: document.getElementById('holidayName'),
+    date: document.getElementById('holidayDate'),
+    type: document.getElementById('holidayType'),
+    scope: document.getElementById('holidayScope'),
+    branch: document.getElementById('holidayBranch'),
+    notes: document.getElementById('holidayNotes'),
+    source: document.getElementById('holidaySourceReference'),
+    verified: document.getElementById('holidayPayrollVerified'),
+    branchWrap: document.getElementById('holidayBranchWrap')
+  };
+  function toggleBranch() { if (f.branchWrap) f.branchWrap.style.display = f.scope.value === 'branch' ? '' : 'none'; }
+  f.scope?.addEventListener('change', toggleBranch);
 
-  const holidayId = document.getElementById("holidayId");
-  const holidayName = document.getElementById("holidayName");
-  const holidayDate = document.getElementById("holidayDate");
-  const holidayType = document.getElementById("holidayType");
-  const holidayScope = document.getElementById("holidayScope");
-  const holidayBranch = document.getElementById("holidayBranch");
-  const holidayNotes = document.getElementById("holidayNotes");
-  const holidaySourceReference = document.getElementById("holidaySourceReference");
-  const holidayPayrollVerified = document.getElementById("holidayPayrollVerified");
-  const holidayBranchWrap = document.getElementById("holidayBranchWrap");
-
-  function openModal() {
-    holidayModal.classList.remove("hidden");
-    holidayModal.classList.add("flex");
-  }
-
-  function closeModal() {
-    holidayModal.classList.add("hidden");
-    holidayModal.classList.remove("flex");
-  }
-
-  function resetHolidayForm() {
-    holidayForm?.reset();
-    holidayId.value = "";
-    holidayPayrollVerified.checked = false;
-    holidayModalTitle.textContent = "Add Holiday / Suspension";
-  }
-
-  function toggleHolidayBranch() {
-    if (!holidayScope || !holidayBranchWrap) return;
-    holidayBranchWrap.style.display = holidayScope.value === "branch" ? "block" : "none";
-  }
-
-  openHolidayModal?.addEventListener("click", () => {
-    resetHolidayForm();
-    toggleHolidayBranch();
-    openModal();
+  document.getElementById('openHolidayModal')?.addEventListener('click', function () {
+    form.reset(); f.id.value = ''; f.verified.checked = false;
+    title.textContent = 'Add holiday or suspension';
+    toggleBranch(); window.adModal.open(modal);
   });
 
-  closeHolidayModal?.addEventListener("click", closeModal);
-  cancelHolidayModal?.addEventListener("click", closeModal);
-  holidayScope?.addEventListener("change", toggleHolidayBranch);
-  toggleHolidayBranch();
-
-  document.querySelectorAll(".edit-holiday-btn").forEach(btn => {
-    btn.addEventListener("click", function() {
-      holidayModalTitle.textContent = "Edit Holiday / Suspension";
-      holidayId.value = this.dataset.holidayId || "";
-      holidayName.value = this.dataset.name || "";
-      holidayDate.value = this.dataset.date || "";
-      holidayType.value = this.dataset.type || "holiday";
-      holidayScope.value = this.dataset.scope || "region";
-      holidayBranch.value = this.dataset.branch || "";
-      holidayNotes.value = this.dataset.notes || "";
-      holidaySourceReference.value = this.dataset.sourceReference || "";
-      holidayPayrollVerified.checked = this.dataset.payrollVerified === "1";
-      toggleHolidayBranch();
-      openModal();
+  document.querySelectorAll('.edit-holiday-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var d = this.dataset;
+      title.textContent = 'Edit holiday or suspension';
+      f.id.value = d.holidayId || '';
+      f.name.value = d.name || '';
+      f.date.value = d.date || '';
+      f.type.value = d.type || 'holiday';
+      f.scope.value = d.scope || 'region';
+      f.branch.value = d.branch || '';
+      f.notes.value = d.notes || '';
+      f.source.value = d.sourceReference || '';
+      f.verified.checked = d.payrollVerified === '1';
+      toggleBranch(); window.adModal.open(modal);
     });
   });
 
-  holidayForm?.addEventListener("submit", async function(e) {
+  form?.addEventListener('submit', async function (e) {
     e.preventDefault();
-
-    const formData = new FormData(holidayForm);
-    const id = holidayId.value;
-    const url = id
-      ? `/admin-ui/biometrics/holidays/${id}/update/`
-      : `/admin-ui/biometrics/holidays/create/`;
-
+    var id = f.id.value;
+    var url = id ? '/admin-ui/biometrics/holidays/' + id + '/update/' : '/admin-ui/biometrics/holidays/create/';
+    var btn = document.getElementById('holidaySave');
+    btn?.classList.add('btn-loading');
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
-          "Accept": "application/json",
-        },
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Failed to save holiday.");
-      }
-
+      var res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf(), 'Accept': 'application/json' }, body: new FormData(form) });
+      var data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'The date could not be saved.');
       window.location.reload();
     } catch (err) {
-      alert("❌ " + err.message);
+      window.showToast(err.message, 'error');
+      btn?.classList.remove('btn-loading');
     }
   });
 
-  document.querySelectorAll(".delete-holiday-btn").forEach(btn => {
-    btn.addEventListener("click", async function() {
-      const holidayId = this.dataset.holidayId;
-      if (!holidayId) return;
-      if (!confirm("Delete this holiday/suspension?")) return;
-
+  document.querySelectorAll('.delete-holiday-btn').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var id = this.dataset.holidayId;
+      if (!id || !confirm('Delete this date? Payroll computed after this will no longer treat it as non-working.')) return;
       try {
-        const res = await fetch(`/admin-ui/biometrics/holidays/${holidayId}/delete/`, {
-          method: "POST",
-          headers: {
-            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
-            "Accept": "application/json",
-          },
-        });
-
-        const data = await res.json();
-
-        if (!res.ok || !data.ok) {
-          throw new Error(data.error || "Failed to delete holiday.");
-        }
-
+        var res = await fetch('/admin-ui/biometrics/holidays/' + id + '/delete/', { method: 'POST', headers: { 'X-CSRFToken': csrf(), 'Accept': 'application/json' } });
+        var data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'The date could not be deleted.');
         window.location.reload();
       } catch (err) {
-        alert("❌ " + err.message);
+        window.showToast(err.message, 'error');
       }
     });
   });
-  document.querySelectorAll(".notification-close").forEach((button) => {
-    button.addEventListener("click", () => {
-      button.closest('[role="alert"]')?.remove();
-    });
-  });
-
-  
+})();
 </script>
 {% endblock %}

@@ -1,0 +1,915 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Biometrics and attendance | IntelliHRTrack{% endblock %}
+
+{% block extra_head %}
+<style>
+  .bio-sections { position: sticky; top: 0; z-index: 30; margin: -8px calc(var(--ad-pad) * -1) 0; padding: 8px var(--ad-pad); background: color-mix(in srgb, var(--ihrt-paper) 94%, transparent); border-bottom: 1px solid var(--ihrt-line); }
+  @media (max-width: 1023px) { .bio-sections { top: var(--ad-topbar-h); } }
+  .bio-sections ul { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .bio-sections ul::-webkit-scrollbar { display: none; }
+  .bio-sections a { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--ihrt-muted); white-space: nowrap; }
+  .bio-sections a:hover { background: var(--ihrt-surface); color: var(--ihrt-ink); }
+  .bio-anchor { scroll-margin-top: 72px; }
+  @media (max-width: 1023px) { .bio-anchor { scroll-margin-top: calc(var(--ad-topbar-h) + 64px); } }
+  .bio-device { display: flex; flex-direction: column; }
+  .bio-device__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; padding-top: 16px; }
+  .bio-device__actions form, .bio-device__actions .ihrt-btn { width: 100%; }
+  .bio-holiday { display: flex; flex-direction: column; gap: 8px; }
+  .bio-holiday__impact { font-size: 13px; padding: 8px 10px; border-radius: var(--ihrt-radius-sm); background: var(--ihrt-surface-2); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ad-stack" data-can-import="{{ can_import|yesno:'1,0' }}">
+
+  <!-- ===================== Header ===================== -->
+  <header class="ad-page-head">
+    <div class="ad-page-head__text">
+      <h1>Biometrics and attendance</h1>
+      <p>Scans from the Hikvision terminals and imported files, plus overtime, travel, and non-working days that affect payroll.</p>
+    </div>
+    <div class="ad-page-head__actions">
+      <a href="{% url 'admin_biometrics_export' %}" class="ihrt-btn ihrt-btn--secondary">
+        <iconify-icon icon="ph:export" aria-hidden="true"></iconify-icon> Export
+      </a>
+      <a href="{% url 'admin_attendance_create' %}" class="ihrt-btn ihrt-btn--secondary">
+        <iconify-icon icon="ph:plus" aria-hidden="true"></iconify-icon> Add record
+      </a>
+      <form method="post" action="{% url 'admin_biometrics_sync' %}">
+        {% csrf_token %}
+        <button type="submit" class="ihrt-btn ihrt-btn--primary" data-loading>
+          <iconify-icon icon="ph:arrows-clockwise" aria-hidden="true"></iconify-icon> Sync device
+        </button>
+      </form>
+    </div>
+  </header>
+
+  <!-- ===================== Today ===================== -->
+  <section aria-label="Today" class="ad-stats ad-stats--5">
+    <div class="ad-stat ad-tone-ok">
+      <p class="ad-stat__label">Present today</p>
+      <p class="ad-stat__value">{{ kpi.present|default:"—" }}</p>
+      <p class="ad-stat__hint">Based on time&#8209;in scans</p>
+    </div>
+    <div class="ad-stat ad-tone-warn">
+      <p class="ad-stat__label">Late</p>
+      <p class="ad-stat__value">{{ kpi.late|default:"—" }}</p>
+      <p class="ad-stat__hint">After the grace period</p>
+    </div>
+    <div class="ad-stat ad-tone-bad">
+      <p class="ad-stat__label">Absent</p>
+      <p class="ad-stat__value">{{ kpi.absent|default:"—" }}</p>
+      <p class="ad-stat__hint">Excludes official travel</p>
+    </div>
+    <div class="ad-stat ad-tone-info">
+      <p class="ad-stat__label">On travel</p>
+      <p class="ad-stat__value">{{ kpi.on_travel|default:"0" }}</p>
+      <p class="ad-stat__hint">Official travel today</p>
+    </div>
+    <div class="ad-stat ad-tone-field">
+      <p class="ad-stat__label">Last import or sync</p>
+      <p class="ad-stat__value ad-stat__value--sm">{{ kpi.last_sync|default:"Never" }}</p>
+    </div>
+  </section>
+
+  {% if import_errors or import_summary or preview_rows %}
+    <div class="ad-alert ad-alert--info">
+      <iconify-icon icon="ph:file-magnifying-glass" aria-hidden="true"></iconify-icon>
+      <div class="ad-alert__body">Your file results are ready. <a href="#import" style="font-weight:700;text-decoration:underline">Go to the import section</a></div>
+    </div>
+  {% endif %}
+
+  <!-- ===================== Section menu ===================== -->
+  <nav class="bio-sections" aria-label="Sections on this page">
+    <ul>
+      <li><a href="#records"><iconify-icon icon="ph:list-bullets" aria-hidden="true"></iconify-icon>Records</a></li>
+      <li><a href="#import"><iconify-icon icon="ph:upload-simple" aria-hidden="true"></iconify-icon>Import file</a></li>
+      <li><a href="#devices"><iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon>Devices</a></li>
+      <li><a href="#overtime-authorization"><iconify-icon icon="ph:clock-clockwise" aria-hidden="true"></iconify-icon>Overtime</a></li>
+      <li><a href="#travel"><iconify-icon icon="ph:airplane-tilt" aria-hidden="true"></iconify-icon>Travel orders</a></li>
+      <li><a href="#holidays"><iconify-icon icon="ph:calendar-x" aria-hidden="true"></iconify-icon>Holidays</a></li>
+    </ul>
+  </nav>
+
+  <!-- ===================== Attendance records ===================== -->
+  <section class="ad-card bio-anchor" id="records" aria-labelledby="records-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="records-title">Attendance records</h2>
+        <p>Every scan synced from a terminal, imported from a file, or added by hand.</p>
+      </div>
+      {% if records %}<span class="ihrt-badge ihrt-badge--neutral">{{ records.paginator.count }} record{{ records.paginator.count|pluralize }}</span>{% endif %}
+    </div>
+
+    {% if records %}
+      <div class="ad-only-wide">
+        <div class="ad-table-wrap">
+          <table class="ad-table">
+            <thead>
+              <tr>
+                <th scope="col">Time</th>
+                <th scope="col">Employee</th>
+                <th scope="col">Branch</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="is-actions"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in records %}
+                <tr>
+                  <td class="is-nowrap ad-num">{{ row.timestamp }}</td>
+                  <td>
+                    <span class="ad-cell-primary ad-truncate" style="--ad-trunc:300px" title="{{ row.full_name }}">{{ row.full_name }}</span>
+                    <span class="ad-cell-sub ad-truncate" style="--ad-trunc:300px" title="{{ row.department }}">ID {{ row.employee_id }} &middot; {{ row.department|default:"No department" }}</span>
+                  </td>
+                  <td class="is-muted"><span class="ad-truncate" style="--ad-trunc:200px" title="{{ row.branch }}">{{ row.branch|default:"—" }}</span></td>
+                  <td><span class="ihrt-badge ihrt-badge--info">{{ row.get_attendance_status_display }}</span></td>
+                  <td class="is-actions">
+                    <div class="ad-row">
+                      <a href="{% url 'admin_attendance_detail' row.id %}" class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm">View</a>
+                      <a href="{% url 'admin_attendance_update' row.id %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">Edit</a>
+                      <a href="{% url 'admin_attendance_delete' row.id %}" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Delete</a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="ad-cards ad-only-narrow">
+        {% for row in records %}
+          <article class="ad-rec">
+            <div class="ad-rec__top">
+              <div style="min-width:0">
+                <p class="ad-rec__title">{{ row.full_name }}</p>
+                <p class="ad-rec__sub ad-num">{{ row.timestamp }}</p>
+              </div>
+              <span class="ihrt-badge ihrt-badge--info">{{ row.get_attendance_status_display }}</span>
+            </div>
+            <dl class="ad-rec__kv">
+              <div><dt>Person ID</dt><dd>{{ row.employee_id }}</dd></div>
+              <div><dt>Branch</dt><dd>{{ row.branch|default:"—" }}</dd></div>
+              <div style="grid-column:1/-1"><dt>Department</dt><dd>{{ row.department|default:"—" }}</dd></div>
+            </dl>
+            <div class="ad-rec__actions">
+              <a href="{% url 'admin_attendance_detail' row.id %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">View</a>
+              <a href="{% url 'admin_attendance_update' row.id %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">Edit</a>
+              <a href="{% url 'admin_attendance_delete' row.id %}" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Delete</a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+
+      {% if records.has_other_pages %}
+        <div class="ad-card__foot">
+          <span>Page {{ records.number }} of {{ records.paginator.num_pages }}</span>
+          <div class="ad-pager">
+            {% if records.has_previous %}
+              <a href="?page={{ records.previous_page_number }}#records" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm"><iconify-icon icon="ph:caret-left" aria-hidden="true"></iconify-icon> Previous</a>
+            {% endif %}
+            {% if records.has_next %}
+              <a href="?page={{ records.next_page_number }}#records" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">Next <iconify-icon icon="ph:caret-right" aria-hidden="true"></iconify-icon></a>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="ad-empty">
+        <iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon>
+        <h3>No attendance records yet</h3>
+        <p>Sync a registered terminal or import a CSV or Excel file to bring scans in.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- ===================== Import ===================== -->
+  <section class="ad-card bio-anchor" id="import" aria-labelledby="import-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="import-title">Import attendance file</h2>
+        <p>Upload a CSV, XLS, or XLSX export. Validate it first, check the preview, then import.</p>
+      </div>
+      <a href="{% url 'admin_biometrics_template' %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">
+        <iconify-icon icon="ph:file-arrow-down" aria-hidden="true"></iconify-icon> Download template
+      </a>
+    </div>
+
+    <form id="importForm" method="post" enctype="multipart/form-data" action="{% url 'admin_biometrics_import' %}" class="ad-form ad-card__body ad-stack ad-stack--sm">
+      {% csrf_token %}
+
+      <div id="dropZone" class="ad-drop">
+        <iconify-icon icon="ph:cloud-arrow-up" aria-hidden="true"></iconify-icon>
+        <p>
+          <label for="file" class="ad-drop__pick">Choose a file</label>
+          <span class="ad-muted">or drag it here</span>
+          <input id="file" name="file" type="file" accept=".csv,.xls,.xlsx" class="sr-only">
+        </p>
+        <p class="ad-help">CSV or Excel, up to 10 MB. Required columns: Person ID, Name, Department, Time, Attendance Status.</p>
+        <p class="ad-drop__file" id="fileName">No file selected</p>
+      </div>
+
+      <div class="ad-form-grid" style="--ad-field-min: 260px">
+        <div class="ad-field">
+          <label for="branchSelect" class="ad-label">Branch<span class="ad-req" aria-hidden="true">*</span></label>
+          <select name="branch" id="branchSelect">
+            <option value="">Select branch</option>
+            {% for val, label in branches %}
+              <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+          <p class="ad-help">Every row in the file is recorded under this branch.</p>
+        </div>
+
+        <label class="ad-check" style="align-self:end">
+          <input type="checkbox" name="skip_duplicates" checked>
+          <span>
+            <span class="ad-check__label">Skip duplicate scans</span>
+            <span class="ad-check__help">Same person ID, time, status, and branch</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="ad-row ad-row--end">
+        <button type="submit" name="action" value="validate" class="ihrt-btn ihrt-btn--secondary">
+          <iconify-icon icon="ph:magnifying-glass" aria-hidden="true"></iconify-icon> Validate and preview
+        </button>
+        <button id="importBtn" type="submit" name="action" value="import" class="ihrt-btn ihrt-btn--primary" disabled>
+          <iconify-icon icon="ph:database" aria-hidden="true"></iconify-icon> Import records
+        </button>
+      </div>
+      <p class="ad-help" style="text-align:right">Import is available once a branch is selected and a file is chosen or validated.</p>
+    </form>
+
+    {% if import_errors %}
+      <div id="importErrorsBox" class="ad-card__body" style="padding-top:0">
+        <div class="ad-alert ad-alert--bad" role="alert">
+          <iconify-icon icon="ph:x-circle" aria-hidden="true"></iconify-icon>
+          <div class="ad-alert__body">
+            <p class="ad-alert__title">The file has problems</p>
+            <ul>{% for e in import_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div id="importErrorsBox" class="hidden"></div>
+    {% endif %}
+
+    {% if import_summary %}
+      <div class="ad-card__body" style="padding-top:0">
+        <div class="ad-alert ad-alert--ok">
+          <iconify-icon icon="ph:check-circle" aria-hidden="true"></iconify-icon>
+          <div class="ad-alert__body">
+            <p class="ad-alert__title">Import summary</p>
+            <div id="importSummaryText">{{ import_summary }}</div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <div style="border-top:1px solid var(--ihrt-line)">
+      <div class="ad-card__head" style="border-bottom:0;padding-bottom:8px">
+        <div>
+          <h3>Preview</h3>
+          <p>The first 20 rows after validation.</p>
+        </div>
+      </div>
+
+      {% if preview_rows %}
+        <div class="ad-only-wide">
+          <div class="ad-table-wrap">
+            <table class="ad-table ad-table--dense">
+              <thead>
+                <tr>
+                  <th scope="col">Person ID</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Department</th>
+                  <th scope="col">Branch</th>
+                  <th scope="col">Time</th>
+                  <th scope="col">Attendance</th>
+                  <th scope="col">Check</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in preview_rows %}
+                  <tr>
+                    <td class="is-strong ad-num">{{ row.employee_id }}</td>
+                    <td><span class="ad-truncate" style="--ad-trunc:200px" title="{{ row.full_name }}">{{ row.full_name }}</span></td>
+                    <td class="is-muted"><span class="ad-truncate" style="--ad-trunc:160px" title="{{ row.department }}">{{ row.department }}</span></td>
+                    <td class="is-muted"><span class="ad-truncate" style="--ad-trunc:160px" title="{{ row.branch }}">{{ row.branch }}</span></td>
+                    <td class="is-nowrap ad-num">{{ row.timestamp }}</td>
+                    <td>{{ row.attendance_status }}</td>
+                    <td>
+                      <span class="ihrt-badge {% if row.status == 'valid' %}ihrt-badge--ok{% else %}ihrt-badge--bad{% endif %}">{{ row.status|capfirst }}</span>
+                      {% if row.errors %}<p class="ad-error" style="margin-top:4px;max-width:240px">{{ row.errors }}</p>{% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="ad-cards ad-only-narrow">
+          {% for row in preview_rows %}
+            <article class="ad-rec">
+              <div class="ad-rec__top">
+                <div style="min-width:0">
+                  <p class="ad-rec__title">{{ row.full_name }}</p>
+                  <p class="ad-rec__sub">Person ID {{ row.employee_id }}</p>
+                </div>
+                <span class="ihrt-badge {% if row.status == 'valid' %}ihrt-badge--ok{% else %}ihrt-badge--bad{% endif %}">{{ row.status|capfirst }}</span>
+              </div>
+              <dl class="ad-rec__kv">
+                <div style="grid-column:1/-1"><dt>Time</dt><dd>{{ row.timestamp }}</dd></div>
+                <div><dt>Attendance</dt><dd>{{ row.attendance_status }}</dd></div>
+                <div><dt>Branch</dt><dd>{{ row.branch }}</dd></div>
+                <div style="grid-column:1/-1"><dt>Department</dt><dd>{{ row.department }}</dd></div>
+              </dl>
+              {% if row.errors %}<p class="ad-error" style="margin-top:10px">{{ row.errors }}</p>{% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="ad-empty" style="padding-top:16px">
+          <iconify-icon icon="ph:table" aria-hidden="true"></iconify-icon>
+          <h3>Nothing to preview yet</h3>
+          <p>Choose a file and a branch, then select Validate and preview.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- ===================== Devices ===================== -->
+  <section class="ad-card bio-anchor" id="devices" aria-labelledby="devices-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="devices-title">Hikvision terminals</h2>
+        <p>Terminals registered for your branch. Connect each one to the office network by Ethernet, then use Sync device to pull scans.</p>
+      </div>
+      <a href="{% url 'admin_biometric_device_create' %}" class="ihrt-btn ihrt-btn--primary ihrt-btn--sm">
+        <iconify-icon icon="ph:plus" aria-hidden="true"></iconify-icon> Register terminal
+      </a>
+    </div>
+
+    {% if devices %}
+      <div class="ad-card__body ad-grid" style="--ad-min: 280px">
+        {% for device in devices %}
+          <article class="ad-rec bio-device">
+            <div class="ad-rec__top">
+              <div class="ad-row" style="flex-wrap:nowrap;min-width:0;gap:12px">
+                <span class="ad-icon-circle"><iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon></span>
+                <div style="min-width:0">
+                  <p class="ad-rec__title">{{ device.name }}</p>
+                  <p class="ad-rec__sub">{{ device.branch.name }}</p>
+                </div>
+              </div>
+              {% if device.is_active %}
+                <span class="ihrt-badge ihrt-badge--ok">Active</span>
+              {% else %}
+                <span class="ihrt-badge ihrt-badge--neutral">Inactive</span>
+              {% endif %}
+            </div>
+            <dl class="ad-kv" style="margin-top:8px">
+              <div><dt>IP address</dt><dd class="ad-num">{{ device.ip_address }}</dd></div>
+              <div><dt>Port</dt><dd class="ad-num">{{ device.port }}</dd></div>
+              <div><dt>Username</dt><dd>{{ device.username }}</dd></div>
+            </dl>
+            <div class="bio-device__actions">
+              <form method="post" action="{% url 'admin_biometric_device_test' device.id %}">
+                {% csrf_token %}
+                <button type="submit" class="ihrt-btn ihrt-btn--soft ihrt-btn--sm ihrt-btn--block" data-loading>
+                  <iconify-icon icon="ph:plugs-connected" aria-hidden="true"></iconify-icon> Test connection
+                </button>
+              </form>
+              <a href="{% url 'admin_biometric_device_update' device.id %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">
+                <iconify-icon icon="ph:pencil-simple" aria-hidden="true"></iconify-icon> Edit
+              </a>
+              <form method="post" action="{% url 'admin_biometric_device_toggle' device.id %}">
+                {% csrf_token %}
+                <button type="submit" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm ihrt-btn--block">
+                  <iconify-icon icon="ph:power" aria-hidden="true"></iconify-icon>
+                  {% if device.is_active %}Deactivate{% else %}Activate{% endif %}
+                </button>
+              </form>
+              <form method="post" action="{% url 'admin_biometric_device_delete' device.id %}" onsubmit="return confirm('Remove {{ device.name|escapejs }}? Scans already imported are kept.');">
+                {% csrf_token %}
+                <button type="submit" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm ihrt-btn--block">
+                  <iconify-icon icon="ph:trash" aria-hidden="true"></iconify-icon> Remove
+                </button>
+              </form>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="ad-empty">
+        <iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon>
+        <h3>No terminal registered</h3>
+        <p>Register the Hikvision terminal your branch uses before syncing attendance.</p>
+        <a href="{% url 'admin_biometric_device_create' %}" class="ihrt-btn ihrt-btn--primary">Register terminal</a>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- ===================== Overtime ===================== -->
+  <section class="ad-card bio-anchor" id="overtime-authorization" aria-labelledby="ot-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="ot-title">Overtime authorization</h2>
+        <p>Staying late does not earn overtime pay by itself. Authorize the employee, date, and maximum payable hours first.</p>
+      </div>
+    </div>
+
+    <form method="post" action="{% url 'admin_overtime_authorize' %}" class="ad-form ad-card__body ad-stack ad-stack--sm">
+      {% csrf_token %}
+      <div class="ad-form-grid">
+        {% for field in overtime_form %}
+          <div class="ad-field">
+            <label for="{{ field.id_for_label }}" class="ad-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<p class="ad-error">{{ field.errors|striptags }}</p>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="ad-alert ad-alert--neutral">
+        <iconify-icon icon="ph:info" aria-hidden="true"></iconify-icon>
+        <div class="ad-alert__body ad-help" style="color:inherit">
+          The hours are a limit, not guaranteed pay: payroll pays only eligible hours actually recorded in the DTR.
+          One authorization per employee per date; authorizing the same date again updates it.
+          Locked DTRs and finalized payroll must be unlocked first, and existing draft payroll must be reprocessed after any change.
+        </div>
+      </div>
+      <div class="ad-row ad-row--end">
+        <button type="submit" class="ihrt-btn ihrt-btn--primary">
+          <iconify-icon icon="ph:check" aria-hidden="true"></iconify-icon> Authorize overtime
+        </button>
+      </div>
+    </form>
+
+    <div class="ad-table-wrap" style="border-top:1px solid var(--ihrt-line)">
+      <table class="ad-table" style="min-width: 860px">
+        <thead>
+          <tr>
+            <th scope="col">Employee</th>
+            <th scope="col">Date</th>
+            <th scope="col" class="is-num">Hour limit</th>
+            <th scope="col">Status</th>
+            <th scope="col">Authorized by</th>
+            <th scope="col">Reason</th>
+            <th scope="col"><span class="sr-only">Action</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ot in overtime_requests %}
+            <tr>
+              <td>
+                <p class="ad-cell-primary">{{ ot.profile.user.get_full_name|default:ot.profile.user.username }}</p>
+                <p class="ad-cell-sub">{{ ot.profile.branch.name }}</p>
+              </td>
+              <td class="is-nowrap">{{ ot.date|date:"M d, Y" }}</td>
+              <td class="is-num">{{ ot.hours|floatformat:2 }}</td>
+              <td>
+                {% if ot.approved and ot.approved_by_id %}
+                  <span class="ihrt-badge ihrt-badge--ok">Authorized</span>
+                {% else %}
+                  <span class="ihrt-badge ihrt-badge--neutral">Not authorized</span>
+                {% endif %}
+              </td>
+              <td class="is-muted">{{ ot.approved_by.username|default:"—" }}</td>
+              <td style="max-width:260px;overflow-wrap:anywhere">{{ ot.reason }}</td>
+              <td>
+                {% if ot.approved %}
+                  <form method="post" action="{% url 'admin_overtime_revoke' ot.id %}" onsubmit="return confirm('Revoke this overtime authorization? Reprocess any editable payroll afterward.');" class="ad-row" style="flex-wrap:nowrap">
+                    {% csrf_token %}
+                    <label for="ot-revoke-{{ ot.id }}" class="sr-only">Reason for revoking</label>
+                    <input id="ot-revoke-{{ ot.id }}" type="text" name="revoke_reason" required minlength="5" maxlength="80" placeholder="Reason for revoking" class="ad-input ad-input--sm" style="min-width:170px">
+                    <button type="submit" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Revoke</button>
+                  </form>
+                {% else %}
+                  <span class="ad-help">Authorize with the form above</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7"><div class="ad-empty" style="padding:24px"><p>No overtime authorizations yet.</p></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== Travel ===================== -->
+  <section class="ad-card bio-anchor" id="travel" aria-labelledby="travel-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="travel-title">Travel orders</h2>
+        <p>Mark official travel so those days count as present without editing any scans.</p>
+      </div>
+    </div>
+
+    <form id="travelForm" class="ad-form ad-card__body">
+      {% csrf_token %}
+      <div class="ad-form-grid" style="--ad-field-min: 200px">
+        <div class="ad-field">
+          <label for="travelEmployee" class="ad-label">Employee<span class="ad-req" aria-hidden="true">*</span></label>
+          <select name="profile_id" id="travelEmployee" required>
+            <option value="">Select employee</option>
+            {% for emp in employees %}
+              <option value="{{ emp.id }}">{{ emp.user.get_full_name|default:emp.user.username }} ({{ emp.branch.name }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="ad-field">
+          <label for="travelStart" class="ad-label">Start date<span class="ad-req" aria-hidden="true">*</span></label>
+          <input type="date" name="start_date" id="travelStart" required>
+        </div>
+        <div class="ad-field">
+          <label for="travelEnd" class="ad-label">End date<span class="ad-req" aria-hidden="true">*</span></label>
+          <input type="date" name="end_date" id="travelEnd" required>
+        </div>
+        <div class="ad-field">
+          <label for="travelReason" class="ad-label">Purpose</label>
+          <input type="text" name="reason" id="travelReason" placeholder="Official travel">
+        </div>
+      </div>
+      <div class="ad-row ad-row--end" style="margin-top:16px">
+        <button type="submit" class="ihrt-btn ihrt-btn--primary" id="travelSubmit">
+          <iconify-icon icon="ph:airplane-takeoff" aria-hidden="true"></iconify-icon> Add travel order
+        </button>
+      </div>
+    </form>
+
+    <div style="border-top:1px solid var(--ihrt-line)">
+      <div class="ad-card__head" style="border-bottom:0;padding-bottom:8px"><h3>Current and recent travel</h3></div>
+      {% if travel_orders %}
+        <div class="ad-only-wide">
+          <div class="ad-table-wrap">
+            <table class="ad-table">
+              <thead>
+                <tr>
+                  <th scope="col">Employee</th>
+                  <th scope="col">Branch</th>
+                  <th scope="col">Dates</th>
+                  <th scope="col">Purpose</th>
+                  <th scope="col" class="is-actions"><span class="sr-only">Action</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for travel in travel_orders %}
+                  <tr>
+                    <td class="is-strong"><span class="ad-truncate" style="--ad-trunc:240px">{{ travel.employee.user.get_full_name|default:travel.employee.user.username }}</span></td>
+                    <td class="is-muted"><span class="ad-truncate" style="--ad-trunc:200px">{{ travel.employee.branch.name }}</span></td>
+                    <td class="is-nowrap">{{ travel.start_date }} to {{ travel.end_date }}</td>
+                    <td><span class="ad-truncate" style="--ad-trunc:260px" title="{{ travel.reason|default:'Official travel' }}">{{ travel.reason|default:"Official travel" }}</span></td>
+                    <td class="is-actions">
+                      <button type="button" onclick="deleteTravel('{{ travel.id }}')" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Delete</button>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="ad-cards ad-only-narrow">
+          {% for travel in travel_orders %}
+            <article class="ad-rec">
+              <div class="ad-rec__top">
+                <div style="min-width:0">
+                  <p class="ad-rec__title">{{ travel.employee.user.get_full_name|default:travel.employee.user.username }}</p>
+                  <p class="ad-rec__sub">{{ travel.employee.branch.name }}</p>
+                </div>
+              </div>
+              <dl class="ad-rec__kv">
+                <div style="grid-column:1/-1"><dt>Dates</dt><dd>{{ travel.start_date }} to {{ travel.end_date }}</dd></div>
+                <div style="grid-column:1/-1"><dt>Purpose</dt><dd>{{ travel.reason|default:"Official travel" }}</dd></div>
+              </dl>
+              <div class="ad-rec__actions">
+                <button type="button" onclick="deleteTravel('{{ travel.id }}')" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Delete travel order</button>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="ad-empty" style="padding-top:16px">
+          <iconify-icon icon="ph:airplane-tilt" aria-hidden="true"></iconify-icon>
+          <h3>No travel orders</h3>
+          <p>Travel orders you add appear here.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- ===================== Holidays ===================== -->
+  <section class="ad-card bio-anchor" id="holidays" aria-labelledby="holiday-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="holiday-title">Holidays and work suspensions</h2>
+        <p>Non-working days used when computing attendance and payroll. A date affects payroll only after it is verified against an official source.</p>
+      </div>
+      <button id="openHolidayModal" type="button" class="ihrt-btn ihrt-btn--primary ihrt-btn--sm">
+        <iconify-icon icon="ph:calendar-plus" aria-hidden="true"></iconify-icon> Add date
+      </button>
+    </div>
+
+    {% if holidays %}
+      <div class="ad-card__body ad-grid ad-scroll-y" style="--ad-min: 280px; --ad-max-h: 640px">
+        {% for holiday in holidays %}
+          <article class="ad-rec bio-holiday">
+            <div class="ad-rec__top">
+              <div style="min-width:0">
+                <p class="ad-rec__title">{{ holiday.name }}</p>
+                <p class="ad-rec__sub">
+                  {{ holiday.date|date:"D, M d, Y" }} &middot;
+                  {% if holiday.scope == 'branch' and holiday.branch %}{{ holiday.branch.name }}{% else %}{{ holiday.get_scope_display }}{% endif %}
+                </p>
+              </div>
+            </div>
+            <div class="ad-row" style="gap:6px">
+              <span class="ihrt-badge {% if holiday.type == 'holiday' %}ihrt-badge--ok{% elif holiday.type == 'suspension' %}ihrt-badge--bad{% else %}ihrt-badge--warn{% endif %}">{{ holiday.get_type_display }}</span>
+              {% if holiday.is_payroll_verified %}
+                <span class="ihrt-badge ihrt-badge--info">Verified for payroll</span>
+              {% else %}
+                <span class="ihrt-badge ihrt-badge--neutral">Not verified</span>
+              {% endif %}
+            </div>
+            {% if holiday.notes %}<p class="ad-help">{{ holiday.notes }}</p>{% endif %}
+            {% if holiday.source_reference %}<p class="ad-help"><strong>Source:</strong> {{ holiday.source_reference }}</p>{% endif %}
+            <p class="bio-holiday__impact">
+              <strong>Payroll effect:</strong>
+              {% if not holiday.is_payroll_verified %}
+                None until the official source is verified
+              {% elif holiday.type == 'holiday' %}
+                Excluded from JO actual-days pay and from absence counting
+              {% elif holiday.type == 'suspension' %}
+                Excluded from expected attendance
+              {% else %}
+                Special non-working day rules apply
+              {% endif %}
+            </p>
+            <div class="ad-rec__actions" style="margin-top:4px">
+              <button type="button" class="edit-holiday-btn ihrt-btn ihrt-btn--secondary ihrt-btn--sm"
+                      data-holiday-id="{{ holiday.id }}"
+                      data-name="{{ holiday.name }}"
+                      data-date="{{ holiday.date|date:'Y-m-d' }}"
+                      data-type="{{ holiday.type }}"
+                      data-scope="{{ holiday.scope }}"
+                      data-branch="{{ holiday.branch_id|default:'' }}"
+                      data-notes="{{ holiday.notes|default:'' }}"
+                      data-source-reference="{{ holiday.source_reference|default:'' }}"
+                      data-payroll-verified="{% if holiday.is_payroll_verified %}1{% else %}0{% endif %}">Edit</button>
+              <button type="button" class="delete-holiday-btn ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm" data-holiday-id="{{ holiday.id }}">Delete</button>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="ad-empty">
+        <iconify-icon icon="ph:calendar-blank" aria-hidden="true"></iconify-icon>
+        <h3>No holidays or suspensions yet</h3>
+        <p>Add regular holidays, special non-working days, and suspension orders as they are announced.</p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+<!-- ===================== Holiday dialog ===================== -->
+<div id="holidayModal" class="ad-modal hidden" role="dialog" aria-modal="true" aria-labelledby="holidayModalTitle">
+  <div class="ad-modal__panel">
+    <div class="ad-modal__head">
+      <div>
+        <h2 id="holidayModalTitle">Add holiday or suspension</h2>
+        <p>Check the date against the proclamation or memorandum before saving.</p>
+      </div>
+      <button type="button" id="closeHolidayModal" class="ad-icon-btn ad-icon-btn--sm" data-modal-close>
+        <iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon><span class="sr-only">Close</span>
+      </button>
+    </div>
+
+    <form id="holidayForm" class="ad-form" style="display:contents">
+      {% csrf_token %}
+      <input type="hidden" id="holidayId" name="holiday_id">
+      <div class="ad-modal__body ad-stack ad-stack--sm">
+        <div class="ad-field">
+          <label for="holidayName" class="ad-label">Name<span class="ad-req" aria-hidden="true">*</span></label>
+          <input id="holidayName" name="name" type="text" required placeholder="For example: Bonifacio Day">
+        </div>
+        <div class="ad-form-grid" style="--ad-field-min: 180px">
+          <div class="ad-field">
+            <label for="holidayDate" class="ad-label">Date<span class="ad-req" aria-hidden="true">*</span></label>
+            <input id="holidayDate" name="date" type="date" required>
+          </div>
+          <div class="ad-field">
+            <label for="holidayType" class="ad-label">Type</label>
+            <select id="holidayType" name="type">
+              <option value="holiday">Regular holiday</option>
+              <option value="suspension">Work suspension</option>
+              <option value="special">Special non-working day</option>
+            </select>
+          </div>
+          <div class="ad-field">
+            <label for="holidayScope" class="ad-label">Applies to</label>
+            <select id="holidayScope" name="scope">
+              <option value="nationwide">Nationwide</option>
+              <option value="region">MIMAROPA Region</option>
+              <option value="branch">One branch</option>
+            </select>
+          </div>
+          <div class="ad-field" id="holidayBranchWrap">
+            <label for="holidayBranch" class="ad-label">Branch</label>
+            <select id="holidayBranch" name="branch">
+              <option value="">Select branch</option>
+              {% for val, label in branches %}
+                <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="ad-field">
+          <label for="holidaySourceReference" class="ad-label">Official source</label>
+          <input id="holidaySourceReference" name="source_reference" type="text" placeholder="Proclamation, memorandum, or suspension order number">
+        </div>
+        <div class="ad-field">
+          <label for="holidayNotes" class="ad-label">Notes</label>
+          <textarea id="holidayNotes" name="notes" rows="3"></textarea>
+        </div>
+        <label class="ad-check">
+          <input id="holidayPayrollVerified" name="is_payroll_verified" type="checkbox">
+          <span>
+            <span class="ad-check__label">Verified for payroll</span>
+            <span class="ad-check__help">Check only after the official source and exact coverage are confirmed.</span>
+          </span>
+        </label>
+      </div>
+      <div class="ad-modal__foot">
+        <button type="button" id="cancelHolidayModal" class="ihrt-btn ihrt-btn--secondary" data-modal-close>Cancel</button>
+        <button type="submit" class="ihrt-btn ihrt-btn--primary" id="holidaySave">Save date</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var csrf = function () { return document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''; };
+  var root = document.querySelector('[data-can-import]');
+  var serverCanImport = root && root.getAttribute('data-can-import') === '1';
+
+  // Show a spinner on buttons that start a slow server action
+  document.querySelectorAll('[data-loading]').forEach(function (btn) {
+    btn.closest('form')?.addEventListener('submit', function () { btn.classList.add('btn-loading'); });
+  });
+
+  // ---------- Import ----------
+  var dropZone = document.getElementById('dropZone');
+  var fileInput = document.getElementById('file');
+  var fileName = document.getElementById('fileName');
+  var importBtn = document.getElementById('importBtn');
+  var branchSelect = document.getElementById('branchSelect');
+
+  function canImportNow() {
+    var hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+    var hasBranch = branchSelect && branchSelect.value.trim().length > 0;
+    return hasBranch && (hasFile || serverCanImport);
+  }
+  function refreshImport() {
+    if (fileInput && fileInput.files && fileInput.files.length) {
+      fileName.textContent = fileInput.files[0].name;
+      fileName.classList.add('is-set');
+    } else {
+      fileName.textContent = 'No file selected';
+      fileName.classList.remove('is-set');
+    }
+    if (importBtn) importBtn.disabled = !canImportNow();
+  }
+  if (dropZone && fileInput) {
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.add('is-over'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.remove('is-over'); });
+    });
+    dropZone.addEventListener('drop', function (e) {
+      if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; refreshImport(); }
+    });
+    fileInput.addEventListener('change', refreshImport);
+  }
+  branchSelect?.addEventListener('change', refreshImport);
+  refreshImport();
+
+  // ---------- Travel orders ----------
+  var travelForm = document.getElementById('travelForm');
+  travelForm?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var btn = document.getElementById('travelSubmit');
+    btn?.classList.add('btn-loading');
+    try {
+      var res = await fetch("{% url 'admin_add_travel' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf(), 'Accept': 'application/json' },
+        body: new FormData(travelForm)
+      });
+      var data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'The travel order could not be added.');
+      window.showToast(data.message || 'Travel order added', 'success');
+      setTimeout(function () { window.location.reload(); }, 600);
+    } catch (err) {
+      window.showToast(err.message, 'error');
+      btn?.classList.remove('btn-loading');
+    }
+  });
+
+  window.deleteTravel = async function (travelId) {
+    if (!confirm('Delete this travel order? Those days will count as regular workdays again.')) return;
+    try {
+      var res = await fetch('/admin-ui/travel/' + travelId + '/delete/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf(), 'Accept': 'application/json' }
+      });
+      var data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'The travel order could not be deleted.');
+      window.location.reload();
+    } catch (err) {
+      window.showToast(err.message, 'error');
+    }
+  };
+
+  // ---------- Holidays ----------
+  var modal = document.getElementById('holidayModal');
+  var form = document.getElementById('holidayForm');
+  var title = document.getElementById('holidayModalTitle');
+  var f = {
+    id: document.getElementById('holidayId'),
+    name: document.getElementById('holidayName'),
+    date: document.getElementById('holidayDate'),
+    type: document.getElementById('holidayType'),
+    scope: document.getElementById('holidayScope'),
+    branch: document.getElementById('holidayBranch'),
+    notes: document.getElementById('holidayNotes'),
+    source: document.getElementById('holidaySourceReference'),
+    verified: document.getElementById('holidayPayrollVerified'),
+    branchWrap: document.getElementById('holidayBranchWrap')
+  };
+  function toggleBranch() { if (f.branchWrap) f.branchWrap.style.display = f.scope.value === 'branch' ? '' : 'none'; }
+  f.scope?.addEventListener('change', toggleBranch);
+
+  document.getElementById('openHolidayModal')?.addEventListener('click', function () {
+    form.reset(); f.id.value = ''; f.verified.checked = false;
+    title.textContent = 'Add holiday or suspension';
+    toggleBranch(); window.adModal.open(modal);
+  });
+
+  document.querySelectorAll('.edit-holiday-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var d = this.dataset;
+      title.textContent = 'Edit holiday or suspension';
+      f.id.value = d.holidayId || '';
+      f.name.value = d.name || '';
+      f.date.value = d.date || '';
+      f.type.value = d.type || 'holiday';
+      f.scope.value = d.scope || 'region';
+      f.branch.value = d.branch || '';
+      f.notes.value = d.notes || '';
+      f.source.value = d.sourceReference || '';
+      f.verified.checked = d.payrollVerified === '1';
+      toggleBranch(); window.adModal.open(modal);
+    });
+  });
+
+  form?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var id = f.id.value;
+    var url = id ? '/admin-ui/biometrics/holidays/' + id + '/update/' : '/admin-ui/biometrics/holidays/create/';
+    var btn = document.getElementById('holidaySave');
+    btn?.classList.add('btn-loading');
+    try {
+      var res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf(), 'Accept': 'application/json' }, body: new FormData(form) });
+      var data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'The date could not be saved.');
+      window.location.reload();
+    } catch (err) {
+      window.showToast(err.message, 'error');
+      btn?.classList.remove('btn-loading');
+    }
+  });
+
+  document.querySelectorAll('.delete-holiday-btn').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var id = this.dataset.holidayId;
+      if (!id || !confirm('Delete this date? Payroll computed after this will no longer treat it as non-working.')) return;
+      try {
+        var res = await fetch('/admin-ui/biometrics/holidays/' + id + '/delete/', { method: 'POST', headers: { 'X-CSRFToken': csrf(), 'Accept': 'application/json' } });
+        var data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'The date could not be deleted.');
+        window.location.reload();
+      } catch (err) {
+        window.showToast(err.message, 'error');
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

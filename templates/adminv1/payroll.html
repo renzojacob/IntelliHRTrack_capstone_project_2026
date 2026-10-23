@@ -1,0 +1,658 @@
+{% extends "admin/base_admin.html" %}
+{% load static %}
+
+{% block title %}Payroll | IntelliHRTrack{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+<style>
+  .pr-filters { display: grid; gap: 16px 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); align-items: end; }
+  .pr-period-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; }
+  .pr-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--ihrt-field-soft); color: var(--ihrt-field); }
+  .pr-chip button { width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; display: grid; place-items: center; }
+  .pr-chip button:hover { background: color-mix(in srgb, var(--ihrt-field) 15%, transparent); }
+  .pr-net { font-weight: 750; color: var(--ihrt-field); }
+  .pr-issue { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; }
+  .pr-issue--warn { color: var(--ihrt-warn); }
+  .pr-issue--ok { color: var(--ihrt-ok); }
+  .pr-check-grid { display: grid; gap: 1px; background: var(--ihrt-line); grid-template-columns: 1fr; }
+  @media (min-width: 560px) { .pr-check-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1000px) { .pr-check-grid { grid-template-columns: repeat(3, 1fr); } }
+  .pr-check { display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: var(--ihrt-surface); font-size: 14.5px; }
+  .pr-check strong { margin-left: auto; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .pr-check.is-flag strong { color: var(--ihrt-warn); }
+  .pr-check.is-zero { color: var(--ihrt-muted); }
+  .pr-rules { display: grid; gap: 1px; background: var(--ihrt-line); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .pr-rules > div { background: var(--ihrt-surface); padding: 14px 18px; }
+  .pr-rules dt { font-size: 13px; color: var(--ihrt-muted); }
+  .pr-rules dd { margin: 4px 0 0; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .pr-reference > summary { list-style: none; cursor: pointer; }
+  .pr-reference > summary::-webkit-details-marker { display: none; }
+  .pr-reference > summary .ad-expand-icon { transition: transform .2s ease; color: var(--ihrt-muted); }
+  .pr-reference[open] > summary .ad-expand-icon { transform: rotate(180deg); }
+  .pr-batch-actions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 220px; }
+  .pr-mcard summary { list-style: none; cursor: pointer; }
+  .pr-mcard summary::-webkit-details-marker { display: none; }
+  .pr-scroll-hint { display: none; align-items: center; gap: 6px; padding: 8px 20px; font-size: 13px; color: var(--ihrt-muted); border-bottom: 1px solid var(--ihrt-line); }
+  @media (max-width: 1439px) { .pr-scroll-hint { display: flex; } }
+  #dtrModal .ad-table td, #dtrModal .ad-table th { padding: 8px 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<form id="csrfOnlyForm" class="hidden">{% csrf_token %}</form>
+
+<!-- ===================== Header ===================== -->
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <h1>Payroll</h1>
+    <p>Choose the branch, dates, and employee type, check the warnings, then process. Late and undertime deductions are computed from the DTR.</p>
+    <div class="ad-meta">
+      <span class="ad-meta__item"><iconify-icon icon="ph:buildings" aria-hidden="true"></iconify-icon>
+        <strong>{% if is_superadmin %}{% if selected_branch_name %}{{ selected_branch_name }}{% else %}All branches{% endif %}{% else %}{{ request.user.profile.branch.name|default:"Assigned branch" }}{% endif %}</strong>
+      </span>
+      <span class="ad-meta__item"><iconify-icon icon="ph:calendar-blank" aria-hidden="true"></iconify-icon><strong>{{ selected_period.name|default:"No period selected" }}</strong></span>
+      <span class="ihrt-badge {% if payroll_status == 'Finalized' %}ihrt-badge--info{% elif payroll_status == 'Completed' %}ihrt-badge--ok{% else %}ihrt-badge--warn{% endif %}" style="align-self:center">{{ payroll_status|default:"Draft" }}</span>
+    </div>
+  </div>
+  <div class="ad-page-head__actions">
+    <button id="exportPayrollBtn" type="button" class="ihrt-btn ihrt-btn--secondary">
+      <iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon> Print
+    </button>
+    <button id="openCreatePeriodBtn" type="button" class="ihrt-btn ihrt-btn--secondary">
+      <iconify-icon icon="ph:calendar-plus" aria-hidden="true"></iconify-icon> Set dates
+    </button>
+    <button id="processPayrollBtn" type="button" class="ihrt-btn ihrt-btn--primary" {% if not selected_period %}disabled title="Set the payroll dates first"{% endif %}>
+      <iconify-icon icon="ph:play" aria-hidden="true"></iconify-icon> Process payroll
+    </button>
+  </div>
+</header>
+
+<!-- ===================== Filters ===================== -->
+<section class="ad-card" aria-label="Payroll filters">
+  <form method="get" id="payrollFilterForm" class="ad-form ad-card__body ad-stack ad-stack--sm">
+    <div class="pr-filters">
+      <div class="ad-field">
+        <label class="ad-label" for="branchSelect">Branch</label>
+        {% if is_superadmin %}
+          <select name="branch" id="branchSelect">
+            {% for branch in branches %}
+              <option value="{{ branch.id }}" {% if selected_branch == branch.id %}selected{% endif %}>{{ branch.name }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <div class="ad-readonly" id="branchSelect"><iconify-icon icon="ph:lock-simple" aria-hidden="true"></iconify-icon>{{ request.user.profile.branch.name|default:"Assigned branch" }}</div>
+          <input type="hidden" name="branch" value="{{ request.user.profile.branch.id }}">
+        {% endif %}
+      </div>
+
+      <div class="ad-field">
+        <span class="ad-label" id="periodLabel">Payroll dates</span>
+        <input type="hidden" name="period" value="{% if selected_period %}{{ selected_period.id }}{% endif %}">
+        <button id="openDatePeriodBtn" type="button" class="ad-input pr-period-btn" aria-labelledby="periodLabel openDatePeriodBtn">
+          <span>{% if selected_period %}{{ selected_period.start_date|date:"M d" }} to {{ selected_period.end_date|date:"M d, Y" }}{% else %}Choose dates{% endif %}</span>
+          <iconify-icon icon="ph:calendar-blank" aria-hidden="true"></iconify-icon>
+        </button>
+      </div>
+
+      <div class="ad-field">
+        <label class="ad-label" for="typeSelect">Employee type</label>
+        <select name="type" id="typeSelect">
+          <option value="ALL" {% if selected_emp_type == "ALL" or request.GET.type == "ALL" or not request.GET.type %}selected{% endif %}>All types</option>
+          <option value="JO" {% if selected_emp_type == "JO" or request.GET.type == "JO" %}selected{% endif %}>Job Order (JO)</option>
+          <option value="COS" {% if selected_emp_type == "COS" or request.GET.type == "COS" %}selected{% endif %}>Contract of Service (COS)</option>
+          <option value="PERMANENT" {% if selected_emp_type == "PERMANENT" or request.GET.type == "PERMANENT" %}selected{% endif %}>Permanent</option>
+        </select>
+      </div>
+
+      <div class="ad-field">
+        <label class="ad-label" for="searchInput">Employee</label>
+        <input type="search" id="searchInput" name="search" value="{{ request.GET.search }}" placeholder="Name or ID">
+      </div>
+    </div>
+
+    <div class="ad-row ad-row--between">
+      <div id="activeFilterChips" class="ad-row" style="gap:6px">
+        {% if request.GET.type and request.GET.type != "ALL" %}
+          <span class="pr-chip">Type: {{ request.GET.type }}<button type="button" class="remove-chip" data-filter="type" aria-label="Remove type filter"><iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon></button></span>
+        {% endif %}
+        {% if request.GET.search %}
+          <span class="pr-chip">Search: {{ request.GET.search }}<button type="button" class="remove-chip" data-filter="search" aria-label="Remove search"><iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon></button></span>
+        {% endif %}
+      </div>
+      <div class="ad-row">
+        <button type="button" id="resetFilters" class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm">Reset</button>
+        <button type="submit" id="previewPayrollBtn" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">
+          <iconify-icon icon="ph:eye" aria-hidden="true"></iconify-icon> Preview payroll
+        </button>
+      </div>
+    </div>
+  </form>
+</section>
+
+{% if dtr_locked_count %}
+  <div class="ad-alert ad-alert--warn">
+    <iconify-icon icon="ph:lock-simple" aria-hidden="true"></iconify-icon>
+    <div class="ad-alert__body"><strong>{{ dtr_locked_count }}</strong> DTR record{{ dtr_locked_count|pluralize }} for this period {{ dtr_locked_count|pluralize:"is,are" }} locked. Reprocessing is blocked until {{ dtr_locked_count|pluralize:"it is,they are" }} unlocked.</div>
+  </div>
+{% endif %}
+
+<!-- ===================== Totals ===================== -->
+<section aria-label="Payroll totals" class="ad-stats ad-stats--3">
+  <div class="ad-stat ad-stat--emph ad-tone-field">
+    <p class="ad-stat__label">Total net pay</p>
+    <p class="ad-stat__value ad-stat__value--money counter-number" data-prefix="&#8369;" data-decimals="2" data-target="{{ total_payroll|default:'0' }}">&#8369;{{ total_payroll|default:"0.00" }}</p>
+    <p class="ad-stat__hint">{% if payroll_trend_percent %}{{ payroll_trend_percent }}% compared with the previous period{% else %}For the selected period{% endif %}</p>
+  </div>
+  <div class="ad-stat ad-tone-bad">
+    <p class="ad-stat__label">Late and undertime deductions</p>
+    <p class="ad-stat__value ad-stat__value--money counter-number" data-prefix="&#8369;" data-decimals="2" data-target="{{ attendance_deductions|default:'0' }}">&#8369;{{ attendance_deductions|default:"0.00" }}</p>
+    <p class="ad-stat__hint">Computed from the DTR</p>
+  </div>
+  <div class="ad-stat ad-tone-info">
+    <p class="ad-stat__label">Government contributions</p>
+    <p class="ad-stat__value ad-stat__value--money counter-number" data-prefix="&#8369;" data-decimals="2" data-target="{{ gov_contributions|default:'0' }}">&#8369;{{ gov_contributions|default:"0.00" }}</p>
+    <p class="ad-stat__hint">SSS, GSIS, PhilHealth, Pag-IBIG</p>
+  </div>
+  <div class="ad-stat ad-tone-field">
+    <p class="ad-stat__label">Employees included</p>
+    <p class="ad-stat__value">{{ employees|length }}</p>
+  </div>
+  <div class="ad-stat ad-tone-info">
+    <p class="ad-stat__label">Official travel days</p>
+    <p class="ad-stat__value">{% firstof travel_count "0" %}</p>
+  </div>
+  <div class="ad-stat ad-tone-ok">
+    <p class="ad-stat__label">DTRs locked</p>
+    <p class="ad-stat__value">{% firstof dtr_locked_count "0" %}<span class="ad-muted" style="font-weight:500;font-size:.6em"> locked</span> &middot; {% firstof dtr_unlocked_count "0" %}<span class="ad-muted" style="font-weight:500;font-size:.6em"> unlocked</span></p>
+  </div>
+</section>
+
+<!-- ===================== Checks before processing ===================== -->
+<section class="ad-card" aria-labelledby="check-title">
+  <div class="ad-card__head">
+    <div>
+      <h2 id="check-title">Check before processing</h2>
+      <p>Resolve these first. Each one can make an employee's computed pay wrong.</p>
+    </div>
+  </div>
+  <div class="pr-check-grid">
+    <div class="pr-check {% if missing_checkout_count %}is-flag{% else %}is-zero{% endif %}"><iconify-icon icon="ph:sign-out" aria-hidden="true"></iconify-icon>Missing time-out scans<strong>{% firstof missing_checkout_count "0" %}</strong></div>
+    <div class="pr-check {% if missing_lunch_count %}is-flag{% else %}is-zero{% endif %}"><iconify-icon icon="ph:fork-knife" aria-hidden="true"></iconify-icon>Missing lunch scans<strong>{% firstof missing_lunch_count "0" %}</strong></div>
+    <div class="pr-check {% if no_salary_count %}is-flag{% else %}is-zero{% endif %}"><iconify-icon icon="ph:money" aria-hidden="true"></iconify-icon>No salary set<strong>{% firstof no_salary_count "0" %}</strong></div>
+    <div class="pr-check {% if missing_contribution_count %}is-flag{% else %}is-zero{% endif %}"><iconify-icon icon="ph:shield" aria-hidden="true"></iconify-icon>Contributions not set<strong>{% firstof missing_contribution_count "0" %}</strong></div>
+    <div class="pr-check {% if ot_disqualified_count %}is-flag{% else %}is-zero{% endif %}"><iconify-icon icon="ph:clock-countdown" aria-hidden="true"></iconify-icon>Overtime not payable<strong>{% firstof ot_disqualified_count "0" %}</strong></div>
+    <div class="pr-check is-zero"><iconify-icon icon="ph:airplane-tilt" aria-hidden="true"></iconify-icon>Active travel orders<strong>{% firstof travel_count "0" %}</strong></div>
+  </div>
+</section>
+
+<!-- ===================== Employee payroll ===================== -->
+<section class="ad-card" aria-labelledby="emp-pay-title">
+  <div class="ad-card__head">
+    <div>
+      <h2 id="emp-pay-title">Employee payroll</h2>
+      <p>Expand a row for rates and every deduction. Open the DTR to see the days behind the numbers.</p>
+    </div>
+    <span class="ihrt-badge ihrt-badge--neutral">{{ employees|length }} employee{{ employees|length|pluralize }}</span>
+  </div>
+
+  {% if employees %}
+    <!-- Wide screens: table -->
+    <div class="ad-only-wide">
+      <p class="pr-scroll-hint"><iconify-icon icon="ph:arrows-left-right" aria-hidden="true"></iconify-icon> Scroll sideways to see every column. Employee names stay in place.</p>
+      <div class="ad-table-wrap">
+        <table class="ad-table ad-table--sticky-first" id="payrollTable" style="min-width: 860px">
+          <thead>
+            <tr>
+              <th scope="col">Employee</th>
+              <th scope="col" class="is-num" title="Days present / days absent">Present / absent</th>
+              <th scope="col" class="is-num" title="Late minutes / undertime minutes">Late / UT min</th>
+              <th scope="col" class="is-num">Deductions</th>
+              <th scope="col" class="is-num">Net pay</th>
+              <th scope="col">DTR and issues</th>
+              <th scope="col" class="is-actions"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for employee in employees %}
+              {% firstof employee.employment_type employee.emp_type employee.type "" as et %}{% firstof employee.name employee.full_name employee.user.username "Employee" as ename %}{% firstof employee.attendance_summary.total_late_minutes employee.late_minutes "0" as late %}{% firstof employee.attendance_summary.total_undertime_minutes employee.undertime_minutes "0" as ut %}
+              <tr class="payroll-row" data-employee-id="{{ employee.id }}">
+                <td>
+                  <div class="ad-row" style="flex-wrap:nowrap;gap:10px">
+                    <button type="button" class="expand-btn ad-expand ad-icon-btn ad-icon-btn--sm" aria-expanded="false" data-target="{{ employee.id }}" aria-controls="detail-{{ employee.id }}">
+                      <iconify-icon icon="ph:caret-down" aria-hidden="true"></iconify-icon><span class="sr-only">Show breakdown for {{ ename }}</span>
+                    </button>
+                    <div style="min-width:0">
+                      <p class="ad-cell-primary ad-truncate" style="--ad-trunc:220px" title="{{ ename }}">{{ ename }}</p>
+                      <p class="ad-cell-sub">{% include "admin/_emp_type_tag.html" with t=et %} &nbsp;ID {% firstof employee.employee_id employee.id %}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="is-num">{% firstof employee.attendance_summary.days_present employee.days_present "0" %} / {% firstof employee.attendance_summary.days_absent employee.absences "0" %}</td>
+                <td class="is-num"><span class="{% if late != "0" %}ad-neg{% endif %}">{{ late }}</span> / <span class="{% if ut != "0" %}ad-warn-text{% endif %}">{{ ut }}</span></td>
+                <td class="is-num">&#8369;{% firstof employee.deductions employee.deductions_total "0.00" %}</td>
+                <td class="is-num pr-net" title="Gross earnings minus deductions">&#8369;{% firstof employee.net_pay employee.computed_payroll.net "0.00" %}</td>
+                <td>
+                  {% if employee.dtr_locked %}
+                    <span class="ihrt-badge ihrt-badge--ok" title="Finalized by {{ employee.dtr_finalized_by }} on {{ employee.dtr_finalized_at|date:'M d, Y H:i' }}"><iconify-icon icon="ph:lock-simple" aria-hidden="true"></iconify-icon>Locked</span>
+                  {% elif employee.dtr_finalized %}
+                    <span class="ihrt-badge ihrt-badge--warn" title="Unlocked by {{ employee.dtr_unlocked_by }}: {{ employee.dtr_unlock_reason }}"><iconify-icon icon="ph:lock-open" aria-hidden="true"></iconify-icon>Unlocked</span>
+                  {% else %}
+                    <span class="ihrt-badge ihrt-badge--neutral">Not final</span>
+                  {% endif %}
+                  <div style="margin-top:4px">
+                  {% if employee.issues %}
+                    <span class="pr-issue pr-issue--warn" title="{{ employee.issues }}"><iconify-icon icon="ph:warning" aria-hidden="true"></iconify-icon>Review</span>
+                  {% elif employee.attendance_summary.has_missing_logs %}
+                    <span class="pr-issue pr-issue--warn" title="Missing attendance scans"><iconify-icon icon="ph:warning" aria-hidden="true"></iconify-icon>Missing scans</span>
+                  {% else %}
+                    <span class="ad-cell-sub">No issues</span>
+                  {% endif %}
+                  </div>
+                </td>
+                <td class="is-actions">
+                  <div class="ad-row">
+                    <button type="button" class="view-dtr-btn ihrt-btn ihrt-btn--secondary ihrt-btn--sm" title="View daily time record"
+                            data-employee-id="{{ employee.id }}" data-employee-name="{{ ename }}"
+                            data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escape }}'>DTR</button>
+                    {% if employee.payroll_item_id %}
+                      <a href="{% url 'admin_payroll_item_dtr_print' employee.payroll_item_id %}" target="_blank" rel="noopener" class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm" title="Print the saved Civil Service Form No. 48">
+                        <iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon><span class="sr-only">Print DTR</span>
+                      </a>
+                    {% else %}
+                      <button type="button" class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm" disabled title="Process payroll first to print the saved DTR">
+                        <iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon><span class="sr-only">Print DTR (process payroll first)</span>
+                      </button>
+                    {% endif %}
+                    {% if selected_period %}
+                      <a href="{% url 'admin_payslip' employee.profile_id selected_period.id %}" target="_blank" rel="noopener" class="ihrt-btn ihrt-btn--soft ihrt-btn--sm">Payslip</a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              <tr class="expand-detail-row ad-detail-row hidden" data-detail-for="{{ employee.id }}" id="detail-{{ employee.id }}">
+                <td colspan="7">
+                  {% include "admin/_payroll_breakdown.html" with e=employee et=et %}
+                </td>
+              </tr>
+              
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Narrow screens: one card per employee -->
+    <div class="ad-cards ad-only-narrow">
+      {% for employee in employees %}
+        {% firstof employee.employment_type employee.emp_type employee.type "" as et %}{% firstof employee.name employee.full_name employee.user.username "Employee" as ename %}
+        <article class="ad-rec pr-mcard">
+          <div class="ad-rec__top">
+            <div style="min-width:0">
+              <p class="ad-rec__title">{{ ename }}</p>
+              <p class="ad-rec__sub">{% include "admin/_emp_type_tag.html" with t=et %} &nbsp;ID {% firstof employee.employee_id employee.id %}</p>
+            </div>
+            <div style="text-align:right">
+              <p class="ad-cell-sub">Net pay</p>
+              <p class="pr-net ad-money" style="font-size:17px">&#8369;{% firstof employee.net_pay employee.computed_payroll.net "0.00" %}</p>
+            </div>
+          </div>
+          <dl class="ad-rec__kv">
+            <div><dt>Present / absent</dt><dd>{% firstof employee.attendance_summary.days_present employee.days_present "0" %} / {% firstof employee.attendance_summary.days_absent employee.absences "0" %}</dd></div>
+            <div><dt>Late / UT minutes</dt><dd>{% firstof employee.attendance_summary.total_late_minutes employee.late_minutes "0" %} / {% firstof employee.attendance_summary.total_undertime_minutes employee.undertime_minutes "0" %}</dd></div>
+            <div><dt>Deductions</dt><dd>&#8369;{% firstof employee.deductions employee.deductions_total "0.00" %}</dd></div>
+            <div><dt>DTR</dt><dd>{% if employee.dtr_locked %}Locked{% elif employee.dtr_finalized %}Unlocked{% else %}Not final{% endif %}</dd></div>
+          </dl>
+          {% if employee.issues or employee.attendance_summary.has_missing_logs %}
+            <p class="pr-issue pr-issue--warn" style="margin-top:10px"><iconify-icon icon="ph:warning" aria-hidden="true"></iconify-icon>{{ employee.issues|default:"Missing attendance scans" }}</p>
+          {% endif %}
+          <details style="margin-top:12px">
+            <summary class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm" style="width:100%;justify-content:space-between">Full breakdown <iconify-icon icon="ph:caret-down" aria-hidden="true"></iconify-icon></summary>
+            <div style="margin-top:10px">{% include "admin/_payroll_breakdown.html" with e=employee et=et %}</div>
+          </details>
+          <div class="ad-rec__actions">
+            <button type="button" class="view-dtr-btn ihrt-btn ihrt-btn--secondary ihrt-btn--sm"
+                    data-employee-id="{{ employee.id }}" data-employee-name="{{ ename }}"
+                    data-dtr-records='{{ employee.dtr_records_json|default:"[]"|escape }}'>View DTR</button>
+            {% if selected_period %}
+              <a href="{% url 'admin_payslip' employee.profile_id selected_period.id %}" target="_blank" rel="noopener" class="ihrt-btn ihrt-btn--soft ihrt-btn--sm">Payslip</a>
+            {% endif %}
+          </div>
+        </article>
+        
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="ad-empty">
+      <iconify-icon icon="ph:users-three" aria-hidden="true"></iconify-icon>
+      <h3>No employees match these filters</h3>
+      <p>Check the branch, the payroll dates, and the employee type, or clear the search.</p>
+    </div>
+  {% endif %}
+</section>
+
+<!-- ===================== Batch history ===================== -->
+<section class="ad-card" aria-labelledby="batch-title">
+  <div class="ad-card__head">
+    <div>
+      <h2 id="batch-title">Payroll batches</h2>
+      <p>A completed batch can be finalized only after every included employee's DTR is locked. Finalized batches can be reopened with a recorded reason.</p>
+    </div>
+    <span class="ihrt-badge ihrt-badge--neutral">{{ payroll_batches|length }} batch{{ payroll_batches|length|pluralize:"es" }}</span>
+  </div>
+  {% if payroll_batches %}
+    <div class="ad-table-wrap">
+      <table class="ad-table" style="min-width: 980px">
+        <thead>
+          <tr>
+            <th scope="col">Batch</th>
+            <th scope="col">Period</th>
+            <th scope="col">Scope</th>
+            <th scope="col">Status</th>
+            <th scope="col">Processed</th>
+            <th scope="col" class="is-num">Total net</th>
+            <th scope="col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for batch in payroll_batches %}
+            <tr style="vertical-align:top">
+              <td>
+                <p class="ad-cell-primary">{{ batch.name }}</p>
+                <p class="ad-cell-sub">{% firstof batch.branch.name batch.branch_name "—" %}</p>
+                {% if batch.reopened_by %}<p class="ad-cell-sub ad-warn-text">Previously reopened</p>{% endif %}
+              </td>
+              <td>{% firstof batch.period.name batch.period_name "—" %}</td>
+              <td>{% firstof batch.employee_type_scope "ALL" as scope %}{% include "admin/_emp_type_tag.html" with t=scope %}</td>
+              <td>
+                {% if batch.is_finalized %}
+                  <span class="ihrt-badge ihrt-badge--info"><iconify-icon icon="ph:seal-check" aria-hidden="true"></iconify-icon>Finalized</span>
+                {% elif batch.status == "completed" or batch.status == "Completed" %}
+                  <span class="ihrt-badge ihrt-badge--ok">Completed</span>
+                {% else %}
+                  <span class="ihrt-badge ihrt-badge--warn">{{ batch.status|default:"Draft"|capfirst }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <p>{% firstof batch.processed_by.username batch.processed_by "—" %}</p>
+                <p class="ad-cell-sub">{% if batch.processed_at %}{{ batch.processed_at|date:"M d, Y H:i" }}{% else %}Not processed{% endif %}</p>
+              </td>
+              <td class="is-num pr-net">&#8369;{{ batch.total_net|default:"0.00" }}</td>
+              <td>
+                <div class="pr-batch-actions">
+                  <a href="{% url 'admin_payroll_batch_detail' batch.id %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">
+                    <iconify-icon icon="ph:file-text" aria-hidden="true"></iconify-icon> Open register
+                  </a>
+                  {% if batch.is_finalized %}
+                    <p class="ad-help">Finalized by {{ batch.finalized_by|default:"—" }}{% if batch.finalized_at %} on {{ batch.finalized_at|date:"M d, Y H:i" }}{% endif %}</p>
+                    <form method="post" action="{% url 'admin_reopen_payroll_batch' batch.id %}" class="ad-stack ad-stack--sm" style="gap:6px"
+                          onsubmit="return confirm('Reopen this finalized batch? Your reason is saved in the audit trail.');">
+                      {% csrf_token %}
+                      <label for="reopen-{{ batch.id }}" class="sr-only">Reason for reopening</label>
+                      <input id="reopen-{{ batch.id }}" type="text" name="reopen_reason" required minlength="5" placeholder="Reason for reopening" class="ad-input ad-input--sm">
+                      <button type="submit" class="ihrt-btn ihrt-btn--warn-soft ihrt-btn--sm"><iconify-icon icon="ph:lock-open" aria-hidden="true"></iconify-icon> Reopen batch</button>
+                    </form>
+                  {% elif batch.status == "completed" or batch.status == "Completed" %}
+                    <form method="post" action="{% url 'admin_finalize_payroll_batch' batch.id %}"
+                          onsubmit="return confirm('Finalize this batch? Every included employee must have a locked DTR, and the official record will be locked.');">
+                      {% csrf_token %}
+                      <button type="submit" class="ihrt-btn ihrt-btn--primary ihrt-btn--sm ihrt-btn--block"><iconify-icon icon="ph:seal-check" aria-hidden="true"></iconify-icon> Finalize batch</button>
+                    </form>
+                    {% if batch.reopened_by %}
+                      <p class="ad-help">Last reopened by {{ batch.reopened_by }}{% if batch.reopened_at %} on {{ batch.reopened_at|date:"M d, Y H:i" }}{% endif %}. Reason: {{ batch.reopen_reason|default:"—" }}</p>
+                    {% endif %}
+                  {% else %}
+                    <p class="ad-help">Process payroll before finalizing.</p>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="ad-empty">
+      <iconify-icon icon="ph:stack" aria-hidden="true"></iconify-icon>
+      <h3>No batches yet</h3>
+      <p>Processing payroll creates a batch you can review, print, and finalize.</p>
+    </div>
+  {% endif %}
+</section>
+
+<!-- ===================== Rates and rules reference ===================== -->
+<details class="ad-card pr-reference">
+  <summary class="ad-card__head" style="border-bottom:0">
+    <div>
+      <h2>Rates and rules used in computation</h2>
+      <p>Values come from the payroll configuration. "Not set" means no value was provided to this page.</p>
+    </div>
+    <iconify-icon icon="ph:caret-down" class="ad-expand-icon" style="font-size:20px" aria-hidden="true"></iconify-icon>
+  </summary>
+  <dl class="pr-rules" style="border-top:1px solid var(--ihrt-line)">
+    <div><dt>Salary divisor</dt><dd>{% if salary_divisor %}{{ salary_divisor }} days{% else %}Not set{% endif %}</dd></div>
+    <div><dt>Premium rate</dt><dd>{% if payroll_rules.premium_rate_percent %}{{ payroll_rules.premium_rate_percent }}%{% else %}Not set{% endif %}</dd></div>
+    <div><dt>PhilHealth default</dt><dd>{% if payroll_rules.philhealth_default_value %}{{ payroll_rules.philhealth_default_value }}%{% else %}Not set{% endif %}</dd></div>
+    <div><dt>Tax rate (JO/COS)</dt><dd>{% if payroll_rules.tax_rate_percent %}{{ payroll_rules.tax_rate_percent }}%{% else %}Not set{% endif %}</dd></div>
+    <div><dt>SSS minimum</dt><dd>{% if sss_minimum %}&#8369;{{ sss_minimum }}{% else %}Not set{% endif %}</dd></div>
+    <div><dt>Pag-IBIG minimum</dt><dd>{% if pagibig_minimum %}&#8369;{{ pagibig_minimum }}{% else %}Not set{% endif %}</dd></div>
+    <div><dt>Overtime multiplier</dt><dd>{% if ot_multiplier %}{{ ot_multiplier }}&times;{% else %}Not set{% endif %}</dd></div>
+  </dl>
+  <div class="ad-card__body" style="border-top:1px solid var(--ihrt-line)">
+    <p class="ad-help" style="color:var(--ihrt-ink)">
+      Daily rate = monthly rate &divide; {{ salary_divisor|default:"salary divisor" }}. Hourly rate = daily rate &divide; 8. Per-minute rate = hourly rate &divide; 60.
+      Late and undertime deductions use the per-minute rate; they cannot be overridden by hand.
+    </p>
+  </div>
+</details>
+
+<!-- ===================== Payroll dates dialog ===================== -->
+<div id="createPeriodModal" class="ad-modal hidden" role="dialog" aria-modal="true" aria-labelledby="periodTitle">
+  <div class="ad-modal__panel">
+    <div class="ad-modal__head">
+      <div>
+        <h2 id="periodTitle">Set payroll dates</h2>
+        <p>Choose the exact dates this payroll covers. Matching dates that already exist are reused, so this never creates duplicates.</p>
+      </div>
+      <button id="closeCreatePeriodBtn" type="button" class="ad-icon-btn ad-icon-btn--sm" data-modal-close><iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon><span class="sr-only">Close</span></button>
+    </div>
+    <form method="post" action="{% url 'admin_payroll_period_create' %}" class="ad-form" style="display:contents">
+      {% csrf_token %}
+      <input type="hidden" name="branch" value="{{ selected_branch }}">
+      <div class="ad-modal__body ad-stack ad-stack--sm">
+        <div class="ad-form-grid" style="--ad-field-min: 180px">
+          <div class="ad-field">
+            <label for="payrollStartDate" class="ad-label">Start date</label>
+            <input id="payrollStartDate" name="start_date" type="date" required value="{% if selected_period %}{{ selected_period.start_date|date:'Y-m-d' }}{% else %}{% now 'Y-m-01' %}{% endif %}">
+          </div>
+          <div class="ad-field">
+            <label for="payrollEndDate" class="ad-label">End date</label>
+            <input id="payrollEndDate" name="end_date" type="date" required value="{% if selected_period %}{{ selected_period.end_date|date:'Y-m-d' }}{% else %}{% now 'Y-m-d' %}{% endif %}">
+          </div>
+        </div>
+        <fieldset class="ad-field" style="border:0;padding:0;margin:0">
+          <legend class="ad-label" style="margin-bottom:6px">Salary schedule</legend>
+          <div class="ad-choice-row">
+            <label class="ad-check"><input type="radio" name="pay_mode" value="MONTHLY" required {% if not selected_period or selected_period.pay_mode == 'MONTHLY' %}checked{% endif %}><span class="ad-check__label">Monthly</span></label>
+            <label class="ad-check"><input type="radio" name="pay_mode" value="FIRST_HALF" {% if selected_period.pay_mode == 'FIRST_HALF' %}checked{% endif %}><span class="ad-check__label">1st half</span></label>
+            <label class="ad-check"><input type="radio" name="pay_mode" value="SECOND_HALF" {% if selected_period.pay_mode == 'SECOND_HALF' %}checked{% endif %}><span class="ad-check__label">2nd half</span></label>
+          </div>
+        </fieldset>
+        <p class="ad-help" id="periodDateError" hidden style="color:var(--ihrt-bad);font-weight:600">The end date must be on or after the start date.</p>
+      </div>
+      <div class="ad-modal__foot">
+        <button id="cancelCreatePeriodBtn" type="button" class="ihrt-btn ihrt-btn--secondary" data-modal-close>Cancel</button>
+        <button type="submit" class="ihrt-btn ihrt-btn--primary">Use these dates</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== DTR dialog ===================== -->
+<div id="dtrModal" class="ad-modal hidden" role="dialog" aria-modal="true" aria-labelledby="dtrTitle" style="--ad-modal-w: 1100px">
+  <div class="ad-modal__panel">
+    <div class="ad-modal__head">
+      <div>
+        <h2 id="dtrTitle">Daily time record</h2>
+        <p id="dtrEmployeeName"></p>
+      </div>
+      <div class="ad-row" style="flex-wrap:nowrap">
+        <button type="button" id="printDtrFromModal" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm"><iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon> Print</button>
+        <button type="button" id="closeDtrModal" class="ad-icon-btn ad-icon-btn--sm" data-modal-close><iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon><span class="sr-only">Close</span></button>
+      </div>
+    </div>
+    <div class="ad-modal__body ad-stack ad-stack--sm" id="dtrPrintArea">
+      <div id="dtrSummary" class="ad-stats ad-stats--4"></div>
+      <div class="ad-table-wrap" style="border:1px solid var(--ihrt-line);border-radius:var(--ihrt-radius-sm)">
+        <table class="ad-table" style="min-width:880px">
+          <thead>
+            <tr>
+              <th scope="col">Date</th><th scope="col">Day</th>
+              <th scope="col">AM in</th><th scope="col">AM out</th><th scope="col">PM in</th><th scope="col">PM out</th>
+              <th scope="col" class="is-num">Hours</th><th scope="col" class="is-num">Late</th><th scope="col" class="is-num">UT</th>
+              <th scope="col">Status</th><th scope="col">Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="dtrTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var csrfToken = document.querySelector('#csrfOnlyForm [name=csrfmiddlewaretoken]')?.value || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+  var toast = function (m, t) { window.showToast ? window.showToast(m, t) : alert(m); };
+  var esc = function (s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+
+  // ---------- Money formatting for the totals (server values, no fake counting animation) ----------
+  document.querySelectorAll('.counter-number').forEach(function (el) {
+    var n = Number(el.getAttribute('data-target') || 0);
+    if (!isFinite(n)) return;
+    var dec = Number(el.getAttribute('data-decimals') || 0);
+    el.textContent = (el.getAttribute('data-prefix') || '') + n.toLocaleString('en-PH', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  });
+
+  // ---------- Expandable breakdown rows ----------
+  document.querySelectorAll('.expand-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var row = document.querySelector('.expand-detail-row[data-detail-for="' + this.dataset.target + '"]');
+      var open = this.getAttribute('aria-expanded') === 'true';
+      this.setAttribute('aria-expanded', String(!open));
+      row && row.classList.toggle('hidden', open);
+    });
+  });
+
+  // ---------- Filters ----------
+  var filterForm = document.getElementById('payrollFilterForm');
+  filterForm?.querySelectorAll('select').forEach(function (s) { s.addEventListener('change', function () { filterForm.submit(); }); });
+  document.querySelectorAll('.remove-chip').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var url = new URL(window.location.href);
+      url.searchParams.delete(btn.dataset.filter);
+      window.location.href = url.toString();
+    });
+  });
+  document.getElementById('resetFilters')?.addEventListener('click', function () { window.location.href = window.location.pathname; });
+  document.getElementById('exportPayrollBtn')?.addEventListener('click', function () { window.print(); });
+
+  // ---------- Payroll dates dialog ----------
+  var periodModal = document.getElementById('createPeriodModal');
+  ['openCreatePeriodBtn', 'openDatePeriodBtn'].forEach(function (id) {
+    document.getElementById(id)?.addEventListener('click', function () { window.adModal.open(periodModal); });
+  });
+  periodModal?.querySelector('form')?.addEventListener('submit', function (e) {
+    var s = document.getElementById('payrollStartDate').value, en = document.getElementById('payrollEndDate').value;
+    var bad = s && en && en < s;
+    document.getElementById('periodDateError').hidden = !bad;
+    if (bad) e.preventDefault();
+  });
+
+  // ---------- DTR dialog ----------
+  var dtrModal = document.getElementById('dtrModal');
+  var dtrBody = document.getElementById('dtrTableBody');
+  var dtrSummary = document.getElementById('dtrSummary');
+  var dtrName = document.getElementById('dtrEmployeeName');
+  function badge(status) {
+    var s = String(status || '').toLowerCase(), cls = 'ihrt-badge--ok';
+    if (s.indexOf('late') > -1) cls = 'ihrt-badge--warn';
+    else if (s.indexOf('absent') > -1 || s.indexOf('missing') > -1) cls = 'ihrt-badge--bad';
+    else if (s.indexOf('travel') > -1 || s.indexOf('holiday') > -1 || s.indexOf('suspension') > -1) cls = 'ihrt-badge--info';
+    else if (s.indexOf('weekend') > -1) cls = 'ihrt-badge--neutral';
+    return '<span class="ihrt-badge ' + cls + '">' + esc(status || 'Present') + '</span>';
+  }
+  function stat(label, value, tone) {
+    return '<div class="ad-stat ' + (tone || '') + '"><p class="ad-stat__label">' + label + '</p><p class="ad-stat__value">' + value + '</p></div>';
+  }
+  function openDtr(name, records) {
+    dtrName.textContent = name || 'Employee';
+    if (!records || !records.length) {
+      dtrSummary.innerHTML = '';
+      dtrBody.innerHTML = '<tr><td colspan="11"><div class="ad-empty" style="padding:24px"><p>No DTR entries for this period yet.</p></div></td></tr>';
+    } else {
+      var hours = 0, late = 0, ut = 0, present = 0, rows = '';
+      records.forEach(function (r) {
+        var total = Number(r.total_hours || r.totalHours || 0), l = Number(r.late || 0), u = Number(r.undertime || 0), st = r.status || 'Present';
+        hours += total; late += l; ut += u;
+        // A late or undertime day is still a day worked, so it counts as present
+        if (/present|late|undertime|travel|official business/.test(String(st).toLowerCase())) present++;
+        rows += '<tr><td class="is-nowrap">' + esc(r.date) + '</td><td>' + esc(r.day) + '</td>' +
+          '<td class="ad-num">' + esc(r.am_in || r.timeIn || '—') + '</td><td class="ad-num">' + esc(r.am_out || r.lunchOut || '—') + '</td>' +
+          '<td class="ad-num">' + esc(r.pm_in || r.lunchIn || '—') + '</td><td class="ad-num">' + esc(r.pm_out || r.timeOut || '—') + '</td>' +
+          '<td class="is-num">' + total.toFixed(2) + '</td><td class="is-num' + (l ? ' ad-neg' : '') + '">' + l + '</td><td class="is-num' + (u ? ' ad-warn-text' : '') + '">' + u + '</td>' +
+          '<td>' + badge(st) + '</td><td class="is-muted">' + esc(r.remarks || '') + '</td></tr>';
+      });
+      dtrBody.innerHTML = rows;
+      dtrSummary.innerHTML = stat('Hours worked', hours.toFixed(2), 'ad-tone-field') + stat('Days attended', present, 'ad-tone-ok') + stat('Late minutes', late, 'ad-tone-bad') + stat('Undertime minutes', ut, 'ad-tone-warn');
+    }
+    window.adModal.open(dtrModal);
+  }
+  document.querySelectorAll('.view-dtr-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var records = [];
+      try { records = JSON.parse(btn.getAttribute('data-dtr-records') || '[]'); } catch (e) {}
+      openDtr(btn.getAttribute('data-employee-name'), records);
+    });
+  });
+  document.getElementById('printDtrFromModal')?.addEventListener('click', function () {
+    var area = document.getElementById('dtrPrintArea');
+    var name = dtrName.textContent || 'Employee';
+    var win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write('<html><head><title>DTR ' + esc(name) + '</title><style>' +
+      'body{font-family:Arial,sans-serif;padding:24px;color:#111}h1{font-size:18px;margin:0 0 12px}' +
+      '.ad-stats{display:flex;gap:24px;margin-bottom:16px}.ad-stat__label{font-size:11px;color:#555;margin:0}.ad-stat__value{font-size:18px;font-weight:700;margin:2px 0 0}' +
+      'table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ccc;padding:5px;text-align:left}th{background:#f2f2f2}.ihrt-badge{font-weight:600}' +
+      '</style></head><body><h1>Daily time record: ' + esc(name) + '</h1>' + area.innerHTML + '</body></html>');
+    win.document.close(); win.focus(); win.print();
+  });
+
+  // ---------- Process payroll ----------
+  document.getElementById('processPayrollBtn')?.addEventListener('click', async function () {
+    var btn = this;
+    var critical = Number('{% firstof no_salary_count "0" %}') > 0 || Number('{% firstof missing_checkout_count "0" %}') > 0;
+    var msg = 'Process payroll for the selected branch, dates, and employee type?';
+    if (critical) msg += '\n\nSome checks above still need attention. You can process now and review before finalizing, but those employees may be computed incorrectly.';
+    if (!confirm(msg)) return;
+    btn.classList.add('btn-loading');
+    try {
+      var res = await fetch("{% url 'admin_payroll_process_batch' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken, 'Accept': 'application/json' },
+        body: new FormData(filterForm || undefined)
+      });
+      var data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Payroll could not be processed.');
+      toast('Payroll processed', 'success');
+      setTimeout(function () { window.location.reload(); }, 600);
+    } catch (err) {
+      toast(err.message || 'Payroll could not be processed.', 'error');
+      btn.classList.remove('btn-loading');
+    }
+  });
+})();
+</script>
+{% endblock %}

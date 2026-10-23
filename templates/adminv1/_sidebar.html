@@ -1,0 +1,85 @@
+<aside class="ad-sidebar" id="adSidebar" aria-label="Admin navigation">
+  <div class="ad-sidebar__head">
+    <span class="ad-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 15.5c0-4.4 3.1-8 7-8s7 3.6 7 8"/><path d="M8.5 17c0-3 1.6-5.5 3.5-5.5s3.5 2.5 3.5 5.5"/><path d="M12 15v4"/></svg>
+    </span>
+    <span class="ad-sidebar__name">
+      IntelliHRTrack
+      <span class="ad-sidebar__sub">Administrator</span>
+    </span>
+    <button type="button" class="ad-icon-btn ad-icon-btn--sm ad-sidebar__close" id="adNavClose">
+      <iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon>
+      <span class="sr-only">Close menu</span>
+    </button>
+  </div>
+
+  <nav class="ad-nav">
+    <div class="ad-nav__group">
+      <p class="ad-nav__label">Overview</p>
+      <a href="{% url 'admin_dashboard' %}" class="ad-nav__link" {% if current == 'dashboard' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:squares-four" aria-hidden="true"></iconify-icon>
+        Dashboard
+      </a>
+      <a href="{% url 'admin_analytics' %}" class="ad-nav__link" {% if current == 'analytics' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:chart-line-up" aria-hidden="true"></iconify-icon>
+        Workforce analytics
+      </a>
+    </div>
+
+    <div class="ad-nav__group">
+      <p class="ad-nav__label">People and time</p>
+      <a href="{% url 'admin_employees' %}" class="ad-nav__link" {% if current == 'employees' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:users-three" aria-hidden="true"></iconify-icon>
+        Employees
+      </a>
+      <a href="{% url 'admin_biometrics' %}" class="ad-nav__link" {% if current == 'biometrics' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon>
+        Biometrics and attendance
+      </a>
+      <a href="{% url 'admin_leave' %}" class="ad-nav__link" {% if current == 'leave' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:calendar-check" aria-hidden="true"></iconify-icon>
+        Leave requests
+      </a>
+    </div>
+
+    <div class="ad-nav__group">
+      <p class="ad-nav__label">Payroll</p>
+      <a href="{% url 'admin_payroll' %}" class="ad-nav__link" {% if current == 'payroll' %}aria-current="page"{% endif %}>
+        <iconify-icon icon="ph:wallet" aria-hidden="true"></iconify-icon>
+        Payroll
+      </a>
+    </div>
+  </nav>
+
+  <div class="ad-sidebar__foot">
+    <div class="ad-user">
+      <span class="ad-user__avatar" aria-hidden="true">{{ request.user.username|slice:":2" }}</span>
+      <div style="min-width:0">
+        <p class="ad-user__name">{{ request.user.get_full_name|default:request.user.username }}</p>
+        <p class="ad-user__meta">
+          {% if request.user.is_superuser %}All branches{% else %}{{ request.user.profile.branch|default:"Branch administrator" }}{% endif %}
+        </p>
+      </div>
+    </div>
+
+    <button type="button" class="ad-side-action" data-theme-toggle>
+      <iconify-icon icon="ph:moon" class="ad-theme-light" aria-hidden="true"></iconify-icon>
+      <iconify-icon icon="ph:sun" class="ad-theme-dark" aria-hidden="true"></iconify-icon>
+      <span class="ad-theme-light">Dark mode</span>
+      <span class="ad-theme-dark">Light mode</span>
+    </button>
+
+    <a href="{% url 'change_password' %}" class="ad-side-action">
+      <iconify-icon icon="ph:key" aria-hidden="true"></iconify-icon>
+      Change password
+    </a>
+
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="ad-side-action ad-side-action--danger">
+        <iconify-icon icon="ph:sign-out" aria-hidden="true"></iconify-icon>
+        Sign out
+      </button>
+    </form>
+  </div>
+</aside>

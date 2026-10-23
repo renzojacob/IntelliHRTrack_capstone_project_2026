@@ -1,0 +1,343 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Employees | IntelliHRTrack{% endblock %}
+
+{% block extra_head %}
+<style>
+  .emp { border-bottom: 1px solid var(--ihrt-line); }
+  .emp:last-child { border-bottom: 0; }
+  .emp > summary {
+    list-style: none; cursor: pointer;
+    display: grid; align-items: center; gap: 4px 16px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 14px 20px;
+  }
+  .emp > summary::-webkit-details-marker { display: none; }
+  .emp > summary:hover { background: var(--ihrt-surface-2); }
+  .emp[open] > summary { background: var(--ihrt-surface-2); border-bottom: 1px solid var(--ihrt-line); }
+  .emp__who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .emp__avatar { width: 38px; height: 38px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--ihrt-field-soft); color: var(--ihrt-field); font-weight: 700; font-size: 13.5px; text-transform: uppercase; }
+  .emp__name { font-weight: 650; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .emp__sub { font-size: 13px; color: var(--ihrt-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .emp__facts { display: none; }
+  .emp__chev { color: var(--ihrt-muted); font-size: 18px; transition: transform .2s ease; }
+  .emp[open] .emp__chev { transform: rotate(180deg); }
+  .emp__body { padding: 20px; display: grid; gap: 16px; }
+  @media (min-width: 900px) {
+    .emp > summary { grid-template-columns: minmax(0, 1.6fr) 110px 140px 150px 24px; }
+    .emp__facts { display: contents; }
+    .emp__fact { font-size: 14px; }
+    .emp__fact small { display: block; font-size: 12px; color: var(--ihrt-muted); }
+    .emp__badges-narrow { display: none; }
+  }
+  @media (max-width: 639px) { .emp > summary, .emp__body { padding-inline: 16px; } }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <h1>Employees</h1>
+    <p>Approve new accounts, then keep each employee's biometric ID, employment type, and pay settings up to date.</p>
+  </div>
+  <div class="ad-page-head__actions">
+    <a href="#create-employee" class="ihrt-btn ihrt-btn--primary" id="jumpCreate">
+      <iconify-icon icon="ph:user-plus" aria-hidden="true"></iconify-icon> Add employee
+    </a>
+  </div>
+</header>
+
+<section aria-label="Summary" class="ad-stats ad-stats--3">
+  <div class="ad-stat ad-tone-warn">
+    <p class="ad-stat__label">Pending accounts</p>
+    <p class="ad-stat__value">{{ pending_profiles|length }}</p>
+    <p class="ad-stat__hint">Waiting for approval</p>
+  </div>
+  <div class="ad-stat ad-tone-ok">
+    <p class="ad-stat__label">Approved employees</p>
+    <p class="ad-stat__value">{{ approved_profiles|length }}</p>
+    <p class="ad-stat__hint">Can sign in and appear in payroll</p>
+  </div>
+  <div class="ad-stat ad-tone-field">
+    <p class="ad-stat__label">Your access</p>
+    <p class="ad-stat__value ad-stat__value--sm">{% if request.user.is_superuser %}All branches{% else %}{{ request.user.profile.branch|default:"—" }}{% endif %}</p>
+  </div>
+</section>
+
+<!-- ===================== Pending accounts ===================== -->
+<section class="ad-card" aria-labelledby="pending-title">
+  <div class="ad-card__head">
+    <div>
+      <h2 id="pending-title">Accounts waiting for approval</h2>
+      <p>People who signed up themselves. Permanent employees should be added by an administrator instead.</p>
+    </div>
+    {% if pending_profiles %}<span class="ihrt-badge ihrt-badge--warn">{{ pending_profiles|length }} pending</span>{% endif %}
+  </div>
+
+  {% if pending_profiles %}
+    <div class="ad-only-wide">
+      <div class="ad-table-wrap">
+        <table class="ad-table">
+          <thead>
+            <tr>
+              <th scope="col">Account</th>
+              <th scope="col">Branch</th>
+              <th scope="col">Department</th>
+              <th scope="col">Type</th>
+              <th scope="col">Signed up</th>
+              <th scope="col" class="is-actions"><span class="sr-only">Decision</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pending_profiles %}
+              <tr>
+                <td>
+                  <p class="ad-cell-primary">{{ p.user.username }}</p>
+                  <p class="ad-cell-sub">{{ p.user.email|default:"No email" }}</p>
+                </td>
+                <td class="is-muted">{{ p.branch|default:"—" }}</td>
+                <td class="is-muted">{{ p.department|default:"—" }}</td>
+                <td>{% include "admin/_emp_type_tag.html" with t=p.employment_type %}</td>
+                <td class="is-nowrap is-muted">{{ p.created_at|date:"M d, Y" }}</td>
+                <td class="is-actions">
+                  <div class="ad-row">
+                    <form method="post" action="{% url 'reject_user' p.id %}" onsubmit="return confirm('Reject the account for {{ p.user.username|escapejs }}?');">
+                      {% csrf_token %}
+                      <button class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Reject</button>
+                    </form>
+                    <form method="post" action="{% url 'approve_user' p.id %}">
+                      {% csrf_token %}
+                      <button class="ihrt-btn ihrt-btn--primary ihrt-btn--sm">Approve</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="ad-cards ad-only-narrow">
+      {% for p in pending_profiles %}
+        <article class="ad-rec">
+          <div class="ad-rec__top">
+            <div style="min-width:0">
+              <p class="ad-rec__title">{{ p.user.username }}</p>
+              <p class="ad-rec__sub">{{ p.user.email|default:"No email" }}</p>
+            </div>
+            {% include "admin/_emp_type_tag.html" with t=p.employment_type %}
+          </div>
+          <dl class="ad-rec__kv">
+            <div><dt>Branch</dt><dd>{{ p.branch|default:"—" }}</dd></div>
+            <div><dt>Signed up</dt><dd>{{ p.created_at|date:"M d, Y" }}</dd></div>
+            <div style="grid-column:1/-1"><dt>Department</dt><dd>{{ p.department|default:"—" }}</dd></div>
+          </dl>
+          <div class="ad-rec__actions">
+            <form method="post" action="{% url 'reject_user' p.id %}" onsubmit="return confirm('Reject the account for {{ p.user.username|escapejs }}?');">
+              {% csrf_token %}
+              <button class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm ihrt-btn--block">Reject</button>
+            </form>
+            <form method="post" action="{% url 'approve_user' p.id %}">
+              {% csrf_token %}
+              <button class="ihrt-btn ihrt-btn--primary ihrt-btn--sm ihrt-btn--block">Approve</button>
+            </form>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="ad-empty">
+      <iconify-icon icon="ph:check-circle" aria-hidden="true"></iconify-icon>
+      <h3>No accounts waiting</h3>
+      <p>New sign-ups appear here for you to approve or reject.</p>
+    </div>
+  {% endif %}
+</section>
+
+<!-- ===================== Employee list ===================== -->
+<section class="ad-card" aria-labelledby="emp-title">
+  <div class="ad-card__head">
+    <div>
+      <h2 id="emp-title">Employee profiles and pay settings</h2>
+      <p>Select an employee to edit their details. Changes apply to payroll processed after you save.</p>
+    </div>
+  </div>
+
+  {% if employee_profiles %}
+    <div class="ad-card__body" style="padding-bottom:12px">
+      <div class="ad-row">
+        <div class="ad-input-icon" style="flex:1 1 280px">
+          <iconify-icon icon="ph:magnifying-glass" aria-hidden="true"></iconify-icon>
+          <label for="accountSearch" class="sr-only">Search employees</label>
+          <input id="accountSearch" type="search" class="ad-input" placeholder="Search by name, email, branch, department, or type">
+        </div>
+        <label for="accountPageSize" class="sr-only">Employees per page</label>
+        <select id="accountPageSize" class="ad-input" style="width:auto;flex:0 0 auto">
+          <option value="10">10 per page</option>
+          <option value="25">25 per page</option>
+          <option value="50">50 per page</option>
+          <option value="9999">Show all</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="employeeList" style="border-top:1px solid var(--ihrt-line)">
+      {% for p in employee_profiles %}
+        <details class="emp" data-paginate="employees"
+                 data-search="{{ p.user.username }} {{ p.user.get_full_name }} {{ p.user.email }} {{ p.branch }} {{ p.department }} {{ p.position }} {{ p.employment_type }} {{ p.biometric_employee_id }}">
+          <summary>
+            <span class="emp__who">
+              <span class="emp__avatar" aria-hidden="true">{{ p.user.username|slice:":2" }}</span>
+              <span style="min-width:0">
+                <span class="emp__name" style="display:block">{{ p.user.get_full_name|default:p.user.username }}</span>
+                <span class="emp__sub" style="display:block">{{ p.position|default:p.user.email|default:"No position set" }}{% if p.department %} &middot; {{ p.department }}{% endif %}</span>
+                <span class="emp__badges-narrow ad-row" style="gap:6px;margin-top:6px">
+                  {% include "admin/_emp_type_tag.html" with t=p.employment_type %}
+                  {% if not p.is_approved %}<span class="ihrt-badge ihrt-badge--warn">Pending</span>{% endif %}
+                </span>
+              </span>
+            </span>
+            <span class="emp__facts">
+              <span class="emp__fact">{% include "admin/_emp_type_tag.html" with t=p.employment_type %}{% if not p.is_approved %}<br><span class="ihrt-badge ihrt-badge--warn" style="margin-top:4px">Pending</span>{% endif %}</span>
+              <span class="emp__fact"><small>Biometric ID</small>{{ p.biometric_employee_id|default:"Not set" }}</span>
+              <span class="emp__fact ad-num"><small>{% if p.employment_type == "JO" %}Daily rate{% else %}Monthly salary{% endif %}</small>&#8369;{% if p.employment_type == "JO" %}{{ p.daily_rate|default:"0.00" }}{% else %}{{ p.monthly_salary|default:"0.00" }}{% endif %}</span>
+            </span>
+            <iconify-icon icon="ph:caret-down" class="emp__chev" aria-hidden="true"></iconify-icon>
+          </summary>
+
+          <div class="emp__body">
+            <form method="post" action="{% url 'admin_employees' %}" class="ad-form ad-stack ad-stack--sm" data-emp-form>
+              {% csrf_token %}
+              <input type="hidden" name="action" value="update_employee">
+              <input type="hidden" name="profile_id" value="{{ p.id }}">
+              {% include "admin/_employee_fields.html" with p=p prefix=p.id %}
+              <div class="ad-form-actions" id="emp-actions-{{ p.id }}">
+                <button type="submit" class="ihrt-btn ihrt-btn--primary">
+                  <iconify-icon icon="ph:floppy-disk" aria-hidden="true"></iconify-icon> Save changes
+                </button>
+              </div>
+            </form>
+            <form method="post" action="{% url 'admin_employees' %}" class="ad-row ad-row--between" style="padding:14px 16px;border:1px solid color-mix(in srgb, var(--ihrt-bad) 30%, var(--ihrt-line));border-radius:var(--ihrt-radius-sm)"
+                  onsubmit="return confirm('Delete {{ p.user.username|escapejs }}? Their account and profile will be removed.');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_employee">
+              <input type="hidden" name="profile_id" value="{{ p.id }}">
+              <span class="ad-help" style="flex:1 1 240px">Delete this employee only if the account was created by mistake.</span>
+              <button type="submit" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">
+                <iconify-icon icon="ph:trash" aria-hidden="true"></iconify-icon> Delete employee
+              </button>
+            </form>
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+
+    <div class="ad-empty hidden" id="employeeNoMatch">
+      <iconify-icon icon="ph:magnifying-glass" aria-hidden="true"></iconify-icon>
+      <h3>No employees match your search</h3>
+      <p>Try a different name, branch, or employment type.</p>
+    </div>
+
+    <div class="ad-card__foot">
+      <span id="approvedResultCount">{{ employee_profiles|length }} employee{{ employee_profiles|length|pluralize }}</span>
+      <div class="ad-pager">
+        <span id="approvedPageInfo" class="ad-help"></span>
+        <button id="approvedPrev" type="button" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm"><iconify-icon icon="ph:caret-left" aria-hidden="true"></iconify-icon> Previous</button>
+        <button id="approvedNext" type="button" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">Next <iconify-icon icon="ph:caret-right" aria-hidden="true"></iconify-icon></button>
+      </div>
+    </div>
+  {% else %}
+    <div class="ad-empty">
+      <iconify-icon icon="ph:users-three" aria-hidden="true"></iconify-icon>
+      <h3>No employees yet</h3>
+      <p>Add an employee to start recording attendance and payroll for them.</p>
+    </div>
+  {% endif %}
+</section>
+
+<!-- ===================== Add employee ===================== -->
+<section id="create-employee" class="ad-card" aria-labelledby="create-title" style="scroll-margin-top: 80px">
+  <div class="ad-card__head">
+    <div>
+      <h2 id="create-title">Add employee</h2>
+      <p>Creates an approved account straight away. Use this for Permanent employees rather than the public sign-up page.</p>
+    </div>
+  </div>
+  <form method="post" action="{% url 'admin_employees' %}" class="ad-form ad-card__body ad-stack ad-stack--sm" data-emp-form>
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create_employee">
+    {% include "admin/_employee_fields.html" with p=None prefix="new" %}
+    <div class="ad-form-actions">
+      <button type="reset" class="ihrt-btn ihrt-btn--secondary">Clear form</button>
+      <button type="submit" class="ihrt-btn ihrt-btn--primary">
+        <iconify-icon icon="ph:user-plus" aria-hidden="true"></iconify-icon> Add employee
+      </button>
+    </div>
+  </form>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  // ---------- Show only the deduction fields that apply to the chosen employment type ----------
+  // Hidden fieldsets still submit their values, so nothing saved is lost.
+  function syncType(form) {
+    var select = form.querySelector('[data-emp-type]');
+    if (!select) return;
+    var type = select.value;
+    var hiddenAny = false;
+    form.querySelectorAll('[data-show-for]').forEach(function (fs) {
+      var show = fs.getAttribute('data-show-for').split(' ').indexOf(type) !== -1;
+      fs.hidden = !show;
+      if (!show) hiddenAny = true;
+    });
+    var note = form.querySelector('[data-hidden-note]');
+    if (note) note.hidden = !hiddenAny;
+  }
+  document.querySelectorAll('[data-emp-form]').forEach(function (form) {
+    syncType(form);
+    form.querySelector('[data-emp-type]')?.addEventListener('change', function () { syncType(form); });
+    form.addEventListener('reset', function () { setTimeout(function () { syncType(form); }, 0); });
+  });
+
+  // ---------- Jump to the Add form ----------
+  document.getElementById('jumpCreate')?.addEventListener('click', function () {
+    setTimeout(function () { document.getElementById('f-new-username')?.focus({ preventScroll: true }); }, 400);
+  });
+
+  // ---------- Search and paging for the employee list ----------
+  var search = document.getElementById('accountSearch');
+  var sizeSel = document.getElementById('accountPageSize');
+  var items = Array.prototype.slice.call(document.querySelectorAll('[data-paginate="employees"]'));
+  var prev = document.getElementById('approvedPrev');
+  var next = document.getElementById('approvedNext');
+  var info = document.getElementById('approvedPageInfo');
+  var count = document.getElementById('approvedResultCount');
+  var none = document.getElementById('employeeNoMatch');
+  var page = 1;
+
+  function render() {
+    if (!items.length) return;
+    var term = (search?.value || '').trim().toLowerCase();
+    var size = parseInt(sizeSel?.value || '10', 10) || 10;
+    var matches = items.filter(function (el) { return !term || (el.dataset.search || '').toLowerCase().indexOf(term) !== -1; });
+    var pages = Math.max(1, Math.ceil(matches.length / size));
+    if (page > pages) page = pages;
+    items.forEach(function (el) { el.style.display = 'none'; });
+    matches.slice((page - 1) * size, page * size).forEach(function (el) { el.style.display = ''; });
+    if (count) count.textContent = matches.length + ' employee' + (matches.length === 1 ? '' : 's') + (term ? ' found' : '');
+    if (info) info.textContent = pages > 1 ? 'Page ' + page + ' of ' + pages : '';
+    if (prev) { prev.disabled = page <= 1; prev.hidden = pages <= 1; }
+    if (next) { next.disabled = page >= pages; next.hidden = pages <= 1; }
+    if (none) none.classList.toggle('hidden', matches.length > 0);
+  }
+  prev?.addEventListener('click', function () { page = Math.max(1, page - 1); render(); });
+  next?.addEventListener('click', function () { page += 1; render(); });
+  search?.addEventListener('input', function () { page = 1; render(); });
+  sizeSel?.addEventListener('change', function () { page = 1; render(); });
+  render();
+})();
+</script>
+{% endblock %}

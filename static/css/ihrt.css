@@ -118,12 +118,14 @@ body.ihrt {
 :where(.ihrt) :where(img, svg) { display: block; max-width: 100%; }
 :where(.ihrt) :where(a) { color: inherit; text-decoration: none; }
 :where(.ihrt) :where(button) { font: inherit; color: inherit; }
-:where(.ihrt) :where(h1, h2, h3) { font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; }
-:where(.ihrt) :where(p) { text-wrap: pretty; }
+:where(.ihrt) :where(h1, h2, h3) { font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; text-wrap-style: balance; }
+/* text-wrap-style (not the text-wrap shorthand) so inherited white-space: nowrap still works */
+:where(.ihrt) :where(p) { text-wrap-style: pretty; }
 .ihrt .num { font-variant-numeric: tabular-nums; }
 
 /* Visible keyboard focus everywhere */
-.ihrt :focus-visible { outline: none; box-shadow: var(--ihrt-focus); border-radius: var(--ihrt-radius-sm); }
+/* Outline follows each element's own corner radius, so rounded controls keep their shape */
+.ihrt :focus-visible { outline: 2px solid var(--ihrt-field); outline-offset: 2px; }
 
 /* Skip link */
 .ihrt-skip {

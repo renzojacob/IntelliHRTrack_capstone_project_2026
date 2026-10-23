@@ -1,0 +1,174 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Admin | IntelliHRTrack{% endblock %}</title>
+
+  <!-- Theme is applied before anything paints, so dark mode never flashes white -->
+  <script>
+    (function () {
+      var d = document.documentElement, theme;
+      try { theme = localStorage.getItem('ih_theme'); } catch (e) {}
+      if (theme !== 'dark' && theme !== 'light') {
+        theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      d.setAttribute('data-theme', theme);
+      d.classList.toggle('dark', theme === 'dark');
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap">
+
+  <link rel="stylesheet" href="{% static 'css/output.css' %}">
+  <link rel="stylesheet" href="{% static 'css/ihrt.css' %}">
+  <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+
+  <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="ihrt ad-body">
+  <a class="ihrt-skip" href="#main">Skip to content</a>
+
+  <div class="ad-shell">
+    {% include "admin/_sidebar.html" %}
+    <div class="ad-scrim" id="adScrim" hidden></div>
+
+    <div class="ad-main">
+      <!-- Top bar (phones and tablets) -->
+      <header class="ad-topbar">
+        <button type="button" class="ad-icon-btn" id="adNavOpen" aria-controls="adSidebar" aria-expanded="false">
+          <iconify-icon icon="ph:list" aria-hidden="true"></iconify-icon>
+          <span class="sr-only">Open menu</span>
+        </button>
+        <a href="{% url 'admin_dashboard' %}" class="ad-topbar__brand">
+          <span class="ad-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 15.5c0-4.4 3.1-8 7-8s7 3.6 7 8"/><path d="M8.5 17c0-3 1.6-5.5 3.5-5.5s3.5 2.5 3.5 5.5"/><path d="M12 15v4"/></svg>
+          </span>
+          <span>IntelliHRTrack</span>
+        </a>
+        <button type="button" class="ad-icon-btn" data-theme-toggle>
+          <iconify-icon icon="ph:moon" class="ad-theme-light" aria-hidden="true"></iconify-icon>
+          <iconify-icon icon="ph:sun" class="ad-theme-dark" aria-hidden="true"></iconify-icon>
+          <span class="sr-only">Switch light or dark mode</span>
+        </button>
+      </header>
+
+      <main id="main" class="ad-content">
+        {% block messages %}
+          {% if messages %}
+            <div class="ad-alerts" aria-live="polite">
+              {% for message in messages %}
+                <div class="ad-alert {% if message.tags == 'success' %}ad-alert--ok{% elif message.tags == 'error' %}ad-alert--bad{% elif message.tags == 'warning' %}ad-alert--warn{% else %}ad-alert--info{% endif %}" role="alert">
+                  <iconify-icon icon="{% if message.tags == 'success' %}ph:check-circle{% elif message.tags == 'error' %}ph:x-circle{% elif message.tags == 'warning' %}ph:warning{% else %}ph:info{% endif %}" aria-hidden="true"></iconify-icon>
+                  <div class="ad-alert__body">{{ message }}</div>
+                  <button type="button" class="ad-alert__close" data-dismiss-alert aria-label="Dismiss">
+                    <iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon>
+                  </button>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endblock %}
+
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="ad-footer">
+        &copy; {% now "Y" %} IntelliHRTrack, Department of Agriculture MIMAROPA
+      </footer>
+    </div>
+  </div>
+
+  <div id="toastHost" class="ad-toasts" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var body = document.body;
+
+      // ---------- Light / dark mode ----------
+      function applyTheme(theme) {
+        root.setAttribute('data-theme', theme);
+        root.classList.toggle('dark', theme === 'dark');
+        try { localStorage.setItem('ih_theme', theme); } catch (e) {}
+      }
+      document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        });
+      });
+
+      // ---------- Mobile navigation drawer ----------
+      var openBtn = document.getElementById('adNavOpen');
+      var closeBtn = document.getElementById('adNavClose');
+      var sidebar = document.getElementById('adSidebar');
+      var scrim = document.getElementById('adScrim');
+
+      function setNav(open) {
+        body.classList.toggle('ad-nav-open', open);
+        if (openBtn) openBtn.setAttribute('aria-expanded', String(open));
+        if (scrim) scrim.hidden = !open;
+        if (open) {
+          var first = sidebar && sidebar.querySelector('a, button');
+          if (first) first.focus();
+        }
+      }
+      openBtn && openBtn.addEventListener('click', function () { setNav(true); });
+      closeBtn && closeBtn.addEventListener('click', function () { setNav(false); if (openBtn) openBtn.focus(); });
+      scrim && scrim.addEventListener('click', function () { setNav(false); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && body.classList.contains('ad-nav-open')) { setNav(false); if (openBtn) openBtn.focus(); }
+      });
+      window.matchMedia('(min-width: 1024px)').addEventListener('change', function (e) { if (e.matches) setNav(false); });
+
+      // ---------- Dismissible alerts ----------
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-dismiss-alert]');
+        if (btn) { var alert = btn.closest('.ad-alert'); if (alert) alert.remove(); }
+      });
+
+      // ---------- Toasts (window.showToast is used by page scripts) ----------
+      var host = document.getElementById('toastHost');
+      var icons = { success: 'ph:check-circle', error: 'ph:x-circle', warning: 'ph:warning', info: 'ph:info' };
+      window.showToast = function (message, type) {
+        if (!host) return;
+        type = icons[type] ? type : 'info';
+        var item = document.createElement('div');
+        item.className = 'ad-toast ad-toast--' + type;
+        item.setAttribute('role', 'status');
+        var icon = document.createElement('iconify-icon');
+        icon.setAttribute('icon', icons[type]);
+        var text = document.createElement('div');
+        text.textContent = message;
+        item.appendChild(icon); item.appendChild(text);
+        host.appendChild(item);
+        setTimeout(function () { item.remove(); }, 4000);
+      };
+
+      // ---------- Shared modal helpers ----------
+      // Any element with data-modal-close inside an .ad-modal closes it; clicking the backdrop closes it too.
+      window.adModal = {
+        open: function (el) { if (!el) return; el.classList.remove('hidden'); el.classList.add('flex'); body.classList.add('ad-modal-open'); var f = el.querySelector('input:not([type=hidden]), select, textarea, button'); if (f) setTimeout(function () { f.focus(); }, 30); },
+        close: function (el) { if (!el) return; el.classList.add('hidden'); el.classList.remove('flex'); if (!document.querySelector('.ad-modal.flex')) body.classList.remove('ad-modal-open'); }
+      };
+      document.addEventListener('click', function (e) {
+        var closer = e.target.closest('[data-modal-close]');
+        if (closer) { window.adModal.close(closer.closest('.ad-modal')); return; }
+        if (e.target.classList && e.target.classList.contains('ad-modal')) window.adModal.close(e.target);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        document.querySelectorAll('.ad-modal.flex').forEach(function (m) { window.adModal.close(m); });
+      });
+    })();
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

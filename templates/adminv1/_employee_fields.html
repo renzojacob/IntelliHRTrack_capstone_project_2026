@@ -1,0 +1,172 @@
+{% comment %}
+  Shared employee fields for the Add and Edit forms on employee_management.html.
+  Variables:
+    p       the EmployeeProfile being edited, or None when adding a new employee
+    prefix  a unique string for element ids ("new" or the profile id)
+  Field names must match what the admin_employees view reads from request.POST.
+{% endcomment %}
+
+<fieldset class="ad-fieldset">
+  <legend>Account and assignment</legend>
+  <div class="ad-form-grid">
+    {% if not p %}
+      <div class="ad-field">
+        <label class="ad-label" for="f-{{ prefix }}-username">Username<span class="ad-req" aria-hidden="true">*</span></label>
+        <input id="f-{{ prefix }}-username" name="username" required autocomplete="off">
+      </div>
+      <div class="ad-field">
+        <label class="ad-label" for="f-{{ prefix }}-password">Temporary password<span class="ad-req" aria-hidden="true">*</span></label>
+        <input id="f-{{ prefix }}-password" name="password" type="password" required minlength="8" autocomplete="new-password">
+        <p class="ad-help">At least 8 characters. Ask the employee to change it after signing in.</p>
+      </div>
+    {% endif %}
+
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-email">Email</label>
+      <input id="f-{{ prefix }}-email" name="email" type="email" value="{{ p.user.email|default:'' }}">
+    </div>
+
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-bio">Biometric ID</label>
+      <input id="f-{{ prefix }}-bio" name="biometric_employee_id" value="{{ p.biometric_employee_id|default:'' }}" placeholder="e.g. 3" inputmode="numeric">
+      <p class="ad-help">Must match the Employee ID on the Hikvision terminal.</p>
+    </div>
+
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-dept">Department</label>
+      <input id="f-{{ prefix }}-dept" name="department" value="{{ p.department|default:'' }}">
+    </div>
+
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-pos">Position</label>
+      <input id="f-{{ prefix }}-pos" name="position" value="{{ p.position|default:'' }}">
+    </div>
+
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-type">Employment type<span class="ad-req" aria-hidden="true">*</span></label>
+      <select id="f-{{ prefix }}-type" name="employment_type" required data-emp-type>
+        <option value="COS" {% if p.employment_type == "COS" %}selected{% endif %}>Contract of Service (COS)</option>
+        <option value="JO" {% if p.employment_type == "JO" %}selected{% endif %}>Job Order (JO)</option>
+        <option value="PERMANENT" {% if p.employment_type == "PERMANENT" %}selected{% endif %}>Permanent</option>
+      </select>
+    </div>
+
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-branch">Branch{% if request.user.is_superuser and not p %}<span class="ad-req" aria-hidden="true">*</span>{% endif %}</label>
+      {% if request.user.is_superuser %}
+        <select id="f-{{ prefix }}-branch" name="branch_id" {% if not p %}required{% endif %}>
+          {% if not p %}<option value="">Select branch</option>{% endif %}
+          {% for b in branches %}
+            <option value="{{ b.id }}" {% if p and p.branch_id == b.id %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      {% else %}
+        <div class="ad-readonly" id="f-{{ prefix }}-branch">
+          <iconify-icon icon="ph:lock-simple" aria-hidden="true"></iconify-icon>
+          {% if p %}{{ p.branch|default:"Assigned branch" }}{% else %}{{ request.user.profile.branch|default:"Assigned branch" }}{% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</fieldset>
+
+<fieldset class="ad-fieldset">
+  <legend>Salary and earnings</legend>
+  <p class="ad-help">Job Order staff are usually paid by daily rate. Contract of Service and Permanent staff use the monthly salary; Permanent staff also receive PERA.</p>
+  <div class="ad-form-grid">
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-monthly">Monthly or basic salary (&#8369;)</label>
+      <input id="f-{{ prefix }}-monthly" name="monthly_salary" type="number" step="0.01" min="0" value="{{ p.monthly_salary|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-daily">Daily rate (&#8369;)</label>
+      <input id="f-{{ prefix }}-daily" name="daily_rate" type="number" step="0.01" min="0" value="{{ p.daily_rate|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-start">Employment or contract start</label>
+      <input id="f-{{ prefix }}-start" name="employment_start_date" type="date" value="{{ p.employment_start_date|date:'Y-m-d' }}">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-end">Employment or contract end</label>
+      <input id="f-{{ prefix }}-end" name="employment_end_date" type="date" value="{{ p.employment_end_date|date:'Y-m-d' }}">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-pera">PERA allowance (&#8369;)</label>
+      <input id="f-{{ prefix }}-pera" name="pera_allowance" type="number" step="0.01" min="0" value="{{ p.pera_allowance|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-other-earn">Other earnings (&#8369;)</label>
+      <input id="f-{{ prefix }}-other-earn" name="other_earnings_amount" type="number" step="0.01" min="0" value="{{ p.other_earnings_amount|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-manual">Manual deduction (&#8369;)</label>
+      <input id="f-{{ prefix }}-manual" name="manual_deduction_amount" type="number" step="0.01" min="0" value="{{ p.manual_deduction_amount|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <label class="ad-check" style="align-self:end" for="f-{{ prefix }}-premium">
+      <input id="f-{{ prefix }}-premium" name="has_premium" type="checkbox" {% if p.has_premium %}checked{% endif %}>
+      <span>
+        <span class="ad-check__label">Eligible for premium pay</span>
+        <span class="ad-check__help">Applied only where the contract allows it</span>
+      </span>
+    </label>
+  </div>
+</fieldset>
+
+<fieldset class="ad-fieldset" data-show-for="JO COS">
+  <legend>JO and COS contributions</legend>
+  <p class="ad-help">Monthly amounts, entered only when the contract requires them. Zero is valid. Semi-monthly payroll uses half of each fixed amount.</p>
+  <div class="ad-form-grid" style="--ad-field-min: 180px">
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-sss">SSS (&#8369;)</label>
+      <input id="f-{{ prefix }}-sss" name="sss_amount" type="number" step="0.01" min="0" value="{{ p.contrib.sss_amount|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-pagibig">Pag-IBIG (&#8369;)</label>
+      <input id="f-{{ prefix }}-pagibig" name="pagibig_amount" type="number" step="0.01" min="0" value="{{ p.contrib.pagibig_amount|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-ph-mode">PhilHealth basis</label>
+      <select id="f-{{ prefix }}-ph-mode" name="philhealth_mode">
+        <option value="percent" {% if p.contrib.philhealth_mode == "percent" %}selected{% endif %}>Percentage of salary</option>
+        <option value="fixed" {% if p.contrib.philhealth_mode == "fixed" %}selected{% endif %}>Fixed amount</option>
+      </select>
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-ph-val">PhilHealth value</label>
+      <input id="f-{{ prefix }}-ph-val" name="philhealth_value" type="number" step="0.01" min="0" value="{{ p.contrib.philhealth_value|default:'0.00' }}" inputmode="decimal">
+      <p class="ad-help">A percent or a peso amount, depending on the basis.</p>
+    </div>
+  </div>
+</fieldset>
+
+<fieldset class="ad-fieldset" data-show-for="PERMANENT">
+  <legend>Permanent employee deductions</legend>
+  <p class="ad-help">Leave a statutory field at zero to compute BIR withholding tax, GSIS, PhilHealth, and Pag-IBIG automatically. Enter an amount only as an authorized per-period override.</p>
+  <div class="ad-form-grid" style="--ad-field-min: 180px">
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-wtax">Withholding tax override (&#8369;)</label>
+      <input id="f-{{ prefix }}-wtax" name="wtax_amount" type="number" step="0.01" min="0" value="{{ p.contrib.wtax_amount|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-gsis-ee">GSIS employee share override (&#8369;)</label>
+      <input id="f-{{ prefix }}-gsis-ee" name="gsis_employee_share" type="number" step="0.01" min="0" value="{{ p.contrib.gsis_employee_share|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-gsis-er">GSIS employer share override (&#8369;)</label>
+      <input id="f-{{ prefix }}-gsis-er" name="gsis_employer_share" type="number" step="0.01" min="0" value="{{ p.contrib.gsis_employer_share|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-loan">Loan deduction (&#8369;)</label>
+      <input id="f-{{ prefix }}-loan" name="loan_deduction_amount" type="number" step="0.01" min="0" value="{{ p.contrib.loan_deduction_amount|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-other-ded">Other deduction (&#8369;)</label>
+      <input id="f-{{ prefix }}-other-ded" name="other_deduction_amount" type="number" step="0.01" min="0" value="{{ p.contrib.other_deduction_amount|default:'0.00' }}" inputmode="decimal">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="f-{{ prefix }}-other-er">Other employer contribution (&#8369;)</label>
+      <input id="f-{{ prefix }}-other-er" name="other_employer_contribution" type="number" step="0.01" min="0" value="{{ p.contrib.other_employer_contribution|default:'0.00' }}" inputmode="decimal">
+    </div>
+  </div>
+</fieldset>
+<p class="ad-help" data-hidden-note hidden>Fields for other employment types are hidden but keep their saved values.</p>

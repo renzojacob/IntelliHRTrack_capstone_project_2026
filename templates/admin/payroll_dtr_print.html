@@ -1,10 +1,51 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>DTR - {{ employee_name }}</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DTR: {{ employee_name }} | IntelliHRTrack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
   <style>
+    /* ---------- Screen-only toolbar (hidden when printing) ---------- */
+    .screen-only { font-family: "Schibsted Grotesk", "Segoe UI", system-ui, Arial, sans-serif; color: #10261C; }
+    .dtr-bar {
+      position: sticky; top: 0; z-index: 5;
+      margin: 0 -16px 20px; padding: 12px 16px;
+      background: #fff; border-bottom: 1px solid #DAE2D8;
+    }
+    .dtr-bar__inner { max-width: 760px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .dtr-bar__title { flex: 1 1 200px; min-width: 0; }
+    .dtr-bar__title strong { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dtr-bar__title span { font-size: 13px; color: #52645A; }
+    .dtr-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      min-height: 40px; padding: 8px 14px; border-radius: 8px;
+      border: 1px solid #DAE2D8; background: #fff; color: #10261C;
+      font: 600 14px/1.2 inherit; text-decoration: none; cursor: pointer; white-space: nowrap;
+    }
+    .dtr-btn:hover { border-color: #52645A; }
+    .dtr-btn--primary { background: #1E5A3C; border-color: #1E5A3C; color: #fff; }
+    .dtr-btn--primary:hover { background: #174A31; }
+    .dtr-btn--danger { background: #FBE4E2; border-color: #FBE4E2; color: #B3261E; }
+    .dtr-btn:focus-visible, .dtr-input:focus-visible { outline: 2px solid #1E5A3C; outline-offset: 2px; }
+    .dtr-input { min-height: 40px; padding: 8px 10px; border: 1px solid #DAE2D8; border-radius: 8px; font: 14px inherit; min-width: 0; width: 180px; }
+    .dtr-inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; }
+    .dtr-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+    .dtr-badge--ok { background: #E1F2E7; color: #1E7A4A; }
+    .dtr-badge--warn { background: #FBEFD2; color: #8A5A00; }
+    .dtr-badge--neutral { background: #EEF2EC; color: #52645A; }
+    .dtr-panel { max-width: 760px; margin: 0 auto 16px; padding: 14px 16px; border: 1px solid #DAE2D8; border-radius: 12px; background: #fff; font-size: 14px; }
+    .dtr-panel dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; }
+    .dtr-panel dt { color: #52645A; }
+    .dtr-panel dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+    .dtr-msg { max-width: 760px; margin: 0 auto 10px; padding: 10px 14px; border-radius: 10px; background: #E1F2E7; color: #1E7A4A; font-size: 14px; }
+    .dtr-msg--error { background: #FBE4E2; color: #B3261E; }
+    .dtr-msg--warning { background: #FBEFD2; color: #8A5A00; }
+    @media (max-width: 560px) { .dtr-inline { width: 100%; } .dtr-input { flex: 1; width: auto; } }
+
     * {
       box-sizing: border-box;
     }
@@ -12,38 +53,15 @@
     body {
       font-family: "Times New Roman", serif;
       color: #111;
-      background: #e5e7eb;
+      background: #EEF2EC;
       margin: 0;
-      padding: 24px;
-    }
-
-    .toolbar {
-      max-width: 760px;
-      margin: 0 auto 16px auto;
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      font-family: Arial, sans-serif;
-    }
-
-    .toolbar button,
-    .toolbar a {
-      border: 0;
-      text-decoration: none;
-      background: #0f766e;
-      color: white;
-      padding: 9px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 13px;
-    }
-
-    .toolbar a {
-      background: #334155;
+      padding: 0 16px 32px;
     }
 
     .page {
       width: 720px;
+      max-width: 100%;
+      overflow-x: auto;
       min-height: 1050px;
       background: white;
       margin: 0 auto;
@@ -231,8 +249,8 @@
         padding: 0;
       }
 
-      .toolbar {
-        display: none;
+      .screen-only {
+        display: none !important;
       }
 
       .page {
@@ -248,82 +266,72 @@
         margin: 10mm;
       }
     }
-  </style>
+    </style>
 </head>
 
 <body>
 
-<div class="toolbar">
-  <a href="{% url 'admin_payroll' %}?branch={{ branch.id }}&period={{ period.id }}&type={{ employee_type_scope|default:'ALL' }}">
-    Back to Payroll
-  </a>
-
-          {% if dtr_locked %}
-            <span style="background:#065f46;color:white;padding:9px 14px;border-radius:8px;font-size:13px;">
-              LOCKED / FINALIZED
-            </span>
-          {% else %}
-            <form method="post" action="{% url 'admin_finalize_payroll_item_dtr' item.id %}" onsubmit="return confirm('Finalize and lock this DTR?');" style="display:inline;">
-              {% csrf_token %}
-              <button type="submit">Finalize / Lock DTR</button>
-            </form>
-          {% endif %}
-
-          {% if dtr_locked and finalized_dtr %}
-            <form method="post" action="{% url 'admin_unlock_finalized_dtr' finalized_dtr.id %}" onsubmit="return confirm('Unlock this DTR? This should only be done for corrections.');" style="display:inline-flex;gap:6px;align-items:center;">
-              {% csrf_token %}
-              <input name="unlock_reason"
-                    placeholder="Reason"
-                    required
-                    style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;">
-              <button type="submit" style="background:#b91c1c;">Unlock</button>
-            </form>
-          {% endif %}
-
-          <button onclick="window.print()">Print DTR</button>
-        </div>
-
-        {% if messages %}
-  <div style="max-width:760px;margin:0 auto 12px auto;font-family:Arial,sans-serif;">
-    {% for message in messages %}
-      <div style="padding:10px 12px;border-radius:8px;margin-bottom:6px;background:#ecfdf5;color:#065f46;font-size:13px;">
-        {{ message }}
+<div class="screen-only">
+  <div class="dtr-bar">
+    <div class="dtr-bar__inner">
+      <a class="dtr-btn" href="{% url 'admin_payroll' %}?branch={{ branch.id }}&period={{ period.id }}&type={{ employee_type_scope|default:'ALL' }}">&larr; Payroll</a>
+      <div class="dtr-bar__title">
+        <strong>{{ employee_name }}</strong>
+        <span>{{ month_label }}</span>
       </div>
-    {% endfor %}
+      {% if dtr_locked %}
+        <span class="dtr-badge dtr-badge--ok">Locked</span>
+      {% elif finalized_dtr %}
+        <span class="dtr-badge dtr-badge--warn">Unlocked for correction</span>
+      {% else %}
+        <span class="dtr-badge dtr-badge--neutral">Not finalized</span>
+      {% endif %}
+
+      {% if not dtr_locked %}
+        <form method="post" action="{% url 'admin_finalize_payroll_item_dtr' item.id %}" class="dtr-inline" onsubmit="return confirm('Finalize and lock this DTR? Payroll for this employee cannot be reprocessed until it is unlocked.');">
+          {% csrf_token %}
+          <button type="submit" class="dtr-btn">Finalize and lock</button>
+        </form>
+      {% endif %}
+
+      {% if dtr_locked and finalized_dtr %}
+        <form method="post" action="{% url 'admin_unlock_finalized_dtr' finalized_dtr.id %}" class="dtr-inline" onsubmit="return confirm('Unlock this DTR? Do this only to correct it. Your reason is recorded.');">
+          {% csrf_token %}
+          <label for="unlockReason" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Reason for unlocking</label>
+          <input id="unlockReason" name="unlock_reason" class="dtr-input" placeholder="Reason for unlocking" required>
+          <button type="submit" class="dtr-btn dtr-btn--danger">Unlock</button>
+        </form>
+      {% endif %}
+
+      <button type="button" class="dtr-btn dtr-btn--primary" onclick="window.print()">Print DTR</button>
+    </div>
   </div>
-{% endif %}
 
-<div style="max-width:760px;margin:0 auto 12px auto;font-family:Arial,sans-serif;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #cbd5e1;font-size:12px;color:#334155;">
-  <strong>DTR Status:</strong>
-  {% if dtr_locked %}
-    Locked / Finalized
-  {% elif finalized_dtr %}
-    Unlocked for correction
-  {% else %}
-    Not yet finalized
-  {% endif %}
-  <br>
-
-  <strong>Source:</strong> {{ dtr_source_label }}
-
-  {% if finalized_dtr and finalized_dtr.finalized_by %}
-    <br>
-    <strong>Finalized by:</strong> {{ finalized_dtr.finalized_by.username }}
-    at {{ finalized_dtr.finalized_at|date:"Y-m-d H:i" }}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="dtr-msg {% if message.tags == 'error' %}dtr-msg--error{% elif message.tags == 'warning' %}dtr-msg--warning{% endif %}" role="alert">{{ message }}</div>
+    {% endfor %}
   {% endif %}
 
-  {% if finalized_dtr and finalized_dtr.unlocked_by %}
-    <br>
-    <strong>Last unlocked by:</strong> {{ finalized_dtr.unlocked_by.username }}
-    at {{ finalized_dtr.unlocked_at|date:"Y-m-d H:i" }}
-    <br>
-    <strong>Reason:</strong> {{ finalized_dtr.unlock_reason }}
-  {% endif %}
+  <div class="dtr-panel">
+    <dl>
+      <dt>Status</dt>
+      <dd>{% if dtr_locked %}Locked and finalized{% elif finalized_dtr %}Unlocked for correction{% else %}Not finalized yet{% endif %}</dd>
+      <dt>Source</dt>
+      <dd>{{ dtr_source_label }}</dd>
+      {% if finalized_dtr and finalized_dtr.finalized_by %}
+        <dt>Finalized</dt>
+        <dd>{{ finalized_dtr.finalized_by.username }}, {{ finalized_dtr.finalized_at|date:"M d, Y H:i" }}</dd>
+      {% endif %}
+      {% if finalized_dtr and finalized_dtr.unlocked_by %}
+        <dt>Last unlocked</dt>
+        <dd>{{ finalized_dtr.unlocked_by.username }}, {{ finalized_dtr.unlocked_at|date:"M d, Y H:i" }}</dd>
+        <dt>Reason</dt>
+        <dd>{{ finalized_dtr.unlock_reason }}</dd>
+      {% endif %}
+    </dl>
+  </div>
 </div>
-
-
-
-
 
   <div class="page">
 

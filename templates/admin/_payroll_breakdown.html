@@ -1,0 +1,43 @@
+{% comment %}
+  Full pay breakdown for one employee row on payroll.html.
+  e = employee row object from the payroll view, et = employment type string.
+{% endcomment %}
+<div class="ad-stack ad-stack--sm">
+  <dl class="ad-detail-grid">
+    <div><dt>Travel days</dt><dd>{% firstof e.travel_days "0" %}</dd></div>
+    <div><dt>Holiday or suspension days</dt><dd>{% firstof e.holidays_suspensions e.holiday_days "0" %}</dd></div>
+    <div><dt>Base or basic pay</dt><dd>&#8369;{% firstof e.base_pay e.basic_salary e.computed_payroll.base "0.00" %}</dd></div>
+    {% if et == "PERMANENT" %}
+      <div><dt>PERA</dt><dd>&#8369;{{ e.pera|default:"0.00" }}</dd></div>
+    {% else %}
+      <div><dt>Premium</dt><dd>&#8369;{% firstof e.premium e.computed_payroll.premium "0.00" %}</dd></div>
+    {% endif %}
+    <div><dt>Other earnings</dt><dd>&#8369;{{ e.other_earnings|default:"0.00" }}</dd></div>
+    <div><dt>Overtime pay</dt><dd>&#8369;{% firstof e.ot_pay e.computed_payroll.ot "0.00" %}</dd></div>
+    <div><dt>Daily rate</dt><dd>&#8369;{{ e.daily_rate|default:"0.00" }}</dd></div>
+    <div><dt>Hourly rate</dt><dd>&#8369;{{ e.hourly_rate|default:"0.00" }}</dd></div>
+    <div><dt>Per-minute rate</dt><dd>&#8369;{{ e.per_minute_rate|default:"0.00" }}</dd></div>
+    <div><dt>Late deduction</dt><dd class="ad-neg">&#8369;{{ e.late_deduction|default:"0.00" }}</dd></div>
+    <div><dt>Undertime deduction</dt><dd class="ad-neg">&#8369;{{ e.undertime_deduction|default:"0.00" }}</dd></div>
+    <div><dt>{% if et == "PERMANENT" %}GSIS, PhilHealth, Pag-IBIG{% else %}SSS, PhilHealth, Pag-IBIG{% endif %}</dt><dd class="ad-neg">&#8369;{% firstof e.gov_contributions e.gov_contributions_total "0.00" %}</dd></div>
+    <div><dt>{% if et == "PERMANENT" %}Withholding tax{% else %}Tax{% endif %}</dt><dd class="ad-neg">&#8369;{% firstof e.tax e.tax_total "0.00" %}</dd></div>
+    {% if et == "PERMANENT" %}
+      <div><dt>WTAX (detail)</dt><dd class="ad-neg">&#8369;{{ e.wtax|default:"0.00" }}</dd></div>
+      <div><dt>GSIS employee share</dt><dd class="ad-neg">&#8369;{{ e.gsis_employee|default:"0.00" }}</dd></div>
+      <div><dt>GSIS employer share</dt><dd>&#8369;{{ e.gsis_employer|default:"0.00" }}</dd></div>
+      <div><dt>Loan deduction</dt><dd class="ad-neg">&#8369;{{ e.loan_deduction|default:"0.00" }}</dd></div>
+      <div><dt>Other deduction</dt><dd class="ad-neg">&#8369;{{ e.other_deduction|default:"0.00" }}</dd></div>
+      <div><dt>Employer contributions</dt><dd>&#8369;{{ e.employer_contributions_total|default:"0.00" }}</dd></div>
+    {% endif %}
+    <div><dt>Total deductions</dt><dd class="ad-neg">&#8369;{% firstof e.deductions e.deductions_total "0.00" %}</dd></div>
+    <div><dt>Net pay</dt><dd style="color:var(--ihrt-field)">&#8369;{% firstof e.net_pay e.computed_payroll.net "0.00" %}</dd></div>
+  </dl>
+  <p class="ad-help">
+    <strong>DTR:</strong>
+    {% if e.dtr_locked %}Locked by {{ e.dtr_finalized_by|default:"—" }}{% if e.dtr_finalized_at %} on {{ e.dtr_finalized_at|date:"M d, Y H:i" }}{% endif %}.
+    {% elif e.dtr_finalized %}Unlocked for correction. Reason: {{ e.dtr_unlock_reason|default:"—" }}.
+    {% else %}Not finalized yet.{% endif %}
+    {% if e.issues %}<br><strong>Issues:</strong> {{ e.issues }}{% endif %}
+    {% if et == "PERMANENT" %}<br>Employer contributions are recorded for costing only and are not deducted from net pay.{% endif %}
+  </p>
+</div>

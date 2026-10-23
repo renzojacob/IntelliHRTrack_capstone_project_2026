@@ -311,7 +311,7 @@
 .lp-cta .ihrt-btn--primary:hover { background: #F5CF6D; }
 .lp-cta .ihrt-btn--secondary { background: transparent; color: #F2F7F3; border-color: rgba(242,247,243,.35); }
 .lp-cta .ihrt-btn--secondary:hover { border-color: #F2F7F3; }
-.lp-cta :focus-visible { box-shadow: 0 0 0 3px #163F2B, 0 0 0 5px #F0C14B; }
+.lp-cta :focus-visible { outline-color: #F0C14B; }
 @media (max-width: 420px) { .lp-cta__actions .ihrt-btn { flex: 1 1 100%; } }
 
 /* ---------- Footer ---------- */

@@ -1,667 +1,254 @@
 {% extends "admin/base_admin.html" %}
 
-{% block title %}
-Payroll Register | {{ batch.name }}
-{% endblock %}
+{% block title %}Payroll register: {{ batch.name }} | IntelliHRTrack{% endblock %}
 
 {% block extra_head %}
 {{ block.super }}
-
 <style>
-  .register-shell {
-    max-width: 1800px;
-    margin: 0 auto;
-  }
-
-  .register-card {
-    background: rgba(255, 255, 255, 0.78);
-    border: 1px solid rgba(203, 213, 225, 0.75);
-    border-radius: 1.25rem;
-    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.10);
-  }
-
-  .dark .register-card {
-    background: rgba(15, 23, 42, 0.82);
-    border-color: rgba(255, 255, 255, 0.10);
-  }
-
-  .summary-card {
-    border: 1px solid rgba(203, 213, 225, 0.70);
-    border-radius: 1rem;
-    padding: 1rem;
-    background: rgba(248, 250, 252, 0.75);
-  }
-
-  .dark .summary-card {
-    background: rgba(30, 41, 59, 0.65);
-    border-color: rgba(255, 255, 255, 0.10);
-  }
-
-  .register-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.72rem;
-  }
-
-  .register-table th,
-  .register-table td {
-    border: 1px solid rgba(148, 163, 184, 0.45);
-    padding: 0.45rem;
-    text-align: right;
-    vertical-align: middle;
-    white-space: nowrap;
-  }
-
-  .register-table th {
-    background: rgba(226, 232, 240, 0.75);
-    color: #334155;
-    font-weight: 800;
-    text-align: center;
-  }
-
-  .dark .register-table th {
-    background: rgba(30, 41, 59, 0.95);
-    color: #e2e8f0;
-  }
-
-  .register-table .text-left {
-    text-align: left;
-  }
-
-  .register-table tfoot td {
-    font-weight: 900;
-    background: rgba(16, 185, 129, 0.08);
-  }
-
-  .status-pill {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 9999px;
-    padding: 0.20rem 0.55rem;
-    font-size: 0.65rem;
-    font-weight: 800;
-  }
-
-  .status-finalized {
-    background: rgba(139, 92, 246, 0.15);
-    color: #7c3aed;
-  }
-
-  .status-completed {
-    background: rgba(16, 185, 129, 0.15);
-    color: #059669;
-  }
-
-  .status-draft {
-    background: rgba(245, 158, 11, 0.15);
-    color: #d97706;
-  }
+  .reg-head { text-align: center; padding: 28px 20px 22px; border-bottom: 1px solid var(--ihrt-line); }
+  .reg-head__rep { font-size: 13px; color: var(--ihrt-muted); }
+  .reg-head h1 { margin-top: 6px; font-size: clamp(1.25rem, 1.1rem + .6vw, 1.6rem); }
+  .reg-head h2 { margin-top: 2px; font-size: 1.05rem; color: var(--ihrt-field); font-weight: 650; }
+  .reg-info { display: grid; gap: 24px; padding: 20px; border-bottom: 1px solid var(--ihrt-line); }
+  @media (min-width: 900px) { .reg-info { grid-template-columns: 1fr 1fr; gap: 40px; } }
+  .reg-info h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .reg-table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .reg-table th, .reg-table td { border: 1px solid var(--ihrt-line); padding: 6px 8px; text-align: right; white-space: nowrap; }
+  .reg-table th { background: var(--ihrt-surface-2); color: var(--ihrt-muted); font-weight: 650; text-align: center; font-size: 12px; }
+  .reg-table thead tr:first-child th { color: var(--ihrt-ink); }
+  .reg-table .l { text-align: left; }
+  .reg-table td.l strong { display: block; }
+  .reg-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--ihrt-surface-2) 45%, transparent); }
+  .reg-table tfoot td { font-weight: 750; background: var(--ihrt-field-soft); }
+  .reg-table .net { font-weight: 750; color: var(--ihrt-field); }
+  .reg-sign { display: grid; gap: 32px; padding: 32px 20px 24px; border-top: 1px solid var(--ihrt-line); text-align: center; }
+  @media (min-width: 700px) { .reg-sign { grid-template-columns: repeat(3, 1fr); } }
+  .reg-sign__line { margin: 40px auto 6px; width: min(240px, 100%); border-top: 1px solid var(--ihrt-ink); padding-top: 6px; font-size: 13px; color: var(--ihrt-muted); }
+  .reg-sign strong { font-size: 14.5px; }
 
   @media print {
-    @page {
-      size: A4 landscape;
-      margin: 8mm;
-    }
-
-    html,
-    body {
-      background: white !important;
-      color: black !important;
-      font-size: 9px !important;
-    }
-
-    aside,
-    nav,
-    header,
-    footer,
-    .sidebar,
-    .admin-sidebar,
-    .no-print {
-      display: none !important;
-    }
-
-    main,
-    .content,
-    .register-shell {
-      width: 100% !important;
-      max-width: none !important;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-
-    .register-card {
-      background: white !important;
-      border: 0 !important;
-      border-radius: 0 !important;
-      box-shadow: none !important;
-    }
-
-    .summary-card {
-      background: white !important;
-      border: 1px solid #9ca3af !important;
-      break-inside: avoid;
-    }
-
-    .register-table {
-      font-size: 7px !important;
-    }
-
-    .register-table th,
-    .register-table td {
-      padding: 3px !important;
-      border: 1px solid #4b5563 !important;
-      color: black !important;
-    }
-
-    .register-table th {
-      background: #e5e7eb !important;
-    }
-
-    .register-table tfoot td {
-      background: #f3f4f6 !important;
-    }
-
-    .print-header {
-      display: block !important;
-    }
-
-    tr {
-      break-inside: avoid;
-    }
+    @page { size: A4 landscape; margin: 8mm; }
+    body.ad-body { font-size: 9px !important; }
+    .reg-card { border: 0 !important; }
+    .reg-table { font-size: 7px !important; }
+    .reg-table th, .reg-table td { padding: 2px 3px !important; border-color: #555 !important; color: #000 !important; background: #fff !important; }
+    .reg-table th { background: #e5e5e5 !important; }
+    .reg-table tfoot td { background: #f0f0f0 !important; }
+    .ad-table-wrap { overflow: visible !important; }
+    .reg-checks, .reg-screen-only { display: none !important; }
+    tr { break-inside: avoid; }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="register-shell space-y-6">
 
-  <!-- Toolbar -->
-  <div class="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <a
-      href="{% url 'admin_payroll' %}?branch={{ branch.id }}&period={{ period.id }}&type={{ batch.employee_type_scope }}"
-      class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white/80 px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-white"
-    >
-      <iconify-icon icon="ph:arrow-left-duotone"></iconify-icon>
-      Back to Payroll
-    </a>
+<!-- Screen toolbar -->
+<div class="ad-row ad-row--between no-print">
+  <a href="{% url 'admin_payroll' %}?branch={{ branch.id }}&period={{ period.id }}&type={{ batch.employee_type_scope }}" class="ad-crumb" style="margin:0">
+    <iconify-icon icon="ph:arrow-left" aria-hidden="true"></iconify-icon> Back to payroll
+  </a>
+  <button type="button" onclick="window.print()" class="ihrt-btn ihrt-btn--primary">
+    <iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon> Print register
+  </button>
+</div>
 
-    <button
-      type="button"
-      onclick="window.print()"
-      class="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-black text-white shadow-lg transition hover:shadow-glow"
-    >
-      <iconify-icon icon="ph:printer-duotone"></iconify-icon>
-      Print Payroll Register
-    </button>
+<section class="ad-card reg-card">
+  <!-- Official heading -->
+  <div class="reg-head">
+    <p class="reg-head__rep">Republic of the Philippines</p>
+    <h1>Department of Agriculture, MIMAROPA Region</h1>
+    <h2>Payroll register</h2>
+    <p class="ad-help" style="margin-top:6px">Generated from saved payroll records in IntelliHRTrack</p>
   </div>
 
-  <section class="register-card overflow-hidden">
-
-    <!-- Official Header -->
-    <div class="border-b border-gray-200/70 p-6 text-center dark:border-white/10">
-      <p class="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
-        Republic of the Philippines
-      </p>
-
-      <h1 class="mt-2 text-2xl font-black text-gray-950 dark:text-white">
-        Department of Agriculture — MIMAROPA
-      </h1>
-
-      <h2 class="mt-1 text-xl font-extrabold text-accent">
-        Official Payroll Register
-      </h2>
-
-      <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-        IntelliHRTrack Payroll and Employee Management System
-      </p>
+  <!-- Batch information -->
+  <div class="reg-info">
+    <div>
+      <h3>Batch</h3>
+      <dl class="ad-kv">
+        <div><dt>Batch ID</dt><dd>{{ batch.id }}</dd></div>
+        <div><dt>Name</dt><dd>{{ batch.name }}</dd></div>
+        <div><dt>Branch</dt><dd>{{ branch.name }}</dd></div>
+        <div><dt>Employee scope</dt><dd>{{ batch.employee_type_scope }}</dd></div>
+      </dl>
     </div>
-
-    <!-- Batch Information -->
-    <div class="grid grid-cols-1 gap-5 border-b border-gray-200/70 p-6 dark:border-white/10 lg:grid-cols-2">
-
-      <div>
-        <h3 class="mb-3 text-sm font-black uppercase tracking-wide text-gray-500">
-          Payroll Batch
-        </h3>
-
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between gap-4 border-b border-dashed border-gray-300 pb-2 dark:border-white/10">
-            <span>Batch ID</span>
-            <strong>{{ batch.id }}</strong>
-          </div>
-
-          <div class="flex justify-between gap-4 border-b border-dashed border-gray-300 pb-2 dark:border-white/10">
-            <span>Batch Name</span>
-            <strong class="text-right">{{ batch.name }}</strong>
-          </div>
-
-          <div class="flex justify-between gap-4 border-b border-dashed border-gray-300 pb-2 dark:border-white/10">
-            <span>Branch</span>
-            <strong>{{ branch.name }}</strong>
-          </div>
-
-          <div class="flex justify-between gap-4 border-b border-dashed border-gray-300 pb-2 dark:border-white/10">
-            <span>Employee Scope</span>
-            <strong>{{ batch.employee_type_scope }}</strong>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <h3 class="mb-3 text-sm font-black uppercase tracking-wide text-gray-500">
-          Period and Status
-        </h3>
-
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between gap-4 border-b border-dashed border-gray-300 pb-2 dark:border-white/10">
-            <span>Payroll Period</span>
-            <strong>{{ period.name }}</strong>
-          </div>
-
-          <div class="flex justify-between gap-4 border-b border-dashed border-gray-300 pb-2 dark:border-white/10">
-            <span>Covered Dates</span>
-            <strong>
-              {{ period.start_date|date:"F d, Y" }}
-              —
-              {{ period.end_date|date:"F d, Y" }}
-            </strong>
-          </div>
-
-          <div class="flex justify-between gap-4 border-b border-dashed border-gray-300 pb-2 dark:border-white/10">
-            <span>Status</span>
-
-            {% if batch.status == "finalized" %}
-              <span class="status-pill status-finalized">
-                FINALIZED
-              </span>
-            {% elif batch.status == "completed" %}
-              <span class="status-pill status-completed">
-                COMPLETED
-              </span>
-            {% else %}
-              <span class="status-pill status-draft">
-                {{ batch.status|upper }}
-              </span>
-            {% endif %}
-          </div>
-
-          <div class="flex justify-between gap-4 border-b border-dashed border-gray-300 pb-2 dark:border-white/10">
-            <span>Processed By</span>
-            <strong>
-              {{ batch.processed_by.username|default:"—" }}
-            </strong>
-          </div>
-
-          <div class="flex justify-between gap-4 border-b border-dashed border-gray-300 pb-2 dark:border-white/10">
-            <span>Processed At</span>
-            <strong>
-              {% if batch.processed_at %}
-                {{ batch.processed_at|date:"F d, Y h:i A" }}
-              {% else %}
-                —
-              {% endif %}
-            </strong>
-          </div>
-
-          {% if batch.finalized_by %}
-            <div class="flex justify-between gap-4 border-b border-dashed border-gray-300 pb-2 dark:border-white/10">
-              <span>Finalized By</span>
-              <strong>{{ batch.finalized_by.username }}</strong>
-            </div>
-
-            <div class="flex justify-between gap-4 border-b border-dashed border-gray-300 pb-2 dark:border-white/10">
-              <span>Finalized At</span>
-              <strong>
-                {{ batch.finalized_at|date:"F d, Y h:i A" }}
-              </strong>
-            </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-
-    <!-- Summary -->
-    <div class="grid grid-cols-2 gap-4 border-b border-gray-200/70 p-6 dark:border-white/10 md:grid-cols-3 xl:grid-cols-7">
-
-      <div class="summary-card">
-        <p class="text-xs font-bold uppercase text-gray-500">Employees</p>
-        <p class="mt-2 text-2xl font-black">{{ employee_count }}</p>
-      </div>
-
-      <div class="summary-card">
-        <p class="text-xs font-bold uppercase text-gray-500">Gross Payroll</p>
-        <p class="mt-2 text-xl font-black text-emerald-600">
-          ₱{{ calculated_total_gross }}
-        </p>
-      </div>
-
-      <div class="summary-card">
-        <p class="text-xs font-bold uppercase text-gray-500">Deductions</p>
-        <p class="mt-2 text-xl font-black text-rose-600">
-          ₱{{ calculated_total_deductions }}
-        </p>
-      </div>
-
-      <div class="summary-card">
-        <p class="text-xs font-bold uppercase text-gray-500">Net Payroll</p>
-        <p class="mt-2 text-xl font-black text-accent">
-          ₱{{ calculated_total_net }}
-        </p>
-      </div>
-
-      <div class="summary-card">
-        <p class="text-xs font-bold uppercase text-gray-500">Locked DTR</p>
-        <p class="mt-2 text-2xl font-black text-emerald-600">
-          {{ locked_dtr_count }}
-        </p>
-      </div>
-
-      <div class="summary-card">
-        <p class="text-xs font-bold uppercase text-gray-500">Unlocked DTR</p>
-        <p class="mt-2 text-2xl font-black text-amber-600">
-          {{ unlocked_dtr_count }}
-        </p>
-      </div>
-
-      <div class="summary-card">
-        <p class="text-xs font-bold uppercase text-gray-500">Not Finalized</p>
-        <p class="mt-2 text-2xl font-black text-gray-500">
-          {{ not_finalized_dtr_count }}
-        </p>
-      </div>
-    </div>
-    <!-- Final Payroll Validation Checklist -->
-            <div class="border-b border-gray-200/70 p-6 dark:border-white/10">
-
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-
-                <div>
-                <h2 class="text-lg font-black text-gray-950 dark:text-white">
-                    Final Payroll Validation Checklist
-                </h2>
-
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    This checklist determines whether the payroll batch can be officially finalized.
-                </p>
-                </div>
-
-                {% if validation_ready %}
-                <div class="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-black text-emerald-700 dark:text-emerald-300">
-                    <iconify-icon icon="ph:seal-check-duotone"></iconify-icon>
-                    Ready to Finalize
-                </div>
-                {% else %}
-                <div class="inline-flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-700 dark:text-rose-300">
-                    <iconify-icon icon="ph:warning-octagon-duotone"></iconify-icon>
-                    Finalization Blocked
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
-                {% for check in validation_checks %}
-                <div class="
-                    rounded-xl border p-4
-                    {% if check.passed %}
-                    border-emerald-500/20 bg-emerald-500/5
-                    {% else %}
-                    border-rose-500/20 bg-rose-500/5
-                    {% endif %}
-                ">
-                    <div class="flex items-start gap-3">
-
-                    {% if check.passed %}
-                        <iconify-icon
-                        icon="ph:check-circle-duotone"
-                        class="mt-0.5 text-xl text-emerald-500"
-                        ></iconify-icon>
-                    {% else %}
-                        <iconify-icon
-                        icon="ph:x-circle-duotone"
-                        class="mt-0.5 text-xl text-rose-500"
-                        ></iconify-icon>
-                    {% endif %}
-
-                    <div>
-                        <p class="text-sm font-black text-gray-900 dark:text-white">
-                        {{ check.label }}
-                        </p>
-
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        {{ check.message }}
-                        </p>
-                    </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            {% if validation_errors %}
-                <div class="mt-5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
-                <h3 class="text-sm font-black text-rose-700 dark:text-rose-300">
-                    Critical Errors
-                </h3>
-
-                <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-rose-700 dark:text-rose-300">
-                    {% for error in validation_errors %}
-                    <li>{{ error }}</li>
-                    {% endfor %}
-                </ul>
-                </div>
-            {% endif %}
-
-            {% if validation_warnings %}
-                <div class="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-                <h3 class="text-sm font-black text-amber-700 dark:text-amber-300">
-                    Warnings Requiring Review
-                </h3>
-
-                <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-700 dark:text-amber-300">
-                    {% for warning in validation_warnings %}
-                    <li>{{ warning }}</li>
-                    {% endfor %}
-                </ul>
-                </div>
-            {% endif %}
-
-            {% if batch.status == "completed" %}
-                <div class="no-print mt-5">
-
-                {% if validation_ready %}
-                    <form
-                    method="post"
-                    action="{% url 'admin_finalize_payroll_batch' batch.id %}"
-                    onsubmit="return confirm('Officially finalize this payroll batch? This will lock the official payroll record.');"
-                    >
-                    {% csrf_token %}
-
-                    <button
-                        type="submit"
-                        class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-lg transition hover:bg-emerald-700"
-                    >
-                        <iconify-icon icon="ph:seal-check-duotone"></iconify-icon>
-                        Finalize Official Payroll
-                    </button>
-                    </form>
-
-                {% else %}
-                    <button
-                    type="button"
-                    disabled
-                    class="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-gray-300 px-5 py-3 text-sm font-black text-gray-500 opacity-70 dark:bg-gray-700 dark:text-gray-400"
-                    >
-                    <iconify-icon icon="ph:lock-key-duotone"></iconify-icon>
-                    Resolve Errors Before Finalization
-                    </button>
-                {% endif %}
-                </div>
-            {% endif %}
-            </div>
-
-    <!-- Register Table -->
-    <div class="overflow-x-auto p-4">
-      <table class="register-table">
-        <thead>
-          <tr>
-            <th rowspan="2">No.</th>
-            <th rowspan="2">Employee</th>
-            <th rowspan="2">Type</th>
-            <th rowspan="2">Present</th>
-            <th rowspan="2">Late</th>
-            <th rowspan="2">UT</th>
-            <th colspan="5">Earnings</th>
-            <th colspan="10">Deductions</th>
-            <th rowspan="2">Total Deductions</th>
-            <th rowspan="2">Net Pay</th>
-            <th rowspan="2">DTR</th>
-          </tr>
-
-          <tr>
-            <th>Base/Basic</th>
-            <th>PERA</th>
-            <th>Other</th>
-            <th>Premium</th>
-            <th>OT</th>
-
-            <th>Late</th>
-            <th>UT</th>
-            <th>SSS</th>
-            <th>PhilHealth</th>
-            <th>Pag-IBIG</th>
-            <th>Tax/WTAX</th>
-            <th>GSIS</th>
-            <th>Loans</th>
-            <th>Other</th>
-            <th>Manual</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {% for row in register_rows %}
-            <tr>
-              <td>{{ forloop.counter }}</td>
-
-              <td class="text-left">
-                <strong>{{ row.employee_name }}</strong>
-                <br>
-                <span>
-                  ID: {{ row.biometric_employee_id }}
-                </span>
-              </td>
-
-              <td>{{ row.employment_type }}</td>
-              <td>{{ row.days_present }}</td>
-              <td>{{ row.late_minutes }}</td>
-              <td>{{ row.undertime_minutes }}</td>
-
-              <td>₱{{ row.base_pay }}</td>
-              <td>₱{{ row.pera }}</td>
-              <td>₱{{ row.other_earnings }}</td>
-              <td>₱{{ row.premium_pay }}</td>
-              <td>₱{{ row.overtime_pay }}</td>
-
-              <td>₱{{ row.late_deduction }}</td>
-              <td>₱{{ row.undertime_deduction }}</td>
-              <td>₱{{ row.sss }}</td>
-              <td>₱{{ row.philhealth }}</td>
-              <td>₱{{ row.pagibig }}</td>
-              <td>₱{{ row.tax_or_wtax }}</td>
-              <td>₱{{ row.gsis_employee }}</td>
-              <td>₱{{ row.loan_deduction }}</td>
-              <td>₱{{ row.other_deduction }}</td>
-              <td>₱{{ row.manual_deduction }}</td>
-
-              <td>
-                <strong>₱{{ row.total_deductions }}</strong>
-              </td>
-
-              <td>
-                <strong>₱{{ row.net_pay }}</strong>
-              </td>
-
-              <td>
-                {{ row.dtr_status_label }}
-              </td>
-            </tr>
-          {% empty %}
-            <tr>
-              <td colspan="24">
-                No payroll items found in this batch.
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-
-        <tfoot>
-          <tr>
-            <td colspan="6" class="text-left">
-              OFFICIAL BATCH TOTALS
-            </td>
-
-            <td colspan="5">
-              Gross: ₱{{ calculated_total_gross }}
-            </td>
-
-            <td colspan="10">
-              Deductions: ₱{{ calculated_total_deductions }}
-            </td>
-
-            <td>
-              ₱{{ calculated_total_deductions }}
-            </td>
-
-            <td>
-              ₱{{ calculated_total_net }}
-            </td>
-
-            <td>—</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-
-    <!-- Audit and Signatures -->
-    <div class="grid grid-cols-1 gap-8 border-t border-gray-200/70 p-6 dark:border-white/10 lg:grid-cols-3">
-
-      <div class="text-center">
-        <div class="mx-auto mt-12 w-56 border-t border-gray-700 pt-2">
-          Prepared by
-        </div>
-
-        <strong>
-          {{ batch.processed_by.get_full_name|default:batch.processed_by.username|default:"—" }}
-        </strong>
-      </div>
-
-      <div class="text-center">
-        <div class="mx-auto mt-12 w-56 border-t border-gray-700 pt-2">
-          Reviewed by
-        </div>
-
-        <strong>Authorized Payroll Officer</strong>
-      </div>
-
-      <div class="text-center">
-        <div class="mx-auto mt-12 w-56 border-t border-gray-700 pt-2">
-          Approved by
-        </div>
-
+    <div>
+      <h3>Period and status</h3>
+      <dl class="ad-kv">
+        <div><dt>Payroll period</dt><dd>{{ period.name }}</dd></div>
+        <div><dt>Dates covered</dt><dd>{{ period.start_date|date:"F d, Y" }} to {{ period.end_date|date:"F d, Y" }}</dd></div>
+        <div><dt>Status</dt><dd>
+          {% if batch.status == "finalized" %}<span class="ihrt-badge ihrt-badge--info">Finalized</span>
+          {% elif batch.status == "completed" %}<span class="ihrt-badge ihrt-badge--ok">Completed</span>
+          {% else %}<span class="ihrt-badge ihrt-badge--warn">{{ batch.status|capfirst }}</span>{% endif %}
+        </dd></div>
+        <div><dt>Processed</dt><dd>{{ batch.processed_by.username|default:"—" }}{% if batch.processed_at %}, {{ batch.processed_at|date:"M d, Y h:i A" }}{% endif %}</dd></div>
         {% if batch.finalized_by %}
-          <strong>
-            {{ batch.finalized_by.get_full_name|default:batch.finalized_by.username }}
-          </strong>
+          <div><dt>Finalized</dt><dd>{{ batch.finalized_by.username }}, {{ batch.finalized_at|date:"M d, Y h:i A" }}</dd></div>
+        {% endif %}
+      </dl>
+    </div>
+  </div>
+
+  <!-- Totals -->
+  <div class="ad-stats ad-stats--4 ad-stats--flat" style="border-bottom:1px solid var(--ihrt-line)">
+    <div class="ad-stat ad-tone-field"><p class="ad-stat__label">Employees</p><p class="ad-stat__value">{{ employee_count }}</p></div>
+    <div class="ad-stat ad-tone-ok"><p class="ad-stat__label">Gross payroll</p><p class="ad-stat__value ad-stat__value--money">&#8369;{{ calculated_total_gross }}</p></div>
+    <div class="ad-stat ad-tone-bad"><p class="ad-stat__label">Deductions</p><p class="ad-stat__value ad-stat__value--money">&#8369;{{ calculated_total_deductions }}</p></div>
+    <div class="ad-stat ad-stat--emph ad-tone-field"><p class="ad-stat__label">Net payroll</p><p class="ad-stat__value ad-stat__value--money">&#8369;{{ calculated_total_net }}</p></div>
+  </div>
+  <div class="ad-stats ad-stats--3 ad-stats--flat" style="border-bottom:1px solid var(--ihrt-line)">
+    <div class="ad-stat ad-tone-ok"><p class="ad-stat__label">DTRs locked</p><p class="ad-stat__value">{{ locked_dtr_count }}</p></div>
+    <div class="ad-stat ad-tone-warn"><p class="ad-stat__label">DTRs unlocked</p><p class="ad-stat__value">{{ unlocked_dtr_count }}</p></div>
+    <div class="ad-stat"><p class="ad-stat__label">DTRs not finalized</p><p class="ad-stat__value">{{ not_finalized_dtr_count }}</p></div>
+  </div>
+
+  <!-- Validation checklist (screen only) -->
+  <div class="reg-checks ad-card__body ad-stack ad-stack--sm" style="border-bottom:1px solid var(--ihrt-line)">
+    <div class="ad-row ad-row--between" style="align-items:flex-start">
+      <div>
+        <h2 style="font-size:17px">Before finalizing</h2>
+        <p class="ad-help">Every check must pass before this batch becomes the official payroll record.</p>
+      </div>
+      {% if validation_ready %}
+        <span class="ihrt-badge ihrt-badge--ok" style="font-size:13.5px;padding:6px 12px">Ready to finalize</span>
+      {% else %}
+        <span class="ihrt-badge ihrt-badge--bad" style="font-size:13.5px;padding:6px 12px">Not ready</span>
+      {% endif %}
+    </div>
+
+    <div class="ad-checklist">
+      {% for check in validation_checks %}
+        <div class="ad-checklist__item {% if check.passed %}is-pass{% else %}is-fail{% endif %}">
+          <iconify-icon icon="{% if check.passed %}ph:check-circle-fill{% else %}ph:x-circle-fill{% endif %}" aria-hidden="true"></iconify-icon>
+          <div>
+            <p class="ad-checklist__label">{{ check.label }} <span class="sr-only">{% if check.passed %}passed{% else %}failed{% endif %}</span></p>
+            <p class="ad-checklist__msg">{{ check.message }}</p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if validation_errors %}
+      <div class="ad-alert ad-alert--bad" role="alert">
+        <iconify-icon icon="ph:x-circle" aria-hidden="true"></iconify-icon>
+        <div class="ad-alert__body">
+          <p class="ad-alert__title">Must be fixed</p>
+          <ul>{% for error in validation_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+        </div>
+      </div>
+    {% endif %}
+    {% if validation_warnings %}
+      <div class="ad-alert ad-alert--warn">
+        <iconify-icon icon="ph:warning" aria-hidden="true"></iconify-icon>
+        <div class="ad-alert__body">
+          <p class="ad-alert__title">Review before finalizing</p>
+          <ul>{% for warning in validation_warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if batch.status == "completed" %}
+      <div class="ad-row ad-row--end no-print">
+        {% if validation_ready %}
+          <form method="post" action="{% url 'admin_finalize_payroll_batch' batch.id %}" onsubmit="return confirm('Finalize this payroll batch? It becomes the locked official payroll record.');">
+            {% csrf_token %}
+            <button type="submit" class="ihrt-btn ihrt-btn--primary"><iconify-icon icon="ph:seal-check" aria-hidden="true"></iconify-icon> Finalize official payroll</button>
+          </form>
         {% else %}
-          <strong>Authorized Approving Officer</strong>
+          <button type="button" class="ihrt-btn" disabled><iconify-icon icon="ph:lock-simple" aria-hidden="true"></iconify-icon> Fix the items above to finalize</button>
         {% endif %}
       </div>
-    </div>
+    {% endif %}
+  </div>
 
-    <!-- Footer -->
-    <div class="border-t border-gray-200/70 p-4 text-center text-xs text-gray-500 dark:border-white/10">
-      Printed by {{ printed_by }} on
-      {{ printed_at|date:"F d, Y h:i A" }}.
-      This register is based on saved payroll records from IntelliHRTrack.
+  <!-- Register -->
+  <p class="pr-hint reg-screen-only ad-help" style="padding:10px 20px 0">Scroll sideways to see every column. The printed register fits on landscape A4.</p>
+  <div class="ad-table-wrap" style="padding:12px 20px 20px">
+    <table class="reg-table">
+      <thead>
+        <tr>
+          <th rowspan="2">No.</th>
+          <th rowspan="2" class="l">Employee</th>
+          <th rowspan="2">Type</th>
+          <th rowspan="2">Days present</th>
+          <th rowspan="2">Late min</th>
+          <th rowspan="2">UT min</th>
+          <th colspan="5">Earnings</th>
+          <th colspan="10">Deductions</th>
+          <th rowspan="2">Total deductions</th>
+          <th rowspan="2">Net pay</th>
+          <th rowspan="2">DTR</th>
+        </tr>
+        <tr>
+          <th>Base / basic</th><th>PERA</th><th>Other</th><th>Premium</th><th>OT</th>
+          <th>Late</th><th>UT</th><th>SSS</th><th>PhilHealth</th><th>Pag-IBIG</th><th>Tax / WTAX</th><th>GSIS</th><th>Loans</th><th>Other</th><th>Manual</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in register_rows %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="l"><strong>{{ row.employee_name }}</strong><span class="ad-muted">ID {{ row.biometric_employee_id }}</span></td>
+            <td style="text-align:center">{{ row.employment_type }}</td>
+            <td>{{ row.days_present }}</td>
+            <td>{{ row.late_minutes }}</td>
+            <td>{{ row.undertime_minutes }}</td>
+            <td>&#8369;{{ row.base_pay }}</td>
+            <td>&#8369;{{ row.pera }}</td>
+            <td>&#8369;{{ row.other_earnings }}</td>
+            <td>&#8369;{{ row.premium_pay }}</td>
+            <td>&#8369;{{ row.overtime_pay }}</td>
+            <td>&#8369;{{ row.late_deduction }}</td>
+            <td>&#8369;{{ row.undertime_deduction }}</td>
+            <td>&#8369;{{ row.sss }}</td>
+            <td>&#8369;{{ row.philhealth }}</td>
+            <td>&#8369;{{ row.pagibig }}</td>
+            <td>&#8369;{{ row.tax_or_wtax }}</td>
+            <td>&#8369;{{ row.gsis_employee }}</td>
+            <td>&#8369;{{ row.loan_deduction }}</td>
+            <td>&#8369;{{ row.other_deduction }}</td>
+            <td>&#8369;{{ row.manual_deduction }}</td>
+            <td><strong>&#8369;{{ row.total_deductions }}</strong></td>
+            <td class="net">&#8369;{{ row.net_pay }}</td>
+            <td style="text-align:center">{{ row.dtr_status_label }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="24" class="l" style="text-align:center;padding:20px">This batch has no payroll items.</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="6" class="l">Batch totals</td>
+          <td colspan="5">Gross &#8369;{{ calculated_total_gross }}</td>
+          <td colspan="10">Deductions &#8369;{{ calculated_total_deductions }}</td>
+          <td>&#8369;{{ calculated_total_deductions }}</td>
+          <td class="net">&#8369;{{ calculated_total_net }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Signatures -->
+  <div class="reg-sign">
+    <div>
+      <p class="reg-sign__line">Prepared by</p>
+      <strong>{{ batch.processed_by.get_full_name|default:batch.processed_by.username|default:"—" }}</strong>
     </div>
-  </section>
-</div>
+    <div>
+      <p class="reg-sign__line">Reviewed by</p>
+      <strong>Authorized payroll officer</strong>
+    </div>
+    <div>
+      <p class="reg-sign__line">Approved by</p>
+      <strong>{% if batch.finalized_by %}{{ batch.finalized_by.get_full_name|default:batch.finalized_by.username }}{% else %}Authorized approving officer{% endif %}</strong>
+    </div>
+  </div>
+
+  <p class="ad-card__foot" style="justify-content:center;text-align:center">
+    Printed by {{ printed_by }} on {{ printed_at|date:"F d, Y h:i A" }}. Based on saved payroll records in IntelliHRTrack.
+  </p>
+</section>
 {% endblock %}

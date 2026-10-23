@@ -1,27 +1,33 @@
 {% extends 'admin/base_admin.html' %}
-{% block title %}Attendance Detail | IntelliHRTrack{% endblock %}
+{% block title %}Attendance record | IntelliHRTrack{% endblock %}
 {% block content %}
-<div class="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
-  <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-6">
-    <h1 class="text-xl font-semibold text-gray-900 mb-4">Record Detail</h1>
 
-    <div class="space-y-2 text-sm">
-      <p><b>Person ID:</b> {{ obj.employee_id }}</p>
-      <p><b>Name:</b> {{ obj.full_name }}</p>
-      <p><b>Department:</b> {{ obj.department }}</p>
-      <p><b>Branch:</b> {{ obj.branch }}</p>
-      <p><b>Time:</b> {{ obj.timestamp }}</p>
-      <p><b>Attendance Status:</b> {{ obj.get_attendance_status_display }}</p>
-    </div>
-
-    <div class="mt-6 flex gap-3">
-      <a class="rounded-lg bg-amber-600 px-4 py-2 text-white hover:bg-amber-700" href="{% url 'admin_attendance_update' obj.id %}">
-        Edit
-      </a>
-      <a class="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50" href="{% url 'admin_biometrics' %}">
-        Back
-      </a>
-    </div>
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <a href="{% url 'admin_biometrics' %}" class="ad-crumb"><iconify-icon icon="ph:arrow-left" aria-hidden="true"></iconify-icon> Biometrics and attendance</a>
+    <h1>{{ obj.full_name|default:"Attendance record" }}</h1>
+    <p>Scan recorded {{ obj.timestamp }}</p>
   </div>
-</div>
+  <div class="ad-page-head__actions">
+    <a class="ihrt-btn ihrt-btn--danger-soft" href="{% url 'admin_attendance_delete' obj.id %}">
+      <iconify-icon icon="ph:trash" aria-hidden="true"></iconify-icon> Delete
+    </a>
+    <a class="ihrt-btn ihrt-btn--primary" href="{% url 'admin_attendance_update' obj.id %}">
+      <iconify-icon icon="ph:pencil-simple" aria-hidden="true"></iconify-icon> Edit
+    </a>
+  </div>
+</header>
+
+<section class="ad-card" style="max-width: 760px">
+  <div class="ad-card__body">
+    <dl class="ad-kv">
+      <div><dt>Person ID</dt><dd>{{ obj.employee_id }}</dd></div>
+      <div><dt>Name</dt><dd>{{ obj.full_name }}</dd></div>
+      <div><dt>Department</dt><dd>{{ obj.department|default:"—" }}</dd></div>
+      <div><dt>Branch</dt><dd>{{ obj.branch|default:"—" }}</dd></div>
+      <div><dt>Time</dt><dd>{{ obj.timestamp }}</dd></div>
+      <div><dt>Attendance status</dt><dd><span class="ihrt-badge ihrt-badge--info">{{ obj.get_attendance_status_display }}</span></dd></div>
+    </dl>
+  </div>
+</section>
 {% endblock %}

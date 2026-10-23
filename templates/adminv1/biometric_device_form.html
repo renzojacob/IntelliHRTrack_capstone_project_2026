@@ -1,0 +1,111 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ page_title }} | IntelliHRTrack{% endblock %}
+{% block content %}
+
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <a href="{% url 'admin_biometrics' %}" class="ad-crumb"><iconify-icon icon="ph:arrow-left" aria-hidden="true"></iconify-icon> Biometrics and attendance</a>
+    <h1>{{ page_title }}</h1>
+    <p>Enter the network details and administrator account exactly as they are set on the Hikvision terminal.</p>
+  </div>
+</header>
+
+<form method="post" class="ad-form ad-stack" style="max-width: 880px">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="ad-alert ad-alert--bad" role="alert">
+      <iconify-icon icon="ph:x-circle" aria-hidden="true"></iconify-icon>
+      <div class="ad-alert__body">{{ form.non_field_errors }}</div>
+    </div>
+  {% endif %}
+
+  <section class="ad-card">
+    <div class="ad-card__head">
+      <div>
+        <h2>Terminal</h2>
+        <p>Name the device after where it is installed so staff can tell terminals apart.</p>
+      </div>
+    </div>
+    <div class="ad-card__body ad-form-grid" style="--ad-field-min: 240px">
+      <div class="ad-field ad-span-all">
+        <label for="{{ form.name.id_for_label }}" class="ad-label">Device name<span class="ad-req" aria-hidden="true">*</span></label>
+        {{ form.name }}
+        <p class="ad-help">For example: Calapan main lobby terminal</p>
+        {% for error in form.name.errors %}<p class="ad-error">{{ error }}</p>{% endfor %}
+      </div>
+
+      <div class="ad-field">
+        <label for="{{ form.ip_address.id_for_label }}" class="ad-label">IP address<span class="ad-req" aria-hidden="true">*</span></label>
+        {{ form.ip_address }}
+        <p class="ad-help">Shown on the terminal under network settings, for example 192.168.1.64</p>
+        {% for error in form.ip_address.errors %}<p class="ad-error">{{ error }}</p>{% endfor %}
+      </div>
+
+      <div class="ad-field">
+        <label for="{{ form.port.id_for_label }}" class="ad-label">Port<span class="ad-req" aria-hidden="true">*</span></label>
+        {{ form.port }}
+        <p class="ad-help">Hikvision terminals usually use HTTP port 80.</p>
+        {% for error in form.port.errors %}<p class="ad-error">{{ error }}</p>{% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="ad-card">
+    <div class="ad-card__head">
+      <div>
+        <h2>Device account</h2>
+        <p>An account on the terminal that is allowed to read attendance events.</p>
+      </div>
+    </div>
+    <div class="ad-card__body ad-form-grid" style="--ad-field-min: 240px">
+      <div class="ad-field">
+        <label for="{{ form.username.id_for_label }}" class="ad-label">Username<span class="ad-req" aria-hidden="true">*</span></label>
+        {{ form.username }}
+        {% for error in form.username.errors %}<p class="ad-error">{{ error }}</p>{% endfor %}
+      </div>
+
+      <div class="ad-field">
+        <label for="{{ form.password.id_for_label }}" class="ad-label">Password</label>
+        {{ form.password }}
+        <p class="ad-help">{% if form.password.help_text %}{{ form.password.help_text }}{% else %}Stored securely and never shown again after saving.{% endif %}</p>
+        {% for error in form.password.errors %}<p class="ad-error">{{ error }}</p>{% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="ad-card">
+    <div class="ad-card__head">
+      <div>
+        <h2>Branch and status</h2>
+        <p>Scans downloaded from this terminal are recorded under the branch you choose.</p>
+      </div>
+    </div>
+    <div class="ad-card__body ad-stack ad-stack--sm">
+      <div class="ad-field">
+        <label for="{{ form.branch.id_for_label }}" class="ad-label">Branch<span class="ad-req" aria-hidden="true">*</span></label>
+        {{ form.branch }}
+        {% if form.branch.field.disabled %}
+          <p class="ad-help"><iconify-icon icon="ph:lock-simple" aria-hidden="true" style="vertical-align:-2px"></iconify-icon> Your account can register devices only for its own branch.</p>
+        {% endif %}
+        {% for error in form.branch.errors %}<p class="ad-error">{{ error }}</p>{% endfor %}
+      </div>
+
+      <label class="ad-check" for="{{ form.is_active.id_for_label }}">
+        {{ form.is_active }}
+        <span>
+          <span class="ad-check__label">Active</span>
+          <span class="ad-check__help">Active terminals are included every time someone clicks Sync device.</span>
+        </span>
+      </label>
+    </div>
+    <div class="ad-card__foot" style="justify-content:flex-end">
+      <a href="{% url 'admin_biometrics' %}" class="ihrt-btn ihrt-btn--secondary">Cancel</a>
+      <button type="submit" class="ihrt-btn ihrt-btn--primary">
+        <iconify-icon icon="ph:floppy-disk" aria-hidden="true"></iconify-icon>
+        {{ submit_label }}
+      </button>
+    </div>
+  </section>
+</form>
+{% endblock %}

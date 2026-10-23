@@ -1,37 +1,44 @@
 {% extends 'admin/base_admin.html' %}
-{% block title %}Attendance Record | IntelliHRTrack{% endblock %}
+{% block title %}{% if mode == "edit" %}Edit{% else %}Add{% endif %} attendance record | IntelliHRTrack{% endblock %}
 {% block content %}
-<div class="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
-  <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-6">
-    <h1 class="text-xl font-semibold text-gray-900 mb-4">
-      {% if mode == "edit" %}Edit{% else %}Create{% endif %} Attendance Record
-    </h1>
 
-    <form method="post" class="space-y-4">
-      {% csrf_token %}
-      {{ form.non_field_errors }}
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <a href="{% url 'admin_biometrics' %}" class="ad-crumb"><iconify-icon icon="ph:arrow-left" aria-hidden="true"></iconify-icon> Biometrics and attendance</a>
+    <h1>{% if mode == "edit" %}Edit attendance record{% else %}Add attendance record{% endif %}</h1>
+    <p>{% if mode == "edit" %}Changes apply to this scan only. Payroll that already used it must be reprocessed.{% else %}Use this for a scan the terminal missed. Enter the exact time it happened.{% endif %}</p>
+  </div>
+</header>
 
+<section class="ad-card" style="max-width: 760px">
+  <form method="post" class="ad-form ad-card__body">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="ad-alert ad-alert--bad" role="alert" style="margin-bottom:18px">
+        <iconify-icon icon="ph:x-circle" aria-hidden="true"></iconify-icon>
+        <div class="ad-alert__body">{{ form.non_field_errors }}</div>
+      </div>
+    {% endif %}
+
+    <div class="ad-form-grid" style="--ad-field-min: 260px">
       {% for field in form %}
-        <div>
-          <label class="block text-sm font-medium text-gray-700">{{ field.label }}</label>
-          <div class="mt-1">
-            {{ field }}
-          </div>
-          {% if field.errors %}
-            <p class="text-sm text-red-600 mt-1">{{ field.errors|striptags }}</p>
-          {% endif %}
+        <div class="ad-field">
+          <label for="{{ field.id_for_label }}" class="ad-label">{{ field.label }}{% if field.field.required %}<span class="ad-req" aria-hidden="true">*</span>{% endif %}</label>
+          {{ field }}
+          {% if field.help_text %}<p class="ad-help">{{ field.help_text }}</p>{% endif %}
+          {% if field.errors %}<p class="ad-error">{{ field.errors|striptags }}</p>{% endif %}
         </div>
       {% endfor %}
+    </div>
 
-      <div class="flex gap-3 pt-2">
-        <button class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700" type="submit">
-          Save
-        </button>
-        <a class="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50" href="{% url 'admin_biometrics' %}">
-          Cancel
-        </a>
-      </div>
-    </form>
-  </div>
-</div>
+    <div class="ad-form-actions" style="margin-top:22px">
+      <a class="ihrt-btn ihrt-btn--secondary" href="{% url 'admin_biometrics' %}">Cancel</a>
+      <button class="ihrt-btn ihrt-btn--primary" type="submit">
+        <iconify-icon icon="ph:floppy-disk" aria-hidden="true"></iconify-icon>
+        {% if mode == "edit" %}Save changes{% else %}Add record{% endif %}
+      </button>
+    </div>
+  </form>
+</section>
 {% endblock %}

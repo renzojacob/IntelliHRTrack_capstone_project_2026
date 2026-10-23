@@ -1,0 +1,336 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Leave requests | IntelliHRTrack{% endblock %}
+
+{% block extra_head %}
+<style>
+  .lv-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--ihrt-surface-2); border: 1px solid var(--ihrt-line); overflow-x: auto; }
+  .lv-tabs button { flex: 1 0 auto; min-height: 36px; padding: 6px 14px; border: 0; border-radius: 7px; background: transparent; font-size: 14px; font-weight: 600; color: var(--ihrt-muted); cursor: pointer; white-space: nowrap; }
+  .lv-tabs button[aria-pressed="true"] { background: var(--ihrt-surface); color: var(--ihrt-ink); box-shadow: 0 1px 2px rgba(16,38,28,.08); }
+  .lv-tabs .lv-count { margin-left: 6px; font-variant-numeric: tabular-nums; color: var(--ihrt-muted); font-weight: 500; }
+  .lv-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .lv-avatar { width: 36px; height: 36px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--ihrt-field-soft); color: var(--ihrt-field); font-weight: 700; font-size: 13px; }
+  .lv-docs { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--ihrt-muted); white-space: nowrap; }
+  .lv-docs.has { color: var(--ihrt-info); font-weight: 600; }
+  .lv-event { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--ihrt-line); font-size: 14px; }
+  .lv-event:last-child { border-bottom: 0; }
+  .lv-event__date { flex: none; width: 52px; text-align: center; font-size: 12px; font-weight: 700; line-height: 1.2; padding: 6px 0; border-radius: 8px; background: var(--ihrt-surface-2); }
+  .lv-att { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--ihrt-line); border-radius: var(--ihrt-radius-sm); }
+  .lv-att:hover { border-color: var(--ihrt-field); }
+  .lv-att + .lv-att { margin-top: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <h1>Leave requests</h1>
+    <p>Review requests and supporting documents. {% if request.user.is_superuser %}You can see every branch.{% else %}You see requests from your branch only.{% endif %}</p>
+  </div>
+</header>
+
+<section aria-label="Leave summary" class="ad-stats ad-stats--3">
+  <div class="ad-stat ad-tone-warn">
+    <p class="ad-stat__label">Pending</p>
+    <p class="ad-stat__value">{{ pending_count|default:0 }}</p>
+    <p class="ad-stat__hint">{{ pending_days|default:0 }} day{{ pending_days|default:0|pluralize }} requested</p>
+  </div>
+  <div class="ad-stat ad-tone-ok">
+    <p class="ad-stat__label">Approved</p>
+    <p class="ad-stat__value">{{ approved_count|default:0 }}</p>
+    <p class="ad-stat__hint">{{ total_leave_used|default:0 }} day{{ total_leave_used|default:0|pluralize }} used this year</p>
+  </div>
+  <div class="ad-stat ad-tone-bad">
+    <p class="ad-stat__label">Rejected</p>
+    <p class="ad-stat__value">{{ rejected_count|default:0 }}</p>
+    <p class="ad-stat__hint">Out of {{ total_count|default:0 }} total requests</p>
+  </div>
+</section>
+
+<!-- ===================== Requests ===================== -->
+  <section class="ad-card" aria-labelledby="req-title">
+    <div class="ad-card__head">
+      <div>
+        <h2 id="req-title">Requests</h2>
+        <p>Open Review to read the reason and documents, then approve or reject.</p>
+      </div>
+    </div>
+
+    {% if leave_requests %}
+      <div class="ad-card__body" style="padding-bottom:12px">
+        <div class="lv-tabs" role="group" aria-label="Filter by status">
+          <button type="button" data-filter="ALL" aria-pressed="false">All<span class="lv-count">{{ total_count|default:0 }}</span></button>
+          <button type="button" data-filter="PENDING" aria-pressed="true">Pending<span class="lv-count">{{ pending_count|default:0 }}</span></button>
+          <button type="button" data-filter="APPROVED" aria-pressed="false">Approved<span class="lv-count">{{ approved_count|default:0 }}</span></button>
+          <button type="button" data-filter="REJECTED" aria-pressed="false">Rejected<span class="lv-count">{{ rejected_count|default:0 }}</span></button>
+        </div>
+      </div>
+
+      <div class="ad-only-wide">
+        <div class="ad-table-wrap">
+          <table class="ad-table">
+            <thead>
+              <tr>
+                <th scope="col">Employee</th>
+                <th scope="col">Leave</th>
+                <th scope="col">Dates</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="is-actions"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for l in leave_requests %}
+                <tr data-status="{{ l.status }}">
+                  <td>
+                    <div class="lv-person">
+                      <span class="lv-avatar" aria-hidden="true">{{ l.employee.username|slice:":2"|upper }}</span>
+                      <div style="min-width:0">
+                        <p class="ad-cell-primary ad-truncate" style="--ad-trunc:220px">{{ l.employee.get_full_name|default:l.employee.username }}</p>
+                        <p class="ad-cell-sub">{{ l.branch.name|default:"—" }}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <p class="ad-cell-primary" style="font-weight:550">{{ l.get_leave_type_display|default:l.leave_type }}</p>
+                    {% with n=l.attachments.count %}
+                      <p class="lv-docs {% if n %}has{% endif %}"><iconify-icon icon="ph:paperclip" aria-hidden="true"></iconify-icon>{% if n %}{{ n }} document{{ n|pluralize }}{% else %}No documents{% endif %}</p>
+                    {% endwith %}
+                  </td>
+                  <td class="is-nowrap">
+                    <p>{{ l.start_date|date:"M d" }} to {{ l.end_date|date:"M d, Y" }}</p>
+                    <p class="ad-cell-sub">Filed {{ l.created_at|date:"M d, h:i A" }}</p>
+                  </td>
+                  <td>
+                    {% include "admin/_leave_status.html" with s=l.status %}
+                    {% if l.reviewed_by %}<p class="ad-cell-sub">by {{ l.reviewed_by.username }}</p>{% endif %}
+                  </td>
+                  <td class="is-actions">
+                    <div class="ad-row">
+                      <button type="button" class="btn-view-leave ihrt-btn ihrt-btn--secondary ihrt-btn--sm" data-id="{{ l.id }}"
+                        data-employee="{{ l.employee.get_full_name|default:l.employee.username }}"
+                        data-type="{{ l.get_leave_type_display|default:l.leave_type }}"
+                        data-start="{{ l.start_date|date:'M d, Y' }}" data-end="{{ l.end_date|date:'M d, Y' }}"
+                        data-reason="{{ l.reason|default:'' }}" data-branch="{{ l.branch.name|default:'' }}"
+                        data-status="{{ l.status }}"
+                        data-reviewed="{% if l.reviewed_by %}{{ l.reviewed_by.username }}{% if l.reviewed_at %}, {{ l.reviewed_at|date:'M d, Y h:i A' }}{% endif %}{% endif %}"
+                        data-approve-url="{% url 'admin_leave_approve' l.id %}" data-reject-url="{% url 'admin_leave_reject' l.id %}">
+                        Review
+                      </button>
+                      {% if l.status == "PENDING" %}
+                        <form method="post" action="{% url 'admin_leave_approve' l.id %}">
+                          {% csrf_token %}
+                          <button type="submit" class="ihrt-btn ihrt-btn--primary ihrt-btn--sm">Approve</button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="ad-cards ad-only-narrow" style="grid-template-columns:1fr">
+        {% for l in leave_requests %}
+          <article class="ad-rec" data-status="{{ l.status }}">
+            <div class="ad-rec__top">
+              <div class="lv-person">
+                <span class="lv-avatar" aria-hidden="true">{{ l.employee.username|slice:":2"|upper }}</span>
+                <div style="min-width:0">
+                  <p class="ad-rec__title">{{ l.employee.get_full_name|default:l.employee.username }}</p>
+                  <p class="ad-rec__sub">{{ l.branch.name|default:"—" }}</p>
+                </div>
+              </div>
+              {% include "admin/_leave_status.html" with s=l.status %}
+            </div>
+            <dl class="ad-rec__kv">
+              <div><dt>Leave</dt><dd>{{ l.get_leave_type_display|default:l.leave_type }}</dd></div>
+              {% with n=l.attachments.count %}<div><dt>Documents</dt><dd>{% if n %}{{ n }}{% else %}None{% endif %}</dd></div>{% endwith %}
+              <div style="grid-column:1/-1"><dt>Dates</dt><dd>{{ l.start_date|date:"M d" }} to {{ l.end_date|date:"M d, Y" }}</dd></div>
+            </dl>
+            <div class="ad-rec__actions">
+              <button type="button" class="btn-view-leave ihrt-btn ihrt-btn--secondary ihrt-btn--sm" data-id="{{ l.id }}"
+                data-employee="{{ l.employee.get_full_name|default:l.employee.username }}"
+                data-type="{{ l.get_leave_type_display|default:l.leave_type }}"
+                data-start="{{ l.start_date|date:'M d, Y' }}" data-end="{{ l.end_date|date:'M d, Y' }}"
+                data-reason="{{ l.reason|default:'' }}" data-branch="{{ l.branch.name|default:'' }}"
+                data-status="{{ l.status }}"
+                data-reviewed="{% if l.reviewed_by %}{{ l.reviewed_by.username }}{% if l.reviewed_at %}, {{ l.reviewed_at|date:'M d, Y h:i A' }}{% endif %}{% endif %}"
+                data-approve-url="{% url 'admin_leave_approve' l.id %}" data-reject-url="{% url 'admin_leave_reject' l.id %}">Review</button>
+              {% if l.status == "PENDING" %}
+                <form method="post" action="{% url 'admin_leave_approve' l.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="ihrt-btn ihrt-btn--primary ihrt-btn--sm">Approve</button>
+                </form>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+
+      <div class="ad-empty hidden" id="lvNoMatch">
+        <iconify-icon icon="ph:check-circle" aria-hidden="true"></iconify-icon>
+        <h3 id="lvNoMatchTitle">No pending requests</h3>
+        <p>Choose another status above to see other requests.</p>
+      </div>
+
+      <!-- Attachment lists copied into the review dialog -->
+      <div hidden>
+        {% for l in leave_requests %}
+          <div id="att-{{ l.id }}">
+            {% for att in l.attachments.all %}
+              {% if att.file and att.file.url %}
+                <a class="lv-att" href="{{ att.file.url }}" target="_blank" rel="noopener">
+                  <span style="min-width:0">
+                    <span class="ad-cell-primary ad-truncate" style="--ad-trunc:360px;display:block">{{ att.file.name|default:"Attachment" }}</span>
+                    <span class="ad-cell-sub" style="display:block">Uploaded {{ att.uploaded_at|date:"M d, Y h:i A" }}</span>
+                  </span>
+                  <span class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm">Open <iconify-icon icon="ph:arrow-square-out" aria-hidden="true"></iconify-icon></span>
+                </a>
+              {% else %}
+                <div class="lv-att"><span class="ad-muted">This attachment's file is missing.</span></div>
+              {% endif %}
+            {% empty %}
+              <p class="ad-help">No supporting documents were uploaded.</p>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="ad-empty">
+        <iconify-icon icon="ph:calendar-check" aria-hidden="true"></iconify-icon>
+        <h3>No leave requests</h3>
+        <p>Requests employees file from their portal appear here.</p>
+      </div>
+    {% endif %}
+  </section>
+
+<!-- ===================== Schedule and activity ===================== -->
+<div class="ad-split ad-split--even">
+    <section class="ad-card" aria-labelledby="sched-title">
+      <div class="ad-card__head">
+        <div>
+          <h2 id="sched-title">Leave schedule</h2>
+          <p>Approved and pending leave by start date.</p>
+        </div>
+      </div>
+      <div class="ad-card__body ad-scroll-y" style="--ad-max-h: 420px; padding-block: 8px">
+        {% for event in calendar_events %}
+          <div class="lv-event">
+            <span class="lv-event__date">{{ event.start }}</span>
+            <span style="flex:1;min-width:0" class="ad-truncate">{{ event.title }}</span>
+            {% include "admin/_leave_status.html" with s=event.status %}
+          </div>
+        {% empty %}
+          <p class="ad-help" style="padding:12px 0">No leave scheduled.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="ad-card" aria-labelledby="act-title">
+      <div class="ad-card__head"><h2 id="act-title">Recent activity</h2></div>
+      <div class="ad-card__body ad-scroll-y" style="--ad-max-h: 360px; padding-block: 8px">
+        {% for note in notifications %}
+          <p class="lv-event" style="display:block">{{ note }}</p>
+        {% empty %}
+          <p class="ad-help" style="padding:12px 0">No recent activity.</p>
+        {% endfor %}
+      </div>
+    </section>
+</div>
+
+<!-- ===================== Review dialog ===================== -->
+<div id="leaveModal" class="ad-modal hidden" role="dialog" aria-modal="true" aria-labelledby="mEmployee" style="--ad-modal-w: 640px">
+  <div class="ad-modal__panel">
+    <div class="ad-modal__head">
+      <div>
+        <h2 id="mEmployee">—</h2>
+        <p id="mBranch">—</p>
+      </div>
+      <button type="button" class="ad-icon-btn ad-icon-btn--sm" data-modal-close><iconify-icon icon="ph:x" aria-hidden="true"></iconify-icon><span class="sr-only">Close</span></button>
+    </div>
+    <div class="ad-modal__body ad-stack ad-stack--sm">
+      <dl class="ad-kv">
+        <div><dt>Leave type</dt><dd id="mType">—</dd></div>
+        <div><dt>Dates</dt><dd id="mDates">—</dd></div>
+        <div><dt>Status</dt><dd id="mStatus">—</dd></div>
+        <div id="mReviewedRow"><dt>Reviewed</dt><dd id="mReviewed">—</dd></div>
+      </dl>
+      <div>
+        <p class="ad-label" style="margin-bottom:6px">Reason</p>
+        <p id="mReason" style="white-space:pre-wrap;padding:12px;border-radius:var(--ihrt-radius-sm);background:var(--ihrt-surface-2)">—</p>
+      </div>
+      <div>
+        <p class="ad-label" style="margin-bottom:6px">Supporting documents <span id="mDocsMeta" class="ad-help"></span></p>
+        <div id="mAttachments"></div>
+      </div>
+    </div>
+    <div class="ad-modal__foot" id="mDecision">
+      <form method="post" id="mRejectForm">{% csrf_token %}<button type="submit" class="ihrt-btn ihrt-btn--danger-soft">Reject</button></form>
+      <form method="post" id="mApproveForm">{% csrf_token %}<button type="submit" class="ihrt-btn ihrt-btn--primary">Approve</button></form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var statusLabel = { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected', CANCELLED: 'Cancelled' };
+
+  // ---------- Status filter ----------
+  var tabs = document.querySelectorAll('.lv-tabs [data-filter]');
+  var noMatch = document.getElementById('lvNoMatch');
+  function applyFilter(status) {
+    tabs.forEach(function (t) { t.setAttribute('aria-pressed', String(t.dataset.filter === status)); });
+    var shown = 0;
+    document.querySelectorAll('[data-status]').forEach(function (el) {
+      if (el.classList.contains('btn-view-leave')) return;
+      var ok = status === 'ALL' || el.dataset.status === status;
+      el.style.display = ok ? '' : 'none';
+      if (ok && el.tagName === 'TR') shown++;
+    });
+    if (noMatch) {
+      noMatch.classList.toggle('hidden', shown > 0);
+      var t = document.getElementById('lvNoMatchTitle');
+      if (t) t.textContent = 'No ' + (statusLabel[status] || '').toLowerCase() + ' requests';
+    }
+  }
+  tabs.forEach(function (t) { t.addEventListener('click', function () { applyFilter(t.dataset.filter); }); });
+  if (tabs.length) {
+    var hasPending = document.querySelector('tr[data-status="PENDING"]');
+    applyFilter(hasPending ? 'PENDING' : 'ALL');
+  }
+
+  // ---------- Review dialog ----------
+  var modal = document.getElementById('leaveModal');
+  function set(id, v) { var el = document.getElementById(id); if (el) el.textContent = v || '—'; }
+  document.querySelectorAll('.btn-view-leave').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var d = this.dataset;
+      set('mEmployee', d.employee);
+      set('mBranch', d.branch);
+      set('mType', d.type);
+      set('mDates', (d.start || '—') + ' to ' + (d.end || '—'));
+      set('mStatus', statusLabel[d.status] || d.status);
+      set('mReason', d.reason || 'No reason given.');
+      set('mReviewed', d.reviewed);
+      document.getElementById('mReviewedRow').hidden = !d.reviewed;
+
+      var src = document.getElementById('att-' + d.id);
+      var target = document.getElementById('mAttachments');
+      target.innerHTML = src ? src.innerHTML : '<p class="ad-help">No supporting documents were uploaded.</p>';
+      var count = src ? src.querySelectorAll('.lv-att').length : 0;
+      set('mDocsMeta', count ? '(' + count + ')' : '');
+
+      var decision = document.getElementById('mDecision');
+      decision.hidden = d.status !== 'PENDING';
+      document.getElementById('mApproveForm').action = d.approveUrl;
+      document.getElementById('mRejectForm').action = d.rejectUrl;
+
+      window.adModal.open(modal);
+    });
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,469 @@
+{% extends 'admin/base_admin.html' %}
+
+{% block title %}IntelliHRTrack — Module 5: Leave & Absences{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root { --accent:#14b8a6; --accent-to:#0ea5a0; --card-bg:rgba(255,255,255,0.6); --card-border:rgba(255,255,255,0.35);
+    --noise:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.035"/></svg>'); }
+  html[data-accent="teal"] { --accent:#14b8a6; --accent-to:#0ea5a0; }
+  html[data-accent="purple"] { --accent:#8b5cf6; --accent-to:#7c3aed; }
+  html[data-accent="rose"] { --accent:#f43f5e; --accent-to:#e11d48; }
+  html[data-accent="amber"] { --accent:#f59e0b; --accent-to:#d97706; }
+  html[data-bg="gradient"] body::before { content:""; position:fixed; inset:0; z-index:-2; background:
+    radial-gradient(800px 400px at 10% -10%, rgba(59,130,246,0.15), transparent 60%),
+    radial-gradient(600px 300px at 120% 0%, rgba(20,184,166,0.18), transparent 60%),
+    linear-gradient(120deg, rgba(2,6,23,0.03), rgba(2,6,23,0.06)); }
+  html[data-bg="image"] body::before { content:""; position:fixed; inset:0; z-index:-2; background:url('https://images.unsplash.com/photo-1527689368864-3a821dbccc34?auto=format&fit=crop&w=2100&q=60') center/cover no-repeat fixed; filter:saturate(1.05) brightness(0.95); }
+  body::after { content:""; position:fixed; inset:0; pointer-events:none; z-index:-1; background-image:var(--noise); }
+
+  .glass { background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--card-border); }
+  .dark .glass { background: rgba(15,23,42,0.60); border-color: rgba(255,255,255,0.08); }
+  .gradient-accent { background-image: linear-gradient(135deg, var(--accent), var(--accent-to)); }
+  .text-accent { color: var(--accent); }
+  .neon-divider { height:1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity:.6; }
+  .ripple { position: relative; overflow: hidden; }
+  .ripple::after { content:''; position:absolute; inset:0; background: radial-gradient(circle, rgba(255,255,255,0.3) 1%, transparent 1%) center/15000%; opacity:0; transition: opacity .5s; }
+  .ripple:active::after { opacity:1; background-size:100%; transition:0s; }
+  #toastHost { position: fixed; top: 16px; right: 16px; display: grid; gap: 10px; z-index: 80; pointer-events: none; }
+  .toast { pointer-events: auto; min-width: 220px; max-width: 360px; padding: 10px 12px; border-radius: 12px; box-shadow: 0 10px 20px rgba(2,6,23,.2); border: 1px solid rgba(255,255,255,.35); }
+  .toast.info { background: var(--card-bg); }
+  .toast.success { background: linear-gradient(135deg, rgba(16,185,129,.15), rgba(20,184,166,.25)); }
+  .toast.warn { background: linear-gradient(135deg, rgba(245,158,11,.15), rgba(245,158,11,.28)); }
+  .toast.error { background: linear-gradient(135deg, rgba(244,63,94,.15), rgba(244,63,94,.28)); }
+  #topProgress { background-image: linear-gradient(90deg, var(--accent), var(--accent-to)); }
+  select, input, textarea { color: #111827; }
+  .dark select, .dark input, .dark textarea { background-color: rgba(255,255,255,0.08); color: #e5e7eb; border-color: rgba(255,255,255,0.15); }
+  .dark select option { background-color: #0f172a; color: #e5e7eb; }
+
+  /* attachments */
+  .att-pill { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .55rem; border-radius:9999px; font-size:.75rem; font-weight:600; }
+  .att-pill-blue { background: rgba(59,130,246,.12); color: rgb(37,99,235); border: 1px solid rgba(59,130,246,.25); }
+  .att-link { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.6rem .75rem; border-radius: 14px; background: rgba(255,255,255,.45); border:1px solid rgba(255,255,255,.35); }
+  .dark .att-link { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.12); }
+
+  /* ✅ actions: keep ONE clean row (no stacking) */
+  .act-btn { display:inline-flex; align-items:center; justify-content:center; gap:.45rem; padding:.45rem .7rem; border-radius:.75rem; font-size:.75rem; font-weight:700; line-height:1; white-space:nowrap; }
+  .act-btn iconify-icon { font-size: 1.05rem; }
+
+  /* IMPORTANT: no wrapping to prevent View + Docs from stacking */
+  .act-wrap { display:flex; align-items:center; justify-content:flex-end; gap:.45rem; flex-wrap:nowrap; }
+  .act-meta { margin-top:.35rem; display:flex; justify-content:flex-end; }
+
+  /* make table slightly tighter so actions fit in one line */
+  .th-tight { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .td-tight { padding-left: 1rem !important; padding-right: 1rem !important; }
+
+  /* attachments pill should never force wrap */
+  .att-pill { white-space: nowrap; }
+
+  /* if screen is too small, hide text labels (icons only) so it still stays one row */
+  @media (max-width: 1024px){
+    .act-label { display:none; }
+    .act-btn { padding: .45rem .6rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div id="toastHost"></div>
+<div id="topProgress" class="fixed left-0 top-0 h-1 w-0 opacity-0 z-[100]"></div>
+
+<div class="w-full max-w-none !max-w-none px-2 sm:px-4 lg:px-6">
+
+<header class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-glow">
+  <div class="absolute inset-0 opacity-40 animate-shine" style="background-image: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.2), var(--accent)); background-size: 200% 100%;"></div>
+  <div class="relative z-10 flex items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight">Leave & Absences — Manager Console</h2>
+      <p class="mt-1 text-sm md:text-base text-gray-600 dark:text-gray-300">
+        Approve requests and keep leave tracking branch-safe.
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="btnAiAssistant" class="px-4 py-2 rounded-xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:shadow-glow transition flex items-center justify-center gap-2 ripple">
+        <iconify-icon icon="ph:robot-duotone"></iconify-icon> AI Assistant
+      </button>
+      <button id="btnNotify" class="px-3 py-2 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 hover:shadow-glow transition flex items-center justify-center gap-2 ripple">
+        <iconify-icon icon="ph:bell-duotone" class="text-accent"></iconify-icon> Alerts
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="glass rounded-2xl shadow overflow-hidden mt-4">
+  <div class="p-6">
+
+    {% if messages %}
+      <div class="mb-4 space-y-2">
+        {% for message in messages %}
+          <div class="glass rounded-xl p-3 border border-white/40 dark:border-white/10 text-sm">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+      <div>
+        <h3 class="text-xl font-bold">Leave Requests</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Showing requests based on your permission (superuser = all branches, staff = own branch).
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Total Requests</div>
+        <div class="text-2xl font-extrabold mt-1">{{ total_count|default:0 }}</div>
+      </div>
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Pending</div>
+        <div class="text-2xl font-extrabold mt-1 text-amber-500">{{ pending_count|default:0 }}</div>
+      </div>
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Approved</div>
+        <div class="text-2xl font-extrabold mt-1 text-emerald-600">{{ approved_count|default:0 }}</div>
+      </div>
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Rejected</div>
+        <div class="text-2xl font-extrabold mt-1 text-rose-600">{{ rejected_count|default:0 }}</div>
+      </div>
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Approved Days (yr)</div>
+        <div class="text-2xl font-extrabold mt-1 text-blue-600">{{ total_leave_used|default:0 }}</div>
+      </div>
+      <div class="glass rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Pending Days (reserved)</div>
+        <div class="text-2xl font-extrabold mt-1 text-yellow-600">{{ pending_days|default:0 }}</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="glass rounded-2xl p-5 shadow-md">
+        <h3 class="text-lg font-bold mb-4">Recent Activity</h3>
+        {% if notifications %}
+          <ul class="space-y-3">
+            {% for note in notifications %}
+              <li class="p-3 rounded-lg bg-white/50 dark:bg-gray-800 text-xs">{{ note }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-xs text-gray-500 dark:text-gray-400">No recent activity.</p>
+        {% endif %}
+      </div>
+
+      <div class="glass rounded-2xl p-5 shadow-md">
+        <h3 class="text-lg font-bold mb-4">Leave Schedule</h3>
+        <div class="grid grid-cols-7 gap-1 text-xs text-center">
+          {% for event in calendar_events %}
+            <div class="p-2 rounded-lg
+              {% if event.status == 'APPROVED' %}
+                bg-green-200 dark:bg-green-900 text-green-900 dark:text-green-100
+              {% elif event.status == 'PENDING' %}
+                bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100
+              {% else %}
+                bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100
+              {% endif %}
+            ">
+              <div class="font-semibold text-[10px]">{{ event.start }}</div>
+              <div class="truncate text-[9px]">{{ event.title }}</div>
+            </div>
+          {% empty %}
+            <p class="text-xs text-gray-500 col-span-7">No leave scheduled.</p>
+          {% endfor %}
+        </div>
+        <p class="text-xs text-gray-400 mt-3">Green = Approved, Amber = Pending</p>
+      </div>
+    </div>
+
+    <div class="glass rounded-xl border border-white/40 dark:border-white/10 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-white/40 dark:divide-white/10">
+          <thead class="bg-white/60 dark:bg-slate-800/60">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Leave Type</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Dates</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Reviewed</th>
+
+              <!-- ✅ header aligned w/ buttons -->
+              <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider th-tight">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-white/40 dark:divide-white/10">
+            {% if leave_requests %}
+              {% for l in leave_requests %}
+                <tr class="hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <div class="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center border-2 border-blue-500">
+                        <span class="text-xs font-bold text-slate-600 dark:text-slate-200">
+                          {{ l.employee.username|slice:":2"|upper }}
+                        </span>
+                      </div>
+                      <div class="ml-4">
+                        <div class="text-sm font-medium">
+                          {{ l.employee.get_full_name|default:l.employee.username }}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                          Branch: {{ l.branch.name|default:"—" }}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      {{ l.get_leave_type_display|default:l.leave_type }}
+                    </span>
+                  </td>
+
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm">{{ l.start_date|date:"M d, Y" }} - {{ l.end_date|date:"M d, Y" }}</div>
+                    <div class="text-xs text-gray-500">Requested: {{ l.created_at|date:"M d, Y • h:i A" }}</div>
+                  </td>
+
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    {% if l.status == "PENDING" %}
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Pending</span>
+                    {% elif l.status == "APPROVED" %}
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">Approved</span>
+                    {% elif l.status == "REJECTED" %}
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200">Rejected</span>
+                    {% elif l.status == "CANCELLED" %}
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-200">Cancelled</span>
+                    {% else %}
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ l.status }}</span>
+                    {% endif %}
+                  </td>
+
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      {% if l.reviewed_by %}
+                        By: {{ l.reviewed_by.username }}
+                        {% if l.reviewed_at %}<div>{{ l.reviewed_at|date:"M d, Y • h:i A" }}</div>{% endif %}
+                      {% else %}
+                        Awaiting admin decision
+                      {% endif %}
+                    </div>
+                  </td>
+
+                  <!-- ✅ NO STACKING: Approve + Reject + View + Docs on ONE row -->
+                  <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-right td-tight">
+                    <div class="act-wrap">
+
+                      {% if l.status == "PENDING" %}
+                        <form method="POST" action="{% url 'admin_leave_approve' l.id %}" class="inline">
+                          {% csrf_token %}
+                          <button type="submit"
+                            class="act-btn text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/45 transition">
+                            <iconify-icon icon="ph:check-fat"></iconify-icon>
+                            <span class="act-label">Approve</span>
+                          </button>
+                        </form>
+
+                        <form method="POST" action="{% url 'admin_leave_reject' l.id %}" class="inline">
+                          {% csrf_token %}
+                          <button type="submit"
+                            class="act-btn text-rose-700 dark:text-rose-200 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/45 transition">
+                            <iconify-icon icon="ph:x"></iconify-icon>
+                            <span class="act-label">Reject</span>
+                          </button>
+                        </form>
+                      {% endif %}
+
+                      <button type="button"
+                        class="btn-view-leave act-btn text-blue-700 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/45 transition"
+                        data-id="{{ l.id }}"
+                        data-employee="{{ l.employee.get_full_name|default:l.employee.username|escapejs }}"
+                        data-type="{{ l.get_leave_type_display|default:l.leave_type|escapejs }}"
+                        data-start="{{ l.start_date|date:'Y-m-d' }}"
+                        data-end="{{ l.end_date|date:'Y-m-d' }}"
+                        data-reason="{{ l.reason|default:''|escapejs }}"
+                        data-branch="{{ l.branch.name|default:''|escapejs }}"
+                        data-status="{{ l.status|escapejs }}">
+                        <iconify-icon icon="ph:eye"></iconify-icon>
+                        <span class="act-label">View</span>
+                      </button>
+
+                      {% with att_count=l.attachments.count %}
+                        {% if att_count|default:0 %}
+                          <span class="att-pill att-pill-blue" title="Supporting documents attached">
+                            <iconify-icon icon="ph:paperclip-duotone"></iconify-icon>
+                            {{ att_count }} Doc{{ att_count|pluralize }}
+                          </span>
+                        {% else %}
+                          <span class="att-pill" style="background:rgba(148,163,184,.15);color:rgb(100,116,139);border:1px solid rgba(148,163,184,.25);" title="No supporting documents">
+                            <iconify-icon icon="ph:paperclip-duotone"></iconify-icon>
+                            No Docs
+                          </span>
+                        {% endif %}
+                      {% endwith %}
+
+                    </div>
+
+                    <div id="att-{{ l.id }}" class="hidden">
+                      {% if l.attachments.all %}
+                        <div class="grid grid-cols-1 gap-2 mt-2">
+                          {% for att in l.attachments.all %}
+                            {% if att.file and att.file.url %}
+                              <a class="att-link" href="{{ att.file.url }}" target="_blank" rel="noopener">
+                                <div class="min-w-0">
+                                  <div class="text-sm font-semibold truncate">
+                                    <iconify-icon icon="ph:file-duotone" class="text-accent"></iconify-icon>
+                                    {{ att.file.name|default:"Attachment" }}
+                                  </div>
+                                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Uploaded: {{ att.uploaded_at|date:"M d, Y • h:i A" }}
+                                  </div>
+                                </div>
+                                <div class="text-xs font-semibold text-blue-600 whitespace-nowrap">Open</div>
+                              </a>
+                            {% else %}
+                              <div class="att-link">
+                                <div class="text-sm">Attachment missing URL</div>
+                                <div class="text-xs text-gray-500">—</div>
+                              </div>
+                            {% endif %}
+                          {% endfor %}
+                        </div>
+                      {% else %}
+                        <div class="text-sm text-gray-500 dark:text-gray-400">No supporting documents uploaded.</div>
+                      {% endif %}
+                    </div>
+                  </td>
+
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                  ✅ No leave requests found.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Leave Details Modal -->
+<div id="leaveModal" class="hidden fixed inset-0 z-[90] items-center justify-center">
+  <div class="absolute inset-0 bg-black/40" onclick="closeLeaveModal()"></div>
+  <div class="relative glass rounded-2xl p-6 w-[min(820px,92vw)] shadow-xl border border-white/40 dark:border-white/10">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <h3 class="text-lg font-bold">Leave Request Details</h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Review request info (branch-safe)</p>
+      </div>
+      <button class="px-3 py-1 rounded-lg glass" onclick="closeLeaveModal()">Close</button>
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+      <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Employee</div>
+        <div id="mEmployee" class="font-semibold mt-1">—</div>
+      </div>
+      <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Branch</div>
+        <div id="mBranch" class="font-semibold mt-1">—</div>
+      </div>
+      <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Leave Type</div>
+        <div id="mType" class="font-semibold mt-1">—</div>
+      </div>
+      <div class="glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Dates</div>
+        <div id="mDates" class="font-semibold mt-1">—</div>
+      </div>
+
+      <div class="md:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Reason</div>
+        <div id="mReason" class="mt-1 whitespace-pre-wrap">—</div>
+      </div>
+
+      <div class="md:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="text-xs text-gray-500">Status</div>
+        <div id="mStatus" class="font-semibold mt-1">—</div>
+      </div>
+
+      <div class="md:col-span-2 glass rounded-xl p-4 border border-white/40 dark:border-white/10">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-xs text-gray-500">Supporting Documents</div>
+          <div id="mDocsMeta" class="text-[11px] text-gray-500 dark:text-gray-400">—</div>
+        </div>
+        <div id="mAttachments" class="mt-3 space-y-2">
+          <div class="text-sm text-gray-500 dark:text-gray-400">No supporting documents.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer class="pb-8 pt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+  © IntelliHRTrack • Module 5 — Leave interactions are branch-safe.
+</footer>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  const buttons = document.querySelectorAll(".btn-view-leave");
+
+  buttons.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      const id      = this.getAttribute("data-id");
+      const employee= this.getAttribute("data-employee");
+      const type    = this.getAttribute("data-type");
+      const start   = this.getAttribute("data-start");
+      const end     = this.getAttribute("data-end");
+      const reason  = this.getAttribute("data-reason");
+      const branch  = this.getAttribute("data-branch");
+      const status  = this.getAttribute("data-status");
+
+      document.getElementById("mEmployee").innerText = employee || "—";
+      document.getElementById("mBranch").innerText   = branch || "—";
+      document.getElementById("mType").innerText     = type || "—";
+      document.getElementById("mDates").innerText    = (start || "—") + " → " + (end || "—");
+      document.getElementById("mReason").innerText   = reason || "—";
+      document.getElementById("mStatus").innerText   = status || "—";
+
+      const source = document.getElementById("att-" + id);
+      const target = document.getElementById("mAttachments");
+
+      if(source){
+        target.innerHTML = source.innerHTML;
+        const td = this.closest("td");
+        const pill = td ? td.querySelector(".att-pill") : null;
+        document.getElementById("mDocsMeta").innerText = pill ? pill.innerText.trim() : "—";
+      } else {
+        target.innerHTML = "<div class='text-sm text-gray-500'>No supporting documents.</div>";
+        document.getElementById("mDocsMeta").innerText = "No Docs";
+      }
+
+      const modal = document.getElementById("leaveModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    });
+  });
+});
+
+function closeLeaveModal(){
+  const modal = document.getElementById("leaveModal");
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+}
+</script>
+{% endblock %}
