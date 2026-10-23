@@ -1,0 +1,9 @@
+# IntelliHRTrack
+# Only the public landing page is meant for search engines and AI crawlers.
+# Everything else requires signing in and is marked "noindex".
+User-agent: *
+Allow: /
+Disallow: /admin-ui/
+Disallow: /admin/
+
+Sitemap: https://intellihrtrack-mimaropa.up.railway.app/sitemap.xml

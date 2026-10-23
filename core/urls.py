@@ -4,8 +4,23 @@ from django.urls import path, reverse_lazy
 from . import views, overtime_views
 from .payroll_period_views import admin_payroll_period_create
 
+from django.shortcuts import redirect
+from django.templatetags.static import static
+from django.views.generic import TemplateView
+
+def favicon(request):
+    """Browsers and Google ask for /favicon.ico at the site root; send them to the static file."""
+    return redirect(static("img/favicon.ico"), permanent=True)
 
 urlpatterns = [
+
+    #urls for favicon and SEO
+    path("robots.txt", TemplateView.as_view(template_name="seo/robots.txt", content_type="text/plain")),
+    path("sitemap.xml", TemplateView.as_view(template_name="seo/sitemap.xml", content_type="application/xml")),
+    path("llms.txt", TemplateView.as_view(template_name="seo/llms.txt", content_type="text/plain")),
+    path("favicon.ico", favicon),
+
+
     path("admin-ui/biometrics/overtime/authorize/", overtime_views.admin_overtime_authorize, name="admin_overtime_authorize"),
     path("admin-ui/biometrics/overtime/<int:overtime_id>/revoke/", overtime_views.admin_overtime_revoke, name="admin_overtime_revoke"),
     # =========================================================

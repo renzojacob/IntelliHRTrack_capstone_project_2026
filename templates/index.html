@@ -4,10 +4,76 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>IntelliHRTrack | Attendance and Payroll for DA MIMAROPA</title>
-  <meta name="description" content="IntelliHRTrack connects biometric attendance, employee records, leave, and payroll for the Department of Agriculture MIMAROPA Region.">
-  <meta name="theme-color" content="#F5F7F3" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0C1510" media="(prefers-color-scheme: dark)">
+  <title>IntelliHRTrack | Biometric Attendance and Payroll System for DA MIMAROPA</title>
+  <meta name="description" content="IntelliHRTrack connects Hikvision face and fingerprint attendance, employee records, leave, and payroll for JO, COS, and Permanent employees of the Department of Agriculture MIMAROPA Region.">
+  {% include "_head_meta.html" with indexable=1 %}
+  <link rel="canonical" href="https://intellihrtrack-mimaropa.up.railway.app/">
+  <!-- Google Search Console: paste your verification tag here, for example
+  <meta name="google-site-verification" content="YOUR-CODE"> -->
+
+  <!-- Link previews (Facebook, Messenger, Viber, LinkedIn, X, Google Chat) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="IntelliHRTrack">
+  <meta property="og:locale" content="en_PH">
+  <meta property="og:url" content="https://intellihrtrack-mimaropa.up.railway.app/">
+  <meta property="og:title" content="IntelliHRTrack: from biometric scan to payslip">
+  <meta property="og:description" content="Biometric attendance, leave, and payroll in one system for the Department of Agriculture MIMAROPA Region.">
+  <meta property="og:image" content="https://intellihrtrack-mimaropa.up.railway.app{% static 'img/og-image.png' %}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="IntelliHRTrack logo with the line: From biometric scan to payslip, in one record.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="IntelliHRTrack: from biometric scan to payslip">
+  <meta name="twitter:description" content="Biometric attendance, leave, and payroll in one system for the Department of Agriculture MIMAROPA Region.">
+  <meta name="twitter:image" content="https://intellihrtrack-mimaropa.up.railway.app{% static 'img/og-image.png' %}">
+
+  <!-- Structured data: tells search engines and AI assistants what this site is -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://intellihrtrack-mimaropa.up.railway.app/#website",
+        "url": "https://intellihrtrack-mimaropa.up.railway.app/",
+        "name": "IntelliHRTrack",
+        "inLanguage": "en-PH",
+        "description": "Employee management, biometric attendance, and payroll system for the Department of Agriculture MIMAROPA Region."
+      },
+      {
+        "@type": "WebApplication",
+        "@id": "https://intellihrtrack-mimaropa.up.railway.app/#app",
+        "name": "IntelliHRTrack",
+        "url": "https://intellihrtrack-mimaropa.up.railway.app/",
+        "image": "https://intellihrtrack-mimaropa.up.railway.app{% static 'img/og-image.png' %}",
+        "applicationCategory": "BusinessApplication",
+        "applicationSubCategory": "Human resources and payroll",
+        "operatingSystem": "Any modern web browser",
+        "inLanguage": "en-PH",
+        "description": "IntelliHRTrack records attendance from Hikvision face and fingerprint terminals, builds each employee's daily time record, handles leave, travel, and holidays, and computes payroll and payslips for Job Order, Contract of Service, and Permanent employees.",
+        "featureList": [
+          "Biometric attendance from Hikvision face and fingerprint terminals",
+          "Daily time record (Civil Service Form No. 48)",
+          "Late, undertime, and absence computation",
+          "Leave requests and approvals",
+          "Official travel, holiday, and work suspension tracking",
+          "Payroll for JO, COS, and Permanent employees",
+          "Payslips and payroll registers",
+          "Branch-based access control"
+        ],
+        "audience": {
+          "@type": "Audience",
+          "audienceType": "Employees and HR administrators of the Department of Agriculture MIMAROPA Region"
+        },
+        "creator": {
+          "@type": "Organization",
+          "name": "IntelliHRTrack capstone team, Mindoro State University Calapan Campus"
+        },
+        "isPartOf": { "@id": "https://intellihrtrack-mimaropa.up.railway.app/#website" }
+      }
+    ]
+  }
+  </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
