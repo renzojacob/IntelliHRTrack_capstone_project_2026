@@ -1,14 +1,30 @@
 {% extends "base.html" %}
 
-{% block content %}
-  <h1 class="text-5xl font-extrabold text-blue-600">
-    Tailwind is WORKING ✅
-  </h1>
+{% block title %}Style check | IntelliHRTrack{% endblock %}
 
-  <div class="mt-6 p-6 bg-white rounded-xl shadow-lg">
-    <p class="text-gray-700">
-      If this card has padding, shadow, and rounded corners,
-      Django + Tailwind are connected correctly.
+{% block content %}
+  <section class="ihrt-panel" style="padding: clamp(20px, 4vw, 40px); max-width: 720px;">
+    <span class="ihrt-badge ihrt-badge--ok">Styles loaded</span>
+
+    <h1 style="margin-top: 16px; font-size: clamp(1.75rem, 1.3rem + 2vw, 2.5rem);">
+      Design system check
+    </h1>
+    <p style="margin-top: 12px; color: var(--ihrt-muted); max-width: 58ch;">
+      If this page shows the Schibsted Grotesk font, a white panel with a soft border, and the green
+      button and colored badges below, then output.css and ihrt.css are both loading correctly.
     </p>
-  </div>
+
+    <div style="margin-top: 24px; display: flex; flex-wrap: wrap; gap: 10px;">
+      <a href="{% url 'login_ui' %}" class="ihrt-btn ihrt-btn--primary">Primary button</a>
+      <button type="button" class="ihrt-btn ihrt-btn--secondary">Secondary button</button>
+      <button type="button" class="ihrt-btn ihrt-btn--ghost">Ghost button</button>
+    </div>
+
+    <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px;">
+      <span class="ihrt-badge ihrt-badge--ok">Approved</span>
+      <span class="ihrt-badge ihrt-badge--warn">Pending</span>
+      <span class="ihrt-badge ihrt-badge--bad">Rejected</span>
+      <span class="ihrt-badge ihrt-badge--info">Clocked in</span>
+    </div>
+  </section>
 {% endblock %}

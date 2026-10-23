@@ -1,0 +1,195 @@
+/* =====================================================================
+   IntelliHRTrack design system — shared tokens and components
+   Scope: everything applies only inside <body class="ihrt">, so pages
+   that do not opt in (admin/employee, for now) are unaffected.
+   Load AFTER output.css (Tailwind) so these rules win where they overlap.
+   ===================================================================== */
+
+/* ---------- Tokens: light ---------- */
+:root {
+  /* Brand */
+  --ihrt-field: #1E5A3C;        /* primary green (DA field) */
+  --ihrt-field-hover: #174A31;
+  --ihrt-field-soft: #E4EFE7;   /* tinted background for green elements */
+  --ihrt-harvest: #E3A91B;      /* gold accent — use sparingly */
+  --ihrt-harvest-soft: #FBF1D6;
+
+  /* Neutrals */
+  --ihrt-paper: #F5F7F3;        /* page background */
+  --ihrt-surface: #FFFFFF;      /* cards, panels */
+  --ihrt-surface-2: #EEF2EC;    /* recessed areas */
+  --ihrt-line: #DAE2D8;         /* borders */
+  --ihrt-ink: #10261C;          /* main text */
+  --ihrt-muted: #52645A;        /* secondary text (≥ 5:1 on paper) */
+  --ihrt-on-field: #FFFFFF;
+
+  /* Status */
+  --ihrt-ok: #1E7A4A;
+  --ihrt-ok-soft: #E1F2E7;
+  --ihrt-warn: #8A5A00;
+  --ihrt-warn-soft: #FBEFD2;
+  --ihrt-bad: #B3261E;
+  --ihrt-bad-soft: #FBE4E2;
+  --ihrt-info: #1F5C8C;
+  --ihrt-info-soft: #E2EEF8;
+
+  /* Type */
+  --ihrt-font: "Schibsted Grotesk", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+
+  /* Shape and depth */
+  --ihrt-radius-sm: 8px;
+  --ihrt-radius: 12px;
+  --ihrt-radius-lg: 20px;
+  --ihrt-shadow: 0 1px 2px rgba(16, 38, 28, .06), 0 8px 24px -12px rgba(16, 38, 28, .18);
+  --ihrt-shadow-lg: 0 2px 4px rgba(16, 38, 28, .05), 0 24px 56px -24px rgba(16, 38, 28, .30);
+
+  /* Layout */
+  --ihrt-gutter: 16px;
+  --ihrt-max: 1200px;
+  --ihrt-focus: 0 0 0 3px var(--ihrt-paper), 0 0 0 5px var(--ihrt-field);
+}
+
+@media (min-width: 640px)  { :root { --ihrt-gutter: 24px; } }
+@media (min-width: 1024px) { :root { --ihrt-gutter: 32px; } }
+
+/* ---------- Tokens: dark (follows the device setting) ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ihrt-field: #5CB98A;
+    --ihrt-field-hover: #74C99D;
+    --ihrt-field-soft: #17301F;
+    --ihrt-harvest: #F0C14B;
+    --ihrt-harvest-soft: #3A2F12;
+    --ihrt-paper: #0C1510;
+    --ihrt-surface: #121F18;
+    --ihrt-surface-2: #0F1A14;
+    --ihrt-line: #24372C;
+    --ihrt-ink: #E6EEE8;
+    --ihrt-muted: #9FB2A6;
+    --ihrt-on-field: #08130D;
+    --ihrt-ok: #6FD39B;   --ihrt-ok-soft: #14301F;
+    --ihrt-warn: #F0C14B; --ihrt-warn-soft: #33290F;
+    --ihrt-bad: #F2938C;  --ihrt-bad-soft: #3A1715;
+    --ihrt-info: #8CC2EE; --ihrt-info-soft: #13283A;
+    --ihrt-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --ihrt-shadow-lg: 0 2px 4px rgba(0,0,0,.4), 0 24px 56px -24px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --ihrt-field: #5CB98A;
+  --ihrt-field-hover: #74C99D;
+  --ihrt-field-soft: #17301F;
+  --ihrt-harvest: #F0C14B;
+  --ihrt-harvest-soft: #3A2F12;
+  --ihrt-paper: #0C1510;
+  --ihrt-surface: #121F18;
+  --ihrt-surface-2: #0F1A14;
+  --ihrt-line: #24372C;
+  --ihrt-ink: #E6EEE8;
+  --ihrt-muted: #9FB2A6;
+  --ihrt-on-field: #08130D;
+  --ihrt-ok: #6FD39B;   --ihrt-ok-soft: #14301F;
+  --ihrt-warn: #F0C14B; --ihrt-warn-soft: #33290F;
+  --ihrt-bad: #F2938C;  --ihrt-bad-soft: #3A1715;
+  --ihrt-info: #8CC2EE; --ihrt-info-soft: #13283A;
+  --ihrt-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --ihrt-shadow-lg: 0 2px 4px rgba(0,0,0,.4), 0 24px 56px -24px rgba(0,0,0,.7);
+}
+
+/* ---------- Base (scoped) ---------- */
+html { -webkit-text-size-adjust: 100%; }
+
+body.ihrt {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--ihrt-paper);
+  color: var(--ihrt-ink);
+  font-family: var(--ihrt-font);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;               /* safety net against page-wide sideways scroll */
+}
+/* :where() keeps these resets at zero specificity, so any component class overrides them */
+:where(.ihrt) *, :where(.ihrt) *::before, :where(.ihrt) *::after { box-sizing: border-box; }
+:where(.ihrt) :where(h1, h2, h3, h4, p, ul, ol, dl, dd, figure) { margin: 0; }
+:where(.ihrt) :where(ul, ol) { padding: 0; list-style: none; }
+:where(.ihrt) :where(img, svg) { display: block; max-width: 100%; }
+:where(.ihrt) :where(a) { color: inherit; text-decoration: none; }
+:where(.ihrt) :where(button) { font: inherit; color: inherit; }
+:where(.ihrt) :where(h1, h2, h3) { font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; }
+:where(.ihrt) :where(p) { text-wrap: pretty; }
+.ihrt .num { font-variant-numeric: tabular-nums; }
+
+/* Visible keyboard focus everywhere */
+.ihrt :focus-visible { outline: none; box-shadow: var(--ihrt-focus); border-radius: var(--ihrt-radius-sm); }
+
+/* Skip link */
+.ihrt-skip {
+  position: absolute; left: 12px; top: -60px; z-index: 100;
+  padding: 10px 16px; border-radius: var(--ihrt-radius-sm);
+  background: var(--ihrt-field); color: var(--ihrt-on-field); font-weight: 600;
+}
+.ihrt-skip:focus { top: 12px; }
+
+.ihrt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Layout ---------- */
+.ihrt-container {
+  width: 100%;
+  max-width: var(--ihrt-max);
+  margin-inline: auto;
+  padding-inline: var(--ihrt-gutter);
+}
+
+/* ---------- Buttons ---------- */
+.ihrt-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px;                       /* comfortable touch target */
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--ihrt-radius-sm);
+  font-size: 15px; font-weight: 600; line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.ihrt-btn svg { width: 18px; height: 18px; flex: none; }
+.ihrt-btn--primary { background: var(--ihrt-field); color: var(--ihrt-on-field); }
+.ihrt-btn--primary:hover { background: var(--ihrt-field-hover); }
+.ihrt-btn--secondary { background: var(--ihrt-surface); color: var(--ihrt-ink); border-color: var(--ihrt-line); }
+.ihrt-btn--secondary:hover { border-color: var(--ihrt-muted); }
+.ihrt-btn--ghost { background: transparent; color: var(--ihrt-ink); }
+.ihrt-btn--ghost:hover { background: var(--ihrt-surface-2); }
+.ihrt-btn--lg { min-height: 52px; padding: 14px 22px; font-size: 16px; }
+
+/* ---------- Status badges ---------- */
+.ihrt-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 600; line-height: 1.5; white-space: nowrap;
+}
+.ihrt-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.ihrt-badge--ok   { background: var(--ihrt-ok-soft);   color: var(--ihrt-ok); }
+.ihrt-badge--warn { background: var(--ihrt-warn-soft); color: var(--ihrt-warn); }
+.ihrt-badge--bad  { background: var(--ihrt-bad-soft);  color: var(--ihrt-bad); }
+.ihrt-badge--info { background: var(--ihrt-info-soft); color: var(--ihrt-info); }
+
+/* ---------- Surfaces ---------- */
+.ihrt-panel {
+  background: var(--ihrt-surface);
+  border: 1px solid var(--ihrt-line);
+  border-radius: var(--ihrt-radius);
+  box-shadow: var(--ihrt-shadow);
+}
+
+/* ---------- Motion preference ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .ihrt *, .ihrt *::before, .ihrt *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
