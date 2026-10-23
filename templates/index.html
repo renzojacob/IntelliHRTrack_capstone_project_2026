@@ -7,6 +7,7 @@
   <title>IntelliHRTrack | Biometric Attendance and Payroll System for DA MIMAROPA</title>
   <meta name="description" content="IntelliHRTrack connects Hikvision face and fingerprint attendance, employee records, leave, and payroll for JO, COS, and Permanent employees of the Department of Agriculture MIMAROPA Region.">
   {% include "_head_meta.html" with indexable=1 %}
+  <meta name="author" content="Renzo C. Tamayo, Glayzel Ann O. Soriano, Angel Kris M. Ronquillo">
   <link rel="canonical" href="https://intellihrtrack-mimaropa.up.railway.app/">
   <!-- Google Search Console: paste your verification tag here, for example
   <meta name="google-site-verification" content="YOUR-CODE"> -->
@@ -65,10 +66,16 @@
           "@type": "Audience",
           "audienceType": "Employees and HR administrators of the Department of Agriculture MIMAROPA Region"
         },
-        "creator": {
-          "@type": "Organization",
-          "name": "IntelliHRTrack capstone team, Mindoro State University Calapan Campus"
-        },
+        "creator": [
+          { "@type": "Person", "@id": "https://intellihrtrack-mimaropa.up.railway.app/#renzo-tamayo", "name": "Renzo C. Tamayo", "alternateName": "Renzo Tamayo", "jobTitle": "Project leader", "affiliation": { "@type": "CollegeOrUniversity", "name": "Mindoro State University, Calapan Campus" } },
+          { "@type": "Person", "@id": "https://intellihrtrack-mimaropa.up.railway.app/#glayzel-ann-soriano", "name": "Glayzel Ann O. Soriano", "alternateName": "Glayzel Ann Soriano", "jobTitle": "Team member", "affiliation": { "@type": "CollegeOrUniversity", "name": "Mindoro State University, Calapan Campus" } },
+          { "@type": "Person", "@id": "https://intellihrtrack-mimaropa.up.railway.app/#angel-kris-ronquillo", "name": "Angel Kris M. Ronquillo", "alternateName": "Angel Kris Ronquillo", "jobTitle": "Team member", "affiliation": { "@type": "CollegeOrUniversity", "name": "Mindoro State University, Calapan Campus" } }
+        ],
+        "contributor": { "@type": "Person", "@id": "https://intellihrtrack-mimaropa.up.railway.app/#fidel-romasanta", "name": "Fidel C. Romasanta", "jobTitle": "Capstone adviser", "affiliation": { "@type": "CollegeOrUniversity", "name": "Mindoro State University, Calapan Campus" } },
+        "copyrightYear": 2026,
+        "copyrightHolder": [
+          { "@id": "https://intellihrtrack-mimaropa.up.railway.app/#renzo-tamayo" }, { "@id": "https://intellihrtrack-mimaropa.up.railway.app/#glayzel-ann-soriano" }, { "@id": "https://intellihrtrack-mimaropa.up.railway.app/#angel-kris-ronquillo" }
+        ],
         "isPartOf": { "@id": "https://intellihrtrack-mimaropa.up.railway.app/#website" }
       }
     ]
@@ -445,6 +452,11 @@
             Employee management, biometric attendance, and payroll for the Department of Agriculture MIMAROPA Region.
             Developed as a capstone project at Mindoro State University, Calapan Campus.
           </p>
+          <dl class="lp-team" aria-label="Development team">
+            <div><dt>Project leader</dt><dd>Renzo C. Tamayo</dd></div>
+            <div><dt>Team members</dt><dd>Glayzel Ann O. Soriano<br>Angel Kris M. Ronquillo</dd></div>
+            <div><dt>Adviser</dt><dd>Fidel C. Romasanta</dd></div>
+          </dl>
         </div>
         <nav class="lp-footer__links" aria-label="Footer">
           <a href="#how">How it works</a>
@@ -453,7 +465,7 @@
           <a href="{% url 'login_ui' %}">Sign in</a>
         </nav>
       </div>
-      <p class="lp-footer__copy">&copy; {% now "Y" %} IntelliHRTrack. All rights reserved.</p>
+      <p class="lp-footer__copy">&copy; {% now "Y" %} Renzo C. Tamayo, Glayzel Ann O. Soriano, and Angel Kris M. Ronquillo. All rights reserved.</p>
     </div>
   </footer>
 

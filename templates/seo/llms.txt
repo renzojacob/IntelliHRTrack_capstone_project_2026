@@ -2,6 +2,15 @@
 
 > IntelliHRTrack is a web-based employee management, biometric attendance, and payroll system developed for the Department of Agriculture MIMAROPA Region in the Philippines, as a capstone project at Mindoro State University, Calapan Campus.
 
+## Team
+
+- Renzo C. Tamayo, project leader
+- Glayzel Ann O. Soriano, team member
+- Angel Kris M. Ronquillo, team member
+- Fidel C. Romasanta, capstone adviser
+
+All from Mindoro State University, Calapan Campus, Oriental Mindoro, Philippines.
+
 ## What it does
 
 - Records attendance from Hikvision face and fingerprint terminals and matches each scan to an employee.
