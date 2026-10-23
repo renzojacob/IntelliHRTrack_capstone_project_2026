@@ -1,516 +1,436 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IntelliHRTrack | Payroll & Employee Management System</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IntelliHRTrack | Attendance and Payroll for DA MIMAROPA</title>
+  <meta name="description" content="IntelliHRTrack connects biometric attendance, employee records, leave, and payroll for the Department of Agriculture MIMAROPA Region.">
+  <meta name="theme-color" content="#F5F7F3" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0C1510" media="(prefers-color-scheme: dark)">
 
-  <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap">
+
   <link rel="stylesheet" href="{% static 'css/output.css' %}">
-
-
-  <style>
-    :root{
-      --accent: #14b8a6;
-      --accent-dark: #0f766e;
-      --bg1: #e9fbf8;
-      --bg2: #f6fffe;
-      --card: rgba(255,255,255,.72);
-      --stroke: rgba(15, 23, 42, 0.08);
-      --text-main: #0f172a;
-      --text-soft: #475569;
-    }
-
-    html, body{
-      margin: 0;
-      padding: 0;
-      min-height: 100%;
-      color: var(--text-main);
-      font-family: Arial, sans-serif;
-    }
-
-    body{
-      background: linear-gradient(135deg, var(--bg1), var(--bg2));
-      position: relative;
-      overflow-x: hidden;
-    }
-
-    /* Fixed background layer para hindi gumagalaw kasabay ng content */
-    body::before{
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -2;
-      background:
-        radial-gradient(800px 500px at 12% 10%, rgba(20,184,166,.22), transparent 60%),
-        radial-gradient(900px 600px at 90% 20%, rgba(56,189,248,.16), transparent 60%),
-        radial-gradient(900px 700px at 50% 95%, rgba(20,184,166,.12), transparent 60%),
-        linear-gradient(135deg, var(--bg1), var(--bg2));
-      background-attachment: fixed;
-    }
-
-    body::after{
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      pointer-events: none;
-      background-image:
-        linear-gradient(rgba(15,23,42,.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(15,23,42,.03) 1px, transparent 1px);
-      background-size: 34px 34px;
-      mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), transparent 70%);
-      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), transparent 70%);
-    }
-
-    .glass{
-      background: var(--card);
-      border: 1px solid var(--stroke);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-    }
-
-    .shadow-soft{
-      box-shadow:
-        0 1px 2px rgba(15,23,42,.05),
-        0 16px 50px rgba(15,23,42,.10);
-    }
-
-    .btn-accent{
-      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-    }
-
-    .btn-accent:hover{
-      filter: brightness(0.96);
-      transform: translateY(-1px);
-    }
-
-    .text-accent{
-      color: var(--accent-dark);
-    }
-
-    .border-soft{
-      border-color: rgba(15, 23, 42, 0.08);
-    }
-
-    .section-space{
-      padding-top: 5rem;
-      padding-bottom: 5rem;
-    }
-
-    .hero-title{
-      line-height: 1.05;
-      letter-spacing: -0.03em;
-    }
-
-    .fade-up{
-      opacity: 0;
-      transform: translateY(28px);
-      animation: fadeUp .8s ease forwards;
-    }
-
-    .fade-up.delay-1{ animation-delay: .1s; }
-    .fade-up.delay-2{ animation-delay: .2s; }
-    .fade-up.delay-3{ animation-delay: .3s; }
-    .fade-up.delay-4{ animation-delay: .4s; }
-
-    @keyframes fadeUp{
-      to{
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .feature-card,
-    .info-card,
-    .stat-card{
-      transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
-    }
-
-    .feature-card:hover,
-    .info-card:hover,
-    .stat-card:hover{
-      transform: translateY(-6px);
-      box-shadow:
-        0 2px 8px rgba(15,23,42,.06),
-        0 22px 60px rgba(15,23,42,.12);
-    }
-
-    .progress-bar > div{
-      transition: width .6s ease;
-    }
-
-    @media (max-width: 768px){
-      .section-space{
-        padding-top: 4rem;
-        padding-bottom: 4rem;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="{% static 'css/ihrt.css' %}">
+  <link rel="stylesheet" href="{% static 'css/landing.css' %}">
 </head>
-<body>
+<body class="ihrt">
+  <a class="ihrt-skip" href="#main">Skip to content</a>
 
-  <!-- Navbar -->
-  <header class="sticky top-0 z-50 pt-4">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="glass rounded-3xl shadow-soft px-5 sm:px-6 py-4 flex items-center justify-between">
-        <a href="#home" class="flex items-center gap-3 min-w-0">
-          <div class="w-12 h-12 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-extrabold shadow-md shrink-0">
-            IH
-          </div>
-          <div class="min-w-0">
-            <h1 class="text-lg sm:text-xl font-bold tracking-tight truncate">IntelliHRTrack</h1>
-            <p class="text-xs text-slate-500 truncate">Payroll & Employee Management</p>
-          </div>
+  <!-- ===================== Header ===================== -->
+  <header class="lp-header" id="top">
+    <div class="ihrt-container">
+      <div class="lp-header__bar">
+        <a href="#top" class="lp-brand" aria-label="IntelliHRTrack home">
+          <span class="lp-brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M5 15.5c0-4.4 3.1-8 7-8s7 3.6 7 8"/>
+              <path d="M8.5 17c0-3 1.6-5.5 3.5-5.5s3.5 2.5 3.5 5.5"/>
+              <path d="M12 15v4"/>
+            </svg>
+          </span>
+          <span class="lp-brand__name">
+            IntelliHRTrack
+            <span class="lp-brand__sub">DA MIMAROPA</span>
+          </span>
         </a>
 
-        <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-700">
-          <a href="#home" class="hover:text-teal-700 transition">Home</a>
-          <a href="#features" class="hover:text-teal-700 transition">Features</a>
-          <a href="#about" class="hover:text-teal-700 transition">About</a>
-          <a href="#contact" class="hover:text-teal-700 transition">Contact</a>
+        <nav class="lp-nav" aria-label="Main">
+          <a href="#how">How it works</a>
+          <a href="#features">Modules</a>
+          <a href="#about">About</a>
         </nav>
 
-        <div class="flex items-center gap-3">
-          <a href="{% url 'login_ui' %}"
-             class="hidden sm:inline-flex px-4 py-2 rounded-2xl border border-soft bg-white/80 hover:bg-white text-sm font-semibold text-slate-700 transition">
-            Login
-          </a>
-          <a href="{% url 'signup_ui' %}"
-             class="inline-flex px-4 py-2 rounded-2xl btn-accent text-white text-sm font-semibold shadow-soft transition">
-            Get Started
-          </a>
+        <div class="lp-header__actions">
+          <a href="{% url 'login_ui' %}" class="ihrt-btn ihrt-btn--ghost">Sign in</a>
+          <a href="{% url 'signup_ui' %}" class="ihrt-btn ihrt-btn--primary">Create account</a>
+        </div>
+
+        <button type="button" class="lp-menu-btn" aria-expanded="false" aria-controls="mobile-menu" id="menu-btn">
+          <span class="ihrt-sr">Menu</span>
+          <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="lp-mobile-menu" id="mobile-menu" hidden>
+      <div class="ihrt-container">
+        <nav aria-label="Mobile">
+          <a class="lp-mobile-link" href="#how">How it works</a>
+          <a class="lp-mobile-link" href="#features">Modules</a>
+          <a class="lp-mobile-link" href="#about">About</a>
+        </nav>
+        <div class="lp-mobile-menu__actions">
+          <a href="{% url 'login_ui' %}" class="ihrt-btn ihrt-btn--secondary">Sign in</a>
+          <a href="{% url 'signup_ui' %}" class="ihrt-btn ihrt-btn--primary">Create account</a>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- Hero -->
-  <section id="home" class="relative pt-12 sm:pt-16 pb-16 sm:pb-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+  <main id="main">
 
-        <!-- Left -->
-        <div class="fade-up">
-          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass shadow-soft text-sm text-slate-700 mb-6">
-            <iconify-icon icon="ph:shield-check-duotone" class="text-xl text-teal-700"></iconify-icon>
-            Secure • Smart • Efficient workforce management
+    <!-- ===================== Hero ===================== -->
+    <section class="lp-hero">
+      <div class="ihrt-container">
+        <div class="lp-hero__grid">
+
+          <div>
+            <p class="lp-hero__org">Department of Agriculture, MIMAROPA Region</p>
+            <h1>From biometric scan to payslip, in one record.</h1>
+            <p class="lp-hero__lead">
+              IntelliHRTrack links the attendance terminal to employee records, schedules, leave, and payroll,
+              so every amount on a payslip can be traced back to the day it was earned.
+            </p>
+
+            <div class="lp-hero__ctas">
+              <a href="{% url 'login_ui' %}" class="ihrt-btn ihrt-btn--primary ihrt-btn--lg">
+                Sign in to your account
+              </a>
+              <a href="#how" class="ihrt-btn ihrt-btn--secondary ihrt-btn--lg">See how it works</a>
+            </div>
+
+            <ul class="lp-facts">
+              <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M9 10h.01M15 10h.01M9.5 15a3.5 3.5 0 0 0 5 0"/></svg>
+                Face and fingerprint attendance
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg>
+                JO, COS, and Permanent staff
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+                Access limited by office
+              </li>
+            </ul>
           </div>
 
-          <h2 class="hero-title text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900">
-            Modern Payroll and Employee Management for
-            <span class="text-teal-700">Smarter Organizations</span>
-          </h2>
-
-          <p class="mt-6 text-base sm:text-lg text-slate-600 leading-8 max-w-2xl">
-            IntelliHRTrack streamlines employee records, attendance tracking, payroll processing,
-            leave monitoring, and administrative workflows in one secure and easy-to-use platform.
-          </p>
-
-          <div class="mt-8 flex flex-wrap gap-4">
-            <a href="{% url 'login_ui' %}"
-               class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl btn-accent text-white font-semibold shadow-soft transition">
-              <iconify-icon icon="ph:sign-in-duotone" class="text-xl"></iconify-icon>
-              Launch System
-            </a>
-
-            <a href="#features"
-               class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl glass text-slate-700 font-semibold shadow-soft hover:bg-white/90 transition">
-              <iconify-icon icon="ph:arrow-down-duotone" class="text-xl"></iconify-icon>
-              Explore Features
-            </a>
-          </div>
-
-          <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="stat-card glass rounded-3xl p-5 shadow-soft">
-              <p class="text-2xl font-extrabold text-teal-700">24/7</p>
-              <p class="text-sm text-slate-600 mt-1">Accessible digital HR operations</p>
-            </div>
-            <div class="stat-card glass rounded-3xl p-5 shadow-soft">
-              <p class="text-2xl font-extrabold text-teal-700">Fast</p>
-              <p class="text-sm text-slate-600 mt-1">Payroll and attendance processing</p>
-            </div>
-            <div class="stat-card glass rounded-3xl p-5 shadow-soft">
-              <p class="text-2xl font-extrabold text-teal-700">Secure</p>
-              <p class="text-sm text-slate-600 mt-1">Protected employee records and access</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right -->
-        <div class="relative fade-up delay-2">
-          <div class="glass rounded-[2rem] p-5 sm:p-6 shadow-soft">
-            <div class="rounded-[1.5rem] bg-white/85 border border-soft overflow-hidden">
-              <div class="px-5 py-4 border-b border-soft flex items-center justify-between">
+          <!-- Hero visual: an illustrative daily time record -->
+          <div class="lp-dtr-wrap">
+            <figure class="lp-dtr" aria-label="Sample daily time record showing five employees">
+              <div class="lp-dtr__head">
                 <div>
-                  <h3 class="font-bold text-slate-800">System Overview</h3>
-                  <p class="text-sm text-slate-500">Real-time workforce insights</p>
+                  <p class="lp-dtr__title">Daily time record</p>
+                  <p class="lp-dtr__meta">Sample data for illustration</p>
                 </div>
-                <div class="w-12 h-12 rounded-2xl bg-teal-500 text-white flex items-center justify-center shadow-md">
-                  <iconify-icon icon="ph:chart-line-up-duotone" class="text-2xl"></iconify-icon>
-                </div>
-              </div>
-
-              <div class="p-5 space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                  <div class="rounded-2xl bg-teal-50 p-4 border border-teal-100">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm text-slate-600">Employees</span>
-                      <iconify-icon icon="ph:users-three-duotone" class="text-2xl text-teal-700"></iconify-icon>
-                    </div>
-                    <p class="mt-3 text-2xl font-extrabold text-slate-900">250+</p>
-                  </div>
-
-                  <div class="rounded-2xl bg-sky-50 p-4 border border-sky-100">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm text-slate-600">Attendance</span>
-                      <iconify-icon icon="ph:fingerprint-duotone" class="text-2xl text-sky-700"></iconify-icon>
-                    </div>
-                    <p class="mt-3 text-2xl font-extrabold text-slate-900">Live</p>
-                  </div>
-
-                  <div class="rounded-2xl bg-emerald-50 p-4 border border-emerald-100">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm text-slate-600">Payroll</span>
-                      <iconify-icon icon="ph:wallet-duotone" class="text-2xl text-emerald-700"></iconify-icon>
-                    </div>
-                    <p class="mt-3 text-2xl font-extrabold text-slate-900">Automated</p>
-                  </div>
-
-                  <div class="rounded-2xl bg-amber-50 p-4 border border-amber-100">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm text-slate-600">Leave Requests</span>
-                      <iconify-icon icon="ph:calendar-check-duotone" class="text-2xl text-amber-700"></iconify-icon>
-                    </div>
-                    <p class="mt-3 text-2xl font-extrabold text-slate-900">Managed</p>
-                  </div>
-                </div>
-
-                <div class="rounded-2xl border border-soft bg-slate-50 p-4">
-                  <div class="flex items-center justify-between mb-4">
-                    <p class="font-semibold text-slate-800">Monthly Performance</p>
-                    <span class="text-xs px-3 py-1 rounded-full bg-teal-100 text-teal-700 font-semibold">
-                      Updated
-                    </span>
-                  </div>
-
-                  <div class="space-y-4">
-                    <div>
-                      <div class="flex justify-between text-sm mb-1 text-slate-600">
-                        <span>Attendance Accuracy</span>
-                        <span>94%</span>
-                      </div>
-                      <div class="progress-bar w-full h-3 bg-slate-200 rounded-full overflow-hidden">
-                        <div class="h-3 bg-teal-500 rounded-full" style="width: 94%"></div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div class="flex justify-between text-sm mb-1 text-slate-600">
-                        <span>Payroll Completion</span>
-                        <span>89%</span>
-                      </div>
-                      <div class="progress-bar w-full h-3 bg-slate-200 rounded-full overflow-hidden">
-                        <div class="h-3 bg-emerald-500 rounded-full" style="width: 89%"></div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div class="flex justify-between text-sm mb-1 text-slate-600">
-                        <span>Leave Processing</span>
-                        <span>91%</span>
-                      </div>
-                      <div class="progress-bar w-full h-3 bg-slate-200 rounded-full overflow-hidden">
-                        <div class="h-3 bg-sky-500 rounded-full" style="width: 91%"></div>
-                      </div>
-                    </div>
-                  </div>
+                <div class="lp-dtr__clock">
+                  <p class="lp-dtr__time num" id="ph-clock">08:00</p>
+                  <p class="lp-dtr__tz" id="ph-date">Philippine time</p>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div class="hidden sm:block absolute -bottom-6 -left-6 glass rounded-3xl px-5 py-4 shadow-soft">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center">
-                <iconify-icon icon="ph:buildings-duotone" class="text-2xl text-teal-700"></iconify-icon>
+              <div class="lp-dtr__cols" aria-hidden="true">
+                <span>Employee</span><span>In</span><span>Out</span><span>Status</span>
               </div>
+
               <div>
-                <p class="text-sm text-slate-500">Built for organizations</p>
-                <p class="font-bold text-slate-800">Department-ready solution</p>
+                <div class="lp-dtr__row">
+                  <div class="lp-person">
+                    <span class="lp-avatar" aria-hidden="true">MD</span>
+                    <div style="min-width:0">
+                      <p class="lp-person__name">Maria Dela Cruz</p>
+                      <p class="lp-person__role">Agriculturist</p>
+                      <p class="lp-dtr__inline-times num">In 07:52, out 17:04</p>
+                    </div>
+                  </div>
+                  <span class="lp-dtr__t num">07:52</span>
+                  <span class="lp-dtr__t num">17:04</span>
+                  <span class="lp-dtr__status ihrt-badge ihrt-badge--ok">On time</span>
+                </div>
+
+                <div class="lp-dtr__row">
+                  <div class="lp-person">
+                    <span class="lp-avatar" aria-hidden="true">JV</span>
+                    <div style="min-width:0">
+                      <p class="lp-person__name">Jose Villanueva</p>
+                      <p class="lp-person__role">Administrative Aide</p>
+                      <p class="lp-dtr__inline-times num">In 08:12, out 17:01</p>
+                    </div>
+                  </div>
+                  <span class="lp-dtr__t num">08:12</span>
+                  <span class="lp-dtr__t num">17:01</span>
+                  <span class="lp-dtr__status ihrt-badge ihrt-badge--warn">Late 12 min</span>
+                </div>
+
+                <div class="lp-dtr__row">
+                  <div class="lp-person">
+                    <span class="lp-avatar" aria-hidden="true">RB</span>
+                    <div style="min-width:0">
+                      <p class="lp-person__name">Ramon Bautista</p>
+                      <p class="lp-person__role">Driver</p>
+                      <p class="lp-dtr__inline-times">No scans today</p>
+                    </div>
+                  </div>
+                  <span class="lp-dtr__t lp-dtr__t--none">&mdash;</span>
+                  <span class="lp-dtr__t lp-dtr__t--none">&mdash;</span>
+                  <span class="lp-dtr__status ihrt-badge ihrt-badge--neutral">On leave</span>
+                </div>
+
+                <div class="lp-dtr__row">
+                  <div class="lp-person">
+                    <span class="lp-avatar" aria-hidden="true">AR</span>
+                    <div style="min-width:0">
+                      <p class="lp-person__name">Ana Ramos</p>
+                      <p class="lp-person__role">Planning Officer</p>
+                      <p class="lp-dtr__inline-times num">In 07:58</p>
+                    </div>
+                  </div>
+                  <span class="lp-dtr__t num">07:58</span>
+                  <span class="lp-dtr__t lp-dtr__t--none">&mdash;</span>
+                  <span class="lp-dtr__status ihrt-badge ihrt-badge--info">Clocked in</span>
+                </div>
+
+                <div class="lp-dtr__row is-latest">
+                  <div class="lp-person">
+                    <span class="lp-avatar" aria-hidden="true">KM</span>
+                    <div style="min-width:0">
+                      <p class="lp-person__name">Kristine Mendoza</p>
+                      <p class="lp-person__role">Data Encoder</p>
+                      <p class="lp-dtr__inline-times num">In 07:59</p>
+                    </div>
+                  </div>
+                  <span class="lp-dtr__t num">07:59</span>
+                  <span class="lp-dtr__t lp-dtr__t--none">&mdash;</span>
+                  <span class="lp-dtr__status ihrt-badge ihrt-badge--info">Clocked in</span>
+                </div>
               </div>
-            </div>
+
+              <dl class="lp-dtr__foot">
+                <div class="lp-dtr__stat"><dt>Clocked in</dt><dd class="num">4</dd></div>
+                <div class="lp-dtr__stat"><dt>Late</dt><dd class="num">1</dd></div>
+                <div class="lp-dtr__stat"><dt>On leave</dt><dd class="num">1</dd></div>
+              </dl>
+            </figure>
           </div>
-        </div>
 
-      </div>
-    </div>
-  </section>
-
-  <!-- Features -->
-  <section id="features" class="section-space">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12 fade-up">
-        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Core Features</p>
-        <h2 class="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
-          Everything you need in one platform
-        </h2>
-        <p class="mt-4 text-slate-600 max-w-2xl mx-auto leading-8">
-          Manage workforce operations with a unified system built for efficiency, accuracy, and professional administration.
-        </p>
-      </div>
-
-      <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <div class="feature-card glass rounded-3xl p-6 shadow-soft">
-          <div class="w-14 h-14 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center mb-4">
-            <iconify-icon icon="ph:identification-card-duotone" class="text-3xl"></iconify-icon>
-          </div>
-          <h3 class="text-lg font-bold">Employee Records</h3>
-          <p class="mt-2 text-sm text-slate-600 leading-7">
-            Store and manage complete employee information, departments, positions, and employment details in one place.
-          </p>
-        </div>
-
-        <div class="feature-card glass rounded-3xl p-6 shadow-soft">
-          <div class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-4">
-            <iconify-icon icon="ph:fingerprint-simple-duotone" class="text-3xl"></iconify-icon>
-          </div>
-          <h3 class="text-lg font-bold">Attendance Tracking</h3>
-          <p class="mt-2 text-sm text-slate-600 leading-7">
-            Monitor daily attendance, time logs, biometrics integration, and employee presence with accurate tracking.
-          </p>
-        </div>
-
-        <div class="feature-card glass rounded-3xl p-6 shadow-soft">
-          <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
-            <iconify-icon icon="ph:money-duotone" class="text-3xl"></iconify-icon>
-          </div>
-          <h3 class="text-lg font-bold">Payroll Automation</h3>
-          <p class="mt-2 text-sm text-slate-600 leading-7">
-            Compute salaries, deductions, absences, and work hours efficiently to reduce manual payroll errors.
-          </p>
-        </div>
-
-        <div class="feature-card glass rounded-3xl p-6 shadow-soft">
-          <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
-            <iconify-icon icon="ph:calendar-plus-duotone" class="text-3xl"></iconify-icon>
-          </div>
-          <h3 class="text-lg font-bold">Leave Management</h3>
-          <p class="mt-2 text-sm text-slate-600 leading-7">
-            Submit, review, and approve leave requests with a simple workflow for both employees and administrators.
-          </p>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- About -->
-  <section id="about" class="section-space pt-0">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid lg:grid-cols-2 gap-8 items-center">
-        <div class="glass rounded-[2rem] p-8 shadow-soft fade-up">
-          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">About the System</p>
-          <h2 class="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
-            Built to simplify workforce operations
-          </h2>
-          <p class="mt-5 text-slate-600 leading-8">
-            IntelliHRTrack is a smart payroll and employee management platform designed to support modern organizations
-            in handling employee data, attendance monitoring, payroll processing, and administrative workflows.
-          </p>
-          <p class="mt-4 text-slate-600 leading-8">
-            It reduces manual work, improves record accuracy, and helps organizations manage their workforce through
-            a secure, organized, and user-friendly digital system.
-          </p>
-        </div>
-
-        <div class="grid sm:grid-cols-2 gap-6 fade-up delay-2">
-          <div class="info-card glass rounded-3xl p-6 shadow-soft">
-            <iconify-icon icon="ph:lock-key-open-duotone" class="text-4xl text-teal-700"></iconify-icon>
-            <h3 class="mt-4 font-bold text-lg">Secure Access</h3>
-            <p class="mt-2 text-sm text-slate-600 leading-7">
-              Role-based access for administrators and employees with protected sign-in and system control.
-            </p>
-          </div>
-
-          <div class="info-card glass rounded-3xl p-6 shadow-soft">
-            <iconify-icon icon="ph:cpu-duotone" class="text-4xl text-sky-700"></iconify-icon>
-            <h3 class="mt-4 font-bold text-lg">Smart Workflow</h3>
-            <p class="mt-2 text-sm text-slate-600 leading-7">
-              Organized modules for faster navigation, cleaner records, and better day-to-day operations.
-            </p>
-          </div>
-
-          <div class="info-card glass rounded-3xl p-6 shadow-soft">
-            <iconify-icon icon="ph:files-duotone" class="text-4xl text-emerald-700"></iconify-icon>
-            <h3 class="mt-4 font-bold text-lg">Centralized Data</h3>
-            <p class="mt-2 text-sm text-slate-600 leading-7">
-              Keep employee data, attendance, and payroll records in one connected and accessible system.
-            </p>
-          </div>
-
-          <div class="info-card glass rounded-3xl p-6 shadow-soft">
-            <iconify-icon icon="ph:trend-up-duotone" class="text-4xl text-amber-700"></iconify-icon>
-            <h3 class="mt-4 font-bold text-lg">Operational Efficiency</h3>
-            <p class="mt-2 text-sm text-slate-600 leading-7">
-              Reduce delays, minimize manual errors, and improve overall HR and payroll performance.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA -->
-  <section class="section-space pt-0">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="glass rounded-[2rem] p-8 sm:p-10 shadow-soft text-center fade-up">
-        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Get Started</p>
-        <h2 class="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
-          Experience a smarter way to manage your workforce
-        </h2>
-        <p class="mt-4 text-slate-600 max-w-2xl mx-auto leading-8">
-          Access a platform built to improve employee administration, attendance tracking, and payroll efficiency.
+    <!-- ===================== How it works ===================== -->
+    <section class="lp-section lp-anchor" id="how" aria-labelledby="how-title">
+      <div class="ihrt-container">
+        <h2 class="lp-h2" id="how-title">How a working day becomes a payslip</h2>
+        <p class="lp-lead">
+          Each step uses the record from the step before it, so HR staff stop retyping
+          logbooks and spreadsheets at the end of every period.
         </p>
 
-        <div class="mt-8 flex flex-wrap justify-center gap-4">
-          <a href="{% url 'login_ui' %}"
-             class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl btn-accent text-white font-semibold shadow-soft transition">
-            <iconify-icon icon="ph:sign-in-duotone" class="text-xl"></iconify-icon>
-            Login Now
-          </a>
+        <ol class="lp-steps">
+          <li class="lp-step">
+            <h3>Scan at the terminal</h3>
+            <p>Employees clock in and out at the Hikvision terminal using face and fingerprint.</p>
+          </li>
+          <li class="lp-step">
+            <h3>Sync to the system</h3>
+            <p>The office connector sends each scan to IntelliHRTrack and matches it to the right employee.</p>
+          </li>
+          <li class="lp-step">
+            <h3>Credit the hours</h3>
+            <p>Scans are compared with the assigned shift to compute worked hours, lates, and undertime.</p>
+          </li>
+          <li class="lp-step">
+            <h3>Apply leave and holidays</h3>
+            <p>Approved leave, holidays, and work suspensions are counted for the payroll period.</p>
+          </li>
+          <li class="lp-step">
+            <h3>Release payroll</h3>
+            <p>HR reviews the computed payroll, and each employee opens their own payslip online.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
 
-          <a href="{% url 'signup_ui' %}"
-             class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl glass text-slate-700 font-semibold shadow-soft hover:bg-white/90 transition">
-            <iconify-icon icon="ph:user-plus-duotone" class="text-xl"></iconify-icon>
-            Create Account
-          </a>
+    <!-- ===================== Modules ===================== -->
+    <section class="lp-section lp-anchor" id="features" aria-labelledby="features-title">
+      <div class="ihrt-container">
+        <h2 class="lp-h2" id="features-title">One system for the HR office and every employee</h2>
+        <p class="lp-lead">
+          Administrators manage records and payroll for their office. Employees see their own
+          attendance, leave, and payslips without asking HR.
+        </p>
+
+        <div class="lp-roles">
+          <article class="lp-role lp-role--admin ihrt-panel">
+            <header class="lp-role__head">
+              <span class="lp-role__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></svg>
+              </span>
+              <div>
+                <h3>For administrators</h3>
+                <p>HR and branch administrators</p>
+              </div>
+            </header>
+            <ul class="lp-modules">
+              <li><strong>Dashboard</strong><span>Today's attendance and pending work</span></li>
+              <li><strong>Biometrics and attendance</strong><span>Terminal logs, entries, and DTRs</span></li>
+              <li><strong>Employee management</strong><span>Profiles, appointment types, and rates</span></li>
+              <li><strong>Scheduling and shifts</strong><span>Work schedules for each employee</span></li>
+              <li><strong>Leave and absences</strong><span>Review and approve leave requests</span></li>
+              <li><strong>Payroll and finance</strong><span>Compute and release payroll per period</span></li>
+              <li><strong>Workforce analytics</strong><span>Trends from recorded attendance</span></li>
+              <li><strong>Reports and exports</strong><span>Printable DTRs and payroll summaries</span></li>
+              <li><strong>System administration</strong><span>Users, offices, and devices</span></li>
+            </ul>
+          </article>
+
+          <article class="lp-role lp-role--employee ihrt-panel">
+            <header class="lp-role__head">
+              <span class="lp-role__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+              </span>
+              <div>
+                <h3>For employees</h3>
+                <p>JO, COS, and Permanent staff</p>
+              </div>
+            </header>
+            <ul class="lp-modules">
+              <li><strong>Attendance</strong><span>Your scans and daily time record</span></li>
+              <li><strong>Schedule</strong><span>Your assigned shifts</span></li>
+              <li><strong>Leave requests</strong><span>File leave and track its approval</span></li>
+              <li><strong>Payroll</strong><span>Your payslip for each period</span></li>
+              <li><strong>Analytics</strong><span>Your attendance over time</span></li>
+              <li><strong>Notifications and profile</strong><span>Approvals, updates, and your details</span></li>
+            </ul>
+          </article>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Footer -->
-  <footer id="contact" class="pb-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="glass rounded-3xl shadow-soft px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
+    <!-- ===================== About ===================== -->
+    <section class="lp-section lp-anchor" id="about" aria-labelledby="about-title">
+      <div class="ihrt-container">
+        <div class="lp-about">
+          <div class="lp-about__body">
+            <h2 class="lp-h2" id="about-title">Built around how DA MIMAROPA works</h2>
+            <p>
+              IntelliHRTrack was developed for the Department of Agriculture MIMAROPA Region, whose offices
+              serve Occidental Mindoro, Oriental Mindoro, Marinduque, Romblon, and Palawan.
+            </p>
+            <p>
+              It replaces separate logbooks, spreadsheets, and printed forms with one shared record
+              that HR staff and employees can both rely on.
+            </p>
+          </div>
+
+          <ul class="lp-principles">
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
+              <div>
+                <h3>Each office sees its own people</h3>
+                <p>Branch administrators manage only their office. Employees see only their own records.</p>
+              </div>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>
+              <div>
+                <h3>Payroll comes from attendance</h3>
+                <p>Pay is computed from recorded scans, schedules, and approved leave rather than manual tallies.</p>
+              </div>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 6h4M12 17h.01"/></svg>
+              <div>
+                <h3>Works with the office terminal</h3>
+                <p>Attendance comes straight from the Hikvision face and fingerprint terminal already on site.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== Call to action ===================== -->
+    <div class="ihrt-container lp-cta-wrap">
+      <section class="lp-cta" aria-labelledby="cta-title">
         <div>
-          <h3 class="font-bold text-slate-900">IntelliHRTrack</h3>
-          <p class="text-sm text-slate-500">Secure payroll and employee management solution</p>
+          <h2 id="cta-title">Ready to check your attendance and payslips?</h2>
+          <p>Sign in with the account from your HR office. New employees can create an account to get started.</p>
         </div>
+        <div class="lp-cta__actions">
+          <a href="{% url 'login_ui' %}" class="ihrt-btn ihrt-btn--primary ihrt-btn--lg">Sign in</a>
+          <a href="{% url 'signup_ui' %}" class="ihrt-btn ihrt-btn--secondary ihrt-btn--lg">Create account</a>
+        </div>
+      </section>
+    </div>
+  </main>
 
-        <div class="flex items-center gap-5 text-slate-600 text-sm">
-          <a href="#home" class="hover:text-teal-700 transition">Home</a>
-          <a href="#features" class="hover:text-teal-700 transition">Features</a>
-          <a href="#about" class="hover:text-teal-700 transition">About</a>
+  <!-- ===================== Footer ===================== -->
+  <footer class="lp-footer">
+    <div class="ihrt-container">
+      <div class="lp-footer__grid">
+        <div>
+          <a href="#top" class="lp-brand" aria-label="Back to top">
+            <span class="lp-brand__mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M5 15.5c0-4.4 3.1-8 7-8s7 3.6 7 8"/>
+                <path d="M8.5 17c0-3 1.6-5.5 3.5-5.5s3.5 2.5 3.5 5.5"/>
+                <path d="M12 15v4"/>
+              </svg>
+            </span>
+            <span class="lp-brand__name">IntelliHRTrack</span>
+          </a>
+          <p class="lp-footer__note">
+            Employee management, biometric attendance, and payroll for the Department of Agriculture MIMAROPA Region.
+            Developed as a capstone project at Mindoro State University, Calapan Campus.
+          </p>
         </div>
+        <nav class="lp-footer__links" aria-label="Footer">
+          <a href="#how">How it works</a>
+          <a href="#features">Modules</a>
+          <a href="#about">About</a>
+          <a href="{% url 'login_ui' %}">Sign in</a>
+        </nav>
       </div>
-
-      <p class="text-center text-xs text-slate-500 mt-5">
-        © IntelliHRTrack • All Rights Reserved
-      </p>
+      <p class="lp-footer__copy">&copy; {% now "Y" %} IntelliHRTrack. All rights reserved.</p>
     </div>
   </footer>
 
+  <script>
+    (function () {
+      // Mobile menu
+      var btn = document.getElementById('menu-btn');
+      var menu = document.getElementById('mobile-menu');
+      function setMenu(open) {
+        btn.setAttribute('aria-expanded', String(open));
+        menu.hidden = !open;
+      }
+      btn.addEventListener('click', function () { setMenu(menu.hidden); });
+      menu.addEventListener('click', function (e) { if (e.target.closest('a')) setMenu(false); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !menu.hidden) { setMenu(false); btn.focus(); }
+      });
+      window.matchMedia('(min-width: 900px)').addEventListener('change', function (e) { if (e.matches) setMenu(false); });
+
+      // Header border once the page scrolls
+      var header = document.querySelector('.lp-header');
+      function onScroll() { header.classList.toggle('is-scrolled', window.scrollY > 8); }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+
+      // Live Philippine time in the sample DTR
+      var clock = document.getElementById('ph-clock');
+      var date = document.getElementById('ph-date');
+      function tick() {
+        var now = new Date();
+        try {
+          clock.textContent = new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }).format(now);
+          date.textContent = new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', weekday: 'short', month: 'short', day: 'numeric' }).format(now) + ', Philippine time';
+        } catch (err) { /* keep the static fallback text */ }
+      }
+      tick();
+      setInterval(tick, 30000);
+
+      // Smooth scrolling only for people who have not asked for reduced motion
+      if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+        document.documentElement.style.scrollBehavior = 'smooth';
+      }
+    })();
+  </script>
 </body>
 </html>

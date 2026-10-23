@@ -4,16 +4,26 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}IntelliHRTrack{% endblock %}</title>
 
-    <!-- Tailwind CSS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap">
+
+    <!-- Tailwind build first, then the IntelliHRTrack design system -->
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
+    <link rel="stylesheet" href="{% static 'css/ihrt.css' %}">
 
-    <title>IntelliHRTrack</title>
+    <!-- Chart.js stays in <head> so inline chart scripts in child templates keep working -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    {% block extra_head %}{% endblock %}
   </head>
-  <body class="bg-gray-100 min-h-screen">
-    <main class="max-w-5xl mx-auto p-6">
-      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <body class="ihrt">
+    <a class="ihrt-skip" href="#main">Skip to content</a>
+    <main id="main" class="ihrt-container" style="padding-block: 32px 64px;">
       {% block content %}{% endblock %}
     </main>
+    {% block extra_js %}{% endblock %}
   </body>
 </html>

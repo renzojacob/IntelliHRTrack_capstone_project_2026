@@ -373,97 +373,80 @@ def _build_dual_biometric_event(face_event, fingerprint_event):
 
 def pair_dual_biometric_events(events):
     """
-    Return only attendance punches proven by both face and fingerprint.
+    Accept only native combined authentication successes from this device.
 
-    Separate face/fingerprint events are paired when they have the same
-    employee, the same IN/OUT status, the same local date, and occur within
-    DUAL_BIOMETRIC_PAIR_WINDOW. A native face+fingerprint success event is
-    already a complete punch.
+    Confirmed device event:
+        major = 5
+        minor = 153
+        currentVerifyMode = faceAndFp
+
+    The existing function name is retained for compatibility.
+    Separate face and fingerprint scans are never paired.
     """
-    grouped = {}
     completed = []
+    seen = set()
 
     for event in events:
+        if not isinstance(event, dict):
+            continue
+
+        try:
+            major = int(event.get("major"))
+            minor = int(event.get("minor"))
+        except (TypeError, ValueError):
+            continue
+
+        verify_mode = str(
+            event.get("currentVerifyMode") or ""
+        ).strip().lower()
+
+        # Require the confirmed native success code AND both factors.
+        if (
+            major != 5
+            or minor != 153
+            or verify_mode != "faceandfp"
+        ):
+            continue
+
         employee_id = _get_employee_id_from_event(event)
         event_time = _parse_timestamp(event.get("time"))
-        method = _get_authentication_method(event)
         status = _normalize_attendance_status(event)
 
         if (
             not employee_id
             or event_time is None
-            or method is None
-            or status == AttendanceRecord.STATUS_UNKNOWN
+            or status not in {
+                AttendanceRecord.STATUS_CHECKIN,
+                AttendanceRecord.STATUS_CHECKOUT,
+            }
         ):
             continue
 
-        if method == "face_and_fingerprint":
-            full_name = _get_full_name_from_event(event)
-            completed.append({
-                "employee_id": employee_id,
-                "full_name": full_name,
-                "department": "",
-                "timestamp": event_time.isoformat(),
-                "attendance_status": status,
-                "raw_row": {
-                    **event,
-                    "dual_biometric_verified": True,
-                    "verification_methods": ["face", "fingerprint"],
-                    "combined_device_event": True,
-                },
-            })
+        duplicate_key = (
+            employee_id,
+            event_time,
+            status,
+        )
+
+        if duplicate_key in seen:
             continue
 
-        local_time = (
-            timezone.localtime(event_time)
-            if timezone.is_aware(event_time)
-            else event_time
-        )
-        key = (employee_id, local_time.date(), status)
-        grouped.setdefault(key, []).append((event_time, method, event))
+        seen.add(duplicate_key)
 
-    for candidates in grouped.values():
-        candidates.sort(key=lambda item: item[0])
-        used_indexes = set()
-
-        for index, (event_time, method, event) in enumerate(candidates):
-            if index in used_indexes:
-                continue
-
-            opposite_method = "fingerprint" if method == "face" else "face"
-            best_index = None
-            best_distance = None
-
-            for other_index, (other_time, other_method, _) in enumerate(candidates):
-                if other_index == index or other_index in used_indexes:
-                    continue
-                if other_method != opposite_method:
-                    continue
-
-                distance = abs(other_time - event_time)
-                if distance > DUAL_BIOMETRIC_PAIR_WINDOW:
-                    continue
-
-                if best_distance is None or distance < best_distance:
-                    best_index = other_index
-                    best_distance = distance
-
-            if best_index is None:
-                continue
-
-            _, _, other_event = candidates[best_index]
-            if method == "face":
-                face_event, fingerprint_event = event, other_event
-            else:
-                face_event, fingerprint_event = other_event, event
-
-            combined = _build_dual_biometric_event(
-                face_event,
-                fingerprint_event,
-            )
-            if combined is not None:
-                completed.append(combined)
-                used_indexes.update({index, best_index})
+        completed.append({
+            "employee_id": employee_id,
+            "full_name": _get_full_name_from_event(event),
+            "department": "",
+            "timestamp": event_time.isoformat(),
+            "attendance_status": status,
+            "raw_row": {
+                **event,
+                "dual_biometric_verified": True,
+                "verification_methods": ["face", "fingerprint"],
+                "combined_device_event": True,
+                "verification_source": "native_combined_authentication",
+            },
+        })
 
     completed.sort(key=lambda item: item["timestamp"])
     return completed

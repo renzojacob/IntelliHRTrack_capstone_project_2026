@@ -347,7 +347,7 @@ def signup_ui(request):
             messages.error(request, "Please select your employment type.")
             return render(request, "auth/signup.html", {"branches": branches})
 
-        if employment_type not in ("COS", "JO"):
+        if employment_type not in dict(UserProfile.EMPLOYMENT_TYPE_CHOICES):
             messages.error(request, "Invalid employment type selected.")
             return render(request, "auth/signup.html", {"branches": branches})
 

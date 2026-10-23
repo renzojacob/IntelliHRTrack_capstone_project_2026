@@ -164,10 +164,10 @@ def read_hikvision_events(device, start_time, end_time):
     person_events = _pick_person_events(unique_events)
 
     normalized_events = pair_dual_biometric_events(person_events)
-    ignored_events = len(person_events) - (
-        len(normalized_events) * 2
+    ignored_events = max(
+        0,
+        len(person_events) - len(normalized_events),
     )
-    ignored_events = max(0, ignored_events)
 
     print(f"Raw events: {len(events)}")
     print(f"Unique events: {len(unique_events)}")

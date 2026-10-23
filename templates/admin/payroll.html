@@ -331,7 +331,7 @@
   <!-- Filters -->
   <div class="glass-premium rounded-2xl p-5 border border-white/30">
     <form method="get" id="payrollFilterForm" class="space-y-5">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
         <div>
   <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1">
@@ -418,20 +418,6 @@
 
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
-            Pay Mode
-          </label>
-
-          <select name="pay_mode"
-                  class="w-full rounded-xl glass-premium border border-white/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/60">
-            <option value="">All Modes</option>
-            <option value="MONTHLY" {% if request.GET.pay_mode == "MONTHLY" %}selected{% endif %}>Monthly</option>
-            <option value="FIRST_HALF" {% if request.GET.pay_mode == "FIRST_HALF" %}selected{% endif %}>Kinsenas</option>
-            <option value="SECOND_HALF" {% if request.GET.pay_mode == "SECOND_HALF" %}selected{% endif %}>Katapusan</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
             Search Employee
           </label>
 
@@ -450,14 +436,6 @@
               <iconify-icon icon="ph:users-duotone"></iconify-icon>
               {{ request.GET.type }}
               <button type="button" class="remove-chip ml-1" data-filter="type">✕</button>
-            </span>
-          {% endif %}
-
-          {% if request.GET.pay_mode %}
-            <span class="filter-chip active">
-              <iconify-icon icon="ph:bank-duotone"></iconify-icon>
-              {{ request.GET.pay_mode }}
-              <button type="button" class="remove-chip ml-1" data-filter="pay_mode">✕</button>
             </span>
           {% endif %}
 
