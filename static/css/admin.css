@@ -664,7 +664,7 @@ body.ad-modal-open { overflow: hidden; }
   --ad-r: 18px;
   --ad-lift: 0 1px 1px rgba(15,35,26,.04), 0 22px 44px -28px rgba(15,35,26,.38);
 }
-:root[data-theme="dark"] { --ad-side-bg: #0A1D14; --ad-band: #0A1D14; --ad-lift: 0 1px 0 rgba(255,255,255,.03) inset, 0 24px 48px -28px rgba(0,0,0,.8); }
+:root[data-theme="dark"] { --ad-side-bg: #0A1D14; --ad-band: #133826; --ad-lift: 0 1px 0 rgba(255,255,255,.03) inset, 0 24px 48px -28px rgba(0,0,0,.8); }
 
 /* ---------- Sidebar ---------- */
 .ad-sidebar { box-shadow: inset -1px 0 0 rgba(255,255,255,.06); }
@@ -695,12 +695,14 @@ body.ad-modal-open { overflow: hidden; }
   position: relative; isolation: isolate;
   margin: calc(var(--ad-pad) * -1) calc(var(--ad-pad) * -1) 0;
   padding: calc(var(--ad-pad) + 14px) var(--ad-pad) calc(var(--ad-overlap) + 28px);
-  background: var(--ad-band); color: var(--ad-band-ink);
+  color: var(--ad-band-ink);
   align-items: flex-end;
 }
+.ad-main { overflow-x: clip; }
 .ad-page-head::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background:
+  content: ""; position: absolute; top: 0; bottom: 0; left: -100vw; right: -100vw; z-index: -1; pointer-events: none;
+  background-color: var(--ad-band);
+  background-image:
     radial-gradient(720px 300px at 82% -10%, rgba(240,193,75,.20), transparent 70%),
     radial-gradient(620px 320px at 8% 130%, rgba(92,185,138,.22), transparent 70%),
     repeating-linear-gradient(-28deg, rgba(255,255,255,.03) 0 1px, transparent 1px 26px);

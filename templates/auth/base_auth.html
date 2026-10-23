@@ -1,0 +1,146 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}IntelliHRTrack{% endblock %} | IntelliHRTrack</title>
+  <meta name="robots" content="noindex">
+
+  <!-- Apply the saved light/dark choice before the page paints -->
+  <script>
+    (function () {
+      var d = document.documentElement, theme;
+      try { theme = localStorage.getItem('ih_theme'); } catch (e) {}
+      if (theme !== 'dark' && theme !== 'light') {
+        theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      d.setAttribute('data-theme', theme);
+      d.classList.toggle('dark', theme === 'dark');
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="{% static 'css/output.css' %}">
+  <link rel="stylesheet" href="{% static 'css/ihrt.css' %}">
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+  <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+</head>
+
+<body class="ihrt au-body">
+  <a class="ihrt-skip" href="#main">Skip to the form</a>
+
+  <button type="button" class="au-theme" data-theme-toggle>
+    <iconify-icon icon="ph:moon" class="au-theme-light" aria-hidden="true"></iconify-icon>
+    <iconify-icon icon="ph:sun" class="au-theme-dark" aria-hidden="true"></iconify-icon>
+    <span class="ihrt-sr">Switch light or dark mode</span>
+  </button>
+
+  <div class="au">
+    <!-- Green panel (top band on phones, left column on desktop) -->
+    <aside class="au-side">
+      <a href="{% url 'login_ui' %}" class="au-brand">
+        <span class="au-brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 15.5c0-4.4 3.1-8 7-8s7 3.6 7 8"/><path d="M8.5 17c0-3 1.6-5.5 3.5-5.5s3.5 2.5 3.5 5.5"/><path d="M12 15v4"/></svg>
+        </span>
+        <span class="au-brand__name">IntelliHRTrack<span class="au-brand__sub">Department of Agriculture, MIMAROPA</span></span>
+      </a>
+
+      <div class="au-side__copy">
+        {% block side %}
+          <h2>Your attendance, leave, and payslips in one place.</h2>
+          <p>Every scan at the office terminal flows into your daily time record and from there into payroll.</p>
+          <ul class="au-facts">
+            <li><iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon>See each face and fingerprint scan from the terminal</li>
+            <li><iconify-icon icon="ph:calendar-check" aria-hidden="true"></iconify-icon>File leave and follow its approval</li>
+            <li><iconify-icon icon="ph:receipt" aria-hidden="true"></iconify-icon>Open your payslip for every pay period</li>
+          </ul>
+        {% endblock %}
+      </div>
+
+      <p class="au-side__foot">&copy; {% now "Y" %} IntelliHRTrack. Access is limited to authorized DA MIMAROPA personnel.</p>
+    </aside>
+
+    <main id="main" class="au-main">
+      <div class="au-card {% block card_class %}{% endblock %}">
+        {% block card %}{% endblock %}
+      </div>
+      {% block below %}{% endblock %}
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+
+      // Light / dark toggle (shares the saved choice with the admin and employee pages)
+      document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          root.setAttribute('data-theme', next);
+          root.classList.toggle('dark', next === 'dark');
+          try { localStorage.setItem('ih_theme', next); } catch (e) {}
+        });
+      });
+
+      // Show / hide password: <button data-reveal="input-id">
+      document.querySelectorAll('[data-reveal]').forEach(function (btn) {
+        var input = document.getElementById(btn.getAttribute('data-reveal'));
+        if (!input) return;
+        btn.addEventListener('click', function () {
+          var show = input.type === 'password';
+          input.type = show ? 'text' : 'password';
+          btn.textContent = show ? 'Hide' : 'Show';
+          btn.setAttribute('aria-pressed', String(show));
+          input.focus();
+        });
+      });
+
+      // Caps Lock warning on password fields that have a [data-caps] hint next to them
+      document.querySelectorAll('input[type="password"]').forEach(function (input) {
+        var hint = document.querySelector('[data-caps="' + input.id + '"]');
+        if (!hint) return;
+        function check(e) { if (e.getModifierState) hint.hidden = !e.getModifierState('CapsLock'); }
+        input.addEventListener('keydown', check);
+        input.addEventListener('keyup', check);
+        input.addEventListener('blur', function () { hint.hidden = true; });
+      });
+
+      // "Passwords match" hint: <p data-match="first-id second-id">
+      document.querySelectorAll('[data-match]').forEach(function (hint) {
+        var ids = hint.getAttribute('data-match').split(' ');
+        var a = document.getElementById(ids[0]), b = document.getElementById(ids[1]);
+        if (!a || !b) return;
+        function update() {
+          if (!b.value) { hint.textContent = ''; hint.className = 'au-hint'; return; }
+          var same = a.value === b.value;
+          hint.textContent = same ? 'Passwords match' : 'Passwords do not match yet';
+          hint.className = 'au-hint ' + (same ? 'au-hint--ok' : 'au-hint--bad');
+        }
+        a.addEventListener('input', update);
+        b.addEventListener('input', update);
+      });
+
+      // Spinner on the submit button once the browser has accepted the form
+      document.querySelectorAll('form[data-loading]').forEach(function (form) {
+        form.addEventListener('submit', function () {
+          var btn = form.querySelector('.au-submit');
+          if (btn) btn.classList.add('is-loading');
+        });
+      });
+
+      // Back link: use browser history when there is some, otherwise follow the link's href
+      document.querySelectorAll('[data-back]').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          if (window.history.length > 1 && document.referrer && new URL(document.referrer).origin === window.location.origin) {
+            e.preventDefault(); window.history.back();
+          }
+        });
+      });
+    })();
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
