@@ -1,0 +1,118 @@
+{% comment %}
+  Civil Service Form No. 48 (Daily Time Record), shared by the single and bulk DTR print pages.
+  Needs: employee_name, biometric_employee_id, division, month_label, dtr_rows,
+  total_undertime_hours, total_undertime_minutes, batch, printed_by, printed_at.
+{% endcomment %}
+  <div class="page">
+
+    <div class="form-no">CIVIL SERVICE FORM NO. 48</div>
+    <div class="bio-no">Biometric No. <strong>{{ biometric_employee_id|default:"—" }}</strong></div>
+
+    <h1>DAILY TIME RECORD</h1>
+
+    <div class="name">{{ employee_name }}</div>
+    <div class="label-name">(NAME)</div>
+
+    <div class="division">{{ division }}</div>
+    <div class="label-division">(DIVISION)</div>
+
+    <div class="month">
+      For the month of&nbsp; <span>{{ month_label }}</span>
+    </div>
+
+    <div class="hours-row">
+      <div>
+        <strong>Official hours of arrival</strong><br>
+        and departure <span class="line"></span>
+      </div>
+      <div>
+        <strong>Regular days</strong> <span class="line"></span><br>
+        <strong>Saturdays</strong> <span class="line"></span>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th rowspan="2" class="day-col">Day</th>
+          <th colspan="2">A.M.</th>
+          <th colspan="2">P.M.</th>
+          <th colspan="2">UNDERTIME</th>
+        </tr>
+        <tr>
+          <th class="time-col subhead">Arrival</th>
+          <th class="time-col subhead">Departure</th>
+          <th class="time-col subhead">Arrival</th>
+          <th class="time-col subhead">Departure</th>
+          <th class="under-col subhead">Hour</th>
+          <th class="under-col subhead">Minute</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for row in dtr_rows %}
+          <tr>
+            <td>{{ row.day }}</td>
+
+            {% if row.status == "Weekend" or row.status == "Holiday/Suspension" %}
+              <td colspan="4" class="status-text">
+                {{ row.remarks|default:row.status }}
+              </td>
+              <td></td>
+              <td></td>
+            {% else %}
+              <td>{{ row.am_in|default:"" }}</td>
+              <td>{{ row.am_out|default:"" }}</td>
+              <td>{{ row.pm_in|default:"" }}</td>
+              <td>{{ row.pm_out|default:"" }}</td>
+              <td>
+                {% if row.undertime_hour %}
+                  {{ row.undertime_hour }}
+                {% endif %}
+              </td>
+              <td>
+                {% if row.undertime_minute %}
+                  {{ row.undertime_minute }}
+                {% endif %}
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+
+        <tr class="total-row">
+          <td colspan="5" style="text-align:left; padding-left:8px;">TOTAL</td>
+          <td>{{ total_undertime_hours }}</td>
+          <td>{{ total_undertime_minutes }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="certification">
+      I certify on my honor that the above is a true and correct report of the hours of work
+      performed, record of which was made daily as the time of arrival and departure from office.
+    </div>
+
+    <div class="signature-block">
+      <div class="signature">
+        <div class="signature-line"></div>
+        <div><strong>{{ employee_name }}</strong></div>
+        <div class="employee-label">(Employee)</div>
+      </div>
+    </div>
+
+    <div class="verified">
+      VERIFIED as to the prescribed office hours:
+    </div>
+
+    <div class="verified-signature">
+      <div class="verified-line"></div>
+      <div><strong>Authorized Official</strong></div>
+      <div class="employee-label">(Supervisor / Admin)</div>
+    </div>
+
+    <div class="print-meta">
+      Payroll Batch: {{ batch.name }} |
+      Printed by {{ printed_by }} on {{ printed_at|date:"Y-m-d H:i" }}
+    </div>
+
+  </div>

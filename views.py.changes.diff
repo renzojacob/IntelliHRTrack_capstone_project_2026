@@ -1,0 +1,445 @@
+--- a/core/views.py
++++ b/core/views.py
+@@ -67,6 +67,7 @@
+     BiometricSyncRequest,
+ )
+ 
++from . import dtr_rules
+ from .payroll_calculations import (
+     as_decimal,
+     bir_withholding_tax,
+@@ -2266,6 +2267,9 @@
+         "absences": dtr.get("absences", 0),
+         "late_minutes": dtr.get("late_minutes", 0),
+         "undertime_minutes": dtr.get("undertime_minutes", 0),
++        "deductible_minutes": dtr.get("deductible_minutes", 0),
++        "deductible_display": dtr_rules.hm(dtr.get("deductible_minutes", 0) or 0),
++        "half_days": dtr.get("half_days", 0),
+         "missing_logs": dtr.get("missing_logs", 0),
+         "records_found": dtr.get("records_found", 0),
+         "records_used": dtr.get("records_used", 0),
+@@ -4873,6 +4877,19 @@
+             records_by_day[local_day].append(rec)
+ 
+     holiday_map = _holidays_for_period(branch, period)
++
++    # The flag ceremony is on the first working day of each week, so look at
++    # the whole Monday-to-Friday week even when the period starts or ends midweek.
++    week_start = start_day - timedelta(days=start_day.weekday())
++    week_end = end_day + timedelta(days=4 - end_day.weekday()) if end_day.weekday() < 5 else end_day
++    week_non_working = _holidays_for_period(
++        branch, SimpleNamespace(start_date=week_start, end_date=week_end)
++    )
++    schedule = dtr_rules.Schedule.from_rules(rules)
++    employee_attends_ceremony = (
++        str(profile.employment_type or "").upper() in dtr_rules.FLAG_CEREMONY_EMPLOYMENT_TYPES
++    )
++
+     unverified_holiday_count = _unverified_holidays_for_period(branch, period).count()
+     if unverified_holiday_count:
+         issues.append(
+@@ -4923,8 +4940,11 @@
+     active_workdays = 0
+     outside_employment_days = 0
+ 
+-    late_minutes_total = 0
+-    undertime_minutes_total = 0
++    late_minutes_total = 0          # recorded lateness (tardiness record, not money)
++    undertime_minutes_total = 0     # deductible minutes on the departure side
++    arrival_deductible_total = 0    # deductible minutes on the arrival side, incl. half-day penalties
++    half_days = 0
++    below_minimum_absences = 0
+ 
+     for current_day in _date_range(start_day, end_day):
+         weekday_name = current_day.strftime("%A")
+@@ -4987,6 +5007,17 @@
+ 
+         status = "Absent"
+         remarks = ""
++        day_result = None
++        ceremony_note = ""
++        is_ceremony_day = False
++        # The week's ceremony day depends only on the calendar (verified holidays and
++        # suspensions for this branch), never on whether this employee came in.
++        ceremony_date, skipped = dtr_rules.ceremony_day_for_week(current_day, week_non_working)
++        if ceremony_date == current_day:
++            is_ceremony_day = employee_attends_ceremony
++            ceremony_note = dtr_rules.ceremony_reason(ceremony_date, skipped)
++            if not employee_attends_ceremony:
++                ceremony_note += " This employment type is not covered by the ceremony rule."
+ 
+         if is_outside_employment:
+             status = "Outside Employment Period"
+@@ -5118,136 +5149,47 @@
+                 pm_out = _time_to_str(pm_out_time)
+ 
+             # -------------------------------------------------
+-            # Required four-punch DTR validation
++            # Lateness, half day, minimum attendance, shortfall
++            # (shared rules: core/dtr_rules.py)
+             # -------------------------------------------------
+-            missing_punches = []
+-
+-            if am_in_time is None:
+-                missing_punches.append("AM Arrival")
+-
+-            if am_out_time is None:
+-                missing_punches.append("AM Departure")
+-
+-            if pm_in_time is None:
+-                missing_punches.append("PM Arrival")
+-
+-            if pm_out_time is None:
+-                missing_punches.append("PM Departure")
++            half_day_leave = None
++            if leave_request and leave_request.duration == LeaveRequest.DURATION_HALF_AM:
++                half_day_leave = "AM"
++            elif leave_request and leave_request.duration == LeaveRequest.DURATION_HALF_PM:
++                half_day_leave = "PM"
+ 
+-            complete_four_punches = (
+-                len(missing_punches) == 0
+-            )
+-
+-            # -------------------------------------------------
+-            # Creditable working minutes
+-            # -------------------------------------------------
+-            total_rendered_minutes = credited_work_minutes(
++            day_result = dtr_rules.evaluate_day(
++                schedule.for_employee(profile.employment_type, is_ceremony_day),
+                 am_in_time,
+                 am_out_time,
+                 pm_in_time,
+                 pm_out_time,
+-                earliest_creditable_time=earliest_creditable,
+-                lunch_start_time=lunch_start,
+-                lunch_end_time=lunch_end,
+-                lunch_break_required=bool(
+-                    rules.lunch_break_required
+-                ),
++                is_ceremony_day=is_ceremony_day,
++                half_day_leave=half_day_leave,
+             )
+ 
+-            if complete_four_punches:
+-                status = "Present"
+-                days_present += 1
+-
+-            else:
+-                status = "Incomplete"
+-                remarks = (
+-                    "Missing required DTR punch(es): "
+-                    + ", ".join(missing_punches)
+-                )
++            total_rendered_minutes = day_result.actual_minutes
++            late_minutes = day_result.recorded_late
++            undertime_minutes = day_result.departure_shortfall
++            status = day_result.status
++            remarks = day_result.remarks
+ 
++            if status in ("Present", "Half Day"):
++                days_present += 1
++                if half_day_leave:
++                    leave_days += Decimal("0.50")
++            if status == "Half Day":
++                half_days += 1
++            elif status == "Absent":
++                absences += 1
++                below_minimum_absences += 1
++            elif status == "Incomplete":
+                 missing_logs += 1
+-
+-                issues.append(
+-                    f"{current_day.isoformat()}: "
+-                    f"{remarks}"
+-                )
+-
+-            # -------------------------------------------------
+-            # Late computation
+-            # -------------------------------------------------
+-            # Morning and afternoon arrivals are evaluated separately.
+-            # The configured grace period applies to ordinary arrivals in
+-            # both sessions. Flag-ceremony mornings keep their configured
+-            # hard cutoff and do not receive the ordinary grace period.
+-            grace_minutes = int(
+-                rules.grace_minutes_normal
+-                if rules.grace_minutes_normal is not None
+-                else 15
+-            )
+-
+-            if am_in_time:
+-                if _is_flag_ceremony_day(
+-                    current_day,
+-                    holiday_map,
+-                ):
+-                    morning_threshold = (
+-                        rules.flag_ceremony_cutoff_time
+-                        or time(8, 0)
+-                    )
+-                else:
+-                    morning_threshold = (
+-                        datetime.combine(
+-                            current_day,
+-                            rules.work_start_time or time(8, 0),
+-                        )
+-                        + timedelta(minutes=grace_minutes)
+-                    ).time()
+-
+-                if am_in_time > morning_threshold:
+-                    late_minutes += _minutes_between(
+-                        morning_threshold,
+-                        am_in_time,
+-                        current_day,
+-                    )
+-
+-            if pm_in_time:
+-                afternoon_threshold = (
+-                    datetime.combine(current_day, lunch_end)
+-                    + timedelta(minutes=grace_minutes)
+-                ).time()
+-
+-                if pm_in_time > afternoon_threshold:
+-                    late_minutes += _minutes_between(
+-                        afternoon_threshold,
+-                        pm_in_time,
+-                        current_day,
+-                    )
+-
+-            # -------------------------------------------------
+-            # Undertime computation
+-            # -------------------------------------------------
+-            # Undertime is based only on leaving before the required end of
+-            # a work session. Arrival delays are already handled as late
+-            # minutes above and must not be deducted a second time.
+-            if complete_four_punches:
+-                work_end = rules.work_end_time or time(17, 0)
+-
+-                if am_out_time < lunch_start:
+-                    undertime_minutes += _minutes_between(
+-                        am_out_time,
+-                        lunch_start,
+-                        current_day,
+-                    )
+-
+-                if pm_out_time < work_end:
+-                    undertime_minutes += _minutes_between(
+-                        pm_out_time,
+-                        work_end,
+-                        current_day,
+-                    )
++                issues.append(f"{current_day.isoformat()}: {remarks}")
+ 
+             late_minutes_total += late_minutes
+             undertime_minutes_total += undertime_minutes
++            arrival_deductible_total += day_result.arrival_shortfall
+ 
+         else:
+             status = "Absent"
+@@ -5256,6 +5198,7 @@
+ 
+ 
+         total_hours = Decimal(total_rendered_minutes) / Decimal("60")
++        deductible_minutes = day_result.deductible if day_result else 0
+ 
+         rows.append({
+             "date": current_day.isoformat(),
+@@ -5273,14 +5216,36 @@
+             "late": int(late_minutes),
+             "undertime": int(undertime_minutes),
+ 
+-            # Optional display helpers
+-            "undertime_hour": int(undertime_minutes // 60),
+-            "undertime_minute": int(undertime_minutes % 60),
++            # Civil Service Form No. 48 UNDERTIME column: the full deductible
++            # time for the day (arrival side + departure side), so the printed
++            # DTR matches payroll.
++            "undertime_hour": int(deductible_minutes // 60),
++            "undertime_minute": int(deductible_minutes % 60),
+ 
+             "status": status,
+             "remarks": remarks,
+ 
+             "raw_log_count": len(day_records),
++
++            # Corrected calculation details (rules version 2)
++            "rules_version": dtr_rules.RULES_VERSION,
++            "deductible_minutes": int(deductible_minutes),
++            "arrival_shortfall": int(day_result.arrival_shortfall) if day_result else 0,
++            "departure_shortfall": int(day_result.departure_shortfall) if day_result else 0,
++            "half_day_penalty": int(day_result.half_day_penalty) if day_result else 0,
++            "credited_minutes": int(day_result.credited_minutes) if day_result else 0,
++            "required_minutes": int(schedule.required),
++            "required_departure": day_result.required_departure if day_result else "",
++            "arrival_threshold": day_result.arrival_threshold if day_result else "",
++            "is_ceremony_day": bool(is_ceremony_day),
++            "ceremony_note": ceremony_note,
++            "needs_review": bool(day_result.needs_review) if day_result else False,
++            "computation": {
++                "employment_type": profile.get_employment_type_display(),
++                "weekday": weekday_name,
++                "lines": [[label, value] for label, value in (day_result.lines if day_result else [])],
++                "formula": day_result.formula if day_result else "",
++            },
+         })
+ 
+     return {
+@@ -5293,8 +5258,16 @@
+         "absences": int(absences),
+         "missing_logs": int(missing_logs),
+ 
++        # Recorded lateness (tardiness record). Money uses the deductible fields.
+         "late_minutes": int(late_minutes_total),
++        # Deductible minutes, split by side. Their sum is what payroll deducts
++        # and what the printed DTR shows in the UNDERTIME column.
++        "deductible_arrival_minutes": int(arrival_deductible_total),
+         "undertime_minutes": int(undertime_minutes_total),
++        "deductible_minutes": int(arrival_deductible_total + undertime_minutes_total),
++        "half_days": int(half_days),
++        "below_minimum_absences": int(below_minimum_absences),
++        "rules_version": dtr_rules.RULES_VERSION,
+ 
+         "leave_days": float(leave_days),
+         "official_leave_days": float(official_leave_days),
+@@ -5411,7 +5384,14 @@
+     travel_days = int(dtr.get("travel_days", 0) or 0)
+     holiday_days = int(dtr.get("holiday_days", 0) or 0)
+     absences = int(dtr.get("absences", 0) or 0)
+-    late_minutes = int(dtr.get("late_minutes", 0) or 0)
++    # Money is based on deductible minutes (core/dtr_rules.py):
++    #   late_minutes      = arrival side, including half-day penalties
++    #   undertime_minutes = departure side
++    # Their sum equals the UNDERTIME total on the printed DTR.
++    # Recorded lateness (the tardiness record) is kept separately and is not
++    # deducted a second time.
++    recorded_late_minutes = int(dtr.get("late_minutes", 0) or 0)
++    late_minutes = int(dtr.get("deductible_arrival_minutes", recorded_late_minutes) or 0)
+     undertime_minutes = int(dtr.get("undertime_minutes", 0) or 0)
+     leave_days = Decimal(str(dtr.get("leave_days", 0) or 0))
+     official_leave_days = Decimal(str(dtr.get("official_leave_days", 0) or 0))
+@@ -6127,6 +6107,10 @@
+             "absences": absences,
+             "late_minutes": late_minutes,
+             "undertime_minutes": undertime_minutes,
++            "deductible_minutes": int(late_minutes + undertime_minutes),
++            "recorded_late_minutes": recorded_late_minutes,
++            "half_days": int(dtr.get("half_days", 0) or 0),
++            "rules_version": dtr.get("rules_version", 1),
+             "missing_logs": int(dtr.get("missing_logs", 0) or 0),
+             "records_found": int(dtr.get("records_found", 0) or 0),
+             "records_used": int(dtr.get("records_used", 0) or 0),
+@@ -6178,6 +6162,8 @@
+ 
+             "late_minutes": int(late_minutes),
+             "undertime_minutes": int(undertime_minutes),
++            "deductible_minutes": int(late_minutes + undertime_minutes),
++            "recorded_late_minutes": int(recorded_late_minutes),
+             "absences": int(absences),
+ 
+             "late_deduction": _money(late_deduction),
+@@ -6521,13 +6507,16 @@
+ 
+         row_late = int(row.get("late", 0) or 0)
+         row_undertime = int(row.get("undertime", 0) or 0)
++        # Deductible arrival-side minutes (includes half-day penalties); older
++        # rows without the field fall back to recorded lateness.
++        row_late_deductible = int(row.get("arrival_shortfall", row_late) or 0)
+ 
+         try:
+             row_hours = Decimal(str(row.get("total_hours", "0") or "0"))
+         except Exception:
+             row_hours = Decimal("0.00")
+ 
+-        if status in ["Present", "Official Travel", "Incomplete"]:
++        if status in ["Present", "Half Day", "Official Travel", "Incomplete"]:
+             present_days += 1
+ 
+         if status == "Absent":
+@@ -6544,8 +6533,8 @@
+ 
+         if row_late > 0:
+             late_days += 1
+-            late_minutes += row_late
+             weekday_late_counter[row_date.strftime("%A")] += 1
++        late_minutes += row_late_deductible
+ 
+         if row_undertime > 0:
+             undertime_days += 1
+@@ -8197,6 +8186,10 @@
+ 
+             "late_minutes": late_minutes,
+             "undertime_minutes": undertime_minutes,
++            "deductible_minutes": int(p.get("deductible_minutes", int(late_minutes or 0) + int(undertime_minutes or 0)) or 0),
++            "deductible_display": dtr_rules.hm(int(p.get("deductible_minutes", int(late_minutes or 0) + int(undertime_minutes or 0)) or 0)),
++            "recorded_late_minutes": int(p.get("recorded_late_minutes", 0) or 0),
++            "half_days": int(summary.get("half_days", 0) or 0),
+             "absences": absences,
+ 
+             "daily_rate": rates.get("daily", Decimal("0.00")),
+@@ -8715,26 +8708,54 @@
+         item.setdefault("status", "")
+         item.setdefault("remarks", "")
+ 
++        # Rows saved before the corrected rules have no deductible_minutes;
++        # they print exactly as they were saved and are flagged on screen.
++        printed = item.get("deductible_minutes")
++        if printed is None:
++            printed = item.get("undertime", 0)
++        try:
++            printed = int(printed or 0)
++        except (TypeError, ValueError):
++            printed = 0
++        item["print_minutes"] = printed
++        item["undertime_hour"] = printed // 60
++        item["undertime_minute"] = printed % 60
++
+         normalized.append(item)
+ 
+     return normalized
+ 
+ 
+ def _dtr_totals(rows):
+-    total_undertime = 0
++    """
++    Period total for the CSF No. 48 UNDERTIME column, in whole minutes.
++    Uses the same per-row value the form prints (print_minutes), so the
++    TOTAL row always equals the sum of the rows above it.
++    """
++    total_minutes = 0
+ 
+     for row in rows or []:
++        value = row.get("print_minutes")
++        if value is None:
++            value = row.get("deductible_minutes", row.get("undertime", 0))
+         try:
+-            total_undertime += int(row.get("undertime", 0) or 0)
+-        except Exception:
++            total_minutes += int(value or 0)
++        except (TypeError, ValueError):
+             pass
+ 
+     return {
+-        "total_undertime_hours": total_undertime // 60,
+-        "total_undertime_minutes": total_undertime % 60,
++        "total_minutes": total_minutes,
++        "total_undertime_hours": total_minutes // 60,
++        "total_undertime_minutes": total_minutes % 60,
+     }
+ 
+ 
++def _rows_use_current_rules(rows):
++    """False when a saved DTR snapshot was computed before the corrected rules."""
++    working = [r for r in rows or [] if isinstance(r, dict) and r.get("status") not in ("Weekend", "Holiday/Suspension")]
++    return all(int(r.get("rules_version", 1) or 1) >= dtr_rules.RULES_VERSION for r in working)
++
++
+ @login_required
+ def admin_payroll_item_dtr_print(request, item_id):
+     """
+@@ -8834,6 +8855,7 @@
+         "finalized_dtr": finalized_dtr,
+         "dtr_locked": dtr_locked,
+         "dtr_source_label": dtr_source_label,
++        "snapshot_is_current": _rows_use_current_rules(dtr_rows),
+ 
+         "printed_by": request.user.get_full_name() or request.user.username,
+         "printed_at": timezone.localtime(timezone.now()),
