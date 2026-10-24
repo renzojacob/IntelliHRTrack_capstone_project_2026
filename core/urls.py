@@ -3,6 +3,7 @@ from django.urls import path, reverse_lazy
 
 from . import views, overtime_views
 from .payroll_period_views import admin_payroll_period_create
+from .dtr_print_views import admin_payroll_dtr_print_all
 
 from django.shortcuts import redirect
 from django.templatetags.static import static
@@ -236,6 +237,13 @@ urlpatterns = [
         "admin-ui/payroll/batch/<int:batch_id>/reopen/",
         views.admin_reopen_payroll_batch,
         name="admin_reopen_payroll_batch",
+    ),
+
+    # Print every matching employee's DTR in one document
+    path(
+        "admin-ui/payroll/dtr/print-all/",
+        admin_payroll_dtr_print_all,
+        name="admin_payroll_dtr_print_all",
     ),
 
     # Live DTR JSON API
