@@ -2025,11 +2025,20 @@ def employee_dashboard(request):
         mins = max(0, int(diff.total_seconds() // 60))
         work_duration_text = f"{mins // 60}h {mins % 60}m"
 
-    late_cutoff = time(8, 15, 0)
-    is_late_today = False
-    if first_in:
-        first_in_time = timezone.localtime(first_in).time() if settings.USE_TZ else first_in.time()
-        is_late_today = first_in_time > late_cutoff
+    # "Late today" follows the same DTR rules as payroll (flag ceremony day,
+    # arrival allowance, permanent schedule), not a fixed 8:15 AM cutoff.
+    today_dtr_row = {}
+    try:
+        today_dtr = _build_dtr_and_summary(
+            profile, emp_branch,
+            SimpleNamespace(start_date=today, end_date=today, pay_mode=PayrollPeriod.PAY_MONTHLY),
+            _get_or_create_rules(emp_branch),
+        )
+        today_dtr_row = (today_dtr.get("rows") or [{}])[0]
+    except Exception:
+        today_dtr_row = {}
+    today_late_minutes = int(today_dtr_row.get("late", 0) or 0) if first_in else 0
+    is_late_today = today_late_minutes > 0
 
     # -------------------------
     # Weekly total hours
@@ -2126,6 +2135,9 @@ def employee_dashboard(request):
         "today_checkout": _fmt_time_ampm(timezone.localtime(last_out) if (settings.USE_TZ and last_out) else last_out) if last_out else "--",
         "work_duration": work_duration_text,
         "is_late_today": is_late_today,
+        "today_late_minutes": today_late_minutes,
+        "today_is_ceremony_day": bool(today_dtr_row.get("is_ceremony_day")),
+        "today_arrival_threshold": today_dtr_row.get("arrival_threshold", ""),
 
         "total_week_hours": total_week_hours_text,
 
@@ -2736,17 +2748,83 @@ def employee_dtr_print(request):
         pay_mode=PayrollPeriod.PAY_MONTHLY,
     )
 
-    dtr = _build_dtr_and_summary(profile, branch, period, rules)
+    # Same source as the admin's Print DTR, so both printouts always match:
+    #   1. a locked / finalized DTR for a payroll period with exactly these dates,
+    #   2. otherwise that period's processed payroll snapshot,
+    #   3. otherwise a live calculation with the current rules (clearly labelled).
+    payroll_period = (
+        PayrollPeriod.objects
+        .filter(start_date=start_date, end_date=end_date)
+        .order_by("-id")
+        .first()
+    )
+    saved_rows = None
+    batch = SimpleNamespace(name="Not processed")
+    dtr_source_label = "Live calculation (payroll not processed for these dates)"
+    dtr_locked = False
+
+    if payroll_period:
+        locked_dtr = (
+            FinalizedDTR.objects
+            .filter(profile=profile, period=payroll_period, is_locked=True)
+            .first()
+        )
+        saved_item = (
+            PayrollItem.objects
+            .select_related("batch")
+            .filter(
+                profile=profile,
+                batch__period=payroll_period,
+                batch__status__in=(PayrollBatch.STATUS_COMPLETED, PayrollBatch.STATUS_FINALIZED),
+            )
+            .order_by("-batch__processed_at", "-id")
+            .first()
+        )
+        if locked_dtr:
+            saved_rows = locked_dtr.rows
+            dtr_source_label = "Locked / Finalized DTR"
+            dtr_locked = True
+            if saved_item:
+                batch = saved_item.batch
+        elif saved_item:
+            saved_rows = _get_item_dtr_rows(saved_item)
+            dtr_source_label = "Processed Payroll Snapshot"
+            batch = saved_item.batch
+
+    if saved_rows:
+        dtr = {}
+        dtr_rows = _normalize_dtr_rows_for_print(saved_rows)
+    else:
+        dtr = _build_dtr_and_summary(profile, branch, period, rules)
+        dtr_rows = _normalize_dtr_rows_for_print(dtr.get("rows", []))
+
+    totals = _dtr_totals(dtr_rows)
+    employee_name = request.user.get_full_name() or request.user.username
 
     context = {
         "profile": profile,
-        "employee_name": request.user.get_full_name() or request.user.username,
+        "employee_name": employee_name,
         "employee_branch": branch.name,
         "employee_id_used": _pick_attendance_employee_id(request.user, branch),
         "period": period,
+        "payroll_period": payroll_period,
         "dtr": dtr,
-        "dtr_rows": dtr.get("rows", []),
+        "dtr_rows": dtr_rows,
         "today": today,
+
+        # Civil Service Form No. 48 (same form as the admin printout)
+        "biometric_employee_id": profile.biometric_employee_id or _pick_attendance_employee_id(request.user, branch),
+        "division": profile.department or "—",
+        "month_label": f"{start_date.strftime('%B %d, %Y')} - {end_date.strftime('%B %d, %Y')}",
+        "total_undertime_hours": totals["total_undertime_hours"],
+        "total_undertime_minutes": totals["total_undertime_minutes"],
+        "total_deductible_minutes": totals.get("total_minutes", 0),
+        "batch": batch,
+        "dtr_source_label": dtr_source_label,
+        "dtr_locked": dtr_locked,
+        "snapshot_is_current": _rows_use_current_rules(dtr_rows),
+        "printed_by": employee_name,
+        "printed_at": timezone.localtime(timezone.now()),
     }
 
     return render(request, "employee/dtr_print.html", context)
@@ -8753,7 +8831,7 @@ def _dtr_totals(rows):
 def _rows_use_current_rules(rows):
     """False when a saved DTR snapshot was computed before the corrected rules."""
     working = [r for r in rows or [] if isinstance(r, dict) and r.get("status") not in ("Weekend", "Holiday/Suspension")]
-    return all(int(r.get("rules_version", 1) or 1) >= dtr_rules.RULES_VERSION for r in working)
+    return all(dtr_rules.row_is_current(r) for r in working)
 
 
 @login_required

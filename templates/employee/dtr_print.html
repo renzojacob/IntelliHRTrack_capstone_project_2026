@@ -1,94 +1,91 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>DTR Print | IntelliHRTrack</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DTR: {{ employee_name }} | IntelliHRTrack</title>
+  {% include "_head_meta.html" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
   <style>
-    @media print {
-      .no-print { display: none !important; }
-      body { background: white !important; }
+    /* ---------- Screen-only toolbar (hidden when printing), same as the admin DTR page ---------- */
+    .screen-only { font-family: "Schibsted Grotesk", "Segoe UI", system-ui, Arial, sans-serif; color: #10261C; }
+    .dtr-bar {
+      position: sticky; top: 0; z-index: 5;
+      margin: 0 -16px 20px; padding: 12px 16px;
+      background: #fff; border-bottom: 1px solid #DAE2D8;
     }
+    .dtr-bar__inner { max-width: 760px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .dtr-bar__title { flex: 1 1 200px; min-width: 0; }
+    .dtr-bar__title strong { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dtr-bar__title span { font-size: 13px; color: #52645A; }
+    .dtr-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      min-height: 40px; padding: 8px 14px; border-radius: 8px;
+      border: 1px solid #DAE2D8; background: #fff; color: #10261C;
+      font: 600 14px/1.2 inherit; text-decoration: none; cursor: pointer; white-space: nowrap;
+    }
+    .dtr-btn:hover { border-color: #52645A; }
+    .dtr-btn--primary { background: #1E5A3C; border-color: #1E5A3C; color: #fff; }
+    .dtr-btn--primary:hover { background: #174A31; }
+    .dtr-btn:focus-visible { outline: 2px solid #1E5A3C; outline-offset: 2px; }
+    .dtr-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+    .dtr-badge--ok { background: #E1F2E7; color: #1E7A4A; }
+    .dtr-badge--info { background: #E2EEF8; color: #1F5C8C; }
+    .dtr-badge--neutral { background: #EEF2EC; color: #52645A; }
+    .dtr-panel { max-width: 760px; margin: 0 auto 16px; padding: 14px 16px; border: 1px solid #DAE2D8; border-radius: 12px; background: #fff; font-size: 14px; }
+    .dtr-panel dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; }
+    .dtr-panel dt { color: #52645A; }
+    .dtr-panel dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+    .dtr-msg { max-width: 760px; margin: 0 auto 10px; padding: 10px 14px; border-radius: 10px; background: #FBEFD2; color: #8A5A00; font-size: 14px; }
+
+    {% include "admin/_csf48_styles.html" %}
   </style>
 </head>
-<body class="bg-slate-100 text-slate-900 p-6">
-  <div class="max-w-5xl mx-auto bg-white rounded-2xl shadow p-8">
 
-    <div class="no-print flex justify-end mb-4">
-      <button onclick="window.print()" class="px-5 py-2 rounded-xl bg-emerald-600 text-white font-semibold">
-        Print DTR
-      </button>
-    </div>
+<body>
 
-    <div class="text-center mb-6">
-      <p class="text-sm">Civil Service Form No. 48</p>
-      <h1 class="text-2xl font-black uppercase">Daily Time Record</h1>
-      <p class="text-sm mt-1">IntelliHRTrack - Department of Agriculture MIMAROPA</p>
-    </div>
-
-    <div class="grid grid-cols-2 gap-4 text-sm mb-6">
-      <div>
-        <p><strong>Name:</strong> {{ employee_name }}</p>
-        <p><strong>Branch:</strong> {{ employee_branch }}</p>
-        <p><strong>Biometric ID:</strong> {{ employee_id_used }}</p>
+<div class="screen-only">
+  <div class="dtr-bar">
+    <div class="dtr-bar__inner">
+      <a class="dtr-btn" href="{% url 'employee_attendance' %}?start={{ period.start_date|date:'Y-m-d' }}&end={{ period.end_date|date:'Y-m-d' }}">&larr; Attendance</a>
+      <div class="dtr-bar__title">
+        <strong>{{ employee_name }}</strong>
+        <span>{{ month_label }}</span>
       </div>
-      <div>
-        <p><strong>Period:</strong> {{ period.name }}</p>
-        <p><strong>Generated:</strong> {{ today }}</p>
-      </div>
-    </div>
-
-    <div class="overflow-x-auto">
-      <table class="w-full border border-slate-700 text-xs">
-        <thead>
-          <tr class="bg-slate-200">
-            <th class="border border-slate-700 p-2" rowspan="2">Day</th>
-            <th class="border border-slate-700 p-2" colspan="2">A.M.</th>
-            <th class="border border-slate-700 p-2" colspan="2">P.M.</th>
-            <th class="border border-slate-700 p-2" colspan="2">Undertime</th>
-            <th class="border border-slate-700 p-2" rowspan="2">Status</th>
-            <th class="border border-slate-700 p-2" rowspan="2">Remarks</th>
-          </tr>
-          <tr class="bg-slate-100">
-            <th class="border border-slate-700 p-2">Arrival</th>
-            <th class="border border-slate-700 p-2">Departure</th>
-            <th class="border border-slate-700 p-2">Arrival</th>
-            <th class="border border-slate-700 p-2">Departure</th>
-            <th class="border border-slate-700 p-2">Hours</th>
-            <th class="border border-slate-700 p-2">Minutes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in dtr_rows %}
-          <tr>
-            <td class="border border-slate-700 p-2 text-center">{{ row.day }}</td>
-            <td class="border border-slate-700 p-2 text-center">{{ row.am_in|default:"" }}</td>
-            <td class="border border-slate-700 p-2 text-center">{{ row.am_out|default:"" }}</td>
-            <td class="border border-slate-700 p-2 text-center">{{ row.pm_in|default:"" }}</td>
-            <td class="border border-slate-700 p-2 text-center">{{ row.pm_out|default:"" }}</td>
-            <td class="border border-slate-700 p-2 text-center">{{ row.undertime_hour|default:"0" }}</td>
-            <td class="border border-slate-700 p-2 text-center">{{ row.undertime_minute|default:"0" }}</td>
-            <td class="border border-slate-700 p-2 text-center">{{ row.status }}</td>
-            <td class="border border-slate-700 p-2">{{ row.remarks }}</td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="9" class="border border-slate-700 p-4 text-center">
-              No DTR records found.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="grid grid-cols-2 gap-10 mt-10 text-sm">
-      <div>
-        <p class="border-t border-slate-700 pt-2 text-center">Employee Signature</p>
-      </div>
-      <div>
-        <p class="border-t border-slate-700 pt-2 text-center">Authorized Officer</p>
-      </div>
+      {% if dtr_locked %}
+        <span class="dtr-badge dtr-badge--ok">Locked</span>
+      {% elif batch.name != "Not processed" %}
+        <span class="dtr-badge dtr-badge--info">Processed payroll</span>
+      {% else %}
+        <span class="dtr-badge dtr-badge--neutral">Live calculation</span>
+      {% endif %}
+      <button type="button" class="dtr-btn dtr-btn--primary" onclick="window.print()">Print DTR</button>
     </div>
   </div>
+
+  {% if not snapshot_is_current %}
+    <div class="dtr-msg" role="status">
+      This DTR was saved before the corrected lateness and half-day rules, so the UNDERTIME column shows the old values.
+      Ask your payroll officer to process this payroll period again.
+    </div>
+  {% endif %}
+
+  <div class="dtr-panel">
+    <dl>
+      <dt>Dates</dt>
+      <dd>{{ month_label }}</dd>
+      <dt>Source</dt>
+      <dd>{{ dtr_source_label }}</dd>
+      <dt>UNDERTIME total</dt>
+      <dd>{{ total_undertime_hours }} h {{ total_undertime_minutes }} min ({{ total_deductible_minutes }} minutes): lateness, half days, and leaving early, counted once</dd>
+    </dl>
+  </div>
+</div>
+
+  {% include "admin/_csf48_form.html" %}
+
 </body>
 </html>

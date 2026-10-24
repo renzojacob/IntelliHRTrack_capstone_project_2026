@@ -1,0 +1,101 @@
+{% load ihrt_dtr %}
+{% comment %}
+  Daily DTR rows with a "View computation" toggle per day.
+  Needs: rows (list of DTR row dicts), and optionally table_id (unique per page).
+  The numbers come from the same shared calculation as payroll and the printed DTR.
+{% endcomment %}
+{% with tid=table_id|default:"dtr" %}
+<div class="ad-table-wrap">
+  <table class="ad-table ad-table--dense" style="min-width:860px">
+    <thead>
+      <tr>
+        <th scope="col">Date</th>
+        <th scope="col">AM in</th>
+        <th scope="col">AM out</th>
+        <th scope="col">PM in</th>
+        <th scope="col">PM out</th>
+        <th scope="col" class="is-num">Worked</th>
+        <th scope="col" class="is-num" title="Minutes after the arrival allowance, kept as a tardiness record">Late record</th>
+        <th scope="col" class="is-num" title="Minutes deducted for the day: lateness, half day, and leaving early, counted once">Deductible</th>
+        <th scope="col">Status</th>
+        <th scope="col"><span class="sr-only">Details</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        {% with d=row.deductible_minutes|default:row.undertime %}
+        <tr>
+          <td class="is-nowrap"><span class="ad-cell-primary">{% if row.date %}{{ row.date }}{% else %}Day {{ row.day }}{% endif %}</span><span class="ad-cell-sub" style="display:block">{{ row.weekday }}</span></td>
+          <td class="ad-num is-nowrap">{{ row.am_in|default:"—" }}</td>
+          <td class="ad-num is-nowrap">{{ row.am_out|default:"—" }}</td>
+          <td class="ad-num is-nowrap">{{ row.pm_in|default:"—" }}</td>
+          <td class="ad-num is-nowrap">{{ row.pm_out|default:"—" }}</td>
+          <td class="is-num">{% if row.total_minutes %}{{ row.total_minutes|hm }}{% else %}—{% endif %}</td>
+          <td class="is-num {% if row.late %}ad-warn-text{% endif %}">{{ row.late|default:"0" }}</td>
+          <td class="is-num {% if d %}ad-neg{% endif %}" style="font-weight:650">{{ d|default:"0" }}</td>
+          <td>
+            <span class="ihrt-badge ihrt-badge--{{ row.status|status_tone }}">{{ row.status|default:"No record" }}</span>
+            {% if row.is_ceremony_day %}<span class="ihrt-badge ihrt-badge--info ihrt-badge--plain" title="Flag ceremony day">Flag</span>{% endif %}
+          </td>
+          <td style="text-align:right;min-width:140px">
+            {% if row.computation.lines or row.needs_review %}
+              <button type="button" class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm" data-calc-toggle aria-expanded="false" aria-controls="{{ tid }}-calc-{{ forloop.counter }}">View computation</button>
+            {% elif row.remarks and row.remarks != row.status %}
+              <span class="ad-help">{{ row.remarks }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% if row.computation.lines or row.needs_review %}
+          <tr class="ad-detail-row" id="{{ tid }}-calc-{{ forloop.counter }}" hidden>
+            <td colspan="10">
+              <div class="em-calc">
+                <p class="em-calc__head">{{ row.computation.weekday|default:row.weekday }}, {{ row.date }}{% if row.computation.employment_type %} &middot; {{ row.computation.employment_type }}{% endif %}</p>
+                {% if row.ceremony_note %}
+                  <p class="em-calc__note"><iconify-icon icon="ph:flag" aria-hidden="true"></iconify-icon>
+                    <span>{{ row.ceremony_note }}{% if row.is_ceremony_day %} Required arrival: {{ row.arrival_threshold }}; arrival allowance: 0 minutes.{% endif %}</span>
+                  </p>
+                {% endif %}
+                {% if row.computation.lines %}
+                  <dl class="ad-kv">
+                    {% for line in row.computation.lines %}
+                      <div><dt>{{ line.0 }}</dt><dd>{{ line.1 }}</dd></div>
+                    {% endfor %}
+                  </dl>
+                {% endif %}
+                {% if row.computation.formula %}<p class="em-calc__formula">{{ row.computation.formula }}</p>{% endif %}
+                {% if row.needs_review %}<p class="em-calc__review">Needs review before payroll: {{ row.remarks }}</p>{% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endif %}
+        {% endwith %}
+      {% empty %}
+        <tr>
+          <td colspan="10">
+            <div class="ad-empty">
+              <iconify-icon icon="ph:calendar-x" aria-hidden="true"></iconify-icon>
+              <h3>No attendance rows</h3>
+              <p>No DTR rows were found for these dates.</p>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endwith %}
+<script>
+  (function () {
+    if (window.__emCalcBound) return;
+    window.__emCalcBound = true;
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-calc-toggle]');
+      if (!b) return;
+      var row = document.getElementById(b.getAttribute('aria-controls'));
+      var open = b.getAttribute('aria-expanded') === 'true';
+      b.setAttribute('aria-expanded', String(!open));
+      b.textContent = open ? 'View computation' : 'Hide computation';
+      if (row) row.hidden = open;
+    });
+  })();
+</script>

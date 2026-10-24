@@ -1,510 +1,300 @@
 {% extends 'employee/base_employee.html' %}
 
-{% block title %}Leave | IntelliHRTrack{% endblock %}
+{% block title %}Leave{% endblock %}
 
 {% block content %}
 
-<!-- Header -->
-<header class="relative overflow-hidden rounded-3xl glass p-6 md:p-8 shadow-lg reveal">
-  <div class="absolute inset-0 opacity-40 animate-shine"></div>
-  <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-    <div class="flex items-center gap-4">
-      <div>
-        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">Leave & Requests</h1>
-        <p class="text-sm md:text-base text-gray-600 dark:text-gray-300 mt-1">Manage your time off, track balances, and submit requests</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-3">
-      <button id="mobileMenu" class="lg:hidden p-2 rounded-xl glass" aria-label="Open Menu">
-        <iconify-icon icon="ph:list-duotone"></iconify-icon>
-      </button>
-      <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-xl glass text-xs">
-        <span id="netDot" class="inline-block w-2.5 h-2.5 rounded-full bg-green-500" title="Online"></span>
-        <span id="headerClock">--:--:--</span>
-      </div>
-      <button id="themeToggleHeader" class="p-2 rounded-xl glass hover:shadow-glow transition">
-        <iconify-icon icon="ph:sun-dim-duotone" class="hidden dark:inline text-accent"></iconify-icon>
-        <iconify-icon icon="ph:moon-stars-duotone" class="dark:hidden text-accent"></iconify-icon>
-      </button>
-    </div>
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <p class="em-hello">Time off</p>
+    <h1>Leave</h1>
+    <p>Apply for wellness leave and follow each request. You can submit up to {{ max_leave_requests|default:5 }} requests a year; drafts do not count until you submit them.</p>
+  </div>
+  <div class="ad-page-head__actions">
+    <a href="#apply" class="ihrt-btn ihrt-btn--primary">
+      <iconify-icon icon="ph:calendar-plus" aria-hidden="true"></iconify-icon> Apply for leave
+    </a>
   </div>
 </header>
 
-<!-- ✅ Leave Summary -->
-<div class="grid grid-cols-1 sm:grid-cols-5 gap-4 mt-6">
-  <div class="glass rounded-3xl p-5 shadow-md reveal">
-    <p class="text-sm text-gray-500 dark:text-gray-400">Used Requests This Year</p>
-    <h3 class="text-3xl font-extrabold mt-1 text-blue-600" id="kpiUsed">0</h3>
-    <p class="text-xs text-gray-400 mt-1">Out of 5 requests allowed</p>
+<section class="ad-stats ad-stats--5" aria-label="Leave in {{ leave_year }}">
+  <div class="ad-stat ad-stat--lead">
+    <p class="ad-stat__label">Remaining in {{ leave_year }}</p>
+    <p class="ad-stat__value">{{ remaining_leave|default:"0" }}<span style="font-size:.5em;font-weight:600;opacity:.8"> of {{ max_leave_requests|default:5 }}</span></p>
   </div>
+  <div class="ad-stat ad-tone-field"><p class="ad-stat__label">Used this year</p><p class="ad-stat__value">{{ used_requests|default:"0" }}</p></div>
+  <div class="ad-stat ad-tone-warn"><p class="ad-stat__label">Pending</p><p class="ad-stat__value">{{ pending_leave_count|default:"0" }}</p></div>
+  <div class="ad-stat ad-tone-ok"><p class="ad-stat__label">Approved</p><p class="ad-stat__value">{{ approved_count|default:"0" }}</p></div>
+  <div class="ad-stat ad-tone-bad"><p class="ad-stat__label">Rejected</p><p class="ad-stat__value">{{ rejected_count|default:"0" }}</p></div>
+</section>
 
-  <div class="glass rounded-3xl p-5 shadow-md reveal">
-    <p class="text-sm text-gray-500 dark:text-gray-400">Pending Requests</p>
-    <h3 class="text-3xl font-extrabold mt-1 text-amber-500">
-      {{ pending_leave_count|default:0 }}
-    </h3>
-    <p class="text-xs text-gray-400 mt-1">Awaiting approval</p>
-  </div>
+<div class="ad-split">
+  <div class="ad-stack">
 
-  <div class="glass rounded-3xl p-5 shadow-md reveal">
-    <p class="text-sm text-gray-500 dark:text-gray-400">Remaining Requests</p>
-    <h3 class="text-3xl font-extrabold mt-1 text-emerald-500" id="kpiRemaining">
-      {{ remaining_leave|default:5 }}
-    </h3>
-    <p class="text-xs text-gray-400 mt-1">Requests left this year</p>
-  </div>
-
-  <div class="glass rounded-3xl p-5 shadow-md reveal">
-    <p class="text-sm text-gray-500 dark:text-gray-400">Approved</p>
-    <h3 class="text-3xl font-extrabold mt-1 text-green-600">{{ approved_count|default:0 }}</h3>
-    <p class="text-xs text-gray-400 mt-1">Approved requests</p>
-  </div>
-
-  <div class="glass rounded-3xl p-5 shadow-md reveal">
-    <p class="text-sm text-gray-500 dark:text-gray-400">Rejected</p>
-    <h3 class="text-3xl font-extrabold mt-1 text-red-600">{{ rejected_count|default:0 }}</h3>
-    <p class="text-xs text-gray-400 mt-1">Rejected requests</p>
-  </div>
-</div>
-
-<!-- ✅ Django messages -->
-{% if messages %}
-  <div class="mt-4 space-y-2">
-    {% for message in messages %}
-      <div class="glass rounded-2xl p-4 border border-white/40 dark:border-white/10
-                  {% if message.tags == 'success' %} bg-emerald-50/60 dark:bg-emerald-900/20 {% endif %}
-                  {% if message.tags == 'error' %} bg-rose-50/60 dark:bg-rose-900/20 {% endif %}
-                  {% if message.tags == 'warning' %} bg-amber-50/60 dark:bg-amber-900/20 {% endif %}">
-        <div class="text-sm font-medium">{{ message }}</div>
-      </div>
-    {% endfor %}
-  </div>
-{% endif %}
-
-<!-- Layout -->
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-
-  <!-- LEFT -->
-  <div class="space-y-6">
-
-    <!-- ✅ Apply for Leave -->
-    <div class="glass rounded-3xl p-6 shadow-lg reveal">
-      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+    <section class="ad-card" id="apply">
+      <div class="ad-card__head">
         <div>
-          <h2 class="text-xl font-bold">Apply for Leave</h2>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            You can submit up to 5 leave requests per year. Drafts are not counted until submitted.
-          </p>
+          <h2>Apply for leave</h2>
+          <p>Your branch administrator reviews each request.</p>
         </div>
-
-        <div class="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/40 dark:bg-white/10">
-          <iconify-icon icon="ph:shield-check-duotone" class="text-lg text-emerald-500"></iconify-icon>
-          <div class="text-xs">
-            <div class="font-semibold">Remaining</div>
-            <div class="text-gray-500 dark:text-gray-400">
-              <span id="badgeRemaining">{{ remaining_leave|default:5 }}</span>/5
-            </div>
-          </div>
+        <div class="ad-card__head-actions">
+          <span class="ihrt-badge {% if remaining_leave > 0 %}ihrt-badge--ok{% else %}ihrt-badge--bad{% endif %}">{{ remaining_leave|default:"0" }} of {{ max_leave_requests|default:5 }} left</span>
         </div>
       </div>
 
-      <form method="POST" action="{% url 'employee_leave' %}" enctype="multipart/form-data" class="space-y-4" id="leaveForm">
+      <form method="POST" action="{% url 'employee_leave' %}" enctype="multipart/form-data" class="ad-card__body ad-form" id="leaveForm">
         {% csrf_token %}
+        <input type="hidden" name="leave_type" value="WELLNESS">
 
-        <!-- ✅ Leave Type (Wellness Leave ONLY) -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Leave Type</label>
-
-          {# Use a readonly display + hidden value to prevent users from changing type #}
-          <div class="w-full rounded-xl border border-white/40 dark:border-white/10 glass py-3 px-4 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <iconify-icon icon="ph:heart-duotone" class="text-accent text-lg"></iconify-icon>
-              <span class="font-semibold">Wellness Leave</span>
-            </div>
-            
+        <div class="ad-form-grid">
+          <div class="ad-field ad-span-all">
+            <span class="ad-label">Leave type</span>
+            <div class="ad-readonly"><iconify-icon icon="ph:heart" aria-hidden="true"></iconify-icon> Wellness leave</div>
           </div>
 
-          <input type="hidden" name="leave_type" value="WELLNESS">
-        </div>
-
-        <!-- Dates -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Start Date</label>
-            <input name="start_date" type="date" required
-                   class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 glass py-3 px-4"
-                   id="startDate">
+          <div class="ad-field">
+            <label class="ad-label" for="startDate">Start date <span class="ad-req" aria-hidden="true">*</span></label>
+            <input name="start_date" type="date" id="startDate" required>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">End Date</label>
-            <input name="end_date" type="date" required
-                   class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 glass py-3 px-4"
-                   id="endDate">
+          <div class="ad-field">
+            <label class="ad-label" for="endDate">End date <span class="ad-req" aria-hidden="true">*</span></label>
+            <input name="end_date" type="date" id="endDate" required aria-describedby="dateHint">
+            <p class="ad-error" id="dateHint" hidden>The end date cannot be before the start date.</p>
           </div>
-        </div>
 
-        <!-- Reason -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reason</label>
-          <textarea name="reason" required rows="3"
-                    class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 glass py-3 px-4"
-                    placeholder="Please provide details for your wellness leave request..."></textarea>
-        </div>
+          <div class="ad-field ad-span-all">
+            <label class="ad-label" for="reason">Reason <span class="ad-req" aria-hidden="true">*</span></label>
+            <textarea name="reason" id="reason" required rows="3" placeholder="Tell your administrator what the leave is for."></textarea>
+          </div>
 
-        <!-- Supporting Docs -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Supporting Documents</label>
-          <div class="flex items-center justify-center w-full">
-            <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer glass hover:border-accent transition-colors">
-              <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                <iconify-icon icon="ph:cloud-arrow-up-duotone" class="text-gray-400 text-2xl mb-2"></iconify-icon>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Click to upload or drag and drop</p>
-                <p class="text-xs text-gray-400 dark:text-gray-500">PDF, DOC, JPG up to 10MB</p>
-              </div>
-              <input name="attachments" type="file" class="hidden" multiple>
+          <div class="ad-field ad-span-all">
+            <span class="ad-label" id="attachLabel">Supporting documents <span class="ad-muted" style="font-weight:500">(optional)</span></span>
+            <label class="ad-drop" for="attachments">
+              <iconify-icon icon="ph:cloud-arrow-up" aria-hidden="true"></iconify-icon>
+              <span><span class="ad-drop__pick">Choose files</span> or drop them here</span>
+              <span class="ad-help">PDF, Word, or images up to 10 MB each</span>
+              <span class="ad-drop__file" id="attachNames">No file chosen</span>
             </label>
+            <input name="attachments" id="attachments" type="file" multiple class="sr-only" aria-labelledby="attachLabel">
           </div>
         </div>
 
-        <div class="flex gap-3 pt-2">
-          <button type="submit" class="flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-all ripple" id="submitLeaveBtn">
-            Submit Leave Request
-          </button>
-
-          <button type="submit" name="save_draft" value="1"
-                  class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-medium transition-all ripple">
-            Save as Draft
-          </button>
+        <div class="ad-alert ad-alert--bad" id="limitHint" style="margin-top:16px" {% if remaining_leave > 0 %}hidden{% endif %}>
+          <iconify-icon icon="ph:prohibit" aria-hidden="true"></iconify-icon>
+          <div class="ad-alert__body"><p class="ad-alert__title">Yearly limit reached</p>You can still save a draft. New requests open again next year.</div>
         </div>
 
-        <!-- Inline hint -->
-        <div id="limitHint" class="hidden mt-3 p-3 rounded-2xl bg-rose-50/70 dark:bg-rose-900/20 border border-rose-200/60 dark:border-rose-900/30">
-          <p class="text-sm font-semibold text-rose-700 dark:text-rose-200">Limit reached ✅</p>
-          <p class="text-xs text-rose-600/90 dark:text-rose-200/80 mt-1">You can request again next year.</p>
+        <div class="ad-form-actions" style="margin-top:18px">
+          {# Submit comes first so pressing Enter submits the request, as before. #}
+          <button type="submit" class="ihrt-btn ihrt-btn--primary" id="submitLeaveBtn" {% if remaining_leave <= 0 %}disabled{% endif %}>
+            <iconify-icon icon="ph:paper-plane-tilt" aria-hidden="true"></iconify-icon>
+            <span id="submitLeaveText">{% if remaining_leave <= 0 %}Limit reached for {{ leave_year }}{% else %}Submit request{% endif %}</span>
+          </button>
+          <button type="submit" name="save_draft" value="1" class="ihrt-btn ihrt-btn--secondary">
+            <iconify-icon icon="ph:floppy-disk" aria-hidden="true"></iconify-icon> Save as draft
+          </button>
         </div>
       </form>
-    </div>
+    </section>
 
-    <!-- ✅ Leave Request History -->
-    <div class="glass rounded-3xl p-6 shadow-lg reveal">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <h2 class="text-xl font-bold">Leave Request History</h2>
-      </div>
+    <section class="ad-card">
+      <div class="ad-card__head"><div><h2>My requests</h2><p>Newest first. You can cancel a request while it is pending.</p></div></div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-gray-200 dark:border-gray-700">
-              <th class="text-left p-3">Leave Type</th>
-              <th class="text-left p-3">Dates</th>
-              <th class="text-left p-3">Duration</th>
-              <th class="text-left p-3">Status</th>
-              <th class="text-left p-3">Reviewed By</th>
-              <th class="text-left p-3">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {% if leave_requests %}
+      <div class="ad-only-wide">
+        <div class="ad-table-wrap">
+          <table class="ad-table">
+            <thead>
+              <tr>
+                <th scope="col">Dates</th>
+                <th scope="col">Leave</th>
+                <th scope="col">Status</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
               {% for lr in leave_requests %}
-                <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <td class="p-3 font-medium">
-                    {# Display stays wellness if your model has display; fallback to raw #}
-                    {{ lr.get_leave_type_display|default:"Wellness Leave" }}
-                  </td>
-                  <td class="p-3">{{ lr.start_date }} — {{ lr.end_date }}</td>
-                  <td class="p-3">{{ lr.duration|default:"FULL" }}</td>
-
-                  <td class="p-3">
+                <tr>
+                  <td><span class="ad-cell-primary">{{ lr.start_date|date:"M d, Y" }}{% if lr.end_date != lr.start_date %} to {{ lr.end_date|date:"M d, Y" }}{% endif %}</span></td>
+                  <td><span class="ad-cell-primary">{{ lr.get_leave_type_display|default:"Wellness leave" }}</span><span class="ad-cell-sub" style="display:block">{{ lr.get_duration_display|default:lr.duration|default:"Full day" }}</span></td>
+                  <td>{% include "employee/_leave_badge.html" with status=lr.status label=lr.get_status_display %}{% if lr.reviewed_by %}<span class="ad-cell-sub" style="display:block">by {{ lr.reviewed_by.username }}</span>{% endif %}</td>
+                  <td class="is-actions">
                     {% if lr.status == "PENDING" %}
-                      <span class="px-2 py-1 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs rounded-full">Pending</span>
-                    {% elif lr.status == "APPROVED" %}
-                      <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">Approved</span>
-                    {% elif lr.status == "REJECTED" %}
-                      <span class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs rounded-full">Rejected</span>
-                    {% else %}
-                      <span class="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-xs rounded-full">{{ lr.status }}</span>
-                    {% endif %}
-                  </td>
-
-                  <td class="p-3">
-                    {% if lr.reviewed_by %} {{ lr.reviewed_by.username }} {% else %} — {% endif %}
-                  </td>
-
-                  <td class="p-3">
-                    {% if lr.status == "PENDING" %}
-                      <form method="POST" action="{% url 'employee_leave_cancel' lr.id %}">
+                      <form method="POST" action="{% url 'employee_leave_cancel' lr.id %}" onsubmit="return confirm('Cancel this leave request?');">
                         {% csrf_token %}
-                        <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Cancel</button>
+                        <button type="submit" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Cancel</button>
                       </form>
                     {% else %}
-                      <span class="text-xs text-gray-400">Locked</span>
+                      <span class="ad-help">Locked</span>
                     {% endif %}
                   </td>
                 </tr>
+              {% empty %}
+                <tr><td colspan="4">
+                  <div class="ad-empty">
+                    <iconify-icon icon="ph:calendar-blank" aria-hidden="true"></iconify-icon>
+                    <h3>No requests yet</h3>
+                    <p>Requests you submit or save as drafts appear here.</p>
+                  </div>
+                </td></tr>
               {% endfor %}
-            {% else %}
-              <tr>
-                <td class="p-4 text-sm text-gray-500 dark:text-gray-400" colspan="6">
-                  No leave requests yet.
-                </td>
-              </tr>
-            {% endif %}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
 
+      <div class="ad-only-narrow">
+        <div class="ad-cards">
+          {% for lr in leave_requests %}
+            <article class="ad-rec">
+              <div class="ad-rec__top">
+                <div>
+                  <p class="ad-rec__title">{{ lr.get_leave_type_display|default:"Wellness leave" }}</p>
+                  <p class="ad-rec__sub">{{ lr.start_date|date:"M d, Y" }}{% if lr.end_date != lr.start_date %} to {{ lr.end_date|date:"M d, Y" }}{% endif %}</p>
+                </div>
+                {% include "employee/_leave_badge.html" with status=lr.status label=lr.get_status_display %}
+              </div>
+              <dl class="ad-rec__kv">
+                <div><dt>Duration</dt><dd>{{ lr.get_duration_display|default:lr.duration|default:"Full day" }}</dd></div>
+                <div><dt>Reviewed by</dt><dd>{% if lr.reviewed_by %}{{ lr.reviewed_by.username }}{% else %}—{% endif %}</dd></div>
+              </dl>
+              {% if lr.status == "PENDING" %}
+                <div class="ad-rec__actions">
+                  <form method="POST" action="{% url 'employee_leave_cancel' lr.id %}" onsubmit="return confirm('Cancel this leave request?');">
+                    {% csrf_token %}
+                    <button type="submit" class="ihrt-btn ihrt-btn--danger-soft ihrt-btn--sm">Cancel request</button>
+                  </form>
+                </div>
+              {% endif %}
+            </article>
+          {% empty %}
+            <div class="ad-empty">
+              <iconify-icon icon="ph:calendar-blank" aria-hidden="true"></iconify-icon>
+              <h3>No requests yet</h3>
+              <p>Requests you submit or save as drafts appear here.</p>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
   </div>
 
-  <!-- RIGHT -->
-  <div class="space-y-6">
+  <div class="ad-stack">
+    <section class="ad-card">
+      <div class="ad-card__head"><div><h2>Updates</h2></div></div>
+      <div class="ad-card__body">
+        {% if leave_notifications %}
+          <ul class="ad-stack ad-stack--sm">
+            {% for note in leave_notifications %}
+              <li class="ad-alert ad-alert--neutral" style="font-size:14px"><iconify-icon icon="ph:bell" aria-hidden="true"></iconify-icon><div class="ad-alert__body">{{ note }}</div></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="ad-subtext">No new updates on your leave.</p>
+        {% endif %}
+      </div>
+    </section>
 
-    <!-- 🔔 Leave Notifications -->
-    <div class="glass rounded-3xl p-6 shadow-lg reveal">
-      <h2 class="text-xl font-bold mb-4">Leave Notifications</h2>
+    <section class="ad-card">
+      <div class="ad-card__head"><div><h2>Leave calendar</h2><p>Approved and pending dates.</p></div></div>
+      <div class="ad-card__body">
+        {% if calendar_events %}
+          <div class="em-cal">
+            {% for event in calendar_events %}
+              <div>
+                <strong>{{ event.start }}</strong>
+                <span class="ad-help">{{ event.title|default:"Wellness leave" }}</span><br>
+                {% include "employee/_leave_badge.html" with status=event.status %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="ad-subtext">No leave scheduled.</p>
+        {% endif %}
+      </div>
+    </section>
 
-      {% if leave_notifications %}
-        <ul class="space-y-3">
-          {% for note in leave_notifications %}
-            <li class="p-3 rounded-xl bg-white/50 dark:bg-gray-800 text-sm shadow">
-              {{ note }}
-            </li>
+    <section class="ad-card">
+      <div class="ad-card__head"><div><h2>Recent attachments</h2></div></div>
+      <div class="ad-card__body">
+        <ul class="ad-stack ad-stack--sm">
+          {% for lr in leave_requests|slice:":6" %}
+            {% for att in lr.attachments.all|slice:":1" %}
+              <li class="ad-row" style="flex-wrap:nowrap">
+                <span class="ad-icon-circle" style="width:34px;height:34px;font-size:17px"><iconify-icon icon="ph:paperclip" aria-hidden="true"></iconify-icon></span>
+                <span style="min-width:0;flex:1">
+                  <span class="ad-truncate" style="--ad-trunc:100%;font-weight:600">{{ att.file.name|default:"Attachment" }}</span>
+                  <span class="ad-help">Wellness leave, {{ lr.start_date|date:"M d" }}</span>
+                </span>
+                {% if att.file %}<a href="{{ att.file.url }}" target="_blank" rel="noopener" class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm">View</a>{% endif %}
+              </li>
+            {% endfor %}
+          {% empty %}
+            <li class="ad-subtext">No attachments yet.</li>
           {% endfor %}
         </ul>
-      {% else %}
-        <p class="text-sm text-gray-500 dark:text-gray-400">No new leave notifications.</p>
-      {% endif %}
-    </div>
-
-    <!-- ✅ Recent Requests Timeline -->
-    <div class="glass rounded-3xl p-6 shadow-lg reveal">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold">Recent Requests</h2>
-        <span class="text-xs text-gray-500 dark:text-gray-400">Latest 6</span>
+        <p class="ad-help" style="margin-top:10px">Shows the first file of each recent request.</p>
       </div>
+    </section>
 
-      <div class="space-y-3">
-        {% for lr in leave_requests|slice:":3" %}
-          <div class="flex gap-3 items-start p-3 rounded-2xl bg-white/40 dark:bg-white/10">
-            <div class="mt-1 w-2.5 h-2.5 rounded-full
-              {% if lr.status == 'APPROVED' %} bg-green-500
-              {% elif lr.status == 'REJECTED' %} bg-rose-500
-              {% elif lr.status == 'PENDING' %} bg-amber-500
-              {% elif lr.status == 'DRAFT' %} bg-slate-400
-              {% else %} bg-slate-300
-              {% endif %}">
-            </div>
-
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center justify-between gap-2">
-                <p class="text-sm font-semibold truncate">Wellness Leave</p>
-                <span class="text-[11px] px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10">
-                  {{ lr.status }}
-                </span>
-              </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {{ lr.start_date }} — {{ lr.end_date }} • {{ lr.duration|default:"FULL" }}
-              </p>
-              {% if lr.admin_note and lr.status == "REJECTED" %}
-                <p class="text-xs text-rose-600/90 dark:text-rose-200 mt-1 truncate">
-                  Note: {{ lr.admin_note }}
-                </p>
-              {% endif %}
-            </div>
-          </div>
-        {% empty %}
-          <p class="text-sm text-gray-500 dark:text-gray-400">No requests yet.</p>
-        {% endfor %}
-      </div>
-    </div>
-
-    <!-- 📎 Recent Attachments -->
-    <div class="glass rounded-3xl p-6 shadow-lg reveal">
-      <h2 class="text-xl font-bold mb-4">Recent Attachments</h2>
-
-      <div class="space-y-2">
-        {% for lr in leave_requests|slice:":6" %}
-          {% for att in lr.attachments.all|slice:":1" %}
-            <div class="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/40 dark:bg-white/10">
-              <div class="flex items-center gap-3 min-w-0">
-                <iconify-icon icon="ph:paperclip-duotone" class="text-xl text-gray-500 dark:text-gray-300"></iconify-icon>
-                <div class="min-w-0">
-                  <p class="text-sm font-semibold truncate">{{ att.file.name|default:"Attachment" }}</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    Wellness Leave • {{ lr.start_date }}
-                  </p>
-                </div>
-              </div>
-
-              {% if att.file.url %}
-                <a href="{{ att.file.url }}" target="_blank" class="text-xs font-semibold text-blue-600 hover:underline">View</a>
-              {% else %}
-                <span class="text-xs text-gray-400">—</span>
-              {% endif %}
-            </div>
-          {% endfor %}
-        {% empty %}
-          <p class="text-sm text-gray-500 dark:text-gray-400">No attachments yet.</p>
-        {% endfor %}
-      </div>
-
-      <p class="text-xs text-gray-400 mt-3">Shows first attachment per recent request.</p>
-    </div>
-
-    <!-- 📅 Leave Calendar -->
-    <div class="glass rounded-3xl p-6 shadow-lg reveal">
-      <h2 class="text-xl font-bold mb-4">Leave Calendar</h2>
-
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
-        {% for event in calendar_events %}
-          <div class="p-2 rounded-lg min-w-0
-            {% if event.status == 'APPROVED' %}
-              bg-green-200 text-green-900
-            {% elif event.status == 'PENDING' %}
-              bg-amber-200 text-amber-900
-            {% else %}
-              bg-gray-200 text-gray-900
-            {% endif %}
-          ">
-            <div class="font-semibold">{{ event.start }}</div>
-            <div class="truncate">{{ event.title|default:"Wellness Leave" }}</div>
-          </div>
-        {% empty %}
-          <p class="text-gray-500 col-span-4">No leave scheduled.</p>
-        {% endfor %}
-      </div>
-
-      <p class="text-xs text-gray-400 mt-3">Calendar shows approved & pending leave dates.</p>
-    </div>
-
-    <!-- ✅ Quick Help -->
-    <div class="glass rounded-3xl p-6 shadow-lg reveal">
-      <h2 class="text-xl font-bold mb-4">Quick Help</h2>
-
-      <div class="space-y-3 text-sm">
-        <details class="p-3 rounded-2xl bg-white/40 dark:bg-white/10">
-          <summary class="cursor-pointer font-semibold">How is the limit counted?</summary>
-          <p class="text-gray-600 dark:text-gray-300 mt-2">
-            1 leave request = 1 count, kahit ilang days ang sakop. Drafts are not counted until submitted.
-          </p>
+    <section class="ad-card">
+      <div class="ad-card__head"><div><h2>Good to know</h2></div></div>
+      <div class="ad-card__body ad-stack ad-stack--sm">
+        <details class="em-details">
+          <summary>How is the limit counted? <iconify-icon icon="ph:caret-down" aria-hidden="true"></iconify-icon></summary>
+          <p class="ad-subtext" style="margin-top:6px">One request counts once, however many days it covers. Pending and approved requests count; drafts, rejected, and cancelled ones do not.</p>
         </details>
-
-        <details class="p-3 rounded-2xl bg-white/40 dark:bg-white/10">
-          <summary class="cursor-pointer font-semibold">Can I cancel a request?</summary>
-          <p class="text-gray-600 dark:text-gray-300 mt-2">
-            Yes, you can cancel only when status is <b>PENDING</b>.
-          </p>
+        <details class="em-details">
+          <summary>Can I cancel a request? <iconify-icon icon="ph:caret-down" aria-hidden="true"></iconify-icon></summary>
+          <p class="ad-subtext" style="margin-top:6px">Yes, while it is still pending.</p>
         </details>
-
-        <details class="p-3 rounded-2xl bg-white/40 dark:bg-white/10">
-          <summary class="cursor-pointer font-semibold">When does it reset?</summary>
-          <p class="text-gray-600 dark:text-gray-300 mt-2">
-            It resets every new year automatically.
-          </p>
+        <details class="em-details">
+          <summary>When does it reset? <iconify-icon icon="ph:caret-down" aria-hidden="true"></iconify-icon></summary>
+          <p class="ad-subtext" style="margin-top:6px">Every January 1. Requests are counted by their start date.</p>
         </details>
       </div>
-    </div>
-
+    </section>
   </div>
-
 </div>
-
-<footer class="pb-8 pt-6 text-xs text-gray-500 dark:text-gray-400 text-center">
-  © IntelliHRTrack • Leave & Requests Portal
-</footer>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  // Theme
-  const themeToggleHeader = document.getElementById('themeToggleHeader');
-  function toggleTheme(){
-    document.documentElement.classList.toggle('dark');
-    localStorage.setItem('ih_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-  }
-  themeToggleHeader?.addEventListener('click', toggleTheme);
-  if (localStorage.getItem('ih_theme') === 'dark') document.documentElement.classList.add('dark');
+  (function () {
+    var start = document.getElementById('startDate');
+    var end = document.getElementById('endDate');
+    var submit = document.getElementById('submitLeaveBtn');
+    var hint = document.getElementById('dateHint');
+    var limitReached = {% if remaining_leave <= 0 %}true{% else %}false{% endif %};
 
-  // Clock + net
-  const headerClock = document.getElementById('headerClock');
-  const netDot = document.getElementById('netDot');
-  function updateClock(){ if(headerClock) headerClock.textContent = new Date().toLocaleTimeString(); }
-  setInterval(updateClock, 1000); updateClock();
-  function updateNet(){
-    const on = navigator.onLine;
-    if(netDot){
-      netDot.classList.toggle('bg-green-500', on);
-      netDot.classList.toggle('bg-rose-500', !on);
-      netDot.title = on ? 'Online' : 'Offline';
+    // The end date picker cannot go before the start date, and a bad range blocks submitting.
+    function check() {
+      if (start && end) end.min = start.value || '';
+      var bad = !!(start && end && start.value && end.value && end.value < start.value);
+      if (hint) hint.hidden = !bad;
+      if (submit && !limitReached) submit.disabled = bad;
     }
-  }
-  window.addEventListener('online', updateNet);
-  window.addEventListener('offline', updateNet);
-  updateNet();
+    start && start.addEventListener('change', check);
+    end && end.addEventListener('change', check);
 
-  // ✅ Date validation (no alert spam, disable submit)
-  const startDate = document.getElementById('startDate');
-  const endDate = document.getElementById('endDate');
-  const submitBtn = document.getElementById('submitLeaveBtn');
-  function validateDates(){
-    if(!startDate?.value || !endDate?.value) { if(submitBtn) submitBtn.disabled = false; return; }
-    const s = new Date(startDate.value);
-    const e = new Date(endDate.value);
-    const bad = e < s;
-    if(!submitBtn) return;
-    submitBtn.disabled = bad;
-    submitBtn.textContent = bad ? "Fix dates first" : "Submit Leave Request";
-  }
-  startDate?.addEventListener('change', validateDates);
-  endDate?.addEventListener('change', validateDates);
-
-  // ✅ Compute Used + Progress (NO Django template math)
-  const LIMIT = 5;
-  const remaining = Number("{{ remaining_leave|default:5 }}");
-  const safeRemaining = Number.isFinite(remaining) ? Math.max(0, Math.min(LIMIT, remaining)) : LIMIT;
-  const used = Math.max(0, LIMIT - safeRemaining);
-
-  // KPIs
-  const kpiUsed = document.getElementById("kpiUsed");
-  const kpiRemaining = document.getElementById("kpiRemaining");
-  const badgeRemaining = document.getElementById("badgeRemaining");
-  const rightRemaining = document.getElementById("rightRemaining");
-  const rightRemain2 = document.getElementById("rightRemain2");
-  const rightUsed = document.getElementById("rightUsed");
-
-  if (kpiUsed) kpiUsed.textContent = String(used);
-  if (kpiRemaining) kpiRemaining.textContent = String(safeRemaining);
-  if (badgeRemaining) badgeRemaining.textContent = String(safeRemaining);
-  if (rightRemaining) rightRemaining.textContent = String(safeRemaining);
-  if (rightRemain2) rightRemain2.textContent = String(safeRemaining);
-  if (rightUsed) rightUsed.textContent = String(used);
-
-  // Progress bar fill (used%)
-  const progressFill = document.getElementById("progressFill");
-  const pct = Math.round((used / LIMIT) * 100);
-
-  if (progressFill) {
-    progressFill.style.width = pct + "%";
-    if (safeRemaining <= 0) {
-      progressFill.style.background = "#ef4444";
-    } else if (safeRemaining === 1) {
-      progressFill.style.background = "#f59e0b";
-    } else {
-      progressFill.style.background = "#10b981";
+    // Show chosen file names, and accept files dropped onto the box.
+    var input = document.getElementById('attachments');
+    var names = document.getElementById('attachNames');
+    var drop = document.querySelector('.ad-drop');
+    function showNames() {
+      if (!input || !names) return;
+      var list = Array.prototype.map.call(input.files || [], function (f) { return f.name; });
+      names.textContent = list.length ? list.join(', ') : 'No file chosen';
+      names.classList.toggle('is-set', list.length > 0);
     }
-  }
-
-  // ✅ UI guard: disable submit if limit reached
-  const limitHint = document.getElementById("limitHint");
-  if (safeRemaining <= 0) {
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.classList.add("opacity-60", "cursor-not-allowed");
-      submitBtn.textContent = "Leave limit reached (Next year)";
+    input && input.addEventListener('change', showNames);
+    if (drop && input) {
+      ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('is-over'); }); });
+      ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('is-over'); }); });
+      drop.addEventListener('drop', function (e) {
+        if (e.dataTransfer && e.dataTransfer.files.length) { input.files = e.dataTransfer.files; showNames(); }
+      });
     }
-    if (limitHint) limitHint.classList.remove("hidden");
-  }
+  })();
 </script>
 {% endblock %}

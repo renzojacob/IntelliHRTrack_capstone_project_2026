@@ -1,483 +1,282 @@
 {% extends "employee/base_employee.html" %}
-{% load static %}
+{% load static ihrt_dtr %}
 
-{% block title %}My Payroll{% endblock %}
-{% block page_title %}My Payroll{% endblock %}
+{% block title %}Payroll and payslips{% endblock %}
 
 {% block content %}
-<section class="space-y-6 animate-in">
 
-  <!-- Page Toolbar -->
-  <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-    <div>
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full glass text-xs font-semibold text-accent">
-        <iconify-icon icon="ph:wallet-duotone"></iconify-icon>
-        Employee Payroll
-      </div>
-      <h2 class="mt-3 text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-        Payroll Computation
-      </h2>
-      <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-        View your salary computation, attendance deductions, government contributions, net pay, and payslip history.
-      </p>
-    </div>
-
-    <div class="flex flex-wrap gap-2">
-      <a href="{% url 'employee_dashboard' %}"
-         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl glass hover:shadow-glow transition text-sm font-semibold">
-        <iconify-icon icon="ph:house-duotone"></iconify-icon>
-        Dashboard
-      </a>
-
-      <a href="{% url 'employee_attendance' %}"
-         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl glass hover:shadow-glow transition text-sm font-semibold">
-        <iconify-icon icon="ph:calendar-check-duotone"></iconify-icon>
-        Attendance
-      </a>
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <p class="em-hello">My pay</p>
+    <h1>Payroll and payslips</h1>
+    <p>Your pay for a payroll period: earnings, attendance deductions, contributions, and net pay, plus every payslip already released.</p>
+    <div class="ad-meta">
+      <span class="ad-meta__item"><iconify-icon icon="ph:user" aria-hidden="true"></iconify-icon> <strong>{{ employee_name }}</strong></span>
+      <span class="ad-meta__item"><iconify-icon icon="ph:identification-badge" aria-hidden="true"></iconify-icon> <strong>{{ profile.get_employment_type_display|default:profile.employment_type }}</strong></span>
+      <span class="ad-meta__item"><iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon> Biometric ID <strong>{{ employee_id_used|default:"Not set" }}</strong></span>
     </div>
   </div>
-
-  <!-- Employee Identity -->
-  <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-    <article class="lg:col-span-2 glass rounded-3xl p-5 shadow-glow">
-      <div class="flex items-center gap-4">
-        <div class="w-14 h-14 rounded-2xl gradient-accent text-white flex items-center justify-center text-xl font-extrabold profile-glow">
-          {% firstof employee_name.0|upper user.username.0|upper %}
-        </div>
-        <div>
-          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Employee</p>
-          <h3 class="text-xl font-extrabold text-gray-900 dark:text-white">{{ employee_name }}</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-300">
-            {{ profile.position|default:"Position not set" }} • {{ profile.department|default:"Unassigned Department" }}
-          </p>
-        </div>
-      </div>
-    </article>
-
-    <article class="glass rounded-3xl p-5 hover:shadow-glow transition">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Employment</p>
-          <p class="mt-1 text-lg font-extrabold text-gray-900 dark:text-white">{{ profile.employment_type|default:"--" }}</p>
-        </div>
-        <div class="w-11 h-11 rounded-2xl bg-teal-500/10 text-accent flex items-center justify-center">
-          <iconify-icon icon="ph:user-list-duotone" class="text-2xl"></iconify-icon>
-        </div>
-      </div>
-    </article>
-
-    <article class="glass rounded-3xl p-5 hover:shadow-glow transition">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Biometric ID</p>
-          <p class="mt-1 text-lg font-extrabold text-gray-900 dark:text-white">{{ employee_id_used|default:"Not set" }}</p>
-        </div>
-        <div class="w-11 h-11 rounded-2xl bg-teal-500/10 text-accent flex items-center justify-center">
-          <iconify-icon icon="ph:fingerprint-duotone" class="text-2xl"></iconify-icon>
-        </div>
-      </div>
-    </article>
+  <div class="ad-page-head__actions">
+    <a href="{% url 'employee_attendance' %}" class="ihrt-btn ihrt-btn--secondary">
+      <iconify-icon icon="ph:fingerprint-simple" aria-hidden="true"></iconify-icon> Attendance
+    </a>
+    {% if selected_saved_item %}
+      <a href="{% url 'employee_payslip_print' selected_saved_item.id %}" target="_blank" rel="noopener" class="ihrt-btn ihrt-btn--primary">
+        <iconify-icon icon="ph:receipt" aria-hidden="true"></iconify-icon> Open payslip
+      </a>
+    {% endif %}
   </div>
+</header>
 
-  <!-- Period Filter -->
-  <article class="glass rounded-3xl p-5 shadow-sm">
-    <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-      <div class="md:col-span-2">
-        <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-          Payroll Period
-        </label>
-        <select name="period"
-                class="w-full px-4 py-3 rounded-2xl glass bg-white/60 dark:bg-slate-900/40 border border-white/40 dark:border-white/10 outline-none focus:ring-2 focus:ring-[var(--accent)]">
+<section class="ad-card">
+  <form method="get" class="ad-card__body ad-form">
+    <div class="ad-row" style="align-items:flex-end;gap:12px 16px">
+      <div class="ad-field" style="flex:1 1 280px">
+        <label class="ad-label" for="period">Payroll period</label>
+        <select id="period" name="period">
           {% for p in payroll_periods %}
-            <option value="{{ p.id }}"
-              {% if selected_period and selected_period.id == p.id %}selected{% endif %}>
-              {{ p.name }} — {{ p.start_date }} to {{ p.end_date }}
+            <option value="{{ p.id }}" {% if selected_period and selected_period.id == p.id %}selected{% endif %}>
+              {{ p.name }} ({{ p.start_date|date:"M d" }} to {{ p.end_date|date:"M d, Y" }})
             </option>
           {% empty %}
-            <option>No payroll period found</option>
+            <option value="">No payroll period yet</option>
           {% endfor %}
         </select>
       </div>
-
-      <button type="submit"
-              class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl gradient-accent text-white font-bold hover:shadow-glow transition">
-        <iconify-icon icon="ph:magnifying-glass-duotone"></iconify-icon>
-        View Payroll
+      <button type="submit" class="ihrt-btn ihrt-btn--primary" style="flex:0 0 auto;max-width:100%">
+        <iconify-icon icon="ph:magnifying-glass" aria-hidden="true"></iconify-icon> Show period
       </button>
-    </form>
-  </article>
-
-  {% if selected_period %}
-  <!-- Net Pay Hero -->
-  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-    <article class="xl:col-span-2 glass rounded-3xl p-6 shadow-glow relative overflow-hidden">
-      <div class="absolute -right-16 -top-16 w-48 h-48 rounded-full gradient-accent opacity-20 blur-2xl"></div>
-
-      <div class="relative z-10">
-        <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ payroll_source_label }}</p>
-        <div class="mt-2 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div>
-            <h3 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">
-              ₱{{ computed.net|default:"0.00" }}
-            </h3>
-            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              {% if using_saved_payroll %}
-                This is the payroll snapshot saved by the payroll officer. Later profile or attendance changes do not alter it.
-              {% else %}
-                Preview computed from current attendance and settings. It is not an official payslip until payroll is processed.
-              {% endif %}
-            </p>
-          </div>
-
-          <div class="rounded-3xl gradient-accent text-white p-5 min-w-[220px] shadow-glow">
-            <p class="text-xs opacity-80">Total Deductions</p>
-            <p class="text-2xl font-extrabold">₱{{ computed.deductions|default:"0.00" }}</p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
-          <div class="rounded-2xl glass p-4">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Base Pay</p>
-            <p class="font-extrabold text-gray-900 dark:text-white">₱{{ computed.base|default:"0.00" }}</p>
-          </div>
-          <div class="rounded-2xl glass p-4">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Premium</p>
-            <p class="font-extrabold text-gray-900 dark:text-white">₱{{ computed.premium|default:"0.00" }}</p>
-          </div>
-          <div class="rounded-2xl glass p-4">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Overtime</p>
-            <p class="font-extrabold text-gray-900 dark:text-white">₱{{ computed.ot|default:"0.00" }}</p>
-          </div>
-          <div class="rounded-2xl glass p-4">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Attendance Deduction</p>
-            <p class="font-extrabold text-gray-900 dark:text-white">₱{{ computed.attendance_deduction|default:"0.00" }}</p>
-          </div>
-        </div>
-      </div>
-    </article>
-
-    <article class="glass rounded-3xl p-6 shadow-sm">
-      <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Selected Period</p>
-      <h3 class="mt-2 text-2xl font-extrabold text-gray-900 dark:text-white">{{ selected_period.name }}</h3>
-      <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-        {{ selected_period.start_date }} to {{ selected_period.end_date }}
-      </p>
-
-      <div class="neon-divider my-5"></div>
-
-      <div class="space-y-3 text-sm">
-        <div class="flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Branch</span>
-          <strong>{{ employee_branch }}</strong>
-        </div>
-        <div class="flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Daily Rate</span>
-          <strong>₱{{ profile.daily_rate|default:"0.00" }}</strong>
-        </div>
-        <div class="flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Monthly Salary</span>
-          <strong>₱{{ profile.monthly_salary|default:"0.00" }}</strong>
-        </div>
-        <div class="flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Premium</span>
-          <strong>{% if profile.has_premium %}Yes{% else %}No{% endif %}</strong>
-        </div>
-      </div>
-    </article>
-  </div>
-
-  <!-- Attendance Basis Cards -->
-  <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-9 gap-4">
-    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Present</p>
-      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.days_present|default:"0" }}</p>
-    </article>
-    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Travel</p>
-      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.travel_days|default:"0" }}</p>
-    </article>
-    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Holiday</p>
-      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.holiday_days|default:"0" }}</p>
-    </article>
-    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Approved Leave</p>
-      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.leave_days|default:"0" }}</p>
-    </article>
-    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Absences</p>
-      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.absences|default:"0" }}</p>
-    </article>
-    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Late</p>
-      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.late_minutes|default:"0" }}</p>
-    </article>
-    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Undertime</p>
-      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.undertime_minutes|default:"0" }}</p>
-    </article>
-    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Missing Logs</p>
-      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.missing_logs|default:"0" }}</p>
-    </article>
-    <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Records Used</p>
-      <p class="mt-1 text-2xl font-extrabold">{{ attendance_summary.records_used|default:"0" }}</p>
-    </article>
-  </div>
-
-  <!-- Breakdown -->
-  <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-    <article class="glass rounded-3xl p-6 shadow-sm">
-      <p class="text-xs uppercase tracking-wide text-accent font-bold">Computation Breakdown</p>
-      <h3 class="mt-1 text-xl font-extrabold text-gray-900 dark:text-white">Rates and Attendance Deductions</h3>
-
-      <div class="mt-5 space-y-3 text-sm">
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Salary Divisor</span>
-          <strong>{{ rules.salary_divisor|default:"22" }}</strong>
-        </div>
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Daily Rate</span>
-          <strong>₱{{ rates.daily_rate|default:profile.daily_rate|default:"0.00" }}</strong>
-        </div>
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Hourly Rate</span>
-          <strong>₱{{ rates.hourly_rate|default:"0.00" }}</strong>
-        </div>
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Per-Minute Rate</span>
-          <strong>₱{{ rates.per_minute_rate|default:"0.00" }}</strong>
-        </div>
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Late Deduction</span>
-          <strong>₱{{ computed.late_deduction|default:"0.00" }}</strong>
-        </div>
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Undertime Deduction</span>
-          <strong>₱{{ computed.undertime_deduction|default:"0.00" }}</strong>
-        </div>
-      </div>
-    </article>
-
-    <article class="glass rounded-3xl p-6 shadow-sm">
-      <p class="text-xs uppercase tracking-wide text-accent font-bold">Deductions</p>
-      <h3 class="mt-1 text-xl font-extrabold text-gray-900 dark:text-white">Contributions and Tax</h3>
-
-      <div class="mt-5 space-y-3 text-sm">
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">SSS</span>
-          <strong>₱{{ gov.sss|default:"0.00" }}</strong>
-        </div>
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">PhilHealth</span>
-          <strong>₱{{ gov.philhealth|default:"0.00" }}</strong>
-        </div>
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Pag-IBIG</span>
-          <strong>₱{{ gov.pagibig|default:"0.00" }}</strong>
-        </div>
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Tax</span>
-          <strong>₱{{ gov.tax|default:"0.00" }}</strong>
-        </div>
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Taxable Compensation</span>
-          <strong>₱{{ gov.taxable_compensation|default:"0.00" }}</strong>
-        </div>
-        <div class="rounded-2xl glass p-4 flex justify-between gap-4">
-          <span class="text-gray-500 dark:text-gray-400">Manual Deduction</span>
-          <strong>₱{{ computed.manual_deduction|default:"0.00" }}</strong>
-        </div>
-        <div class="rounded-2xl gradient-accent text-white p-4 flex justify-between gap-4 shadow-glow">
-          <span class="font-bold">Total Deductions</span>
-          <strong>₱{{ computed.deductions|default:"0.00" }}</strong>
-        </div>
-      </div>
-    </article>
-  </div>
-
-  <!-- Formula Guide -->
-  <article class="glass rounded-3xl p-6 shadow-sm">
-    <p class="text-xs uppercase tracking-wide text-accent font-bold">Formula Guide</p>
-    <h3 class="mt-1 text-xl font-extrabold text-gray-900 dark:text-white">How Your Payroll Is Computed</h3>
-
-    <div class="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 text-sm">
-      <div class="rounded-2xl glass p-4">
-        <h4 class="font-extrabold text-gray-900 dark:text-white">Rates</h4>
-        <p class="mt-2 text-gray-600 dark:text-gray-300">Daily Rate = Monthly Salary / Salary Divisor</p>
-        <p class="text-gray-600 dark:text-gray-300">Hourly Rate = Daily Rate / 8</p>
-      </div>
-
-      <div class="rounded-2xl glass p-4">
-        <h4 class="font-extrabold text-gray-900 dark:text-white">Per Minute</h4>
-        <p class="mt-2 text-gray-600 dark:text-gray-300">Per-Minute Rate = Hourly Rate / 60</p>
-        <p class="text-gray-600 dark:text-gray-300">Used for late and undertime deductions.</p>
-      </div>
-
-      <div class="rounded-2xl glass p-4">
-        <h4 class="font-extrabold text-gray-900 dark:text-white">JO</h4>
-        <p class="mt-2 text-gray-600 dark:text-gray-300">Job Order follows no work, no pay based on actual worked days.</p>
-      </div>
-
-      <div class="rounded-2xl glass p-4">
-        <h4 class="font-extrabold text-gray-900 dark:text-white">COS</h4>
-        <p class="mt-2 text-gray-600 dark:text-gray-300">Fixed COS pay uses the period salary less unpaid absences. Verified holidays and approved leave are not absences.</p>
-      </div>
-
-      <div class="rounded-2xl glass p-4">
-        <h4 class="font-extrabold text-gray-900 dark:text-white">Permanent</h4>
-        <p class="mt-2 text-gray-600 dark:text-gray-300">PERA is non-taxable. Employee government shares are deducted; employer shares are recorded but never reduce net pay.</p>
-      </div>
     </div>
-  </article>
+  </form>
+</section>
+
+{% if selected_period %}
+
+  {% if using_saved_payroll %}
+    <div class="ad-alert ad-alert--ok" role="status">
+      <iconify-icon icon="ph:seal-check" aria-hidden="true"></iconify-icon>
+      <div class="ad-alert__body"><p class="ad-alert__title">{{ payroll_source_label }}</p>This is the payroll the payroll officer processed. Later attendance or profile changes do not change it.</div>
+    </div>
+  {% else %}
+    <div class="ad-alert ad-alert--info" role="status">
+      <iconify-icon icon="ph:info" aria-hidden="true"></iconify-icon>
+      <div class="ad-alert__body"><p class="ad-alert__title">{{ payroll_source_label }}</p>Computed from your current attendance and settings. It is not an official payslip until payroll is processed.</div>
+    </div>
+  {% endif %}
+
+  <section class="ad-stats ad-stats--4" aria-label="Pay for {{ selected_period.name }}">
+    <div class="ad-stat ad-stat--lead">
+      <p class="ad-stat__label">Net pay</p>
+      <p class="ad-stat__value ad-stat__value--money ad-money">&#8369;{{ computed.net|default:"0.00" }}</p>
+      <p class="ad-stat__hint">{{ selected_period.start_date|date:"M d" }} to {{ selected_period.end_date|date:"M d, Y" }}</p>
+    </div>
+    <div class="ad-stat ad-tone-field">
+      <p class="ad-stat__label">Gross pay</p>
+      <p class="ad-stat__value ad-stat__value--money ad-money">&#8369;{% firstof computed.gross computed.base "0.00" %}</p>
+    </div>
+    <div class="ad-stat ad-tone-bad">
+      <p class="ad-stat__label">Total deductions</p>
+      <p class="ad-stat__value ad-stat__value--money ad-money">&#8369;{{ computed.deductions|default:"0.00" }}</p>
+    </div>
+    <div class="ad-stat ad-tone-warn">
+      <p class="ad-stat__label">Attendance deduction</p>
+      <p class="ad-stat__value ad-stat__value--money ad-money">&#8369;{{ computed.attendance_deduction|default:"0.00" }}</p>
+      <p class="ad-stat__hint">{% firstof computed.deductible_minutes attendance_summary.deductible_minutes "0" %} min deductible time</p>
+    </div>
+  </section>
+
+  <div class="ad-split ad-split--even">
+    <section class="ad-card">
+      <div class="ad-card__head">
+        <div><h2>Earnings and attendance</h2><p>Rates, pay, and the deductions from your DTR.</p></div>
+      </div>
+      <div class="ad-card__body">
+        <dl class="ad-kv ad-kv--total">
+          <div><dt>Base pay</dt><dd>&#8369;{{ computed.base|default:"0.00" }}</dd></div>
+          {% if profile.employment_type == "PERMANENT" %}
+            <div><dt>PERA allowance</dt><dd>&#8369;{{ computed.pera|default:"0.00" }}</dd></div>
+            <div><dt>Other earnings</dt><dd>&#8369;{{ computed.other_earnings|default:"0.00" }}</dd></div>
+          {% else %}
+            <div><dt>Premium</dt><dd>&#8369;{{ computed.premium|default:"0.00" }}</dd></div>
+          {% endif %}
+          <div><dt>Overtime ({{ computed.overtime_hours|default:"0.00" }} h approved and worked)</dt><dd>&#8369;{{ computed.ot|default:"0.00" }}</dd></div>
+          <div><dt>Late and half day ({{ computed.late_minutes|default:"0" }} min)</dt><dd class="ad-neg">&minus;&#8369;{{ computed.late_deduction|default:"0.00" }}</dd></div>
+          <div><dt>Undertime ({{ computed.undertime_minutes|default:"0" }} min)</dt><dd class="ad-neg">&minus;&#8369;{{ computed.undertime_deduction|default:"0.00" }}</dd></div>
+          <div><dt>Absences ({{ computed.absences|default:"0" }})</dt><dd class="ad-neg">&minus;&#8369;{{ computed.absence_deduction|default:"0.00" }}</dd></div>
+          <div><dt>Gross pay</dt><dd>&#8369;{% firstof computed.gross computed.base "0.00" %}</dd></div>
+        </dl>
+        <p class="ad-help" style="margin-top:12px">
+          Rates: daily &#8369;{% firstof rates.daily rates.daily_rate profile.daily_rate "0.00" %},
+          hourly &#8369;{% firstof rates.hourly rates.hourly_rate "0.00" %},
+          per minute &#8369;{% firstof rates.per_minute rates.per_minute_rate "0.00" %}.
+          Salary divisor {{ rules.salary_divisor|default:"22" }}.
+        </p>
+      </div>
+    </section>
+
+    <section class="ad-card">
+      <div class="ad-card__head">
+        <div><h2>Contributions and tax</h2><p>Your share only. Employer shares are not deducted from your pay.</p></div>
+      </div>
+      <div class="ad-card__body">
+        <dl class="ad-kv ad-kv--total">
+          {% if profile.employment_type == "PERMANENT" %}
+            <div><dt>GSIS employee share</dt><dd>&#8369;{{ gov.gsis_employee|default:"0.00" }}</dd></div>
+            <div><dt>PhilHealth</dt><dd>&#8369;{{ gov.philhealth|default:"0.00" }}</dd></div>
+            <div><dt>Pag-IBIG</dt><dd>&#8369;{{ gov.pagibig|default:"0.00" }}</dd></div>
+            <div><dt>Withholding tax</dt><dd>&#8369;{% firstof gov.wtax gov.tax "0.00" %}</dd></div>
+            <div><dt>Loans</dt><dd>&#8369;{% firstof gov.loan_deduction computed.loan_deduction "0.00" %}</dd></div>
+            <div><dt>Other deductions</dt><dd>&#8369;{% firstof gov.other_deduction computed.other_deduction "0.00" %}</dd></div>
+          {% else %}
+            <div><dt>SSS</dt><dd>&#8369;{{ gov.sss|default:"0.00" }}</dd></div>
+            <div><dt>PhilHealth</dt><dd>&#8369;{{ gov.philhealth|default:"0.00" }}</dd></div>
+            <div><dt>Pag-IBIG</dt><dd>&#8369;{{ gov.pagibig|default:"0.00" }}</dd></div>
+            <div><dt>Tax</dt><dd>&#8369;{{ gov.tax|default:"0.00" }}</dd></div>
+          {% endif %}
+          <div><dt>Manual deduction</dt><dd>&#8369;{{ computed.manual_deduction|default:"0.00" }}</dd></div>
+          <div><dt>Total deductions</dt><dd>&#8369;{{ computed.deductions|default:"0.00" }}</dd></div>
+        </dl>
+        <p class="ad-help" style="margin-top:12px">Taxable compensation: &#8369;{{ gov.taxable_compensation|default:"0.00" }}.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="ad-stats ad-stats--4" aria-label="Attendance used for this pay">
+    <div class="ad-stat ad-tone-ok"><p class="ad-stat__label">Present</p><p class="ad-stat__value">{% firstof attendance_summary.present_days attendance_summary.days_present "0" %}</p></div>
+    <div class="ad-stat ad-tone-info"><p class="ad-stat__label">Travel</p><p class="ad-stat__value">{{ attendance_summary.travel_days|default:"0" }}</p></div>
+    <div class="ad-stat ad-tone-info"><p class="ad-stat__label">Holidays</p><p class="ad-stat__value">{{ attendance_summary.holiday_days|default:"0" }}</p></div>
+    <div class="ad-stat ad-tone-info"><p class="ad-stat__label">Approved leave</p><p class="ad-stat__value">{{ attendance_summary.leave_days|default:"0" }}</p></div>
+    <div class="ad-stat ad-tone-bad"><p class="ad-stat__label">Absences</p><p class="ad-stat__value">{{ attendance_summary.absences|default:"0" }}</p></div>
+    <div class="ad-stat ad-tone-warn"><p class="ad-stat__label">Late record</p><p class="ad-stat__value">{% firstof attendance_summary.recorded_late_minutes attendance_summary.late_minutes "0" %}</p></div>
+    <div class="ad-stat ad-tone-bad"><p class="ad-stat__label">Deductible</p><p class="ad-stat__value ad-stat__value--money">{{ attendance_summary.deductible_minutes|hm }}</p></div>
+    <div class="ad-stat ad-tone-warn"><p class="ad-stat__label">Missing scans</p><p class="ad-stat__value">{{ attendance_summary.missing_logs|default:"0" }}</p></div>
+  </section>
 
   {% if issues %}
-  <article class="glass rounded-3xl p-5 border border-amber-500/20">
-    <h3 class="font-extrabold text-amber-700 dark:text-amber-300 flex items-center gap-2">
-      <iconify-icon icon="ph:warning-duotone"></iconify-icon>
-      Payroll Notices
-    </h3>
-    <div class="mt-3 grid gap-2">
-      {% for issue in issues %}
-        <div class="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3 text-sm text-amber-800 dark:text-amber-200">
-          {{ issue }}
+    <div class="ad-alert ad-alert--warn" role="status">
+      <iconify-icon icon="ph:warning" aria-hidden="true"></iconify-icon>
+      <div class="ad-alert__body">
+        <p class="ad-alert__title">Payroll notices</p>
+        <ul>{% for issue in issues %}<li>{{ issue }}</li>{% endfor %}</ul>
+      </div>
+    </div>
+  {% endif %}
+
+  <section class="ad-card">
+    <div class="ad-card__head">
+      <div>
+        <h2>DTR used for this pay</h2>
+        <p>The daily rows behind the attendance deductions above. Open a day to see its computation.</p>
+      </div>
+      <div class="ad-card__head-actions">
+        <a href="{% url 'employee_dtr_print' %}?start={{ selected_period.start_date|date:'Y-m-d' }}&end={{ selected_period.end_date|date:'Y-m-d' }}" target="_blank" rel="noopener" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">
+          <iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon> Print DTR
+        </a>
+      </div>
+    </div>
+    <p class="ad-scroll-hint"><iconify-icon icon="ph:arrows-horizontal" aria-hidden="true"></iconify-icon> Scroll sideways to see every column.</p>
+    {% include "employee/_dtr_rows_table.html" with rows=dtr_rows table_id="pay" %}
+  </section>
+
+  <section class="ad-card">
+    <div class="ad-card__head"><div><h2>How your pay is computed</h2></div></div>
+    <div class="ad-card__body">
+      <div class="ad-grid" style="--ad-min:170px">
+        <div><p class="ad-subhead">Rates</p><p class="ad-subtext">Daily rate = monthly salary &divide; salary divisor. Hourly = daily &divide; 8. Per minute = hourly &divide; 60.</p></div>
+        <div><p class="ad-subhead">Attendance</p><p class="ad-subtext">Deductible minutes &times; per-minute rate. Each minute is deducted once, whether it came from arriving late, a half day, or leaving early.</p></div>
+        <div><p class="ad-subhead">Job Order</p><p class="ad-subtext">No work, no pay: paid only for days actually worked.</p></div>
+        <div><p class="ad-subhead">Contract of Service</p><p class="ad-subtext">Fixed pay for the period less unpaid absences. Verified holidays and approved leave are not absences.</p></div>
+        <div><p class="ad-subhead">Permanent</p><p class="ad-subtext">PERA is non-taxable. Your GSIS, PhilHealth, and Pag-IBIG shares are deducted; employer shares are recorded only.</p></div>
+      </div>
+    </div>
+  </section>
+
+{% else %}
+  <section class="ad-card">
+    <div class="ad-empty">
+      <iconify-icon icon="ph:calendar-x" aria-hidden="true"></iconify-icon>
+      <h3>No payroll period yet</h3>
+      <p>Your payroll appears here once the payroll officer creates a payroll period.</p>
+    </div>
+  </section>
+{% endif %}
+
+<section class="ad-card">
+  <div class="ad-card__head">
+    <div><h2>Payslip history</h2><p>Every payroll the payroll officer has processed for you.</p></div>
+  </div>
+
+  <div class="ad-only-wide">
+    <div class="ad-table-wrap">
+      <table class="ad-table">
+        <thead>
+          <tr>
+            <th scope="col">Period</th>
+            <th scope="col">Dates</th>
+            <th scope="col" class="is-num">Base pay</th>
+            <th scope="col" class="is-num">Deductions</th>
+            <th scope="col" class="is-num">Net pay</th>
+            <th scope="col">Status</th>
+            <th scope="col"><span class="sr-only">Payslip</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in payroll_history %}
+            <tr>
+              <td class="is-strong">{{ item.batch.period.name }}</td>
+              <td class="is-muted is-nowrap">{{ item.batch.period.start_date|date:"M d" }} to {{ item.batch.period.end_date|date:"M d, Y" }}</td>
+              <td class="is-num">&#8369;{{ item.base_pay }}</td>
+              <td class="is-num">&#8369;{{ item.deductions_total }}</td>
+              <td class="is-num is-strong" style="color:var(--ihrt-field)">&#8369;{{ item.net_pay }}</td>
+              <td><span class="ihrt-badge {% if item.batch.status == 'finalized' %}ihrt-badge--ok{% elif item.batch.status == 'completed' %}ihrt-badge--info{% else %}ihrt-badge--neutral{% endif %}">{{ item.batch.get_status_display }}</span></td>
+              <td class="is-actions">
+                <a href="{% url 'employee_payslip_print' item.id %}" target="_blank" rel="noopener" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">
+                  <iconify-icon icon="ph:receipt" aria-hidden="true"></iconify-icon> Payslip
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7">
+              <div class="ad-empty">
+                <iconify-icon icon="ph:receipt" aria-hidden="true"></iconify-icon>
+                <h3>No payslips yet</h3>
+                <p>Once the payroll officer processes payroll, your payslip appears here.</p>
+              </div>
+            </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ad-only-narrow">
+    <div class="ad-cards">
+      {% for item in payroll_history %}
+        <article class="ad-rec">
+          <div class="ad-rec__top">
+            <div>
+              <p class="ad-rec__title">{{ item.batch.period.name }}</p>
+              <p class="ad-rec__sub">{{ item.batch.period.start_date|date:"M d" }} to {{ item.batch.period.end_date|date:"M d, Y" }}</p>
+            </div>
+            <span class="ihrt-badge {% if item.batch.status == 'finalized' %}ihrt-badge--ok{% elif item.batch.status == 'completed' %}ihrt-badge--info{% else %}ihrt-badge--neutral{% endif %}">{{ item.batch.get_status_display }}</span>
+          </div>
+          <dl class="ad-rec__kv">
+            <div><dt>Net pay</dt><dd>&#8369;{{ item.net_pay }}</dd></div>
+            <div><dt>Deductions</dt><dd>&#8369;{{ item.deductions_total }}</dd></div>
+          </dl>
+          <div class="ad-rec__actions">
+            <a href="{% url 'employee_payslip_print' item.id %}" target="_blank" rel="noopener" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm">Open payslip</a>
+          </div>
+        </article>
+      {% empty %}
+        <div class="ad-empty">
+          <iconify-icon icon="ph:receipt" aria-hidden="true"></iconify-icon>
+          <h3>No payslips yet</h3>
+          <p>Once the payroll officer processes payroll, your payslip appears here.</p>
         </div>
       {% endfor %}
     </div>
-  </article>
-  {% endif %}
-
-  <!-- Payroll DTR Basis -->
-  <article class="glass rounded-3xl p-5 shadow-sm">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-      <div>
-        <p class="text-xs uppercase tracking-wide text-accent font-bold">Attendance Used for Payroll</p>
-        <h3 class="text-xl font-extrabold text-gray-900 dark:text-white">Payroll DTR Basis</h3>
-      </div>
-
-      <a href="{% url 'employee_attendance' %}?start={{ selected_period.start_date|date:'Y-m-d' }}&end={{ selected_period.end_date|date:'Y-m-d' }}"
-         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl glass hover:shadow-glow transition text-sm font-semibold">
-        <iconify-icon icon="ph:calendar-check-duotone"></iconify-icon>
-        View Attendance
-      </a>
-    </div>
-
-    <div class="overflow-x-auto fancy-scroll rounded-2xl border border-white/30 dark:border-white/10">
-      <table class="min-w-[1100px] w-full text-sm">
-        <thead class="bg-white/70 dark:bg-slate-900/50 text-gray-700 dark:text-gray-200">
-          <tr>
-            <th class="text-left px-4 py-3">Date</th>
-            <th class="text-left px-4 py-3">AM In</th>
-            <th class="text-left px-4 py-3">AM Out</th>
-            <th class="text-left px-4 py-3">PM In</th>
-            <th class="text-left px-4 py-3">PM Out</th>
-            <th class="text-left px-4 py-3">Hours</th>
-            <th class="text-left px-4 py-3">Late</th>
-            <th class="text-left px-4 py-3">Undertime</th>
-            <th class="text-left px-4 py-3">Status</th>
-            <th class="text-left px-4 py-3">Remarks</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200/70 dark:divide-white/10">
-          {% for row in dtr_rows %}
-          <tr class="hover:bg-white/60 dark:hover:bg-white/5 transition">
-            <td class="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-              {% if row.date %}{{ row.date }}{% else %}Day {{ row.day }}{% endif %}
-            </td>
-            <td class="px-4 py-3">{{ row.am_in|default:"--" }}</td>
-            <td class="px-4 py-3">{{ row.am_out|default:"--" }}</td>
-            <td class="px-4 py-3">{{ row.pm_in|default:"--" }}</td>
-            <td class="px-4 py-3">{{ row.pm_out|default:"--" }}</td>
-            <td class="px-4 py-3 font-bold">{{ row.total_hours|default:"0.00" }}</td>
-            <td class="px-4 py-3">{{ row.late|default:"0" }}</td>
-            <td class="px-4 py-3">{{ row.undertime|default:"0" }}</td>
-            <td class="px-4 py-3">
-              <span class="inline-flex px-3 py-1 rounded-full bg-teal-500/10 text-accent border border-teal-500/20 text-xs font-bold">
-                {{ row.status|default:"No Record" }}
-              </span>
-            </td>
-            <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ row.remarks|default:"--" }}</td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="10" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
-              No DTR rows found for this payroll period.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </article>
-
-  {% else %}
-  <article class="glass rounded-3xl p-8 text-center shadow-sm">
-    <div class="mx-auto w-16 h-16 rounded-3xl gradient-accent text-white flex items-center justify-center shadow-glow">
-      <iconify-icon icon="ph:calendar-x-duotone" class="text-3xl"></iconify-icon>
-    </div>
-    <h3 class="mt-4 text-2xl font-extrabold text-gray-900 dark:text-white">No payroll period found</h3>
-    <p class="mt-2 text-gray-600 dark:text-gray-300">
-      Ask the admin to create a payroll period first.
-    </p>
-  </article>
-  {% endif %}
-
-  <!-- Payroll History -->
-  <article class="glass rounded-3xl p-5 shadow-sm">
-    <div class="mb-4">
-      <p class="text-xs uppercase tracking-wide text-accent font-bold">Saved Payroll Records</p>
-      <h3 class="text-xl font-extrabold text-gray-900 dark:text-white">Payroll History</h3>
-    </div>
-
-    <div class="overflow-x-auto fancy-scroll rounded-2xl border border-white/30 dark:border-white/10">
-      <table class="min-w-[950px] w-full text-sm">
-        <thead class="bg-white/70 dark:bg-slate-900/50 text-gray-700 dark:text-gray-200">
-          <tr>
-            <th class="text-left px-4 py-3">Period</th>
-            <th class="text-left px-4 py-3">Coverage</th>
-            <th class="text-left px-4 py-3">Base Pay</th>
-            <th class="text-left px-4 py-3">Deductions</th>
-            <th class="text-left px-4 py-3">Net Pay</th>
-            <th class="text-left px-4 py-3">Status</th>
-            <th class="text-left px-4 py-3">Action</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200/70 dark:divide-white/10">
-          {% for item in payroll_history %}
-          <tr class="hover:bg-white/60 dark:hover:bg-white/5 transition">
-            <td class="px-4 py-3 font-bold text-gray-900 dark:text-white">{{ item.batch.period.name }}</td>
-            <td class="px-4 py-3 text-gray-600 dark:text-gray-300">
-              {{ item.batch.period.start_date }} to {{ item.batch.period.end_date }}
-            </td>
-            <td class="px-4 py-3">₱{{ item.base_pay }}</td>
-            <td class="px-4 py-3">₱{{ item.deductions_total }}</td>
-            <td class="px-4 py-3 font-extrabold text-accent">₱{{ item.net_pay }}</td>
-            <td class="px-4 py-3">
-              <span class="inline-flex px-3 py-1 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 text-xs font-bold">
-                {{ item.batch.get_status_display }}
-              </span>
-            </td>
-            <td class="px-4 py-3">
-              <a href="{% url 'employee_payslip_print' item.id %}"
-                 target="_blank"
-                 class="inline-flex items-center gap-2 px-4 py-2 rounded-xl gradient-accent text-white hover:shadow-glow transition text-xs font-bold">
-                <iconify-icon icon="ph:receipt-duotone"></iconify-icon>
-                Payslip
-              </a>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="7" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
-              No saved payroll history yet. Once admin processes payroll, your payslip will appear here.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </article>
-
+  </div>
 </section>
-{% endblock %}git
+
+{% endblock %}
