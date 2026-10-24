@@ -66,7 +66,24 @@ PERMANENT_LATEST_ARRIVAL = time(9, 15)
 FLAG_CEREMONY_EMPLOYMENT_TYPES = frozenset({"JO", "COS", "PERMANENT"})
 
 # Bump this when the rules change, so old saved DTR snapshots can be detected.
+#   2: corrected lateness, half day, minimum attendance, first-working-day ceremony
+#   3: permanent employees' Tuesday-Friday 9:15 AM flexible arrival
 RULES_VERSION = 3
+
+
+def row_is_current(row):
+    """
+    True when a saved DTR row already matches the current rules.
+    Version 3 changed permanent employees only, so a version 2 row for a
+    JO or COS employee is still current.
+    """
+    try:
+        version = int(row.get("rules_version", 1) or 1)
+    except (TypeError, ValueError):
+        version = 1
+    employment = str((row.get("computation") or {}).get("employment_type", "")).lower()
+    needed = RULES_VERSION if employment.startswith("perm") else 2
+    return version >= needed
 
 PENDING_POLICY = (
     "Whether permanent employees' 9:15 AM is the latest flexible arrival (current reading) or a fixed start, "

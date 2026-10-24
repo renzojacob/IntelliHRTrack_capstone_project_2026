@@ -1,165 +1,80 @@
 {% extends 'employee/base_employee.html' %}
 
-{% block title %}Profile & Settings | IntelliHRTrack{% endblock %}
+{% block title %}Profile and settings{% endblock %}
 
 {% block content %}
-<section class="space-y-6">
-  <header class="rounded-3xl glass p-6 shadow-glow md:p-8">
-    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div>
-        <p class="text-sm font-medium text-teal-600">My Account</p>
-        <h1 class="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
-          Profile & Settings
-        </h1>
-        <p class="mt-2 opacity-75">
-          View your account and employment information.
-        </p>
-      </div>
+
+<header class="ad-page-head">
+  <div class="ad-page-head__text">
+    <p class="em-hello">My account</p>
+    <h1>Profile and settings</h1>
+    <p>Your account and employment details. Your branch administrator manages the employment details; ask them if something is wrong.</p>
+  </div>
+  <div class="ad-page-head__actions">
+    <a href="{% url 'change_password' %}" class="ihrt-btn ihrt-btn--primary">
+      <iconify-icon icon="ph:key" aria-hidden="true"></iconify-icon> Change password
+    </a>
+  </div>
+</header>
+
+<div class="ad-split">
+  <section class="ad-card">
+    <div class="ad-card__head">
+      <div><h2>Employment information</h2><p>Managed by your branch administrator.</p></div>
     </div>
-  </header>
-
-  <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-    <section class="rounded-2xl glass p-6 shadow xl:col-span-1">
-      <div class="flex items-center gap-4">
-        <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-3xl font-bold text-teal-700">
-          {{ user.username|first|upper }}
-        </div>
-
-        <div class="min-w-0">
-          <h2 class="truncate text-xl font-bold">{{ display_name }}</h2>
-          <p class="truncate text-sm opacity-70">@{{ user.username }}</p>
-          {% if profile and profile.branch %}
-            <p class="mt-1 text-sm font-medium text-teal-600">{{ profile.branch.name }}</p>
-          {% endif %}
-        </div>
-      </div>
-
-      <div class="my-6 border-t border-slate-200/70"></div>
-
-      <dl class="space-y-4 text-sm">
-        <div>
-          <dt class="opacity-60">Email address</dt>
-          <dd class="mt-1 break-all font-medium">
-            {{ user.email|default:"Not provided" }}
-          </dd>
-        </div>
-
-        <div>
-          <dt class="opacity-60">Account status</dt>
-          <dd class="mt-1">
-            {% if user.is_active %}
-              <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Active</span>
-            {% else %}
-              <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">Inactive</span>
-            {% endif %}
-          </dd>
-        </div>
-
-        <div>
-          <dt class="opacity-60">Account type</dt>
-          <dd class="mt-1 font-medium">
-            {% if user.is_superuser %}
-              Super Administrator
-            {% elif user.is_staff %}
-              Branch Administrator
-            {% else %}
-              Employee
-            {% endif %}
-          </dd>
-        </div>
+    <div class="ad-card__body">
+      <dl class="ad-kv">
+        <div><dt>Full name</dt><dd>{{ display_name }}</dd></div>
+        <div><dt>Username</dt><dd>{{ user.username }}</dd></div>
+        <div><dt>Branch</dt><dd>{% if profile and profile.branch %}{{ profile.branch.name }}{% else %}Not assigned{% endif %}</dd></div>
+        <div><dt>Employment type</dt><dd>{% if profile and profile.employment_type %}{{ profile.get_employment_type_display }}{% else %}Not provided{% endif %}</dd></div>
+        <div><dt>Department</dt><dd>{% if profile and profile.department %}{{ profile.department }}{% else %}Not provided{% endif %}</dd></div>
+        <div><dt>Position</dt><dd>{% if profile and profile.position %}{{ profile.position }}{% else %}Not provided{% endif %}</dd></div>
+        <div><dt>Biometric employee ID</dt><dd>{% if profile and profile.biometric_employee_id %}{{ profile.biometric_employee_id }}{% else %}Not assigned{% endif %}</dd></div>
+        <div><dt>Employment start date</dt><dd>{% if profile and profile.employment_start_date %}{{ profile.employment_start_date|date:"F j, Y" }}{% else %}Not provided{% endif %}</dd></div>
       </dl>
+    </div>
+  </section>
+
+  <div class="ad-stack">
+    <section class="ad-card">
+      <div class="ad-card__body">
+        <div class="em-id">
+          <span class="em-id__avatar" aria-hidden="true">{{ user.username|first|upper }}</span>
+          <div style="min-width:0">
+            <p class="em-id__name">{{ display_name }}</p>
+            <p class="em-id__sub">@{{ user.username }}{% if profile and profile.branch %} &middot; {{ profile.branch.name }}{% endif %}</p>
+          </div>
+        </div>
+        <dl class="ad-kv" style="margin-top:16px">
+          <div><dt>Email</dt><dd>{{ user.email|default:"Not provided" }}</dd></div>
+          <div><dt>Account status</dt><dd>{% if user.is_active %}<span class="ihrt-badge ihrt-badge--ok">Active</span>{% else %}<span class="ihrt-badge ihrt-badge--bad">Inactive</span>{% endif %}</dd></div>
+          <div><dt>Account type</dt><dd>{% if user.is_superuser %}Super administrator{% elif user.is_staff %}Branch administrator{% else %}Employee{% endif %}</dd></div>
+        </dl>
+      </div>
     </section>
 
-    <section class="rounded-2xl glass p-6 shadow xl:col-span-2">
-      <div class="mb-6 flex items-center gap-3">
-        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 text-xl text-teal-700">
-          <iconify-icon icon="ph:identification-card-duotone"></iconify-icon>
-        </div>
-        <div>
-          <h2 class="text-xl font-bold">Employment Information</h2>
-          <p class="text-sm opacity-70">Information managed by your branch administrator.</p>
-        </div>
+    <section class="ad-card">
+      <div class="ad-card__head"><div><h2>Password and security</h2><p>Change your password any time with your current one.</p></div></div>
+      <div class="ad-card__foot" style="border-top:0;padding-top:0">
+        <a href="{% url 'change_password' %}" class="ihrt-btn ihrt-btn--secondary">
+          <iconify-icon icon="ph:key" aria-hidden="true"></iconify-icon> Change password
+        </a>
       </div>
+    </section>
 
-      <div class="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
-        <div>
-          <p class="text-sm opacity-60">Full name</p>
-          <p class="mt-1 font-semibold">{{ display_name }}</p>
-        </div>
-
-        <div>
-          <p class="text-sm opacity-60">Username</p>
-          <p class="mt-1 font-semibold">{{ user.username }}</p>
-        </div>
-
-        <div>
-          <p class="text-sm opacity-60">Branch</p>
-          <p class="mt-1 font-semibold">
-            {% if profile and profile.branch %}{{ profile.branch.name }}{% else %}Not assigned{% endif %}
-          </p>
-        </div>
-
-        <div>
-          <p class="text-sm opacity-60">Employment type</p>
-          <p class="mt-1 font-semibold">
-            {% if profile and profile.employment_type %}
-              {{ profile.get_employment_type_display }}
-            {% else %}
-              Not provided
-            {% endif %}
-          </p>
-        </div>
-
-        <div>
-          <p class="text-sm opacity-60">Department</p>
-          <p class="mt-1 font-semibold">
-            {% if profile and profile.department %}{{ profile.department }}{% else %}Not provided{% endif %}
-          </p>
-        </div>
-
-        <div>
-          <p class="text-sm opacity-60">Position</p>
-          <p class="mt-1 font-semibold">
-            {% if profile and profile.position %}{{ profile.position }}{% else %}Not provided{% endif %}
-          </p>
-        </div>
-
-        <div>
-          <p class="text-sm opacity-60">Biometric employee ID</p>
-          <p class="mt-1 font-semibold">
-            {% if profile and profile.biometric_employee_id %}{{ profile.biometric_employee_id }}{% else %}Not assigned{% endif %}
-          </p>
-        </div>
-
-        <div>
-          <p class="text-sm opacity-60">Employment start date</p>
-          <p class="mt-1 font-semibold">
-            {% if profile and profile.employment_start_date %}
-              {{ profile.employment_start_date|date:"F j, Y" }}
-            {% else %}
-              Not provided
-            {% endif %}
-          </p>
-        </div>
-      </div>
-
-      <div class="mt-8 rounded-2xl border border-teal-100 bg-teal-50 p-5">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 class="font-bold text-teal-900">Password & Security</h3>
-            <p class="mt-1 text-sm text-teal-800">
-              Change your website password securely using your current password.
-            </p>
-          </div>
-
-          <a href="{% url 'change_password' %}"
-             class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 font-semibold text-white transition hover:bg-teal-700">
-            <iconify-icon icon="ph:key-duotone"></iconify-icon>
-            Change Password
-          </a>
-        </div>
+    <section class="ad-card">
+      <div class="ad-card__head"><div><h2>Appearance</h2><p>Light or dark mode is saved on this device.</p></div></div>
+      <div class="ad-card__foot" style="border-top:0;padding-top:0">
+        <button type="button" class="ihrt-btn ihrt-btn--secondary" data-theme-toggle>
+          <iconify-icon icon="ph:moon" class="ad-theme-light" aria-hidden="true"></iconify-icon>
+          <iconify-icon icon="ph:sun" class="ad-theme-dark" aria-hidden="true"></iconify-icon>
+          <span class="ad-theme-light">Switch to dark mode</span>
+          <span class="ad-theme-dark">Switch to light mode</span>
+        </button>
       </div>
     </section>
   </div>
-</section>
+</div>
+
 {% endblock %}
