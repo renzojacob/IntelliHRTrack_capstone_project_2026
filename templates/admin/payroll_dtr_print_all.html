@@ -1,0 +1,116 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>All DTRs: {{ period.name }} | IntelliHRTrack</title>
+  {% include "_head_meta.html" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    {% include "admin/_csf48_styles.html" %}
+
+    /* ---------- Screen-only summary (hidden when printing) ---------- */
+    .screen-only { font-family: "Schibsted Grotesk", "Segoe UI", system-ui, Arial, sans-serif; color: #10261C; }
+    .pa-bar { position: sticky; top: 0; z-index: 5; margin: 0 -16px 20px; padding: 12px 16px; background: #fff; border-bottom: 1px solid #DAE2D8; }
+    .pa-bar__inner { max-width: 760px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .pa-bar__title { flex: 1 1 220px; min-width: 0; }
+    .pa-bar__title strong { display: block; font-size: 15px; }
+    .pa-bar__title span { font-size: 13px; color: #52645A; }
+    .pa-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 14px; border-radius: 8px;
+      border: 1px solid #DAE2D8; background: #fff; color: #10261C; font: 600 14px/1.2 inherit; text-decoration: none; cursor: pointer; white-space: nowrap; }
+    .pa-btn:hover { border-color: #52645A; }
+    .pa-btn--primary { background: #1E5A3C; border-color: #1E5A3C; color: #fff; }
+    .pa-btn--primary:hover { background: #174A31; }
+    .pa-btn:disabled { background: #EEF2EC; color: #7F9488; border-color: #DAE2D8; cursor: not-allowed; }
+    .pa-btn:focus-visible { outline: 2px solid #1E5A3C; outline-offset: 2px; }
+
+    .pa-summary { max-width: 760px; margin: 0 auto 20px; padding: 20px; border: 1px solid #DAE2D8; border-radius: 14px; background: #fff; font-size: 14.5px; }
+    .pa-summary h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.02em; }
+    .pa-summary > p { margin: 0 0 16px; color: #52645A; }
+    .pa-facts { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; margin: 0; }
+    .pa-facts dt { color: #52645A; }
+    .pa-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+    .pa-count { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; background: #E4EFE7; color: #1E5A3C; font-weight: 700; }
+    .pa-note { margin-top: 16px; padding: 12px 14px; border-radius: 10px; font-size: 14px; line-height: 1.5; }
+    .pa-note--info { background: #EEF2EC; color: #10261C; }
+    .pa-note--warn { background: #FBEFD2; color: #6B4600; }
+    .pa-note ul { margin: 8px 0 0; padding-left: 20px; }
+    .pa-empty { max-width: 760px; margin: 0 auto; padding: 40px 20px; text-align: center; border: 1px dashed #DAE2D8; border-radius: 14px; background: #fff; }
+    @media (max-width: 560px) { .pa-facts { grid-template-columns: 1fr; gap: 2px; } .pa-facts dd { margin-bottom: 8px; } }
+
+    /* ---------- One employee per printed page ---------- */
+    .pa-sheet { break-inside: avoid; page-break-inside: avoid; }
+    .pa-sheet + .pa-sheet { break-before: page; page-break-before: always; }
+    @media screen { .pa-sheet + .pa-sheet { margin-top: 24px; } }
+  </style>
+</head>
+
+<body>
+
+<div class="screen-only">
+  <div class="pa-bar">
+    <div class="pa-bar__inner">
+      <a class="pa-btn" href="{{ back_url }}">&larr; Payroll</a>
+      <div class="pa-bar__title">
+        <strong>All daily time records</strong>
+        <span>{{ period.name }}</span>
+      </div>
+      <button type="button" class="pa-btn pa-btn--primary" onclick="window.print()" {% if not dtrs %}disabled{% endif %}>
+        Print {{ dtrs|length }} DTR{{ dtrs|length|pluralize }}
+      </button>
+    </div>
+  </div>
+
+  <section class="pa-summary" aria-labelledby="pa-title">
+    <h1 id="pa-title">Check before printing</h1>
+    <p>Each employee's DTR starts on a new page. To keep one file, choose <strong>Save as PDF</strong> as the printer.</p>
+    <dl class="pa-facts">
+      <dt>Payroll period</dt>
+      <dd>{{ period.name }} ({{ period.start_date|date:"M d, Y" }} to {{ period.end_date|date:"M d, Y" }})</dd>
+      <dt>Branch</dt>
+      <dd>{{ branch_label }}</dd>
+      <dt>Employment type</dt>
+      <dd>{% if employment_type == "ALL" %}All employment types (JO, COS, and Permanent){% else %}{{ employment_type_label }} only, following the filter on the payroll page{% endif %}</dd>
+      <dt>Employees</dt>
+      <dd><span class="pa-count">{{ dtrs|length }}</span> DTR{{ dtrs|length|pluralize }}, one for every matching employee</dd>
+      <dt>Source</dt>
+      <dd>
+        {% if counts.locked %}{{ counts.locked }} locked{% endif %}{% if counts.locked and counts.saved or counts.locked and counts.live %}, {% endif %}
+        {% if counts.saved %}{{ counts.saved }} from processed payroll{% endif %}{% if counts.saved and counts.live %}, {% endif %}
+        {% if counts.live %}{{ counts.live }} calculated live because payroll is not processed yet{% endif %}
+      </dd>
+    </dl>
+
+    <div class="pa-note pa-note--info">
+      This is the same DTR each employee's own Print DTR button shows. The name search on the payroll page is not applied:
+      this document covers everyone in the period, branch, and employment type above.
+    </div>
+
+    {% if outdated %}
+      <div class="pa-note pa-note--warn" role="status">
+        <strong>{{ outdated|length }} DTR{{ outdated|length|pluralize }} {{ outdated|length|pluralize:"was,were" }} saved before the corrected lateness and half-day rules</strong>
+        and still show the old UNDERTIME values. Unlock the DTR (and reopen the batch if it is finalized), then process payroll again to update:
+        <ul>{% for name in outdated %}<li>{{ name }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+  </section>
+
+  {% if not dtrs %}
+    <div class="pa-empty">
+      <strong>No employees match these filters.</strong>
+      <p>Check the branch and employment type on the payroll page.</p>
+    </div>
+  {% endif %}
+</div>
+
+{% for d in dtrs %}
+  <div class="pa-sheet">
+    {% include "admin/_csf48_form.html" with employee_name=d.employee_name biometric_employee_id=d.biometric_employee_id division=d.division month_label=d.month_label dtr_rows=d.dtr_rows total_undertime_hours=d.total_undertime_hours total_undertime_minutes=d.total_undertime_minutes batch=d.batch printed_by=printed_by printed_at=printed_at %}
+  </div>
+{% endfor %}
+
+</body>
+</html>

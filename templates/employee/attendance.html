@@ -219,12 +219,12 @@
       <p class="mt-1 text-2xl font-extrabold">{{ summary.absences|default:"0" }}</p>
     </article>
     <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Late Min</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400" title="Minutes after the arrival allowance, kept as a tardiness record">Late record (min)</p>
       <p class="mt-1 text-2xl font-extrabold">{{ summary.late_minutes|default:"0" }}</p>
     </article>
     <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Undertime</p>
-      <p class="mt-1 text-2xl font-extrabold">{{ summary.undertime_minutes|default:"0" }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400" title="Lateness, half days, and leaving early, counted once">Deductible time</p>
+      <p class="mt-1 text-2xl font-extrabold">{{ summary.deductible_display|default:"0 h 00 min" }}</p>
     </article>
     <article class="glass rounded-3xl p-4 hover:shadow-glow transition">
       <p class="text-xs text-gray-500 dark:text-gray-400">Missing</p>
@@ -274,10 +274,10 @@
             <th class="text-left px-4 py-3">PM In</th>
             <th class="text-left px-4 py-3">PM Out</th>
             <th class="text-left px-4 py-3">Hours</th>
-            <th class="text-left px-4 py-3">Late</th>
-            <th class="text-left px-4 py-3">Undertime</th>
+            <th class="text-left px-4 py-3" title="Tardiness record">Late record</th>
+            <th class="text-left px-4 py-3" title="Minutes deducted for the day">Deductible</th>
             <th class="text-left px-4 py-3">Status</th>
-            <th class="text-left px-4 py-3">Remarks</th>
+            <th class="text-left px-4 py-3">Remarks and computation</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200/70 dark:divide-white/10">
@@ -292,13 +292,31 @@
             <td class="px-4 py-3">{{ row.pm_out|default:"--" }}</td>
             <td class="px-4 py-3 font-bold">{{ row.total_hours|default:"0.00" }}</td>
             <td class="px-4 py-3">{{ row.late|default:"0" }}</td>
-            <td class="px-4 py-3">{{ row.undertime|default:"0" }}</td>
+            <td class="px-4 py-3 font-bold">{% if row.deductible_minutes is not None %}{{ row.deductible_minutes }}{% else %}{{ row.undertime|default:"0" }}{% endif %}</td>
             <td class="px-4 py-3">
               <span class="inline-flex px-3 py-1 rounded-full bg-teal-500/10 text-accent border border-teal-500/20 text-xs font-bold">
                 {{ row.status|default:"No Record" }}
               </span>
+              {% if row.is_ceremony_day %}<span class="ml-1 inline-flex px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20 text-xs font-bold" title="Flag ceremony day">Flag</span>{% endif %}
             </td>
-            <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ row.remarks|default:"--" }}</td>
+            <td class="px-4 py-3 text-gray-600 dark:text-gray-300 align-top">
+              <span>{{ row.remarks|default:"--" }}</span>
+              {% if row.computation.lines %}
+              <details class="mt-2 dtr-calc">
+                <summary class="cursor-pointer font-semibold text-accent">View computation</summary>
+                <div class="mt-2 p-3 rounded-2xl bg-white/70 dark:bg-slate-900/50 border border-white/40 dark:border-white/10 min-w-[320px]">
+                  <p class="font-bold text-gray-900 dark:text-white">{{ row.computation.weekday }}, {{ row.date }} &middot; {{ row.computation.employment_type }}</p>
+                  {% if row.ceremony_note %}<p class="mt-1 text-sky-700 dark:text-sky-300">{{ row.ceremony_note }}</p>{% endif %}
+                  <dl class="mt-2 divide-y divide-gray-200/70 dark:divide-white/10">
+                    {% for line in row.computation.lines %}
+                    <div class="flex justify-between gap-4 py-1"><dt>{{ line.0 }}</dt><dd class="text-right font-semibold text-gray-900 dark:text-white">{{ line.1 }}</dd></div>
+                    {% endfor %}
+                  </dl>
+                  {% if row.computation.formula %}<p class="mt-2 pt-2 border-t-2 border-gray-800 dark:border-white font-extrabold text-gray-900 dark:text-white">{{ row.computation.formula }}</p>{% endif %}
+                </div>
+              </details>
+              {% endif %}
+            </td>
           </tr>
           {% empty %}
           <tr>

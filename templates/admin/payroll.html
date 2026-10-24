@@ -36,6 +36,13 @@
   .pr-scroll-hint { display: none; align-items: center; gap: 6px; padding: 8px 20px; font-size: 13px; color: var(--ihrt-muted); border-bottom: 1px solid var(--ihrt-line); }
   @media (max-width: 1439px) { .pr-scroll-hint { display: flex; } }
   #dtrModal .ad-table td, #dtrModal .ad-table th { padding: 8px 10px; }
+  .dtr-calc { max-width: 720px; display: grid; gap: 10px; white-space: normal; }
+  .dtr-calc__head { font-size: 14.5px; }
+  .dtr-calc__note { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; padding: 10px 12px; border-radius: var(--ihrt-radius-sm); background: var(--ihrt-info-soft); color: var(--ihrt-info); }
+  .dtr-calc .ad-kv > div { padding: 7px 0; font-size: 14px; }
+  .dtr-calc .ad-kv dd { text-align: right; }
+  .dtr-calc__formula { font-weight: 700; font-size: 15px; padding-top: 8px; border-top: 2px solid var(--ihrt-ink); }
+  .dtr-calc__review { font-weight: 600; color: var(--ihrt-warn); }
 </style>
 {% endblock %}
 
@@ -193,7 +200,22 @@
       <h2 id="emp-pay-title">Employee payroll</h2>
       <p>Expand a row for rates and every deduction. Open the DTR to see the days behind the numbers.</p>
     </div>
-    <span class="ihrt-badge ihrt-badge--neutral">{{ employees|length }} employee{{ employees|length|pluralize }}</span>
+    <div class="ad-card__head-actions">
+      <span class="ihrt-badge ihrt-badge--neutral">{{ employees|length }} employee{{ employees|length|pluralize }}</span>
+      {% firstof request.GET.type selected_emp_type "ALL" as print_type %}
+      {% if selected_period %}
+        <a class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm" target="_blank" rel="noopener"
+           href="{% url 'admin_payroll_dtr_print_all' %}?period={{ selected_period.id }}&amp;branch={% if is_superadmin %}{{ selected_branch }}{% else %}{{ request.user.profile.branch.id }}{% endif %}&amp;type={{ print_type }}"
+           title="Opens every matching employee's DTR for this period{% if print_type != 'ALL' %} ({{ print_type }} only){% endif %} in one printable document">
+          <iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon>
+          Print all DTRs{% if print_type != "ALL" %} ({{ print_type }}){% endif %}
+        </a>
+      {% else %}
+        <button type="button" class="ihrt-btn ihrt-btn--secondary ihrt-btn--sm" disabled title="Set the payroll dates first">
+          <iconify-icon icon="ph:printer" aria-hidden="true"></iconify-icon> Print all DTRs
+        </button>
+      {% endif %}
+    </div>
   </div>
 
   {% if employees %}
@@ -206,7 +228,7 @@
             <tr>
               <th scope="col">Employee</th>
               <th scope="col" class="is-num" title="Days present / days absent">Present / absent</th>
-              <th scope="col" class="is-num" title="Late minutes / undertime minutes">Late / UT min</th>
+              <th scope="col" class="is-num" title="Minutes deducted for lateness, half days, and leaving early">Deductible time</th>
               <th scope="col" class="is-num">Deductions</th>
               <th scope="col" class="is-num">Net pay</th>
               <th scope="col">DTR and issues</th>
@@ -229,7 +251,10 @@
                   </div>
                 </td>
                 <td class="is-num">{% firstof employee.attendance_summary.days_present employee.days_present "0" %} / {% firstof employee.attendance_summary.days_absent employee.absences "0" %}</td>
-                <td class="is-num"><span class="{% if late != "0" %}ad-neg{% endif %}">{{ late }}</span> / <span class="{% if ut != "0" %}ad-warn-text{% endif %}">{{ ut }}</span></td>
+                <td class="is-num">
+                  <span class="{% if employee.deductible_minutes %}ad-neg{% endif %}" style="font-weight:650">{% firstof employee.deductible_display "0 h 00 min" %}</span>
+                  <p class="ad-cell-sub">Late record {% firstof employee.recorded_late_minutes "0" %} min{% if employee.half_days %} &middot; {{ employee.half_days }} half day{{ employee.half_days|pluralize }}{% endif %}</p>
+                </td>
                 <td class="is-num">&#8369;{% firstof employee.deductions employee.deductions_total "0.00" %}</td>
                 <td class="is-num pr-net" title="Gross earnings minus deductions">&#8369;{% firstof employee.net_pay employee.computed_payroll.net "0.00" %}</td>
                 <td>
@@ -299,7 +324,7 @@
           </div>
           <dl class="ad-rec__kv">
             <div><dt>Present / absent</dt><dd>{% firstof employee.attendance_summary.days_present employee.days_present "0" %} / {% firstof employee.attendance_summary.days_absent employee.absences "0" %}</dd></div>
-            <div><dt>Late / UT minutes</dt><dd>{% firstof employee.attendance_summary.total_late_minutes employee.late_minutes "0" %} / {% firstof employee.attendance_summary.total_undertime_minutes employee.undertime_minutes "0" %}</dd></div>
+            <div><dt>Deductible time</dt><dd>{% firstof employee.deductible_display "0 h 00 min" %}</dd></div>
             <div><dt>Deductions</dt><dd>&#8369;{% firstof employee.deductions employee.deductions_total "0.00" %}</dd></div>
             <div><dt>DTR</dt><dd>{% if employee.dtr_locked %}Locked{% elif employee.dtr_finalized %}Unlocked{% else %}Not final{% endif %}</dd></div>
           </dl>
@@ -504,13 +529,13 @@
     <div class="ad-modal__body ad-stack ad-stack--sm" id="dtrPrintArea">
       <div id="dtrSummary" class="ad-stats ad-stats--4"></div>
       <div class="ad-table-wrap" style="border:1px solid var(--ihrt-line);border-radius:var(--ihrt-radius-sm)">
-        <table class="ad-table" style="min-width:880px">
+        <table class="ad-table" style="min-width:900px">
           <thead>
             <tr>
               <th scope="col">Date</th><th scope="col">Day</th>
               <th scope="col">AM in</th><th scope="col">AM out</th><th scope="col">PM in</th><th scope="col">PM out</th>
-              <th scope="col" class="is-num">Hours</th><th scope="col" class="is-num">Late</th><th scope="col" class="is-num">UT</th>
-              <th scope="col">Status</th><th scope="col">Remarks</th>
+              <th scope="col" class="is-num">Worked</th><th scope="col" class="is-num" title="Tardiness record">Late record</th><th scope="col" class="is-num" title="Minutes deducted for the day">Deductible</th>
+              <th scope="col">Status</th><th scope="col"><span class="sr-only">Details</span></th>
             </tr>
           </thead>
           <tbody id="dtrTableBody"></tbody>
@@ -587,26 +612,70 @@
   function stat(label, value, tone) {
     return '<div class="ad-stat ' + (tone || '') + '"><p class="ad-stat__label">' + label + '</p><p class="ad-stat__value">' + value + '</p></div>';
   }
+  function hm(m) { m = Math.max(0, parseInt(m, 10) || 0); return Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') + ' min'; }
+  function longDate(iso, weekday) {
+    var d = new Date(String(iso) + 'T00:00:00');
+    if (isNaN(d)) return esc(iso);
+    return esc((weekday || '') + ', ' + d.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }));
+  }
+  // Plain-language breakdown for one day, built only from what the server computed.
+  function computationHtml(r) {
+    var c = r.computation || {}, lines = c.lines || [];
+    var out = '<div class="dtr-calc">';
+    out += '<p class="dtr-calc__head"><strong>' + longDate(r.date, c.weekday || r.weekday) + '</strong>' +
+           (c.employment_type ? ' &middot; ' + esc(c.employment_type) : '') + '</p>';
+    if (r.ceremony_note) out += '<p class="dtr-calc__note"><iconify-icon icon="ph:flag" aria-hidden="true"></iconify-icon> ' + esc(r.ceremony_note) +
+           (r.is_ceremony_day ? ' Required arrival: ' + esc(r.arrival_threshold) + '; arrival allowance: 0 minutes.' : '') + '</p>';
+    if (lines.length) {
+      out += '<dl class="ad-kv">';
+      lines.forEach(function (l) { out += '<div><dt>' + esc(l[0]) + '</dt><dd>' + esc(l[1]) + '</dd></div>'; });
+      out += '</dl>';
+    } else {
+      out += '<p class="ad-help">' + esc(r.remarks || r.status || 'No calculation needed for this day.') + '</p>';
+    }
+    if (c.formula) out += '<p class="dtr-calc__formula">' + esc(c.formula) + '</p>';
+    if (r.needs_review) out += '<p class="dtr-calc__review">Needs review before payroll: ' + esc(r.remarks) + '</p>';
+    return out + '</div>';
+  }
+
   function openDtr(name, records) {
     dtrName.textContent = name || 'Employee';
     if (!records || !records.length) {
       dtrSummary.innerHTML = '';
       dtrBody.innerHTML = '<tr><td colspan="11"><div class="ad-empty" style="padding:24px"><p>No DTR entries for this period yet.</p></div></td></tr>';
     } else {
-      var hours = 0, late = 0, ut = 0, present = 0, rows = '';
-      records.forEach(function (r) {
-        var total = Number(r.total_hours || r.totalHours || 0), l = Number(r.late || 0), u = Number(r.undertime || 0), st = r.status || 'Present';
-        hours += total; late += l; ut += u;
-        // A late or undertime day is still a day worked, so it counts as present
-        if (/present|late|undertime|travel|official business/.test(String(st).toLowerCase())) present++;
-        rows += '<tr><td class="is-nowrap">' + esc(r.date) + '</td><td>' + esc(r.day) + '</td>' +
-          '<td class="ad-num">' + esc(r.am_in || r.timeIn || '—') + '</td><td class="ad-num">' + esc(r.am_out || r.lunchOut || '—') + '</td>' +
-          '<td class="ad-num">' + esc(r.pm_in || r.lunchIn || '—') + '</td><td class="ad-num">' + esc(r.pm_out || r.timeOut || '—') + '</td>' +
-          '<td class="is-num">' + total.toFixed(2) + '</td><td class="is-num' + (l ? ' ad-neg' : '') + '">' + l + '</td><td class="is-num' + (u ? ' ad-warn-text' : '') + '">' + u + '</td>' +
-          '<td>' + badge(st) + '</td><td class="is-muted">' + esc(r.remarks || '') + '</td></tr>';
+      var worked = 0, late = 0, deductible = 0, attended = 0, rows = '';
+      records.forEach(function (r, i) {
+        var mins = parseInt(r.total_minutes, 10) || 0, l = parseInt(r.late, 10) || 0;
+        var d = (r.deductible_minutes != null) ? (parseInt(r.deductible_minutes, 10) || 0) : l + (parseInt(r.undertime, 10) || 0);
+        var st = r.status || 'Present';
+        worked += mins; late += l; deductible += d;
+        if (/present|half day|travel|official business/.test(String(st).toLowerCase())) attended++;
+        var hasCalc = r.computation && (r.computation.lines || []).length;
+        rows += '<tr><td class="is-nowrap">' + esc(r.date) + '</td><td>' + esc((r.weekday || '').slice(0, 3)) + '</td>' +
+          '<td class="ad-num">' + esc(r.am_in || '—') + '</td><td class="ad-num">' + esc(r.am_out || '—') + '</td>' +
+          '<td class="ad-num">' + esc(r.pm_in || '—') + '</td><td class="ad-num">' + esc(r.pm_out || '—') + '</td>' +
+          '<td class="is-num">' + (mins ? hm(mins) : '—') + '</td>' +
+          '<td class="is-num' + (l ? ' ad-warn-text' : '') + '">' + l + '</td>' +
+          '<td class="is-num' + (d ? ' ad-neg' : '') + '" style="font-weight:650">' + d + '</td>' +
+          '<td>' + badge(st) + (r.is_ceremony_day ? ' <span class="ihrt-badge ihrt-badge--info ihrt-badge--plain" title="Flag ceremony day">Flag</span>' : '') + '</td>' +
+          '<td class="is-actions">' + (hasCalc || r.needs_review
+            ? '<button type="button" class="ihrt-btn ihrt-btn--ghost ihrt-btn--sm dtr-calc-btn" aria-expanded="false" aria-controls="calc-' + i + '">View computation</button>'
+            : '<span class="ad-help">' + esc(r.remarks || '') + '</span>') + '</td></tr>' +
+          '<tr class="ad-detail-row hidden" id="calc-' + i + '"><td colspan="11">' + computationHtml(r) + '</td></tr>';
       });
       dtrBody.innerHTML = rows;
-      dtrSummary.innerHTML = stat('Hours worked', hours.toFixed(2), 'ad-tone-field') + stat('Days attended', present, 'ad-tone-ok') + stat('Late minutes', late, 'ad-tone-bad') + stat('Undertime minutes', ut, 'ad-tone-warn');
+      dtrSummary.innerHTML = stat('Worked', hm(worked), 'ad-tone-field') + stat('Days attended', attended, 'ad-tone-ok') +
+        stat('Late record', late + ' min', 'ad-tone-warn') + stat('Deductible', hm(deductible), 'ad-tone-bad');
+      dtrBody.querySelectorAll('.dtr-calc-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var row = document.getElementById(b.getAttribute('aria-controls'));
+          var open = b.getAttribute('aria-expanded') === 'true';
+          b.setAttribute('aria-expanded', String(!open));
+          b.textContent = open ? 'View computation' : 'Hide computation';
+          row && row.classList.toggle('hidden', open);
+        });
+      });
     }
     window.adModal.open(dtrModal);
   }
@@ -626,6 +695,7 @@
       'body{font-family:Arial,sans-serif;padding:24px;color:#111}h1{font-size:18px;margin:0 0 12px}' +
       '.ad-stats{display:flex;gap:24px;margin-bottom:16px}.ad-stat__label{font-size:11px;color:#555;margin:0}.ad-stat__value{font-size:18px;font-weight:700;margin:2px 0 0}' +
       'table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ccc;padding:5px;text-align:left}th{background:#f2f2f2}.ihrt-badge{font-weight:600}' +
+      '.ad-detail-row,.dtr-calc-btn{display:none!important}' +
       '</style></head><body><h1>Daily time record: ' + esc(name) + '</h1>' + area.innerHTML + '</body></html>');
     win.document.close(); win.focus(); win.print();
   });

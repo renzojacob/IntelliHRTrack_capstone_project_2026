@@ -17,8 +17,8 @@
     <div><dt>Daily rate</dt><dd>&#8369;{{ e.daily_rate|default:"0.00" }}</dd></div>
     <div><dt>Hourly rate</dt><dd>&#8369;{{ e.hourly_rate|default:"0.00" }}</dd></div>
     <div><dt>Per-minute rate</dt><dd>&#8369;{{ e.per_minute_rate|default:"0.00" }}</dd></div>
-    <div><dt>Late deduction</dt><dd class="ad-neg">&#8369;{{ e.late_deduction|default:"0.00" }}</dd></div>
-    <div><dt>Undertime deduction</dt><dd class="ad-neg">&#8369;{{ e.undertime_deduction|default:"0.00" }}</dd></div>
+    <div><dt>Late and half-day deduction ({% firstof e.late_minutes "0" %} min)</dt><dd class="ad-neg">&#8369;{{ e.late_deduction|default:"0.00" }}</dd></div>
+    <div><dt>Undertime deduction ({% firstof e.undertime_minutes "0" %} min)</dt><dd class="ad-neg">&#8369;{{ e.undertime_deduction|default:"0.00" }}</dd></div>
     <div><dt>{% if et == "PERMANENT" %}GSIS, PhilHealth, Pag-IBIG{% else %}SSS, PhilHealth, Pag-IBIG{% endif %}</dt><dd class="ad-neg">&#8369;{% firstof e.gov_contributions e.gov_contributions_total "0.00" %}</dd></div>
     <div><dt>{% if et == "PERMANENT" %}Withholding tax{% else %}Tax{% endif %}</dt><dd class="ad-neg">&#8369;{% firstof e.tax e.tax_total "0.00" %}</dd></div>
     {% if et == "PERMANENT" %}

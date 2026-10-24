@@ -123,7 +123,7 @@
       <div>
         <h2>Deductions</h2>
         <dl class="ad-kv ad-kv--total">
-          <div><dt>Late ({{ payslip.late_minutes }} min)</dt><dd>&#8369;{{ payslip.late_deduction }}</dd></div>
+          <div><dt>Late and half day ({{ payslip.late_minutes }} min)</dt><dd>&#8369;{{ payslip.late_deduction }}</dd></div>
           <div><dt>Undertime ({{ payslip.undertime_minutes }} min)</dt><dd>&#8369;{{ payslip.undertime_deduction }}</dd></div>
           <div><dt>Absences ({{ payslip.absences }})</dt><dd>&#8369;{{ payslip.absence_deduction }}</dd></div>
           {% if payslip.is_permanent %}

@@ -1,0 +1,50 @@
+IntelliHRTrack: corrected DTR rules, View computation, Print All DTRs
+=====================================================================
+
+1. Back up your project first (copy the folder, or commit in Git).
+
+2. Copy these files into your project, keeping the same folders.
+
+   NEW files:
+     core/dtr_rules.py              (the single shared calculation)
+     core/dtr_print_views.py        (Print All DTRs page)
+     core/tests/__init__.py
+     core/tests/factories.py
+     core/tests/test_dtr_rules.py
+     core/tests/test_dtr_integration.py
+     templates/admin/_csf48_form.html
+     templates/admin/_csf48_styles.html
+     templates/admin/payroll_dtr_print_all.html
+
+   REPLACE these files:
+     core/views.py           (views.py.changes.diff lists every changed line)
+     core/urls.py            (adds one import and one path, nothing else)
+     templates/admin/payroll.html
+     templates/admin/payroll_dtr_print.html
+     templates/admin/_payroll_breakdown.html
+     templates/admin/payslip.html
+     templates/admin/payroll_batch_detail.html
+     templates/employee/attendance.html
+
+   IMPORTANT: if your project has a file named core/tests.py, Python cannot
+   have both core/tests.py and the folder core/tests/. Move anything you
+   want to keep from tests.py into a new file inside core/tests/ (for
+   example core/tests/test_old.py), then delete core/tests.py.
+
+3. No database migrations and no new packages. No models were changed.
+
+4. Run the checks (in the folder with manage.py, with your virtual
+   environment turned on):
+     python manage.py check
+     python manage.py test core
+   Expected result: "Ran 61 tests ... OK (skipped=1)".
+   The 1 skipped test is the open 8:29 AM question; it is not a failure.
+
+5. Start the server and go through the manual checklist from the chat.
+
+6. Deploy to Railway by committing and pushing as usual. Nothing else to run.
+
+7. Saved payroll is NOT changed automatically. To correct a period that was
+   already processed: unlock its DTRs and reopen the batch, then click
+   Process payroll again for that period. Until then, printouts of that
+   period show a warning that they were saved with the old rules.
