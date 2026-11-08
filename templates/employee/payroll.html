@@ -101,7 +101,7 @@
           {% endif %}
           <div><dt>Overtime ({{ computed.overtime_hours|default:"0.00" }} h approved and worked)</dt><dd>&#8369;{{ computed.ot|default:"0.00" }}</dd></div>
           <div><dt>Late, Half-Day &amp; Undertime ({% firstof computed.attendance_time_minutes computed.deductible_minutes "0" %} min)</dt><dd class="ad-neg">&minus;&#8369;{% firstof computed.attendance_time_deduction "0.00" %}</dd></div>
-          <div><dt>Absences ({{ computed.absences|default:"0" }})</dt><dd class="ad-neg">&minus;&#8369;{{ computed.absence_deduction|default:"0.00" }}</dd></div>
+          <div><dt>Absences ({{ computed.absences|default:"0" }}){% if computed.absence_note %}<span class="ad-help" style="display:block">{{ computed.absence_note }}</span>{% endif %}</dt><dd class="ad-neg">&minus;&#8369;{{ computed.absence_deduction|default:"0.00" }}</dd></div>
           <div><dt>Gross pay</dt><dd>&#8369;{% firstof computed.gross computed.base "0.00" %}</dd></div>
         </dl>
         <p class="ad-help" style="margin-top:12px">

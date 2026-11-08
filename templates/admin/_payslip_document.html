@@ -69,7 +69,7 @@
         <h2>Deductions</h2>
         <dl class="ad-kv ad-kv--total">
           <div><dt>Late, Half-Day &amp; Undertime ({{ payslip.attendance_time_minutes }} min, {{ payslip.attendance_time_hm }})</dt><dd>&#8369;{{ payslip.attendance_time_deduction }}</dd></div>
-          <div><dt>Absences ({{ payslip.absences }})</dt><dd>&#8369;{{ payslip.absence_deduction }}</dd></div>
+          <div><dt>Absences ({{ payslip.absences }}){% if payslip.absence_note %}<span class="ad-help" style="display:block">{{ payslip.absence_note }}</span>{% endif %}</dt><dd>&#8369;{{ payslip.absence_deduction }}</dd></div>
           {% if payslip.is_permanent %}
             <div><dt>Withholding tax</dt><dd>&#8369;{{ payslip.wtax }}</dd></div>
             <div><dt>PhilHealth</dt><dd>&#8369;{{ payslip.philhealth }}</dd></div>
