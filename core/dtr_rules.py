@@ -68,7 +68,9 @@ FLAG_CEREMONY_EMPLOYMENT_TYPES = frozenset({"JO", "COS", "PERMANENT"})
 # Bump this when the rules change, so old saved DTR snapshots can be detected.
 #   2: corrected lateness, half day, minimum attendance, first-working-day ceremony
 #   3: permanent employees' Tuesday-Friday 9:15 AM flexible arrival
-RULES_VERSION = 3
+#   4: missing AM arrival with a recorded AM departure and a complete afternoon
+#      is classified (absent / half day) instead of left Incomplete
+RULES_VERSION = 4
 
 
 def row_is_current(row):
@@ -82,8 +84,21 @@ def row_is_current(row):
     except (TypeError, ValueError):
         version = 1
     employment = str((row.get("computation") or {}).get("employment_type", "")).lower()
-    needed = RULES_VERSION if employment.startswith("perm") else 2
-    return version >= needed
+    needed = 3 if employment.startswith("perm") else 2
+    if version < needed:
+        return False
+    # Version 4 changed one case only: no AM arrival, AM departure recorded,
+    # afternoon complete.  Older rows of that shape were left Incomplete.
+    if version < 4 and is_missing_am_arrival_shape(row):
+        return False
+    return True
+
+
+def is_missing_am_arrival_shape(row):
+    """Saved row with no AM arrival, an AM departure, and both PM punches."""
+    return (str(row.get("status", "")) == "Incomplete"
+            and not row.get("am_in") and bool(row.get("am_out"))
+            and bool(row.get("pm_in")) and bool(row.get("pm_out")))
 
 PENDING_POLICY = (
     "Whether permanent employees' 9:15 AM is the latest flexible arrival (current reading) or a fixed start, "
@@ -245,6 +260,9 @@ class DayResult:
     half_day_penalty: int = 0
     below_minimum: bool = False
     needs_review: bool = False
+    # Afternoon shortfall shown for reference only (not deductible), e.g. on a
+    # day classified absent because the AM arrival is missing.
+    reference_shortfall: int = 0
     required_departure: str = ""
     arrival_threshold: str = ""
     lines: list = field(default_factory=list)   # [(label, value)] for the breakdown
@@ -306,6 +324,15 @@ def evaluate_day(sched, am_in, am_out, pm_in, pm_out, *, is_ceremony_day, half_d
     # --- Punch completeness: each session is either fully punched or empty
     am_partial = (a_in is None) != (a_out is None)
     pm_partial = (p_in is None) != (p_out is None)
+
+    # Client: a missing AM time-in can result in an absence or a half day,
+    # decided by the existing criteria.  No AM arrival is assumed: the morning
+    # earns no credit, and the AM departure punch is kept only as a record.
+    missing_am_arrival = (a_in is None and a_out is not None and not pm_partial
+                          and p_in is not None and half_day_leave is None)
+    if missing_am_arrival:
+        return _evaluate_missing_am_arrival(sched, result, lines, a_out, p_in, p_out, pm_in, pm_out)
+
     if am_partial or pm_partial:
         missing = [label for label, v in (("AM arrival", a_in), ("AM departure", a_out),
                                           ("PM arrival", p_in), ("PM departure", p_out)) if v is None]
@@ -432,5 +459,63 @@ def evaluate_day(sched, am_in, am_out, pm_in, pm_out, *, is_ceremony_day, half_d
             result.formula = f"Total: {deductible} minutes."
     else:
         result.formula = "Total: 0 minutes. The required work time was completed."
+    result.lines = lines
+    return result
+
+
+def _evaluate_missing_am_arrival(sched, result, lines, a_out, p_in, p_out, pm_in, pm_out):
+    """
+    AM arrival missing, AM departure recorded, afternoon complete.
+
+    Uses the existing criteria in order: fewer than 4 hours of eligible work is
+    an absence; otherwise the "no morning attendance" half day (morning penalty
+    plus afternoon shortfall).  The afternoon shortfall is always reported; it
+    is deductible only on the half-day path.
+    """
+    credit = dict(earliest_creditable_time=as_time(sched.earliest_credit),
+                  lunch_start_time=as_time(sched.lunch_start), lunch_end_time=as_time(sched.lunch_end),
+                  lunch_break_required=sched.lunch_unpaid)
+    pm_credit = credited_work_minutes(None, None, pm_in, pm_out, **credit)
+    actual = pm_credit
+    afternoon_done = _session_credit(p_in, p_out, sched.lunch_end, sched.work_end)
+    afternoon_short = max(0, sched.afternoon_session - afternoon_done)
+    if p_out < sched.work_end:
+        short_text = f"{clock(sched.work_end)} − {clock(p_out)} = {afternoon_short} min"
+    else:
+        short_text = f"{sched.afternoon_session} − {afternoon_done} = {afternoon_short} min"
+
+    result.actual_minutes = actual
+    result.needs_review = True
+    lines.append(("Punches", f"AM arrival missing, AM departure {clock(a_out)}, PM {clock(p_in)} – {clock(p_out)}"))
+    lines.append(("Missing punch", "No AM arrival was recorded. No time is assumed; the morning earns no credit."))
+    if sched.lunch_unpaid:
+        lines.append(("Unpaid lunch", f"{clock(sched.lunch_start)} – {clock(sched.lunch_end)} is not counted as work"))
+    lines.append(("Actual eligible work", f"0 + {pm_credit} = {actual} min ({hm(actual)})"))
+
+    if actual < MINIMUM_ATTENDANCE_MINUTES:
+        result.status = "Absent"
+        result.below_minimum = True
+        result.reference_shortfall = afternoon_short
+        result.remarks = (f"AM arrival missing; worked {hm(actual)}, below the "
+                          f"{hm(MINIMUM_ATTENDANCE_MINUTES)} minimum")
+        lines.append(("Afternoon shortfall", short_text + " (reference only)"))
+        lines.append(("Classification", f"Absent: {actual} min is below the {MINIMUM_ATTENDANCE_MINUTES}-minute minimum"))
+        lines.append(("Deduction", "Handled as one absence under the existing absence rules (no minutes added). "
+                                   "If a real AM arrival exists, correct the attendance and reprocess payroll."))
+        result.formula = f"{actual} < {MINIMUM_ATTENDANCE_MINUTES}: absent. PM shortfall {afternoon_short} min shown for reference."
+        result.lines = lines
+        return result
+
+    penalty = sched.morning_session
+    result.status = "Half Day"
+    result.half_day_penalty = penalty
+    result.arrival_shortfall = penalty
+    result.departure_shortfall = afternoon_short
+    result.credited_minutes = max(0, sched.required - result.deductible)
+    result.required_departure = clock(sched.work_end)
+    result.remarks = "Half day: AM arrival missing"
+    lines.append(("Morning half-day penalty", f"{penalty} min (no AM arrival recorded)"))
+    lines.append(("Afternoon shortfall", short_text))
+    result.formula = f"Total: {penalty} + {afternoon_short} = {result.deductible} minutes."
     result.lines = lines
     return result

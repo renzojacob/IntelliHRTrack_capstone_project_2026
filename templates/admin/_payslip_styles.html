@@ -1,0 +1,47 @@
+  .ps { max-width: 920px; width: 100%; margin-inline: auto; }
+  .ps-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; padding: 24px; border-bottom: 1px solid var(--ihrt-line); }
+  .ps-head__org { font-size: 13px; color: var(--ihrt-muted); }
+  .ps-head h1 { margin-top: 4px; font-size: 1.5rem; }
+  .ps-head__ref { text-align: left; }
+  @media (min-width: 640px) { .ps-head__ref { text-align: right; } }
+  .ps-head__ref .ps-title { font-size: 13px; font-weight: 700; color: var(--ihrt-field); }
+  .ps-section { padding: 22px 24px; border-bottom: 1px solid var(--ihrt-line); }
+  .ps-section:last-child { border-bottom: 0; }
+  .ps-section h2 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .ps-two { display: grid; gap: 24px; }
+  @media (min-width: 760px) { .ps-two { grid-template-columns: 1fr 1fr; gap: 40px; } }
+  .ps-net { display: grid; gap: 1px; background: var(--ihrt-line); grid-template-columns: 1fr; border-bottom: 1px solid var(--ihrt-line); }
+  @media (min-width: 600px) { .ps-net { grid-template-columns: 1fr 1fr 1.2fr; } }
+  .ps-net > div { background: var(--ihrt-surface); padding: 18px 24px; }
+  .ps-net dt { font-size: 13.5px; color: var(--ihrt-muted); }
+  .ps-net dd { margin: 4px 0 0; font-size: 1.35rem; font-weight: 750; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .ps-net .is-net { background: var(--ihrt-field-soft); }
+  .ps-net .is-net dd { color: var(--ihrt-field); font-size: 1.7rem; }
+  .ps-att { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); margin-top: 8px; }
+  .ps-att > div { padding: 10px 12px; border-radius: var(--ihrt-radius-sm); background: var(--ihrt-surface-2); text-align: center; }
+  .ps-att dt { font-size: 12.5px; color: var(--ihrt-muted); }
+  .ps-att dd { margin: 2px 0 0; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+  @media print {
+    @page { size: A4; margin: 12mm; }
+    body.ad-body { font-size: 11px !important; }
+    .ps { max-width: none; }
+    .ps .ad-card { border: 1px solid #bbb !important; }
+    .ps-net > div, .ps-att > div { background: #fff !important; border: 1px solid #ddd; }
+    .ps-net { background: #fff; gap: 6px; grid-template-columns: 1fr 1fr 1fr !important; }
+    .ps-two { grid-template-columns: 1fr 1fr !important; }
+  }
+  /* A payslip always prints on white paper, whatever theme is on screen. */
+  @media print {
+    .ps {
+      --ihrt-field: #1E5A3C;
+      --ihrt-field-soft: #E4EFE7;
+      --ihrt-surface: #FFFFFF;
+      --ihrt-surface-2: #EEF2EC;
+      --ihrt-line: #DAE2D8;
+      --ihrt-ink: #10261C;
+      --ihrt-muted: #52645A;
+      --ihrt-warn: #8A5A00;
+      --ihrt-warn-soft: #FBEFD2;
+      color: var(--ihrt-ink);
+    }
+  }
