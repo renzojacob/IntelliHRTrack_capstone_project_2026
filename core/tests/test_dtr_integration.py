@@ -244,7 +244,7 @@ class SnapshotTests(TestCase):
         detail = self.client.get(reverse("admin_payroll_batch_detail", args=[batch.id]))
         self.assertContains(detail, "Late / half-day min")
         slip = self.client.get(reverse("admin_payslip", args=[self.emp.id, self.period.id]))
-        self.assertContains(slip, "Late and half day")
+        self.assertContains(slip, "Late, Half-Day &amp; Undertime")
         page = self.client.get(reverse("admin_payroll"), {"branch": self.br.id, "period": self.period.id})
         self.assertContains(page, "Deductible time")
         self.assertContains(page, "1 h 13 min")

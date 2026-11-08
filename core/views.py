@@ -5,6 +5,7 @@ import io
 import re
 import json
 from decimal import Decimal
+from calendar import monthrange
 from datetime import date, datetime, time, timedelta
 from types import SimpleNamespace
 from collections import defaultdict
@@ -70,7 +71,13 @@ from .models import (
 from . import dtr_rules
 from .payroll_calculations import (
     as_decimal,
+    attendance_time_deduction,
     bir_withholding_tax,
+    collects_monthly_items,
+    jo_cos_monthly_tax,
+    jo_cos_philhealth_monthly,
+    PHILHEALTH_RATE,
+    split_attendance_deduction,
     contractual_earned_compensation,
     credited_work_minutes,
     payroll_period_validation_error,
@@ -2662,6 +2669,8 @@ def employee_payroll(request):
             dtr_rows = preview.get("dtr_rows", [])
             issues_text = preview.get("issues", "")
 
+        computed = _with_combined_attendance_line(computed)
+
         if isinstance(issues_text, str) and issues_text:
             issues = [x.strip() for x in issues_text.split(";") if x.strip()]
         elif isinstance(issues_text, list):
@@ -2871,6 +2880,24 @@ def _get_from_nested_meta(meta, section, key, default=None):
     return nested.get(key, default)
 
 
+def _with_combined_attendance_line(computed):
+    """
+    Add the combined Late, Half-Day & Undertime values to a computed-payroll
+    dict.  Items processed before the combined line existed get their saved
+    parts added together; nothing is recalculated.
+    """
+    computed = dict(computed or {})
+    late_min = int(computed.get("late_minutes", 0) or 0)
+    ut_min = int(computed.get("undertime_minutes", 0) or 0)
+    if computed.get("attendance_time_minutes") in (None, ""):
+        computed["attendance_time_minutes"] = late_min + ut_min
+    if computed.get("attendance_time_deduction") in (None, ""):
+        computed["attendance_time_deduction"] = _money(
+            as_decimal(computed.get("late_deduction")) + as_decimal(computed.get("undertime_deduction"))
+        )
+    return computed
+
+
 def _build_payslip_data(profile, period, branch, rules, generated_by_user, saved_item=None):
     """
     Builds one payslip dictionary for both:
@@ -2920,6 +2947,10 @@ def _build_payslip_data(profile, period, branch, rules, generated_by_user, saved
     undertime_deduction = _payslip_money(computed.get("undertime_deduction", Decimal("0.00")))
     absence_deduction = _payslip_money(computed.get("absence_deduction", Decimal("0.00")))
     attendance_deduction = _payslip_money(computed.get("attendance_deduction", late_deduction + undertime_deduction + absence_deduction))
+    attendance_time_deduction_amount = _payslip_money(
+        computed.get("attendance_time_deduction", late_deduction + undertime_deduction)
+    )
+    policy_blockers = list(live_result.get("policy_blockers", []))
 
     manual_deduction = _payslip_money(computed.get("manual_deduction", Decimal("0.00")))
     loan_deduction = _payslip_money(computed.get("loan_deduction", Decimal("0.00")))
@@ -3039,6 +3070,12 @@ def _build_payslip_data(profile, period, branch, rules, generated_by_user, saved
 
         late_deduction = _payslip_money(_get_from_meta(meta, "late_deduction", default=late_deduction))
         undertime_deduction = _payslip_money(_get_from_meta(meta, "undertime_deduction", default=undertime_deduction))
+        # Items processed before the combined line existed: show their saved
+        # parts added together (the saved payroll is never recalculated).
+        attendance_time_deduction_amount = _payslip_money(
+            _get_from_meta(meta, "attendance_time_deduction", default=late_deduction + undertime_deduction)
+        )
+        policy_blockers = list(meta.get("policy_blockers") or [])
         absence_deduction = _payslip_money(_get_from_meta(meta, "absence_deduction", default=absence_deduction))
 
         attendance_deduction = _payslip_money(
@@ -3169,8 +3206,16 @@ def _build_payslip_data(profile, period, branch, rules, generated_by_user, saved
         # Attendance deductions
         "late_deduction": _money(late_deduction),
         "undertime_deduction": _money(undertime_deduction),
+        "attendance_time_minutes": late_minutes + undertime_minutes,
+        "attendance_time_hm": f"{(late_minutes + undertime_minutes) // 60}h {(late_minutes + undertime_minutes) % 60:02d}m",
+        "attendance_time_deduction": _money(attendance_time_deduction_amount),
         "absence_deduction": _money(absence_deduction),
         "attendance_deduction": _money(attendance_deduction),
+        "monthly_items_deferred": (
+            not is_permanent
+            and str(getattr(period, "pay_mode", "") or "").upper() == PayrollPeriod.PAY_FIRST_HALF
+        ),
+        "policy_blockers": policy_blockers,
 
         # JO/COS deductions
         "sss": _money(sss),
@@ -3259,6 +3304,7 @@ def employee_payslip_print(request, item_id):
     )
 
     context = {
+        "current": "payroll",
         "item": item,
         "profile": profile,
         "employee_name": request.user.get_full_name() or request.user.username,
@@ -5023,6 +5069,7 @@ def _build_dtr_and_summary(profile, branch, period, rules):
     arrival_deductible_total = 0    # deductible minutes on the arrival side, incl. half-day penalties
     half_days = 0
     below_minimum_absences = 0
+    pending_review_days = 0
 
     for current_day in _date_range(start_day, end_day):
         weekday_name = current_day.strftime("%A")
@@ -5264,6 +5311,9 @@ def _build_dtr_and_summary(profile, branch, period, rules):
             elif status == "Incomplete":
                 missing_logs += 1
                 issues.append(f"{current_day.isoformat()}: {remarks}")
+            if day_result.needs_review and status != "Incomplete":
+                pending_review_days += 1
+                issues.append(f"{current_day.isoformat()}: {remarks} (classified {status}; review the missing punch)")
 
             late_minutes_total += late_minutes
             undertime_minutes_total += undertime_minutes
@@ -5318,6 +5368,8 @@ def _build_dtr_and_summary(profile, branch, period, rules):
             "is_ceremony_day": bool(is_ceremony_day),
             "ceremony_note": ceremony_note,
             "needs_review": bool(day_result.needs_review) if day_result else False,
+            # Shown for reference on the DTR only; never part of the deduction.
+            "reference_minutes": int(day_result.reference_shortfall) if day_result else 0,
             "computation": {
                 "employment_type": profile.get_employment_type_display(),
                 "weekday": weekday_name,
@@ -5345,6 +5397,7 @@ def _build_dtr_and_summary(profile, branch, period, rules):
         "deductible_minutes": int(arrival_deductible_total + undertime_minutes_total),
         "half_days": int(half_days),
         "below_minimum_absences": int(below_minimum_absences),
+        "pending_review_days": int(pending_review_days),
         "rules_version": dtr_rules.RULES_VERSION,
 
         "leave_days": float(leave_days),
@@ -5360,6 +5413,80 @@ def _build_dtr_and_summary(profile, branch, period, rules):
 
 
     
+def _saved_contribution_base(item):
+    """JO/COS amount earned saved on a processed item (current base definition)."""
+    meta = item.meta or {}
+    computed = meta.get("computed_payroll") or {}
+    value = computed.get("contribution_base")
+    if value in (None, ""):
+        value = computed.get("earned_after_attendance")
+    return _money(as_decimal(value))
+
+
+def _same_month_contribution_context(profile, period):
+    """
+    Read-only look at this employee's other processed payroll in the same
+    calendar month, for the once-a-month PhilHealth and tax.
+
+    Returns first_half_base (amount earned in the 1st half), already_collected
+    (another 2nd-half or monthly run already took the monthly items),
+    blockers (stop finalization) and warnings.
+    """
+    year, month = period.start_date.year, period.start_date.month
+    first_day = date(year, month, 1)
+    last_day = date(year, month, monthrange(year, month)[1])
+
+    items = list(
+        PayrollItem.objects
+        .select_related("batch", "batch__period")
+        .filter(
+            profile=profile,
+            batch__status__in=[PayrollBatch.STATUS_COMPLETED, PayrollBatch.STATUS_FINALIZED],
+            batch__period__start_date__gte=first_day,
+            batch__period__end_date__lte=last_day,
+        )
+        .exclude(batch__period_id=period.id)
+    )
+
+    blockers = []
+    warnings = []
+    first_half_base = Decimal("0.00")
+    mode = str(period.pay_mode or "").upper()
+
+    if mode == PayrollPeriod.PAY_SECOND_HALF:
+        first_items = [i for i in items if str(i.batch.period.pay_mode).upper() == PayrollPeriod.PAY_FIRST_HALF]
+        finalized = [i for i in first_items if i.batch.status == PayrollBatch.STATUS_FINALIZED]
+        candidates = finalized or first_items
+        values = {_saved_contribution_base(i) for i in candidates}
+        if not candidates:
+            warnings.append(
+                f"No processed 1st-half payroll found for {first_day:%B %Y}; "
+                "PhilHealth and tax use this period's earnings only"
+            )
+        elif len(values) > 1:
+            blockers.append(
+                f"Several 1st-half payroll records for {first_day:%B %Y} disagree on the amount earned "
+                f"({', '.join(str(v) for v in sorted(values))}); keep one before collecting PhilHealth and tax"
+            )
+        else:
+            first_half_base = values.pop()
+
+    other_collecting = [i for i in items if collects_monthly_items(i.batch.period.pay_mode)]
+    if other_collecting:
+        names = ", ".join(sorted({i.batch.name for i in other_collecting}))
+        blockers.append(
+            f"PhilHealth and tax for {first_day:%B %Y} were already handled in another payroll run ({names}); "
+            "not collected again"
+        )
+
+    return {
+        "first_half_base": first_half_base,
+        "already_collected": bool(other_collecting),
+        "blockers": blockers,
+        "warnings": warnings,
+    }
+
+
 def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod, rules: PayrollRule):
     """
     Safe payroll computation for:
@@ -5554,8 +5681,19 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     # -------------------------
     # Attendance deductions
     # -------------------------
-    late_deduction = _money(Decimal(late_minutes) * per_minute_rate)
-    undertime_deduction = _money(Decimal(undertime_minutes) * per_minute_rate)
+    # Late, half day and undertime are one deduction (client: combine them).
+    # Whole days at the daily rate, remaining minutes at the per-minute rate;
+    # the arrival/departure parts are kept for audit and always add up to it.
+    attendance_time_minutes = int(late_minutes + undertime_minutes)
+    attendance_time_amount = attendance_time_deduction(
+        attendance_time_minutes,
+        daily_rate,
+        per_minute_rate,
+        int(daily_required_hours * Decimal("60")),
+    )
+    late_deduction, undertime_deduction = split_attendance_deduction(
+        attendance_time_amount, late_minutes, undertime_minutes,
+    )
 
     absence_deduction = Decimal("0.00")
     if emp_type == UserProfile.EMP_COS and monthly_salary > 0:
@@ -5878,6 +6016,8 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     contractual_earned_amount = Decimal("0.00")
 
     contribution_sources = {}
+    policy_blockers = []
+    monthly_contribution_base = Decimal("0.00")
 
     # -------------------------
     # Permanent deductions
@@ -6051,51 +6191,58 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             )
 
         # -------------------------------------------------
-        # PhilHealth
+        # PhilHealth and tax: monthly, collected once a month
         # -------------------------------------------------
-        if (
-            contrib.philhealth_mode
-            == EmployeeContribution.PHILHEALTH_FIXED
-        ):
-            philhealth = recurring_amount_for_period(
-                contrib.philhealth_value,
-                period.pay_mode,
-            )
+        # Client (November review): combine the amount earned in both halves
+        # of the month, PhilHealth = 5% (P500 minimum, P5,000 maximum),
+        # collected in the 2nd half (or in a monthly run).  Tax uses the same
+        # monthly amount and the client's P20,833.33 cutoff.
+        #
+        # PENDING CLIENT: which earnings form the base.  The current definition
+        # is kept: gross (incl. premium) minus attendance deductions.
+        contribution_sources["base_definition"] = (
+            "gross (incl. premium) minus attendance deductions - pending client confirmation"
+        )
+        monthly_contribution_base = contractual_earned_amount
+        collect_now = collects_monthly_items(period.pay_mode)
+        already_collected = False
 
-            contribution_sources["philhealth"] = (
-                "fixed monthly JO/COS amount"
-            )
+        if collect_now:
+            month_ctx = _same_month_contribution_context(profile, period)
+            policy_blockers.extend(month_ctx["blockers"])
+            issues.extend(month_ctx["warnings"])
+            if str(period.pay_mode or "").upper() == PayrollPeriod.PAY_SECOND_HALF:
+                monthly_contribution_base = _money(
+                    contractual_earned_amount + month_ctx["first_half_base"]
+                )
+            already_collected = month_ctx["already_collected"]
 
+        if not collect_now:
+            philhealth = Decimal("0.00")
+            contribution_sources["philhealth"] = "collected in the 2nd half of the month"
+        elif already_collected:
+            philhealth = Decimal("0.00")
+            contribution_sources["philhealth"] = "already collected in another payroll run this month"
+        elif contrib.philhealth_mode == EmployeeContribution.PHILHEALTH_FIXED and D(contrib.philhealth_value) > 0:
+            philhealth = _money(D(contrib.philhealth_value))
+            contribution_sources["philhealth"] = "fixed monthly JO/COS amount"
         else:
-            philhealth_percent = D(
-                contrib.philhealth_value
+            philhealth = jo_cos_philhealth_monthly(monthly_contribution_base)
+            contribution_sources["philhealth"] = (
+                f"5% of monthly amount earned P{monthly_contribution_base} "
+                "(P500 minimum, P5,000 maximum)"
             )
 
-            # If no employee-specific percentage was entered,
-            # use the branch payroll-rule default.
-            if philhealth_percent <= 0:
-                philhealth_percent = D(
-                    rules.philhealth_default_value,
-                    "5.00",
-                )
-
-                contribution_sources["philhealth"] = (
-                    "branch default percentage"
-                )
-
-            else:
-                contribution_sources["philhealth"] = (
-                    "employee-specific percentage"
-                )
-
-            philhealth_rate = (
-                philhealth_percent
-                / Decimal("100")
-            )
-
-            philhealth = _money(
-                contractual_earned_amount
-                * philhealth_rate
+        configured_percent = D(contrib.philhealth_value)
+        if configured_percent <= 0:
+            configured_percent = D(rules.philhealth_default_value, "5.00")
+        if (
+            contrib.philhealth_mode != EmployeeContribution.PHILHEALTH_FIXED
+            and configured_percent != PHILHEALTH_RATE * Decimal("100")
+        ):
+            issues.append(
+                f"Configured PhilHealth percentage {configured_percent}% was not used; "
+                "JO/COS PhilHealth uses 5% of the monthly amount earned"
             )
 
         contribution_sources["sss"] = (
@@ -6117,26 +6264,28 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
         )
 
         # -------------------------------------------------
-        # Configurable JO/COS tax
+        # JO/COS tax: client's monthly cutoff
         # -------------------------------------------------
-        taxable_compensation = _money(
-            contractual_earned_amount
-        )
+        taxable_compensation = _money(monthly_contribution_base)
 
-        tax_rate = (
-            D(rules.tax_rate_percent)
-            / Decimal("100")
-        )
-
-        tax_total = _money(
-            taxable_compensation
-            * tax_rate
-        )
-
-        contribution_sources["tax"] = (
-            f"{_money(rules.tax_rate_percent)}% "
-            "of contractual earned compensation"
-        )
+        if not collect_now:
+            tax_total = Decimal("0.00")
+            contribution_sources["tax"] = "monthly cutoff checked in the 2nd half of the month"
+        elif already_collected:
+            tax_total = Decimal("0.00")
+            contribution_sources["tax"] = "already handled in another payroll run this month"
+        else:
+            tax_total, tax_pending = jo_cos_monthly_tax(
+                monthly_contribution_base,
+                rules.tax_rate_percent,
+            )
+            if tax_pending:
+                policy_blockers.append(tax_pending)
+                contribution_sources["tax"] = "pending client decision"
+            else:
+                contribution_sources["tax"] = (
+                    f"monthly amount earned P{monthly_contribution_base} vs P20,833.33 cutoff"
+                )
 
         employer_contributions_total = Decimal("0.00")
 
@@ -6171,10 +6320,12 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
     if dtr.get("missing_logs", 0) > 0:
         issues.append(f"{dtr.get('missing_logs', 0)} day(s) with missing attendance logs")
 
+    issues.extend(policy_blockers)
     issues_text = "; ".join(dict.fromkeys([i for i in issues if i]))
 
     return {
         "picked_employee_id": dtr.get("employee_id_used"),
+        "policy_blockers": list(dict.fromkeys(policy_blockers)),
 
         "attendance_summary": {
             "present_days": present_days,
@@ -6188,6 +6339,7 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             "deductible_minutes": int(late_minutes + undertime_minutes),
             "recorded_late_minutes": recorded_late_minutes,
             "half_days": int(dtr.get("half_days", 0) or 0),
+            "pending_review_days": int(dtr.get("pending_review_days", 0) or 0),
             "rules_version": dtr.get("rules_version", 1),
             "missing_logs": int(dtr.get("missing_logs", 0) or 0),
             "records_found": int(dtr.get("records_found", 0) or 0),
@@ -6246,8 +6398,13 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
 
             "late_deduction": _money(late_deduction),
             "undertime_deduction": _money(undertime_deduction),
+            "attendance_time_minutes": int(attendance_time_minutes),
+            "attendance_time_deduction": _money(attendance_time_amount),
             "absence_deduction": _money(absence_deduction),
             "attendance_deduction": _money(attendance_deduction),
+
+            "contribution_base": _money(contractual_earned_amount),
+            "monthly_contribution_base": _money(monthly_contribution_base),
 
             "manual_deduction": _money(manual_deduction),
             "loan_deduction": _money(loan_deduction_amount),
@@ -7448,6 +7605,36 @@ def _admin_can_access_payroll_batch(request, batch):
 # def _get_payroll_batch_finalization_errors(batch):
 # =========================================================
 
+def payroll_item_reconciles(item):
+    """
+    True when a saved item's deduction lines add up to its total deductions
+    and net = gross - total deductions, to the cent.
+    """
+    meta = item.meta or {}
+    computed = meta.get("computed_payroll") or {}
+    lines = (
+        as_decimal(computed.get("attendance_deduction", meta.get("attendance_deduction")))
+        + as_decimal(item.gov_contributions_total)
+        + as_decimal(item.tax_total)
+        + as_decimal(item.manual_deduction)
+        + as_decimal(computed.get("loan_deduction"))
+        + as_decimal(computed.get("other_deduction"))
+    )
+    gross = as_decimal(computed.get("gross"))
+    return (
+        _money(lines) == _money(item.deductions_total)
+        and _money(gross - as_decimal(item.deductions_total)) == _money(item.net_pay)
+    )
+
+
+def _unreconciled_payroll_items(items):
+    return [
+        item.profile.user.get_full_name() or item.profile.user.username
+        for item in items
+        if not payroll_item_reconciles(item)
+    ]
+
+
 def _build_payroll_batch_validation(batch):
     """
     Validate one saved payroll batch before official finalization.
@@ -7523,6 +7710,27 @@ def _build_payroll_batch_validation(batch):
         errors.append(
             "Payroll batch contains no payroll items."
         )
+    else:
+        # Policy inputs the client has not confirmed (e.g. tax at or above the
+        # monthly cutoff) or double collection: no definitive payroll yet.
+        blocked = [
+            (item, (item.meta or {}).get("policy_blockers") or [])
+            for item in items
+        ]
+        blocked = [(item, b) for item, b in blocked if b]
+        add_check(
+            "No pending policy decisions",
+            not blocked,
+            (
+                "No item depends on an unconfirmed policy."
+                if not blocked
+                else f"{len(blocked)} item(s) depend on an unconfirmed policy or a double collection."
+            ),
+        )
+        for item, item_blockers in blocked:
+            name = item.profile.user.get_full_name() or item.profile.user.username
+            for blocker in item_blockers:
+                errors.append(f"{name}: {blocker}")
 
         return {
             "is_ready": False,
@@ -7900,6 +8108,26 @@ def _build_payroll_batch_validation(batch):
                 deduction_over_gross_names[:5]
             )
             + "."
+        )
+
+    # -------------------------------------------------
+    # 8b. Each payslip reconciles to the cent
+    # -------------------------------------------------
+    unreconciled_names = _unreconciled_payroll_items(items)
+    add_check(
+        "Payslip lines reconcile",
+        not unreconciled_names,
+        (
+            "Deduction lines add up to total deductions, and net = gross - deductions."
+            if not unreconciled_names
+            else "Do not reconcile: " + ", ".join(unreconciled_names[:5])
+        ),
+    )
+    if unreconciled_names:
+        errors.append(
+            "Payslip lines do not reconcile for: "
+            + ", ".join(unreconciled_names[:5])
+            + ". Reprocess the batch."
         )
 
     # -------------------------------------------------
@@ -8287,6 +8515,8 @@ def admin_payroll(request):
 
             "late_deduction": late_deduction,
             "undertime_deduction": undertime_deduction,
+            "attendance_time_minutes": int(late_minutes or 0) + int(undertime_minutes or 0),
+            "attendance_time_deduction": p.get("attendance_time_deduction", _money(as_decimal(late_deduction) + as_decimal(undertime_deduction))),
             "deductions": deductions,
             "deductions_total": deductions,
             "net_pay": net_pay,
@@ -8798,6 +9028,16 @@ def _normalize_dtr_rows_for_print(rows):
         item["print_minutes"] = printed
         item["undertime_hour"] = printed // 60
         item["undertime_minute"] = printed % 60
+
+        # Reference-only shortfall (e.g. absent day with AM arrival missing):
+        # printed marked, never added to the total.
+        try:
+            reference = int(item.get("reference_minutes") or 0)
+        except (TypeError, ValueError):
+            reference = 0
+        item["reference_minutes"] = reference
+        item["reference_hour"] = reference // 60
+        item["reference_minute"] = reference % 60
 
         normalized.append(item)
 
@@ -9447,8 +9687,13 @@ def admin_payroll_process_batch(request):
 
                         "late_deduction": str(p.get("late_deduction", Decimal("0.00"))),
                         "undertime_deduction": str(p.get("undertime_deduction", Decimal("0.00"))),
+                        "attendance_time_minutes": int(p.get("attendance_time_minutes", late_minutes + undertime_minutes) or 0),
+                        "attendance_time_deduction": str(p.get("attendance_time_deduction", Decimal("0.00"))),
                         "absence_deduction": str(p.get("absence_deduction", Decimal("0.00"))),
                         "attendance_deduction": str(p.get("attendance_deduction", Decimal("0.00"))),
+
+                        "contribution_base": str(p.get("contribution_base", Decimal("0.00"))),
+                        "monthly_contribution_base": str(p.get("monthly_contribution_base", Decimal("0.00"))),
 
                         "manual_deduction": str(manual_deduction),
                         "loan_deduction": str(p.get("loan_deduction", Decimal("0.00"))),
@@ -9466,6 +9711,7 @@ def admin_payroll_process_batch(request):
 
                     "late_deduction": str(p.get("late_deduction", Decimal("0.00"))),
                     "undertime_deduction": str(p.get("undertime_deduction", Decimal("0.00"))),
+                    "attendance_time_deduction": str(p.get("attendance_time_deduction", Decimal("0.00"))),
                     "absence_deduction": str(p.get("absence_deduction", Decimal("0.00"))),
                     "attendance_deduction": str(p.get("attendance_deduction", Decimal("0.00"))),
 
@@ -9504,6 +9750,9 @@ def admin_payroll_process_batch(request):
                     },
 
                     "dtr_rows": safe_dtr_rows,
+
+                    # Policy items that must be settled before finalization.
+                    "policy_blockers": list(res.get("policy_blockers", [])),
                 },
             )
 
@@ -10045,6 +10294,10 @@ def admin_payroll_batch_detail(request, batch_id):
             "late_deduction": late_deduction,
             "undertime_deduction": (
                 undertime_deduction
+            ),
+            # Combined Late, Half-Day & Undertime (saved parts added together).
+            "attendance_time_deduction": money(
+                as_decimal(late_deduction) + as_decimal(undertime_deduction)
             ),
             "absence_deduction": (
                 absence_deduction

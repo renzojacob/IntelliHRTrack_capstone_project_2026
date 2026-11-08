@@ -68,11 +68,15 @@
               <td>
                 {% if row.undertime_hour %}
                   {{ row.undertime_hour }}
+                {% elif row.reference_hour and not row.print_minutes %}
+                  <span class="ref-time">{{ row.reference_hour }}</span>
                 {% endif %}
               </td>
               <td>
                 {% if row.undertime_minute %}
                   {{ row.undertime_minute }}
+                {% elif row.reference_minutes and not row.print_minutes %}
+                  <span class="ref-time">{{ row.reference_minute }}*</span>
                 {% endif %}
               </td>
             {% endif %}
@@ -86,6 +90,10 @@
         </tr>
       </tbody>
     </table>
+
+    {% for row in dtr_rows %}{% if row.reference_minutes and not row.print_minutes %}
+      <div class="ref-note">* Day {{ row.day }}: {{ row.remarks }}. Afternoon shortfall of {{ row.reference_minutes }} min shown for reference only; it is not in the total.</div>
+    {% endif %}{% endfor %}
 
     <div class="certification">
       I certify on my honor that the above is a true and correct report of the hours of work

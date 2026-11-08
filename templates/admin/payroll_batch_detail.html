@@ -176,14 +176,14 @@
           <th rowspan="2" title="Arrival-side deductible minutes, including half-day penalties">Late / half-day min</th>
           <th rowspan="2">UT min</th>
           <th colspan="5">Earnings</th>
-          <th colspan="10">Deductions</th>
+          <th colspan="9">Deductions</th>
           <th rowspan="2">Total deductions</th>
           <th rowspan="2">Net pay</th>
           <th rowspan="2">DTR</th>
         </tr>
         <tr>
           <th>Base / basic</th><th>PERA</th><th>Other</th><th>Premium</th><th>OT</th>
-          <th>Late</th><th>UT</th><th>SSS</th><th>PhilHealth</th><th>Pag-IBIG</th><th>Tax / WTAX</th><th>GSIS</th><th>Loans</th><th>Other</th><th>Manual</th>
+          <th title="Late, half-day and undertime, combined">Late, HD &amp; UT</th><th>SSS</th><th>PhilHealth</th><th>Pag-IBIG</th><th>Tax / WTAX</th><th>GSIS</th><th>Loans</th><th>Other</th><th>Manual</th>
         </tr>
       </thead>
       <tbody>
@@ -200,8 +200,7 @@
             <td>&#8369;{{ row.other_earnings }}</td>
             <td>&#8369;{{ row.premium_pay }}</td>
             <td>&#8369;{{ row.overtime_pay }}</td>
-            <td>&#8369;{{ row.late_deduction }}</td>
-            <td>&#8369;{{ row.undertime_deduction }}</td>
+            <td>&#8369;{{ row.attendance_time_deduction }}</td>
             <td>&#8369;{{ row.sss }}</td>
             <td>&#8369;{{ row.philhealth }}</td>
             <td>&#8369;{{ row.pagibig }}</td>
@@ -222,7 +221,7 @@
         <tr>
           <td colspan="6" class="l">Batch totals</td>
           <td colspan="5">Gross &#8369;{{ calculated_total_gross }}</td>
-          <td colspan="10">Deductions &#8369;{{ calculated_total_deductions }}</td>
+          <td colspan="9">Deductions &#8369;{{ calculated_total_deductions }}</td>
           <td>&#8369;{{ calculated_total_deductions }}</td>
           <td class="net">&#8369;{{ calculated_total_net }}</td>
           <td></td>

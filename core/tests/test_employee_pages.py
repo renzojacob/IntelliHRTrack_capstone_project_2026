@@ -104,7 +104,7 @@ class EmployeePortalTests(TestCase):
         item = self.process_payroll()
         r = self.client.get(reverse("employee_payslip_print", args=[item.id]))
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "Late and half day")
+        self.assertContains(r, "Late, Half-Day &amp; Undertime")
         self.assertContains(r, "ps-net")
         self.client.force_login(self.other.user)
         self.assertEqual(self.client.get(reverse("employee_payslip_print", args=[item.id])).status_code, 404)

@@ -446,3 +446,100 @@ def payroll_period_validation_error(start_date, end_date, pay_mode):
     if (start_date.day, end_date.day) != (first, last):
         return error
     return ""
+
+
+# =========================================================================
+# Attendance deduction (late, half day, undertime combined)
+# =========================================================================
+
+def attendance_time_deduction(minutes, daily_rate, per_minute_rate, minutes_per_day=480):
+    """
+    Peso deduction for deductible attendance minutes (late + half day +
+    undertime, already combined so no minute is counted twice).
+
+    Client method (November review worksheet): whole working days at the
+    daily rate, remaining minutes at the per-minute rate.  The per-minute rate
+    is the centavo-rounded rate payroll already shows (daily / 8 / 60, rounded
+    at each stage); the result is rounded once, ROUND_HALF_UP.
+
+        722 min at daily 829.59, per minute 1.73
+          = 1 day x 829.59 + 242 min x 1.73 = 829.59 + 418.66 = 1,248.25
+    """
+    minutes = max(0, int(minutes or 0))
+    minutes_per_day = int(minutes_per_day or 480) or 480
+    days, remainder = divmod(minutes, minutes_per_day)
+    return money(Decimal(days) * as_decimal(daily_rate) + Decimal(remainder) * as_decimal(per_minute_rate))
+
+
+def split_attendance_deduction(total_amount, late_minutes, undertime_minutes):
+    """
+    Allocate the combined deduction to its arrival-side (late and half day)
+    and departure-side (undertime) parts, for audit columns.  The parts always
+    add up exactly to total_amount.
+    """
+    total_amount = money(total_amount)
+    late_minutes = max(0, int(late_minutes or 0))
+    undertime_minutes = max(0, int(undertime_minutes or 0))
+    all_minutes = late_minutes + undertime_minutes
+    if all_minutes == 0:
+        return Decimal("0.00"), total_amount
+    late_part = money(total_amount * Decimal(late_minutes) / Decimal(all_minutes))
+    return late_part, money(total_amount - late_part)
+
+
+# =========================================================================
+# JO / COS monthly contributions: PhilHealth and tax
+# =========================================================================
+
+# PhilHealth Advisory No. 2025-0002: 5% premium, income floor P10,000 and
+# ceiling P100,000, so the monthly premium is between P500 and P5,000.
+# Client (November review): JO/COS PhilHealth = monthly amount earned x 5%,
+# P500 when lower, collected once a month.
+PHILHEALTH_RATE = Decimal("0.05")
+PHILHEALTH_FLOOR_PREMIUM = Decimal("500.00")
+PHILHEALTH_CEILING_PREMIUM = Decimal("5000.00")
+
+# Client-confirmed monthly cutoff (November review): no tax when the monthly
+# amount earned is below P20,833.33.  This is the client's rule for its JO/COS
+# payroll, not a statement of the general BIR treatment.
+TAX_MONTHLY_CUTOFF = Decimal("20833.33")
+
+# How tax applies AT OR ABOVE the cutoff is not confirmed by the client:
+#   "whole"  -> rate x the entire monthly amount earned
+#   "excess" -> rate x (monthly amount earned - cutoff)
+#   None     -> pending: no amount is produced and payroll cannot be finalized
+TAX_ABOVE_CUTOFF_METHOD = None
+
+TAX_PENDING_REASON = (
+    "Tax pending client decision: monthly amount earned is at or above the "
+    "P20,833.33 cutoff, but whether the rate applies to the whole amount or "
+    "only the excess is not confirmed"
+)
+
+
+def collects_monthly_items(pay_mode):
+    """PhilHealth and tax for JO/COS are collected in the 2nd half or a monthly run."""
+    return str(pay_mode or "").upper() in ("SECOND_HALF", "MONTHLY")
+
+
+def jo_cos_philhealth_monthly(monthly_base):
+    base = max(Decimal("0.00"), as_decimal(monthly_base))
+    premium = base * PHILHEALTH_RATE
+    return money(min(max(premium, PHILHEALTH_FLOOR_PREMIUM), PHILHEALTH_CEILING_PREMIUM))
+
+
+def jo_cos_monthly_tax(monthly_base, rate_percent, method=None):
+    """
+    Returns (amount, pending_reason).  pending_reason is None when the amount
+    is definitive.  `method` defaults to TAX_ABOVE_CUTOFF_METHOD.
+    """
+    base = money(max(Decimal("0.00"), as_decimal(monthly_base)))
+    if base < TAX_MONTHLY_CUTOFF:
+        return Decimal("0.00"), None
+    method = TAX_ABOVE_CUTOFF_METHOD if method is None else method
+    rate = as_decimal(rate_percent) / Decimal("100")
+    if method == "whole":
+        return money(base * rate), None
+    if method == "excess":
+        return money((base - TAX_MONTHLY_CUTOFF) * rate), None
+    return Decimal("0.00"), TAX_PENDING_REASON
