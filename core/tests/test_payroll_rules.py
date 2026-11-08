@@ -216,12 +216,15 @@ class FirstHalfPayslipTests(Drei22Base):
         self.assertEqual(Dec(self.cp["attendance_time_deduction"]), Dec("1248.25"))
         self.assertEqual(self.item.absences, 7)
         self.assertEqual(Dec(self.cp["absence_deduction"]), Dec("0.00"))   # JO base already excludes absent days
-        self.assertEqual(Dec(self.item.meta["sss_amount"]), Dec("380.00"))
-        self.assertEqual(Dec(self.item.meta["pagibig_amount"]), Dec("200.00"))
+        # Client: full monthly SSS and Pag-IBIG in the 1-15 cutoff.
+        self.assertEqual(Dec(self.item.meta["sss_amount"]), Dec("760.00"))
+        self.assertEqual(Dec(self.item.meta["pagibig_amount"]), Dec("400.00"))
         self.assertEqual(Dec(self.item.meta["philhealth_amount"]), Dec("0.00"))
         self.assertEqual(self.item.tax_total, Dec("0.00"))
-        self.assertEqual(self.item.deductions_total, Dec("1828.25"))
-        self.assertEqual(self.item.net_pay, Dec("2153.78"))
+        # 3,982.03 - (1,248.25 + 760 + 400) = 1,573.78
+        self.assertEqual(self.item.deductions_total, Dec("2408.25"))
+        self.assertEqual(self.item.net_pay, Dec("1573.78"))
+        self.assertEqual(Dec(self.cp["gross"]) - self.item.deductions_total, self.item.net_pay)
         self.assertTrue(views.payroll_item_reconciles(self.item))
 
     def test_half_days_are_not_charged_twice(self):
@@ -238,6 +241,9 @@ class FirstHalfPayslipTests(Drei22Base):
         self.assertContains(admin_slip, "Absences (7)")
         self.assertNotContains(admin_slip, "Undertime (184 min)")
         self.assertContains(admin_slip, "PhilHealth (collected in 2nd half)")
+        self.assertContains(admin_slip, "Absent days are already excluded from JO base pay.")
+        self.assertContains(admin_slip, "760.00")
+        self.assertContains(admin_slip, "1573.78")
         self.client.force_login(self.emp.user)
         emp_slip = self.client.get(reverse("employee_payslip_print", args=[self.item.id]))
         self.assertContains(emp_slip, "Late, Half-Day &amp; Undertime (722 min, 12h 02m)")
@@ -267,6 +273,8 @@ class MonthlyCollectionTests(Drei22Base):
         self.assertEqual(Dec(cp["monthly_contribution_base"]),
                          Dec("2733.78") + Dec(cp["contribution_base"]))
         self.assertEqual(Dec(second.meta["philhealth_amount"]), Dec("500.00"))   # 5% is below P500
+        self.assertEqual(Dec(second.meta["sss_amount"]), Dec("0.00"))            # 16-end cutoff
+        self.assertEqual(Dec(second.meta["pagibig_amount"]), Dec("0.00"))
         self.assertEqual(second.tax_total, Dec("0.00"))                          # below the cutoff
         self.assertEqual(second.meta["policy_blockers"], [])
         self.assertTrue(views.payroll_item_reconciles(second))
@@ -333,3 +341,56 @@ class PermanentReconcilesTests(TestCase):
         item = PayrollItem.objects.get(batch_id=r.json()["batch_id"], profile=emp)
         self.assertTrue(views.payroll_item_reconciles(item))
         self.assertEqual(item.meta["policy_blockers"], [])
+
+
+class SssPagibigScheduleTests(Drei22Base):
+    """Client: full monthly SSS and Pag-IBIG in the 1-15 cutoff, zero in 16-end."""
+
+    def test_schedule_by_cutoff(self):
+        f = P.optional_monthly_deduction_for_period
+        self.assertEqual(f("760", "760", "FIRST_HALF"), Dec("760.00"))
+        self.assertEqual(f("760", "760", "SECOND_HALF"), Dec("0.00"))
+        self.assertEqual(f("760", "760", "MONTHLY"), Dec("760.00"))
+        self.assertEqual(f("400", "400", "FIRST_HALF"), Dec("400.00"))
+        self.assertEqual(f("0", "760", "FIRST_HALF"), Dec("0.00"))       # not selected
+        self.assertEqual(f("500", "760", "FIRST_HALF"), Dec("760.00"))   # minimum applies
+
+    def test_monthly_run_after_first_half_does_not_deduct_again(self):
+        self.process(F.period(D(2026, 10, 1), D(2026, 10, 15), "FIRST_HALF"))
+        monthly = self.process(F.period(D(2026, 10, 1), D(2026, 10, 31), "MONTHLY"))
+        self.assertEqual(Dec(monthly.meta["sss_amount"]), Dec("0.00"))
+        self.assertEqual(Dec(monthly.meta["pagibig_amount"]), Dec("0.00"))
+        self.assertTrue(any("SSS and Pag-IBIG" in b for b in monthly.meta["policy_blockers"]))
+        self.assertTrue(views.payroll_item_reconciles(monthly))
+
+    def test_first_half_after_monthly_does_not_deduct_again(self):
+        self.process(F.period(D(2026, 10, 1), D(2026, 10, 31), "MONTHLY"))
+        first = self.process(F.period(D(2026, 10, 1), D(2026, 10, 15), "FIRST_HALF"))
+        self.assertEqual(Dec(first.meta["sss_amount"]), Dec("0.00"))
+        errors = views._get_payroll_batch_finalization_errors(first.batch)
+        self.assertTrue(any("SSS and Pag-IBIG" in e for e in errors))
+
+    def test_reprocessing_the_same_first_half_is_not_a_duplicate(self):
+        period = F.period(D(2026, 10, 1), D(2026, 10, 15), "FIRST_HALF")
+        self.process(period)
+        again = self.process(period)
+        self.assertEqual(Dec(again.meta["sss_amount"]), Dec("760.00"))
+        self.assertEqual(again.meta["policy_blockers"], [])
+
+    def test_finalized_record_is_preserved(self):
+        period = F.period(D(2026, 10, 1), D(2026, 10, 15), "FIRST_HALF")
+        item = self.process(period)
+        # A batch finalized under the old split keeps its saved values.
+        PayrollItem.objects.filter(id=item.id).update(net_pay=Dec("2014.95"), deductions_total=Dec("1967.08"))
+        PayrollBatch.objects.filter(id=item.batch_id).update(status=PayrollBatch.STATUS_FINALIZED)
+        r = self.client.post(reverse("admin_payroll_process_batch"),
+                             {"period": period.id, "branch": self.br.id, "type": "ALL"})
+        self.assertEqual(r.status_code, 400)
+        item.refresh_from_db()
+        self.assertEqual((item.net_pay, item.deductions_total), (Dec("2014.95"), Dec("1967.08")))
+        slip = self.client.get(reverse("admin_payslip", args=[self.emp.id, period.id]))
+        self.assertContains(slip, "2014.95")
+
+    def test_cos_has_no_jo_absence_note(self):
+        self.assertEqual(views._jo_absence_note("COS", "0.00"), "")
+        self.assertEqual(views._jo_absence_note("JO", "0.00"), views.JO_ABSENCE_NOTE)

@@ -73,6 +73,7 @@ from .payroll_calculations import (
     as_decimal,
     attendance_time_deduction,
     bir_withholding_tax,
+    collects_first_cutoff_items,
     collects_monthly_items,
     jo_cos_monthly_tax,
     jo_cos_philhealth_monthly,
@@ -2670,6 +2671,11 @@ def employee_payroll(request):
             issues_text = preview.get("issues", "")
 
         computed = _with_combined_attendance_line(computed)
+        computed["absence_note"] = _jo_absence_note(
+            ((saved_meta.get("employee") or {}).get("employment_type") if using_saved_payroll else None)
+            or profile.employment_type,
+            computed.get("absence_deduction"),
+        )
 
         if isinstance(issues_text, str) and issues_text:
             issues = [x.strip() for x in issues_text.split(";") if x.strip()]
@@ -2878,6 +2884,16 @@ def _get_from_nested_meta(meta, section, key, default=None):
         return default
 
     return nested.get(key, default)
+
+
+JO_ABSENCE_NOTE = "Absent days are already excluded from JO base pay."
+
+
+def _jo_absence_note(employment_type, absence_deduction):
+    """JO is paid only for days worked, so absences carry no separate deduction."""
+    if str(employment_type or "").upper() == UserProfile.EMP_JO and _money(as_decimal(absence_deduction)) == 0:
+        return JO_ABSENCE_NOTE
+    return ""
 
 
 def _with_combined_attendance_line(computed):
@@ -3211,6 +3227,7 @@ def _build_payslip_data(profile, period, branch, rules, generated_by_user, saved
         "attendance_time_deduction": _money(attendance_time_deduction_amount),
         "absence_deduction": _money(absence_deduction),
         "attendance_deduction": _money(attendance_deduction),
+        "absence_note": _jo_absence_note(payslip_employment_type, absence_deduction),
         "monthly_items_deferred": (
             not is_permanent
             and str(getattr(period, "pay_mode", "") or "").upper() == PayrollPeriod.PAY_FIRST_HALF
@@ -5479,11 +5496,34 @@ def _same_month_contribution_context(profile, period):
             "not collected again"
         )
 
+    # SSS and Pag-IBIG: full month in the 1st half or a monthly run.  Another
+    # such run this month that already deducted them means not again.
+    def _took_sss_or_pagibig(item):
+        meta = item.meta or {}
+        return (
+            as_decimal(_get_from_meta(meta, "sss", "sss_amount", default="0")) > 0
+            or as_decimal(_get_from_meta(meta, "pagibig", "pagibig_amount", default="0")) > 0
+        )
+
+    sss_collecting = [
+        i for i in items
+        if collects_first_cutoff_items(i.batch.period.pay_mode) and _took_sss_or_pagibig(i)
+    ]
+    sss_blocker = ""
+    if sss_collecting:
+        names = ", ".join(sorted({i.batch.name for i in sss_collecting}))
+        sss_blocker = (
+            f"SSS and Pag-IBIG for {first_day:%B %Y} were already deducted in another payroll run ({names}); "
+            "not deducted again"
+        )
+
     return {
         "first_half_base": first_half_base,
         "already_collected": bool(other_collecting),
         "blockers": blockers,
         "warnings": warnings,
+        "sss_pagibig_collected": bool(sss_collecting),
+        "sss_pagibig_blocker": sss_blocker,
     }
 
 
@@ -6148,14 +6188,28 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             )
         )
 
+        # Other processed payroll for this employee in the same month (read only).
+        month_ctx = _same_month_contribution_context(profile, period)
+
         # -------------------------------------------------
-        # Optional monthly SSS
+        # Optional monthly SSS and Pag-IBIG
         # -------------------------------------------------
+        # Client (November review): the full monthly amount in the 1-15
+        # cutoff (or a full-month run), nothing in the 16-end cutoff.
+        sss_pagibig_skipped = (
+            collects_first_cutoff_items(period.pay_mode)
+            and month_ctx["sss_pagibig_collected"]
+        )
+        if sss_pagibig_skipped:
+            policy_blockers.append(month_ctx["sss_pagibig_blocker"])
+
         sss = optional_monthly_deduction_for_period(
             contrib.sss_amount,
             rules.sss_minimum,
             period.pay_mode,
         )
+        if sss_pagibig_skipped:
+            sss = Decimal("0.00")
 
         if (
             D(contrib.sss_amount) > 0
@@ -6177,6 +6231,8 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             rules.pagibig_minimum,
             period.pay_mode,
         )
+        if sss_pagibig_skipped:
+            pagibig = Decimal("0.00")
 
         if (
             D(contrib.pagibig_amount) > 0
@@ -6208,7 +6264,6 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
         already_collected = False
 
         if collect_now:
-            month_ctx = _same_month_contribution_context(profile, period)
             policy_blockers.extend(month_ctx["blockers"])
             issues.extend(month_ctx["warnings"])
             if str(period.pay_mode or "").upper() == PayrollPeriod.PAY_SECOND_HALF:
@@ -6246,15 +6301,23 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
             )
 
         contribution_sources["sss"] = (
-            "optional monthly JO/COS deduction"
-            if D(contrib.sss_amount) > 0
-            else "not selected"
+            "not selected"
+            if D(contrib.sss_amount) <= 0
+            else "already deducted in another payroll run this month"
+            if sss_pagibig_skipped
+            else "full monthly amount, 1-15 cutoff or monthly run"
+            if collects_first_cutoff_items(period.pay_mode)
+            else "deducted in the 1-15 cutoff"
         )
 
         contribution_sources["pagibig"] = (
-            "optional monthly JO/COS deduction"
-            if D(contrib.pagibig_amount) > 0
-            else "not selected"
+            "not selected"
+            if D(contrib.pagibig_amount) <= 0
+            else "already deducted in another payroll run this month"
+            if sss_pagibig_skipped
+            else "full monthly amount, 1-15 cutoff or monthly run"
+            if collects_first_cutoff_items(period.pay_mode)
+            else "deducted in the 1-15 cutoff"
         )
 
         gov_total = _money(

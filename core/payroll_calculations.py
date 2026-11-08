@@ -49,7 +49,8 @@ def optional_monthly_deduction_for_period(
     - Zero means the employee did not choose/apply the deduction.
     - If a positive amount is configured below the allowed minimum,
       the minimum monthly amount is used.
-    - Monthly amounts are prorated by payroll period.
+    - Client (November review): the full monthly amount is deducted in the
+      1-15 cutoff (or a full-month run) and nothing in the 16-end cutoff.
     """
 
     configured = max(
@@ -65,15 +66,15 @@ def optional_monthly_deduction_for_period(
     if configured <= 0:
         return Decimal("0.00")
 
-    effective_monthly_amount = max(
-        configured,
-        minimum,
-    )
+    if not collects_first_cutoff_items(pay_mode):
+        return Decimal("0.00")
 
-    return recurring_amount_for_period(
-        effective_monthly_amount,
-        pay_mode,
-    )
+    return money(max(configured, minimum))
+
+
+def collects_first_cutoff_items(pay_mode):
+    """JO/COS SSS and Pag-IBIG are collected in the 1st half or a monthly run."""
+    return str(pay_mode or "").upper() in ("FIRST_HALF", "MONTHLY")
 
 
 def contractual_earned_compensation(
