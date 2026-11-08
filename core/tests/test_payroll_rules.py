@@ -178,6 +178,13 @@ class Drei22Base(TestCase):
         return PayrollItem.objects.get(profile=self.emp, batch_id=r.json()["batch_id"])
 
 
+def finalize(item):
+    """Mark the item's batch officially finalized (what the finalize view does to status)."""
+    PayrollBatch.objects.filter(id=item.batch_id).update(status=PayrollBatch.STATUS_FINALIZED)
+    item.batch.refresh_from_db()
+    return item
+
+
 class MonthlyDtrOct19Tests(Drei22Base):
     def test_row_19_and_totals(self):
         period = F.period(D(2026, 10, 1), D(2026, 10, 31), "MONTHLY")
@@ -286,7 +293,7 @@ class MonthlyCollectionTests(Drei22Base):
 
     def test_monthly_run_after_second_half_does_not_collect_again(self):
         self.process(self.h1)
-        self.process(self.h2)
+        finalize(self.process(self.h2))
         monthly = self.process(F.period(D(2026, 10, 1), D(2026, 10, 31), "MONTHLY"))
         self.assertEqual(Dec(monthly.meta["philhealth_amount"]), Dec("0.00"))
         self.assertTrue(any("already handled" in b for b in monthly.meta["policy_blockers"]))
@@ -356,7 +363,7 @@ class SssPagibigScheduleTests(Drei22Base):
         self.assertEqual(f("500", "760", "FIRST_HALF"), Dec("760.00"))   # minimum applies
 
     def test_monthly_run_after_first_half_does_not_deduct_again(self):
-        self.process(F.period(D(2026, 10, 1), D(2026, 10, 15), "FIRST_HALF"))
+        finalize(self.process(F.period(D(2026, 10, 1), D(2026, 10, 15), "FIRST_HALF")))
         monthly = self.process(F.period(D(2026, 10, 1), D(2026, 10, 31), "MONTHLY"))
         self.assertEqual(Dec(monthly.meta["sss_amount"]), Dec("0.00"))
         self.assertEqual(Dec(monthly.meta["pagibig_amount"]), Dec("0.00"))
@@ -364,7 +371,7 @@ class SssPagibigScheduleTests(Drei22Base):
         self.assertTrue(views.payroll_item_reconciles(monthly))
 
     def test_first_half_after_monthly_does_not_deduct_again(self):
-        self.process(F.period(D(2026, 10, 1), D(2026, 10, 31), "MONTHLY"))
+        finalize(self.process(F.period(D(2026, 10, 1), D(2026, 10, 31), "MONTHLY")))
         first = self.process(F.period(D(2026, 10, 1), D(2026, 10, 15), "FIRST_HALF"))
         self.assertEqual(Dec(first.meta["sss_amount"]), Dec("0.00"))
         errors = views._get_payroll_batch_finalization_errors(first.batch)
@@ -394,3 +401,72 @@ class SssPagibigScheduleTests(Drei22Base):
     def test_cos_has_no_jo_absence_note(self):
         self.assertEqual(views._jo_absence_note("COS", "0.00"), "")
         self.assertEqual(views._jo_absence_note("JO", "0.00"), views.JO_ABSENCE_NOTE)
+
+
+class UnofficialOverlappingRunsTests(Drei22Base):
+    """
+    Production case: two October monthly runs (Calapan Monthly - ALL and
+    Monthly - JO) were processed but never finalized.  They saved SSS P760 and
+    Pag-IBIG P400 but nothing was withheld, so they must not zero the official
+    October 1-15 cutoff.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.monthly = F.period(D(2026, 10, 1), D(2026, 10, 31), "MONTHLY")
+        self.h1 = F.period(D(2026, 10, 1), D(2026, 10, 15), "FIRST_HALF")
+        self.monthly_all = self.process(self.monthly, "ALL")
+        self.monthly_jo = self.process(self.monthly, "JO")
+        # The unofficial runs carry the full amounts, which used to trigger the block.
+        self.assertEqual(Dec(self.monthly_all.meta["sss_amount"]), Dec("760.00"))
+        self.assertEqual(Dec(self.monthly_jo.meta["sss_amount"]), Dec("760.00"))
+
+    def test_official_first_half_keeps_full_contributions(self):
+        h1 = self.process(self.h1)
+        self.assertEqual(Dec(h1.meta["sss_amount"]), Dec("760.00"))
+        self.assertEqual(Dec(h1.meta["pagibig_amount"]), Dec("400.00"))
+        self.assertEqual(h1.deductions_total, Dec("2408.25"))
+        self.assertEqual(h1.net_pay, Dec("1573.78"))
+        self.assertEqual(h1.meta["policy_blockers"], [])
+        self.assertIn("Unfinalized payroll run(s) also deduct SSS/Pag-IBIG for October 2026", h1.issues)
+        errors = views._get_payroll_batch_finalization_errors(h1.batch)
+        self.assertFalse(any("SSS and Pag-IBIG" in e for e in errors))
+
+    def test_payslip_shows_the_official_amounts(self):
+        self.process(self.h1)
+        slip = self.client.get(reverse("admin_payslip", args=[self.emp.id, self.h1.id]))
+        self.assertContains(slip, "<dt>SSS</dt><dd>&#8369;760.00</dd>", html=False)
+        self.assertContains(slip, "<dt>Pag-IBIG</dt><dd>&#8369;400.00</dd>", html=False)
+        self.assertContains(slip, "1573.78")
+
+    def test_unofficial_runs_are_left_untouched(self):
+        before = [(i.id, i.net_pay, i.deductions_total, i.meta) for i in (self.monthly_all, self.monthly_jo)]
+        self.process(self.h1)
+        after = [(i.id, i.net_pay, i.deductions_total, i.meta)
+                 for i in PayrollItem.objects.filter(id__in=[self.monthly_all.id, self.monthly_jo.id]).order_by("id")]
+        self.assertEqual(sorted(before, key=lambda t: t[0]), after)
+
+    def test_a_finalized_monthly_run_still_blocks(self):
+        finalize(self.monthly_all)
+        h1 = self.process(self.h1)
+        self.assertEqual(Dec(h1.meta["sss_amount"]), Dec("0.00"))
+        self.assertEqual(Dec(h1.meta["pagibig_amount"]), Dec("0.00"))
+        self.assertTrue(any("finalized payroll run" in b for b in h1.meta["policy_blockers"]))
+
+    def test_finalizing_the_monthly_run_later_blocks_the_first_half(self):
+        h1 = self.process(self.h1)                      # processed while nothing was final
+        finalize(self.monthly_all)                      # someone finalizes the monthly run afterwards
+        errors = views._get_payroll_batch_finalization_errors(h1.batch)
+        self.assertTrue(any("SSS and Pag-IBIG" in e and self.monthly_all.batch.name in e for e in errors))
+
+    def test_two_scopes_of_one_period_cannot_both_be_finalized(self):
+        finalize(self.monthly_all)
+        errors = views._get_payroll_batch_finalization_errors(self.monthly_jo.batch)
+        self.assertTrue(any("SSS and Pag-IBIG" in e for e in errors))
+
+    def test_reopened_batch_no_longer_counts_as_withheld(self):
+        finalize(self.monthly_all)
+        PayrollBatch.objects.filter(id=self.monthly_all.batch_id).update(status=PayrollBatch.STATUS_COMPLETED)
+        h1 = self.process(self.h1)
+        self.assertEqual(Dec(h1.meta["sss_amount"]), Dec("760.00"))
+        self.assertEqual(h1.meta["policy_blockers"], [])
