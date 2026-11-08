@@ -5440,20 +5440,43 @@ def _saved_contribution_base(item):
     return _money(as_decimal(value))
 
 
-def _same_month_contribution_context(profile, period):
+def _item_amount(item, *keys):
+    meta = item.meta or {}
+    return as_decimal(_get_from_meta(meta, *keys, default="0"))
+
+
+def _item_withheld_sss_or_pagibig(item):
+    return _item_amount(item, "sss", "sss_amount") > 0 or _item_amount(item, "pagibig", "pagibig_amount") > 0
+
+
+def _item_withheld_monthly_items(item):
+    return _item_amount(item, "philhealth", "philhealth_amount") > 0 or as_decimal(item.tax_total) > 0
+
+
+def _same_month_contribution_context(profile, period, exclude_batch_id=None):
     """
     Read-only look at this employee's other processed payroll in the same
-    calendar month, for the once-a-month PhilHealth and tax.
+    calendar month.
 
-    Returns first_half_base (amount earned in the 1st half), already_collected
-    (another 2nd-half or monthly run already took the monthly items),
-    blockers (stop finalization) and warnings.
+    Only a FINALIZED batch is official payroll, so only a finalized run that
+    actually deducted an amount counts as "already withheld" and blocks
+    another run.  Completed batches (processed but never finalized, including
+    reopened ones) are previews, tests or superseded runs: they only produce a
+    warning.  The finalization check repeats this test, so two overlapping
+    runs can never both be finalized with the same contribution.
+
+    exclude_batch_id: when validating a saved batch, exclude that batch (and
+    nothing else, so another scope of the same period is still caught).
+    Otherwise the period being computed is excluded.
+
+    Returns first_half_base, already_collected (PhilHealth/tax),
+    sss_pagibig_collected, blockers, warnings and sss_pagibig_blocker.
     """
     year, month = period.start_date.year, period.start_date.month
     first_day = date(year, month, 1)
     last_day = date(year, month, monthrange(year, month)[1])
 
-    items = list(
+    items_qs = (
         PayrollItem.objects
         .select_related("batch", "batch__period")
         .filter(
@@ -5462,8 +5485,18 @@ def _same_month_contribution_context(profile, period):
             batch__period__start_date__gte=first_day,
             batch__period__end_date__lte=last_day,
         )
-        .exclude(batch__period_id=period.id)
     )
+    if exclude_batch_id is not None:
+        items_qs = items_qs.exclude(batch_id=exclude_batch_id)
+    else:
+        items_qs = items_qs.exclude(batch__period_id=period.id)
+    items = list(items_qs)
+
+    def is_final(item):
+        return item.batch.status == PayrollBatch.STATUS_FINALIZED
+
+    def names(found):
+        return ", ".join(sorted({i.batch.name for i in found}))
 
     blockers = []
     warnings = []
@@ -5472,7 +5505,7 @@ def _same_month_contribution_context(profile, period):
 
     if mode == PayrollPeriod.PAY_SECOND_HALF:
         first_items = [i for i in items if str(i.batch.period.pay_mode).upper() == PayrollPeriod.PAY_FIRST_HALF]
-        finalized = [i for i in first_items if i.batch.status == PayrollBatch.STATUS_FINALIZED]
+        finalized = [i for i in first_items if is_final(i)]
         candidates = finalized or first_items
         values = {_saved_contribution_base(i) for i in candidates}
         if not candidates:
@@ -5488,41 +5521,47 @@ def _same_month_contribution_context(profile, period):
         else:
             first_half_base = values.pop()
 
-    other_collecting = [i for i in items if collects_monthly_items(i.batch.period.pay_mode)]
-    if other_collecting:
-        names = ", ".join(sorted({i.batch.name for i in other_collecting}))
-        blockers.append(
-            f"PhilHealth and tax for {first_day:%B %Y} were already handled in another payroll run ({names}); "
-            "not collected again"
-        )
-
-    # SSS and Pag-IBIG: full month in the 1st half or a monthly run.  Another
-    # such run this month that already deducted them means not again.
-    def _took_sss_or_pagibig(item):
-        meta = item.meta or {}
-        return (
-            as_decimal(_get_from_meta(meta, "sss", "sss_amount", default="0")) > 0
-            or as_decimal(_get_from_meta(meta, "pagibig", "pagibig_amount", default="0")) > 0
-        )
-
-    sss_collecting = [
+    # PhilHealth and tax (2nd half or monthly run).
+    monthly_runs = [
         i for i in items
-        if collects_first_cutoff_items(i.batch.period.pay_mode) and _took_sss_or_pagibig(i)
+        if collects_monthly_items(i.batch.period.pay_mode) and _item_withheld_monthly_items(i)
     ]
+    monthly_withheld = [i for i in monthly_runs if is_final(i)]
+    if monthly_withheld:
+        blockers.append(
+            f"PhilHealth and tax for {first_day:%B %Y} were already handled in a finalized payroll run "
+            f"({names(monthly_withheld)}); not collected again"
+        )
+    elif monthly_runs:
+        warnings.append(
+            f"Unfinalized payroll run(s) also compute PhilHealth/tax for {first_day:%B %Y} "
+            f"({names(monthly_runs)}); finalize only one"
+        )
+
+    # SSS and Pag-IBIG (1st half or monthly run).
+    sss_runs = [
+        i for i in items
+        if collects_first_cutoff_items(i.batch.period.pay_mode) and _item_withheld_sss_or_pagibig(i)
+    ]
+    sss_withheld = [i for i in sss_runs if is_final(i)]
     sss_blocker = ""
-    if sss_collecting:
-        names = ", ".join(sorted({i.batch.name for i in sss_collecting}))
+    if sss_withheld:
         sss_blocker = (
-            f"SSS and Pag-IBIG for {first_day:%B %Y} were already deducted in another payroll run ({names}); "
-            "not deducted again"
+            f"SSS and Pag-IBIG for {first_day:%B %Y} were already deducted in a finalized payroll run "
+            f"({names(sss_withheld)}); not deducted again"
+        )
+    elif sss_runs:
+        warnings.append(
+            f"Unfinalized payroll run(s) also deduct SSS/Pag-IBIG for {first_day:%B %Y} "
+            f"({names(sss_runs)}); finalize only one"
         )
 
     return {
         "first_half_base": first_half_base,
-        "already_collected": bool(other_collecting),
+        "already_collected": bool(monthly_withheld),
         "blockers": blockers,
         "warnings": warnings,
-        "sss_pagibig_collected": bool(sss_collecting),
+        "sss_pagibig_collected": bool(sss_withheld),
         "sss_pagibig_blocker": sss_blocker,
     }
 
@@ -6190,6 +6229,7 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
 
         # Other processed payroll for this employee in the same month (read only).
         month_ctx = _same_month_contribution_context(profile, period)
+        issues.extend(month_ctx["warnings"])
 
         # -------------------------------------------------
         # Optional monthly SSS and Pag-IBIG
@@ -6265,7 +6305,6 @@ def _compute_payroll(profile: UserProfile, branch: Branch, period: PayrollPeriod
 
         if collect_now:
             policy_blockers.extend(month_ctx["blockers"])
-            issues.extend(month_ctx["warnings"])
             if str(period.pay_mode or "").upper() == PayrollPeriod.PAY_SECOND_HALF:
                 monthly_contribution_base = _money(
                     contractual_earned_amount + month_ctx["first_half_base"]
@@ -7668,6 +7707,27 @@ def _admin_can_access_payroll_batch(request, batch):
 # def _get_payroll_batch_finalization_errors(batch):
 # =========================================================
 
+def _finalized_withholding_overlaps(batch, items):
+    """
+    Errors for items in this batch that deduct a contribution another
+    FINALIZED run already withheld for the same employee and month
+    (including another employee-type scope of the same period).
+    """
+    errors = []
+    for item in items:
+        if str(item.profile.employment_type or "").upper() == UserProfile.EMP_PERMANENT:
+            continue
+        ctx = _same_month_contribution_context(item.profile, batch.period, exclude_batch_id=batch.id)
+        name = item.profile.user.get_full_name() or item.profile.user.username
+        if _item_withheld_sss_or_pagibig(item) and ctx["sss_pagibig_collected"]:
+            errors.append(f"{name}: {ctx['sss_pagibig_blocker']}")
+        if _item_withheld_monthly_items(item) and ctx["already_collected"]:
+            errors.append(
+                f"{name}: PhilHealth/tax for {batch.period.start_date:%B %Y} already withheld in a finalized payroll run"
+            )
+    return errors
+
+
 def payroll_item_reconciles(item):
     """
     True when a saved item's deduction lines add up to its total deductions
@@ -7794,6 +7854,20 @@ def _build_payroll_batch_validation(batch):
             name = item.profile.user.get_full_name() or item.profile.user.username
             for blocker in item_blockers:
                 errors.append(f"{name}: {blocker}")
+
+        # Re-check at finalization time: another run may have been finalized
+        # after this batch was processed.
+        overlap_errors = _finalized_withholding_overlaps(batch, items)
+        add_check(
+            "No contribution already withheld in a finalized run",
+            not overlap_errors,
+            (
+                "No SSS, Pag-IBIG, PhilHealth or tax is withheld twice."
+                if not overlap_errors
+                else f"{len(overlap_errors)} contribution(s) already withheld in a finalized run."
+            ),
+        )
+        errors.extend(overlap_errors)
 
         return {
             "is_ready": False,
