@@ -53,3 +53,4 @@ hikvision_connector.log
 auto-sync-backups/
 
 CLAUDE.md
+claude mcp add mcp_server_mysql.txt
