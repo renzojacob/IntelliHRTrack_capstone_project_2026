@@ -212,3 +212,8 @@ Install direct production artifact support with:
 ```text
 pip install -r requirements-production-ml.txt
 ```
+### Weekly attendance anomaly detection
+
+Run `build_ml_features` to audit completed Monday–Sunday windows. Each week requires authoritative branch rules and at least two days of usable punch evidence. The audit accepts the tagged client workbook and device punches carrying the existing face and fingerprint proof. It excludes known demonstrations, the fictional payroll verification branch, rejected devices, inconsistent punch weeks, and unknown origin. A week with any excluded punch stays outside training because the DTR builder may otherwise use that punch in its calculations. The audit can show per-window provenance counts with `--exclusions`. The latest eligible week is held out. Earlier weeks must span multiple employees and weeks and show multivariate variation. Run the readiness audit against the operational dataset before making a training decision.
+
+The median-imputed Isolation Forest uses automatic contamination and the production seed. The advisory index is the negative of sklearn's score_samples, rounded to four decimals. Higher values indicate more unusual attendance patterns. The review region spans half the training decision values' median absolute deviation on either side of zero. Outside that region negative decisions are unusual and other decisions are normal. A zero-width region yields two categories. Explanations list observed features outside their historical interquartile range. Approved leave, travel and holiday counts are descriptive context and excluded from the fitted inputs. Anomaly output has no probability or misconduct interpretation.

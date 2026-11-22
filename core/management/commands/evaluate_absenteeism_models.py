@@ -5,9 +5,11 @@ from django.core.management.base import BaseCommand, CommandError
 from core.analytics.production_ml.artifacts import MLArtifactError, load_registry_artifact
 from core.analytics.production_ml.registry import record_lifecycle_event
 from core.models import MLModelRegistry
+from core.analytics.production_ml.constants import MODEL_PURPOSE
 
 
 class Command(BaseCommand):
+    purposes = (MODEL_PURPOSE,)
     help = "Verify stored validated model artifacts and display their measured production metrics."
 
     def add_arguments(self, parser):
@@ -16,6 +18,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         identifier = options.get("identifier")
         queryset = MLModelRegistry.objects.filter(
+            purpose__in=self.purposes,
             status__in=[
                 MLModelRegistry.STATUS_CANDIDATE,
                 MLModelRegistry.STATUS_VALIDATED,
@@ -38,6 +41,7 @@ class Command(BaseCommand):
                 {
                     "id": registry.pk,
                     "version": registry.model_version,
+                    "purpose": registry.purpose,
                     "status": registry.status,
                     "metrics": registry.metrics,
                     "validation_metadata": registry.validation_metadata,

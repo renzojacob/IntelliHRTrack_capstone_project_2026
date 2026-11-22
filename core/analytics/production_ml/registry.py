@@ -7,6 +7,7 @@ from core.models import MLLifecycleEvent, MLModelRegistry
 
 from .artifacts import load_registry_artifact
 from .constants import MODEL_PURPOSE
+from .anomaly import PURPOSE as ANOMALY_PURPOSE
 
 
 class MLActivationError(RuntimeError):
@@ -26,7 +27,7 @@ def record_lifecycle_event(event_type, *, succeeded, model=None, message="", met
 
 
 def activate_validated_model(identifier, *, actor=None, actor_label="management-command"):
-    models = MLModelRegistry.objects.filter(purpose=MODEL_PURPOSE)
+    models = MLModelRegistry.objects.filter(purpose__in=[MODEL_PURPOSE, ANOMALY_PURPOSE])
     try:
         if str(identifier).isdigit():
             selected = models.get(pk=int(identifier))
@@ -54,7 +55,8 @@ def activate_validated_model(identifier, *, actor=None, actor_label="management-
         raise MLActivationError("Only a VALIDATED model can be activated.")
     readiness = selected.validation_metadata.get("readiness", {})
     selection = selected.validation_metadata.get("selection", {})
-    if readiness.get("ready") is not True or selection.get("selected_model_key") != selected.model_key:
+    supervised = selected.purpose == MODEL_PURPOSE
+    if readiness.get("ready") is not True or (supervised and selection.get("selected_model_key") != selected.model_key):
         record_lifecycle_event(
             "ACTIVATION_FAILED",
             succeeded=False,
@@ -78,13 +80,13 @@ def activate_validated_model(identifier, *, actor=None, actor_label="management-
         raise MLActivationError(str(exc)) from exc
 
     with transaction.atomic():
-        locked = MLModelRegistry.objects.select_for_update().filter(purpose=MODEL_PURPOSE)
-        selected = locked.get(pk=selected.pk)
+        locked = list(MLModelRegistry.objects.select_for_update().filter(purpose=selected.purpose).order_by("pk"))
+        selected = next(model for model in locked if model.pk == selected.pk)
         if selected.status != MLModelRegistry.STATUS_VALIDATED:
             raise MLActivationError("Model status changed before activation.")
         load_registry_artifact(selected)
         now = timezone.now()
-        previous = list(locked.filter(status=MLModelRegistry.STATUS_ACTIVE).exclude(pk=selected.pk))
+        previous = [model for model in locked if model.status == MLModelRegistry.STATUS_ACTIVE]
         for model in previous:
             model.status = MLModelRegistry.STATUS_RETIRED
             model.save(update_fields=["status", "updated_at"])

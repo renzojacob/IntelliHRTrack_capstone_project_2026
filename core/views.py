@@ -732,7 +732,9 @@ def admin_analytics(request):
         "branch_label": payload["filters"]["branch_name"],
         "range_label": f"{payload['filters']['start']} to {payload['filters']['end']}",
 
-        "chart_payload_json": json.dumps(payload, default=str),
+        "chart_payload_json": json.dumps(payload, default=str).replace("<", r"\u003c"),
+        "anomaly": payload.get("production_ml", {}).get("anomaly", {}),
+        "supervised_status": payload.get("production_ml", {}).get("status"),
     }
 
     return render(request, "admin/analytics.html", context)
@@ -7252,9 +7254,9 @@ def _analytics_build_payload(request):
     # Advisory production ML is additive and read-only.  Its unavailable state
     # must never interrupt the existing rule-based analytics.
     try:
-        from core.analytics.production_ml.dashboard import build_workforce_ml_payload
+        from core.analytics.production_ml.service import get_employee_ml_analytics
 
-        production_ml = build_workforce_ml_payload(profiles, as_of_date=end_date)
+        production_ml = get_employee_ml_analytics(profiles, as_of_date=end_date)
     except Exception:
         import logging
 

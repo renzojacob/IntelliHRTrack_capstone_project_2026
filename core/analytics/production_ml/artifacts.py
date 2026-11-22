@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import os
 import tempfile
 from pathlib import Path
@@ -40,10 +41,6 @@ def _inside_private_root(path):
 
 
 def save_model_artifact(*, candidate, model_version, training_metadata):
-    root = private_ml_root().resolve()
-    target = (root / "models" / model_version / "pipeline.joblib").resolve()
-    _inside_private_root(target)
-    target.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "purpose": MODEL_PURPOSE,
         "model_key": candidate["model_key"],
@@ -58,6 +55,13 @@ def save_model_artifact(*, candidate, model_version, training_metadata):
         "explanation": candidate["explanation"],
         "training_metadata": training_metadata,
     }
+    return save_private_payload(payload)
+
+
+def save_private_payload(payload):
+    root = private_ml_root().resolve()
+    _, target = _inside_private_root(root / "models" / payload["model_version"] / "pipeline.joblib")
+    target.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(prefix="ml-artifact-", suffix=".joblib", dir=target.parent)
     os.close(descriptor)
     temporary = Path(temporary_name)
@@ -101,8 +105,10 @@ def validate_artifact_payload(payload, registry=None):
 
 
 def load_registry_artifact(registry):
-    if registry.purpose != MODEL_PURPOSE:
-        raise MLArtifactError("Registry purpose is not production absenteeism.")
+    from . import anomaly
+
+    if registry.purpose not in {MODEL_PURPOSE, anomaly.PURPOSE}:
+        raise MLArtifactError("Unsupported registry purpose.")
     if not registry.artifact_relative_path or not registry.artifact_sha256:
         raise MLArtifactError("Registry artifact metadata is incomplete.")
     root = private_ml_root().resolve()
@@ -110,11 +116,18 @@ def load_registry_artifact(registry):
     _, path = _inside_private_root(root / registry.artifact_relative_path)
     if not path.is_file():
         raise MLArtifactError("Registered ML artifact is missing.")
-    actual_hash = sha256_file(path)
+    try:
+        content = path.read_bytes()
+    except OSError as exc:
+        raise MLArtifactError("Registered ML artifact could not be read.") from exc
+    actual_hash = hashlib.sha256(content).hexdigest()
     if actual_hash.lower() != registry.artifact_sha256.lower():
         raise MLArtifactError("Registered ML artifact checksum does not match.")
     try:
-        payload = joblib.load(path)
+        payload = joblib.load(io.BytesIO(content))
     except Exception as exc:
         raise MLArtifactError("Registered ML artifact could not be loaded.") from exc
+    if registry.purpose == anomaly.PURPOSE:
+        anomaly.validate_bundle(payload, registry)
+        return payload
     return validate_artifact_payload(payload, registry=registry)

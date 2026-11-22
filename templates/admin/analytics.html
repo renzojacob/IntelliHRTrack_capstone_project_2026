@@ -133,6 +133,17 @@
   <div class="ad-card__body">
     <p>ML predictions are advisory only and do not automatically change attendance records, payroll, leave decisions, disciplinary actions, or employment status.</p>
     <div id="productionMlCard" style="margin-top:12px"><p class="ad-help">Loading production ML status…</p></div>
+    {% if supervised_status == "NOT_READY" %}<p>Supervised ML unavailable: insufficient labeled historical data.</p>{% endif %}
+    <h3>Attendance pattern anomalies</h3>
+    <p>ML results are advisory and do not automatically affect payroll, leave approval, discipline, attendance records, or employee status.</p>
+    {% if anomaly.active %}
+    <p>Isolation Forest · {{ anomaly.version }} · Trained {{ anomaly.trained }}</p>
+    <p>{{ anomaly.observations }} employee-weeks across {{ anomaly.employees }} employees, {{ anomaly.start }} through {{ anomaly.end }}.</p>
+    <p>Normal attendance patterns: {{ anomaly.normal }} · Review recommended: {{ anomaly.review }} · Unusual attendance patterns: {{ anomaly.unusual }}</p>
+    <table><thead><tr><th>Employee</th><th>Week ending</th><th>Advisory score</th><th>Category</th><th>Main unusual observed features</th><th>Data quality</th></tr></thead><tbody>
+    {% for row in anomaly.rows %}<tr><td>{{ row.employee }}</td><td>{{ row.source_data_end }}</td><td>{{ row.ml_advisory_score|default_if_none:"Unavailable" }}</td><td>{{ row.category|default:"Unavailable" }}</td><td>{{ row.explanation|join:", " }}</td><td>{{ row.data_quality_status }}</td></tr>{% endfor %}
+    </tbody></table>
+    {% else %}<p>{{ anomaly.message }}</p>{% endif %}
   </div>
 </section>
 
