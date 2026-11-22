@@ -39,7 +39,7 @@ from core.analytics.production_ml.training import (
     select_production_model,
 )
 from core.analytics.production_ml import training as production_training
-from core.models import MLLifecycleEvent, MLModelRegistry
+from core.models import MLLifecycleEvent, MLModelRegistry, PayrollRule
 from core.tests import factories as F
 
 
@@ -351,6 +351,53 @@ class ProductionMLAnalyticsUITests(TestCase):
     def setUpTestData(cls):
         cls.branch = F.branch("Production ML UI")
         cls.admin = F.admin("production_ml_admin", cls.branch)
+
+    def test_analytics_reads_do_not_create_missing_payroll_rules(self):
+        F.employee("analytics_unconfigured_employee", self.branch)
+        PayrollRule.objects.filter(branch=self.branch).delete()
+        self.client.force_login(self.admin)
+        missing_rule = "No payroll rules found for branch."
+
+        for route in (
+            "admin_analytics",
+            "admin_analytics_api",
+            "admin_analytics_employee_risks_api",
+            "admin_analytics_insights_api",
+        ):
+            with self.subTest(route=route):
+                before_count = PayrollRule.objects.count()
+                response = self.client.get(reverse(route))
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(PayrollRule.objects.count(), before_count)
+                self.assertFalse(PayrollRule.objects.filter(branch=self.branch).exists())
+                if route == "admin_analytics":
+                    self.assertContains(response, missing_rule)
+                elif route == "admin_analytics_api":
+                    self.assertIn(missing_rule, response.json()["data"]["risk_rows"][0]["reasons"])
+                elif route == "admin_analytics_employee_risks_api":
+                    self.assertIn(missing_rule, response.json()["risk_rows"][0]["reasons"])
+
+    def test_analytics_reads_existing_payroll_rules_without_modifying_them(self):
+        from core.views import _analytics_get_rules
+
+        F.employee("analytics_configured_employee", self.branch)
+        rules = PayrollRule.objects.get(branch=self.branch)
+        self.assertEqual(_analytics_get_rules(self.branch), rules)
+        before = list(PayrollRule.objects.filter(branch=self.branch).values())
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("admin_analytics_api"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("No payroll rules found for branch.", response.json()["data"]["risk_rows"][0]["reasons"])
+        self.assertEqual(list(PayrollRule.objects.filter(branch=self.branch).values()), before)
+
+    def test_operational_lookup_still_creates_missing_payroll_rules(self):
+        from core.views import _get_or_create_rules
+
+        PayrollRule.objects.filter(branch=self.branch).delete()
+        before_count = PayrollRule.objects.count()
+        rules = _get_or_create_rules(self.branch)
+        self.assertEqual(PayrollRule.objects.count(), before_count + 1)
+        self.assertEqual(PayrollRule.objects.get(branch=self.branch), rules)
 
     def test_workforce_analytics_renders_real_unavailable_state_and_rule_scores(self):
         MLLifecycleEvent.objects.create(

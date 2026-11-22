@@ -6642,18 +6642,11 @@ def _analytics_get_branches_for_filter(request):
 
 
 def _analytics_get_rules(branch):
-    """
-    Uses your existing payroll rule helper if available.
-    Fallback creates default PayrollRule for the branch.
-    """
+    """Read existing branch rules without provisioning payroll configuration."""
     if not branch:
         return None
 
-    try:
-        return _get_or_create_rules(branch)
-    except Exception:
-        rules, _ = PayrollRule.objects.get_or_create(branch=branch)
-        return rules
+    return PayrollRule.objects.filter(branch=branch).first()
 
 
 def _analytics_make_period(start_date, end_date):
