@@ -766,6 +766,117 @@ class FinalizedDTR(models.Model):
         status = "LOCKED" if self.is_locked else "UNLOCKED"
         return f"{self.profile.user.username} - {self.period.name} ({status})"
 
+
+class MLModelRegistry(models.Model):
+    """Registry metadata for trusted, locally trained advisory ML models."""
+
+    PURPOSE_NEXT_PERIOD_ABSENCE = "NEXT_PERIOD_QUALIFYING_ABSENCE"
+
+    STATUS_CANDIDATE = "CANDIDATE"
+    STATUS_VALIDATED = "VALIDATED"
+    STATUS_ACTIVE = "ACTIVE"
+    STATUS_RETIRED = "RETIRED"
+    STATUS_FAILED = "FAILED"
+    STATUS_CHOICES = [
+        (STATUS_CANDIDATE, "Candidate"),
+        (STATUS_VALIDATED, "Validated"),
+        (STATUS_ACTIVE, "Active"),
+        (STATUS_RETIRED, "Retired"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    purpose = models.CharField(
+        max_length=64,
+        default=PURPOSE_NEXT_PERIOD_ABSENCE,
+        db_index=True,
+    )
+    model_key = models.CharField(max_length=64, db_index=True)
+    model_name = models.CharField(max_length=120)
+    model_version = models.CharField(max_length=100, unique=True)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_CANDIDATE,
+        db_index=True,
+    )
+    artifact_relative_path = models.CharField(max_length=500, blank=True, default="")
+    artifact_sha256 = models.CharField(max_length=64, blank=True, default="")
+    dataset_version = models.CharField(max_length=64)
+    dataset_generated_at = models.DateTimeField()
+    trained_at = models.DateTimeField(null=True, blank=True)
+    activated_at = models.DateTimeField(null=True, blank=True)
+    training_row_count = models.PositiveIntegerField(default=0)
+    employee_group_count = models.PositiveIntegerField(default=0)
+    positive_count = models.PositiveIntegerField(default=0)
+    negative_count = models.PositiveIntegerField(default=0)
+    target_definition = models.TextField()
+    feature_schema_version = models.CharField(max_length=64)
+    random_seed = models.PositiveIntegerField()
+    selected_threshold = models.FloatField(null=True, blank=True)
+    metrics = models.JSONField(default=dict, blank=True)
+    validation_metadata = models.JSONField(default=dict, blank=True)
+    training_code_version = models.CharField(max_length=120, blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_ml_models",
+    )
+    activated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="activated_ml_models",
+    )
+    activation_provenance = models.CharField(max_length=120, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "core_mlmodelregistry"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["purpose", "status"], name="core_mlmode_purpose_1f036c_idx"),
+            models.Index(fields=["model_key", "status"], name="core_mlmode_model_k_897e69_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.model_name} {self.model_version} ({self.status})"
+
+
+class MLLifecycleEvent(models.Model):
+    """Aggregate-only audit trail for the production ML lifecycle."""
+
+    event_type = models.CharField(max_length=64, db_index=True)
+    succeeded = models.BooleanField(default=False, db_index=True)
+    model = models.ForeignKey(
+        MLModelRegistry,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="lifecycle_events",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ml_lifecycle_events",
+    )
+    actor_label = models.CharField(max_length=120, blank=True, default="management-command")
+    message = models.TextField(blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "core_mllifecycleevent"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.event_type} ({'ok' if self.succeeded else 'failed'})"
+
         
 class BiometricDevice(models.Model):
     name = models.CharField(max_length=100)

@@ -1,0 +1,95 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Research Model Evaluation | IntelliHRTrack{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .mlr-notice{border:2px solid #b7791f;background:color-mix(in srgb,#f6c453 16%,var(--ihrt-surface))}.mlr-notice .ad-card__body{display:flex;gap:14px;align-items:flex-start}.mlr-notice iconify-icon{color:#9c6615;font-size:26px}.mlr-notice h2{font-size:1.05rem;font-weight:750}.mlr-notice p{margin-top:4px;max-width:92ch;color:var(--ihrt-ink)}
+  .mlr-stat-grid,.mlr-card-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}.mlr-stat{padding:16px;border:1px solid var(--ihrt-line);border-radius:var(--ihrt-radius-sm);background:var(--ihrt-surface)}.mlr-stat dt{color:var(--ihrt-muted);font-size:12.5px}.mlr-stat dd{margin:4px 0 0;font-size:1.15rem;font-weight:750;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.mlr-stat dd.mlr-stat__small{font-size:.95rem;line-height:1.35}
+  .mlr-section-head{margin-bottom:16px}.mlr-section-head h2{font-size:1.2rem;font-weight:750}.mlr-section-head p{margin-top:4px;color:var(--ihrt-muted);max-width:90ch}.mlr-table-wrap{overflow-x:auto}.mlr-table{width:100%;min-width:900px;border-collapse:collapse}.mlr-table th,.mlr-table td{padding:12px 10px;text-align:left;border-bottom:1px solid var(--ihrt-line);white-space:nowrap}.mlr-table th{font-size:12.5px;color:var(--ihrt-muted);font-weight:650}.mlr-table tbody th{color:var(--ihrt-ink);font-size:14px}.mlr-table td{font-variant-numeric:tabular-nums}
+  .mlr-chart-canvas{position:relative;height:390px}
+  .mlr-result-card{padding:18px;border:1px solid var(--ihrt-line);border-radius:var(--ihrt-radius-sm);background:var(--ihrt-surface)}.mlr-result-card h3{font-size:13px;color:var(--ihrt-muted);font-weight:600}.mlr-result-card strong{display:block;margin-top:6px;font-size:1.12rem}.mlr-result-card p{margin-top:8px;color:var(--ihrt-muted);font-size:13px}.mlr-result-card--none{border-color:#b7791f}.mlr-two-col{display:grid;gap:24px}.mlr-list{margin:8px 0 0;padding-left:20px}.mlr-list li+li{margin-top:5px}.mlr-definition-list{display:grid;gap:12px}.mlr-definition-list dt{font-weight:700}.mlr-definition-list dd{margin:2px 0 0;color:var(--ihrt-muted)}.mlr-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;overflow-wrap:anywhere}
+  @media(min-width:900px){.mlr-two-col{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+{% endblock %}
+{% block content %}
+<header class="ad-page-head">
+  <div class="ad-page-head__text"><h1>Research Model Evaluation</h1><p>Read-only evidence from the completed Phase 2C public UCI absenteeism experiment.</p></div>
+  <div class="ad-page-head__actions"><a class="ihrt-btn ihrt-btn--secondary" href="{% url 'admin_analytics' %}"><iconify-icon icon="ph:arrow-left" aria-hidden="true"></iconify-icon>Workforce analytics</a></div>
+</header>
+<section class="ad-card mlr-notice" aria-labelledby="research-only-title"><div class="ad-card__body"><iconify-icon icon="ph:warning" aria-hidden="true"></iconify-icon><div><h2 id="research-only-title">Research-only page</h2><p>Results use an external public dataset and are not validated for IntelliHRTrack employees. This page performs no training or prediction, reads no IntelliHRTrack employee records, and must not be used for payroll, DTR, attendance decisions, employee risk scoring, discipline, or automated HR action.</p></div></div></section>
+
+{% if artifact_error %}
+<section class="ad-card" role="status" aria-live="polite"><div class="ad-card__body"><div class="ad-alert ad-alert--warning"><iconify-icon icon="ph:file-x" aria-hidden="true"></iconify-icon><div><strong>Research results unavailable</strong><p>{{ artifact_error }}</p></div></div></div></section>
+{% else %}
+<section class="ad-card" aria-labelledby="summary-title"><div class="ad-card__body">
+  <div class="mlr-section-head"><h2 id="summary-title">Experiment summary</h2><p>{{ research.experiment_name }}. Target: {{ research.dataset.target_definition }}.</p></div>
+  <dl class="mlr-stat-grid">
+    <div class="mlr-stat"><dt>External/public source</dt><dd class="mlr-stat__small">{{ research.dataset.source_file }}</dd></div><div class="mlr-stat"><dt>Rows used</dt><dd>{{ research.dataset.usable_rows }} / {{ research.dataset.raw_rows }}</dd></div><div class="mlr-stat"><dt>Employee groups</dt><dd>{{ research.dataset.usable_employee_groups }}</dd></div><div class="mlr-stat"><dt>Positive class</dt><dd>{{ research.dataset.positive_rows }} ({{ research.dataset.positive_prevalence_percent|floatformat:1 }}%)</dd></div><div class="mlr-stat"><dt>Negative class</dt><dd>{{ research.dataset.negative_rows }}</dd></div><div class="mlr-stat"><dt>Grouping metadata</dt><dd>{{ research.evaluation.groups }}</dd></div><div class="mlr-stat"><dt>Outer validation</dt><dd class="mlr-stat__small">{{ research.evaluation.outer_cv }}</dd></div><div class="mlr-stat"><dt>Inner tuning</dt><dd class="mlr-stat__small">{{ research.evaluation.inner_cv }}</dd></div><div class="mlr-stat"><dt>Random seed</dt><dd>{{ research.random_seed }}</dd></div>
+  </dl>
+</div></section>
+
+<section class="ad-card" aria-labelledby="metrics-title"><div class="ad-card__body">
+  <div class="mlr-section-head"><h2 id="metrics-title">Grouped nested cross-validation results</h2><p>Values are mean ± population standard deviation across the five outer folds. Higher is better for every metric shown.</p></div>
+  <div class="mlr-table-wrap"><table class="mlr-table"><thead><tr><th scope="col">Model</th>{% for metric in research.models.0.metrics %}<th scope="col">{{ metric.label }}</th>{% endfor %}</tr></thead><tbody>{% for model in research.models %}<tr><th scope="row">{{ model.display_name }}</th>{% for metric in model.metrics %}<td>{{ metric.display }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+</div></section>
+
+<section class="ad-card" aria-labelledby="comparison-title"><div class="ad-card__body">
+  <div class="mlr-section-head"><h2 id="comparison-title">Primary metric comparison</h2><p>Mean outer-fold values on a fixed 0–1 scale. Exact mean ± standard deviation values remain available in the table above.</p></div>
+  <div class="mlr-chart-canvas"><canvas id="mlResearchComparison" role="img" aria-label="Grouped comparison of mean Recall, F1, and Average Precision for all five evaluated models. Exact values are in the preceding table."></canvas></div>
+</div></section>
+
+<section class="ad-card" aria-labelledby="interpretation-title"><div class="ad-card__body">
+  <div class="mlr-section-head"><h2 id="interpretation-title">Scientific interpretation</h2><p>{{ research.scientific_interpretation }}</p></div>
+  <div class="mlr-card-grid"><article class="mlr-result-card"><h3>Original preimplemented selection-rule result</h3><strong>{{ research.original_rule_selected_model.display_name }}</strong><p>The pre-specified rule result, not a definitive best model.</p></article><article class="mlr-result-card"><h3>Recall leader</h3><strong>{{ research.primary_recall_leader.display_name }}</strong><p>Highest mean Recall in the primary grouped analysis.</p></article><article class="mlr-result-card"><h3>Strongest overall discrimination</h3><strong>{{ research.strongest_overall_discrimination.display_name }}</strong><p>Strongest overall Average Precision / F1 / discrimination profile in the primary grouped evaluation.</p></article><article class="mlr-result-card"><h3>Duplicate-sensitivity winner</h3><strong>{{ research.duplicate_sensitivity_winner.display_name }}</strong><p>Exact-duplicate sensitivity analysis changed the selected model to this classifier.</p></article><article class="mlr-result-card mlr-result-card--none"><h3>Robust single winner</h3><strong>{% if research.robust_single_winner %}{{ research.robust_single_winner.display_name }}{% else %}None established{% endif %}</strong><p>No universally superior classifier was established because rankings changed under duplicate sensitivity and fold-level variability was substantial.</p></article></div>
+</div></section>
+
+<section class="ad-card" aria-labelledby="sensitivity-title"><div class="ad-card__body">
+  <div class="mlr-section-head"><h2 id="sensitivity-title">Sensitivity Analysis</h2><p>Primary analysis retained exact duplicates; the sensitivity analysis removed them. {{ research.sensitivity.materiality_rule }}</p></div>
+  <dl class="mlr-stat-grid"><div class="mlr-stat"><dt>Primary rule result</dt><dd>{{ research.original_rule_selected_model.display_name }}</dd></div><div class="mlr-stat"><dt>Sensitivity result</dt><dd>{{ research.duplicate_sensitivity_winner.display_name }}</dd></div><div class="mlr-stat"><dt>Conclusion changed materially</dt><dd>{% if research.sensitivity.material_conclusion_change %}Yes{% else %}No{% endif %}</dd></div><div class="mlr-stat"><dt>Random Forest recall change</dt><dd>{{ research.sensitivity.mean_recall|floatformat:'+6' }}</dd></div><div class="mlr-stat"><dt>Random Forest F1 change</dt><dd>{{ research.sensitivity.mean_f1|floatformat:'+6' }}</dd></div><div class="mlr-stat"><dt>Random Forest AP change</dt><dd>{{ research.sensitivity.mean_average_precision|floatformat:'+6' }}</dd></div></dl>
+  <p style="margin-top:16px;color:var(--ihrt-muted)">The public source lacks sufficient authoritative date and year information, so identical rows cannot confidently be classified as data errors rather than genuine repeated events. Both analyses are therefore retained.</p>
+</div></section>
+
+<section class="ad-card" aria-labelledby="method-title"><div class="ad-card__body">
+  <div class="mlr-section-head"><h2 id="method-title">Methodology and leakage controls</h2><p>Evaluation choices are displayed from the committed artifact; this page does not recompute them.</p></div>
+  <div class="mlr-two-col"><div><h3>Allowed predictors</h3><p><strong>Categorical:</strong> Month of absence; Day of the week.</p><p><strong>Numerical:</strong> Transportation expense; Distance from Residence to Work; Service time.</p><ul class="mlr-list">{% for predictor in research.predictors %}<li>{{ predictor }}</li>{% endfor %}</ul></div><div><h3>Explicitly excluded from predictors</h3><ul class="mlr-list"><li>Employee ID (grouping metadata only)</li><li>Raw absenteeism hours</li><li>Reason for absence</li><li>Disciplinary failure</li><li>All non-allowlisted demographic, health, and household variables</li></ul><p style="margin-top:12px;color:var(--ihrt-muted)">Artifact controls: {% for exclusion in research.exclusions %}{{ exclusion.label }} = {{ exclusion.value }}{% if not forloop.last %}; {% endif %}{% endfor %}.</p></div></div>
+  <div class="mlr-two-col" style="margin-top:24px"><div><h3>Leakage safeguards</h3><p>Public-dataset employee groups do not overlap between train and test folds. Preprocessing occurs inside cross-validation pipelines; hyperparameter tuning uses inner folds only; outer folds estimate generalization. SMOTE was not automatically applied.</p></div><div><h3>Reproducibility and limits</h3><p>Inner selection metric: {{ research.evaluation.inner_scoring }}. Random seed: {{ research.random_seed }}. Artifact schema: {{ research.schema_version }}. Public research data are separate from IntelliHRTrack production data.</p><p>No genuine chronological validation is claimed because the public CSV lacks sufficient authoritative date/year information.</p><p class="mlr-code">Source SHA-256: {{ research.dataset.source_sha256_after }}</p></div></div>
+</div></section>
+
+<section class="ad-card" aria-labelledby="definitions-title"><div class="ad-card__body"><div class="mlr-section-head"><h2 id="definitions-title">Metric definitions</h2><p>No single metric by itself establishes a best model.</p></div><dl class="mlr-definition-list"><div><dt>Recall</dt><dd>How many positive eight-or-more-hour observations the model detected.</dd></div><div><dt>Precision</dt><dd>How often positive predictions were actually positive.</dd></div><div><dt>F1</dt><dd>Balance between Recall and Precision.</dd></div><div><dt>Average Precision / PR-AUC</dt><dd>How well the model ranks positive cases across decision thresholds, especially useful when class frequencies are uneven.</dd></div><div><dt>ROC-AUC</dt><dd>Overall ranking and discrimination across thresholds.</dd></div><div><dt>Accuracy</dt><dd>Overall fraction of correct predictions.</dd></div></dl></div></section>
+
+<section class="ad-card" aria-labelledby="production-title"><div class="ad-card__body"><div class="mlr-section-head"><h2 id="production-title">Production Status</h2></div><div class="ad-alert ad-alert--warning"><iconify-icon icon="ph:shield-warning" aria-hidden="true"></iconify-icon><div><strong>No public-data model is deployed to IntelliHRTrack</strong><p>{{ research.external_validity_disclaimer }}</p><ul class="mlr-list"><li>Existing employee absenteeism analytics remain rule-based.</li><li>Payroll and DTR remain deterministic.</li><li>This UCI experiment is research evidence for supervised-learning methodology and model comparison only.</li><li>Organization-specific ML deployment requires sufficient completed historical IntelliHRTrack attendance periods and production validation.</li></ul></div></div></div></section>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{% if research %}
+{{ research.chart|json_script:"ml-research-chart-data" }}
+<script>
+(function () {
+  var canvas = document.getElementById('mlResearchComparison');
+  var dataElement = document.getElementById('ml-research-chart-data');
+  if (!canvas || !dataElement || typeof Chart === 'undefined') return;
+  var chartData = JSON.parse(dataElement.textContent);
+  var colors = ['#2f7d55', '#d49a25', '#5577a8'];
+  chartData.datasets.forEach(function (dataset, index) {
+    dataset.backgroundColor = colors[index];
+    dataset.borderColor = colors[index];
+    dataset.borderWidth = 1;
+  });
+  new Chart(canvas, {
+    type: 'bar',
+    data: chartData,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        y: { beginAtZero: true, min: 0, max: 1, ticks: { stepSize: 0.2 }, title: { display: true, text: 'Mean outer-fold score (0–1)' } },
+        x: { ticks: { autoSkip: false, maxRotation: 25, minRotation: 0 } }
+      },
+      plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: function (context) { return context.dataset.label + ': ' + Number(context.raw).toFixed(3); } } } }
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

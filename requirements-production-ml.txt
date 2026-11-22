@@ -1,0 +1,2 @@
+# Install alongside the repository's existing requirements.txt environment.
+joblib==1.6.0

@@ -31,3 +31,21 @@ research_results/phase2c_uci_absenteeism/uci_absenteeism_phase2c_report.md
 It does not serialize a trained model. The public UCI results are not validated
 for IntelliHRTrack employees and must not be integrated into production payroll,
 DTR, attendance, or prediction behavior.
+
+## Production and research separation
+
+Production IntelliHRTrack provides HR administration, organization-specific
+attendance and biometrics, DTR, leave, payroll, and operational rule-based
+Workforce Analytics. It does not use the external UCI classifiers for employee
+predictions or operational decisions.
+
+The capstone research layer retains the dummy baseline, Logistic Regression,
+Decision Tree, Random Forest, and Gradient Boosting comparison; grouped nested
+cross-validation; Accuracy, Precision, Recall, F1, Average Precision/PR-AUC,
+and ROC-AUC; sensitivity analysis; and research limitations. These results are
+evidence for the capstone paper, methodology, results chapter, and defense.
+
+The artifact-driven presentation remains at
+`/admin-ui/analytics/ml-research/`. It is superuser-only, read-only, absent from
+normal application navigation, and performs neither training nor inference
+during web requests.

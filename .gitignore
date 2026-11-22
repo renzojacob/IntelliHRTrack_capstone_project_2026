@@ -30,6 +30,7 @@ media/
 leave_attachments/
 client_data/
 local_data/
+private_ml_artifacts/
 db.sqlite3
 
 # Environment variables and secrets

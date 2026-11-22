@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path, reverse_lazy
 
-from . import views, overtime_views
+from . import views, overtime_views, research_views
 from .payroll_period_views import admin_payroll_period_create
 from .dtr_print_views import admin_payroll_dtr_print_all
 
@@ -287,6 +287,11 @@ urlpatterns = [
         "admin-ui/analytics/",
         views.admin_analytics,
         name="admin_analytics",
+    ),
+    path(
+        "admin-ui/analytics/ml-research/",
+        research_views.admin_ml_research_evaluation,
+        name="admin_ml_research",
     ),
     path(
         "admin-ui/analytics/api/",

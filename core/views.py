@@ -7243,10 +7243,31 @@ def _analytics_build_payload(request):
         department=department,
     )
 
+    profiles = list(profiles_qs)
     employee_summaries = [
         _analytics_compute_employee_summary(profile, start_date, end_date)
-        for profile in profiles_qs
+        for profile in profiles
     ]
+
+    # Advisory production ML is additive and read-only.  Its unavailable state
+    # must never interrupt the existing rule-based analytics.
+    try:
+        from core.analytics.production_ml.dashboard import build_workforce_ml_payload
+
+        production_ml = build_workforce_ml_payload(profiles, as_of_date=end_date)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception("Production advisory ML payload unavailable")
+        production_ml = {
+            "active": False,
+            "status": "UNAVAILABLE",
+            "message": "ML model unavailable. Existing rule-based analytics remain operational.",
+            "predictions": {},
+            "readiness_reasons": [],
+            "advisory_disclaimer": "Existing rule-based analytics remain operational.",
+        }
+    ml_predictions = production_ml.get("predictions", {})
 
     total_employees = len(employee_summaries)
     total_working_days = sum(x["working_days"] for x in employee_summaries)
@@ -7519,6 +7540,8 @@ def _analytics_build_payload(request):
 
         "insights": insights,
 
+        "production_ml": production_ml,
+
         "risk_rows": [
             {
                 "profile_id": r["profile_id"],
@@ -7533,6 +7556,11 @@ def _analytics_build_payload(request):
                 "late_days": r["late_days"],
                 "missing_logs": r["missing_logs"],
                 "attendance_rate": r["attendance_rate"],
+                "ml": ml_predictions.get(str(r["profile_id"]), {
+                    "available": False,
+                    "status": "UNAVAILABLE",
+                    "reason": production_ml.get("message", "ML model unavailable"),
+                }),
             }
             for r in risk_rows[:50]
         ],

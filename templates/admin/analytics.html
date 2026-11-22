@@ -18,6 +18,12 @@
     @media (min-width: 1100px) { .an-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .an-insights { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
     .an-insights .ad-alert { height: 100%; }
+    .an-ml-summary { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+    .an-ml-summary > div { padding: 12px; border: 1px solid var(--ihrt-line); border-radius: var(--ihrt-radius-sm); }
+    .an-ml-summary dt { color: var(--ihrt-muted); font-size: 12.5px; }
+    .an-ml-summary dd { margin: 3px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .an-ml-detail summary { cursor: pointer; color: var(--ihrt-field); font-weight: 600; }
+    .an-ml-detail p { margin-top: 6px; max-width: 42ch; white-space: normal; }
   </style>
 {% endblock %}
 
@@ -121,6 +127,15 @@
   </div>
 </section>
 
+<!-- Production advisory ML augments, but never replaces, rule-based analytics. -->
+<section class="ad-card" aria-labelledby="production-ml-title">
+  <div class="ad-card__head"><div><h2 id="production-ml-title">ML absenteeism risk — decision support only</h2><p>Predicts the probability of at least one qualifying exact Absent day in the next eligible payroll period, when a validated IntelliHRTrack model is active.</p></div></div>
+  <div class="ad-card__body">
+    <p>ML predictions are advisory only and do not automatically change attendance records, payroll, leave decisions, disciplinary actions, or employment status.</p>
+    <div id="productionMlCard" style="margin-top:12px"><p class="ad-help">Loading production ML status…</p></div>
+  </div>
+</section>
+
 <!-- ===================== Trend + stability ===================== -->
 <div class="ad-split">
   <section class="ad-card" aria-labelledby="trend-title">
@@ -185,7 +200,7 @@
   </div>
   <div class="ad-table-wrap">
     <table class="ad-table" style="min-width: 900px">
-      <thead><tr><th scope="col">Employee</th><th scope="col">Department</th><th scope="col">Type</th><th scope="col">Risk</th><th scope="col" class="is-num">Attendance</th><th scope="col" class="is-num">Absences</th><th scope="col" class="is-num">Late days</th><th scope="col">Why</th></tr></thead>
+      <thead><tr><th scope="col">Employee</th><th scope="col">Department</th><th scope="col">Type</th><th scope="col">Rule-based risk</th><th scope="col">ML advisory risk</th><th scope="col" class="is-num">Attendance</th><th scope="col" class="is-num">Absences</th><th scope="col" class="is-num">Late days</th><th scope="col">Why</th></tr></thead>
       <tbody id="riskTableBody"></tbody>
     </table>
   </div>
@@ -244,6 +259,34 @@ document.addEventListener('DOMContentLoaded', function () {
   set('stPartAtt', num(payload.stability_parts_attendance).toFixed(1) + '%');
   set('stPartSched', num(payload.stability_parts_schedule).toFixed(1) + '%');
   set('stPartLeave', num(payload.stability_parts_leave).toFixed(1) + '%');
+
+  var ml = payload.production_ml || {};
+  var mlCard = document.getElementById('productionMlCard');
+  if (mlCard) {
+    if (ml.active) {
+      var mlBuckets = ml.risk_buckets || {};
+      mlCard.innerHTML = '<dl class="an-ml-summary">' +
+        '<div><dt>Status</dt><dd>ACTIVE</dd></div>' +
+        '<div><dt>Model</dt><dd>' + esc((ml.model_name || '—') + ' ' + (ml.model_version || '')) + '</dd></div>' +
+        '<div><dt>Low / Medium / High</dt><dd>' + num(mlBuckets.low) + ' / ' + num(mlBuckets.medium) + ' / ' + num(mlBuckets.high) + '</dd></div>' +
+        '<div><dt>Average probability</dt><dd>' + (ml.average_probability == null ? '—' : (num(ml.average_probability) * 100).toFixed(1) + '%') + '</dd></div>' +
+        '<div><dt>Training observations</dt><dd>' + num(ml.training_row_count) + '</dd></div>' +
+        '<div><dt>Validation Recall / F1 / PR-AUC</dt><dd>' + [ml.validation_recall, ml.validation_f1, ml.validation_average_precision].map(function(v){ return v == null ? '—' : num(v).toFixed(3); }).join(' / ') + '</dd></div>' +
+        '</dl><p class="ad-help" style="margin-top:12px">' + esc(ml.advisory_disclaimer || '') + '</p>';
+    } else {
+      var reasons = arr(ml.readiness_reasons);
+      var hasAssessment = !!ml.last_assessed_at;
+      var readinessSummary = hasAssessment
+        ? 'Why ML is unavailable: IntelliHRTrack currently has ' + num(ml.eligible_observations) + ' eligible historical employee-period observations out of ' + num(ml.candidate_observations) + ' candidate observations across ' + num(ml.represented_target_periods) + ' completed target periods. Additional eligible historical periods and sufficient class/group coverage are required before a production model can be validated.'
+        : 'Why ML is unavailable: No completed production readiness assessment is available.';
+      mlCard.innerHTML = '<div class="ad-alert ad-alert--info"><div><strong>' + esc(ml.status || 'No Active Model') + '</strong><p>' + esc(ml.message || 'ML model unavailable') + '</p></div></div>' +
+        '<p style="margin-top:12px">' + esc(readinessSummary) + '</p>' +
+        (hasAssessment ? '<p class="ad-help" style="margin-top:6px"><strong>Historical data coverage:</strong> ' + num(ml.eligible_observations) + ' of ' + num(ml.candidate_observations) + ' candidate observations eligible</p>' : '') +
+        '<dl class="an-ml-summary" style="margin-top:12px"><div><dt>Eligible employees</dt><dd>' + num(ml.eligible_employees) + '</dd></div><div><dt>Excluded observations</dt><dd>' + num(ml.excluded_observations) + '</dd></div><div><dt>Positive / Negative</dt><dd>' + num(ml.positive_count) + ' / ' + num(ml.negative_count) + '</dd></div><div><dt>Completed target periods</dt><dd>' + num(ml.represented_target_periods) + '</dd></div></dl>' +
+        (reasons.length ? '<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:650">Readiness details</summary><ul style="margin:8px 0 0;padding-left:20px">' + reasons.map(function(reason){ return '<li>' + esc(reason) + '</li>'; }).join('') + '</ul></details>' : '') +
+        '<p class="ad-help" style="margin-top:12px">' + esc(ml.advisory_disclaimer || 'Existing rule-based analytics remain operational.') + '</p>';
+    }
+  }
 
   // ---------- Chart styling from the design tokens (follows light and dark mode) ----------
   var css = getComputedStyle(document.documentElement);
@@ -359,10 +402,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
   var rows = arr(payload.risk_rows), body = document.getElementById('riskTableBody');
   if (body) body.innerHTML = rows.length ? rows.map(function (r) {
+    var prediction = r.ml || {};
+    var indicators = arr(prediction.relevant_historical_indicators).map(function(item) { return esc(item.indicator) + ': ' + esc(item.value); }).join(', ');
+    var qualityWarnings = arr(prediction.data_quality_warnings).join(' ');
+    var mlCell = prediction.available
+      ? '<strong>' + esc(prediction.risk_level) + ' (' + (num(prediction.probability) * 100).toFixed(1) + '%)</strong><details class="an-ml-detail"><summary>Details</summary><p>Model: ' + esc((prediction.model_name || '') + ' ' + (prediction.model_version || '')) + '</p><p>Feature period: ' + esc((prediction.feature_period || {}).start || '—') + ' to ' + esc((prediction.feature_period || {}).end || '—') + '</p><p>Relevant historical indicators: ' + (indicators || 'Not available') + '</p>' + (qualityWarnings ? '<p>Data quality: ' + esc(qualityWarnings) + '</p>' : '') + '<p>' + esc(prediction.advisory_disclaimer || '') + '</p></details>'
+      : '<span class="is-muted">ML unavailable</span><small class="is-muted" style="display:block;max-width:220px">' + esc(prediction.reason || '') + '</small>';
     return '<tr><td class="is-strong">' + esc(r.name) + '</td><td class="is-muted">' + esc(r.department || 'Unassigned') + '</td><td>' + esc(r.employment_type || '—') + '</td>' +
-      '<td>' + riskBadge(r.risk_level, r.risk_score) + '</td><td class="is-num">' + num(r.attendance_rate).toFixed(1) + '%</td><td class="is-num">' + esc(r.absences) + '</td><td class="is-num">' + esc(r.late_days) + '</td>' +
+      '<td>' + riskBadge(r.risk_level, r.risk_score) + '</td><td>' + mlCell + '</td><td class="is-num">' + num(r.attendance_rate).toFixed(1) + '%</td><td class="is-num">' + esc(r.absences) + '</td><td class="is-num">' + esc(r.late_days) + '</td>' +
       '<td class="is-muted" style="max-width:340px">' + esc(arr(r.reasons).slice(0, 2).join(' ')) + '</td></tr>';
-  }).join('') : empty(8, 'No risk data for the selected filters.');
+  }).join('') : empty(9, 'No risk data for the selected filters.');
 
   rows = arr(payload.late_rows); body = document.getElementById('lateTableBody');
   if (body) body.innerHTML = rows.length ? rows.map(function (r) {
