@@ -7869,13 +7869,6 @@ def _build_payroll_batch_validation(batch):
         )
         errors.extend(overlap_errors)
 
-        return {
-            "is_ready": False,
-            "errors": errors,
-            "warnings": warnings,
-            "checks": checks,
-        }
-
     profile_ids = [
         item.profile_id
         for item in items
