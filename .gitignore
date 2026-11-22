@@ -29,6 +29,7 @@ staticfiles/
 media/
 leave_attachments/
 client_data/
+local_data/
 db.sqlite3
 
 # Environment variables and secrets
