@@ -489,7 +489,17 @@ def admin_dashboard(request):
         leave_qs = leave_qs.filter(branch=branch)
 
     pending_leaves = leave_qs.filter(status=LeaveRequest.STATUS_PENDING).count()
-    on_leave = leave_qs.filter(status=LeaveRequest.STATUS_APPROVED).count()
+    on_leave = (
+        leave_qs.filter(
+            status=LeaveRequest.STATUS_APPROVED,
+            start_date__lte=today,
+            end_date__gte=today,
+        )
+        .order_by()
+        .values("employee_id")
+        .distinct()
+        .count()
+    )
 
     # =========================
     # DEVICES
