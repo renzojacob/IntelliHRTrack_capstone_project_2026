@@ -434,7 +434,10 @@ def admin_dashboard(request):
     # =========================
     # ATTENDANCE
     # =========================
-    attendance_qs = AttendanceRecord.objects.all()
+    # Dashboard KPIs describe today's attendance.  Keep this scoped to the
+    # local calendar date, just like the Biometrics & Attendance page, so an
+    # employee's check-in from a previous day is not counted as present today.
+    attendance_qs = AttendanceRecord.objects.filter(timestamp__date=today)
     if branch:
         attendance_qs = attendance_qs.filter(branch=branch)
 
